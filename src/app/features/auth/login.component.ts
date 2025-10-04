@@ -1,8 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgIf } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { IconComponent } from '../../shared/icon/icon.component';
 
 // Spartan UI
 import { BrnButtonImports } from '@spartan-ng/brain/button';
@@ -13,70 +15,39 @@ import { BrnLabelImports } from '@spartan-ng/brain/label';
   selector: 'app-login',
   imports: [
     CommonModule,
+    NgIf,
     ReactiveFormsModule,
+    IconComponent,
     ...BrnButtonImports,
     ...BrnLabelImports,
   ],
-  template: `
-    <div class="flex h-screen items-center justify-center bg-gray-100">
-      <div class="w-96 p-6 bg-white rounded-lg shadow-md">
-        <h2 class="text-xl font-bold text-center mb-4">Iniciar Sesión</h2>
-
-        <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
-          <!-- Correo -->
-          <div>
-            <label brnLabel for="correo" class="block text-sm font-medium text-gray-700 mb-1">Correo Institucional</label>
-            <input
-              id="correo"
-              type="email"
-              formControlName="identificador"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Correo Institucional"
-            />
-            <p *ngIf="form.controls['identificador'].invalid && form.controls['identificador'].touched"
-               class="text-red-500 text-sm mt-1">Ingresa un correo válido</p>
-          </div>
-
-          <!-- Contraseña -->
-          <div>
-            <label brnLabel for="password" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
-            <input
-              id="password"
-              type="password"
-              formControlName="contrasena"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="••••••••"
-            />
-            <p *ngIf="form.controls['contrasena'].invalid && form.controls['contrasena'].touched"
-               class="text-red-500 text-sm mt-1">La contraseña es requerida</p>
-          </div>
-
-          <!-- Botón -->
-          <button
-            type="submit"
-            (click)="submit()"
-            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-            Entrar
-          </button>
-
-          <!-- Error Message -->
-          <p *ngIf="error()" class="text-red-500 text-sm mt-2 text-center">{{ error() }}</p>
-        </form>
-      </div>
-    </div>
-  `,
+ 
+  styles: [],
+  templateUrl: './login.component.html',
 })
 export class LoginComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
 
+  // Señales para manejar el estado de error, éxito y carga
   error = signal<string | null>(null);
+  success = signal<string | null>(null);
+  loading = signal(false);
 
+  // Formulario fuertemente tipado para mayor seguridad y autocompletado.
   form = new FormGroup({
-  identificador: new FormControl('', [Validators.required, Validators.email]),
-  contrasena: new FormControl('', Validators.required),
-});
+    identificador: new FormControl('', {
+      validators: [Validators.required, Validators.email],
+      nonNullable: true,
+    }),
+    contrasena: new FormControl('', {
+      validators: [Validators.required],
+      nonNullable: true,
+    }),
+  });
 
+  get identificador() { return this.form.get('identificador'); }
+  get contrasena() { return this.form.get('contrasena'); }
 
   submit() {
     if (this.form.invalid) {
@@ -84,11 +55,43 @@ export class LoginComponent {
       return;
     }
 
+    // Limpiar mensajes anteriores
     this.error.set(null);
+    this.success.set(null);
+    this.loading.set(true);
 
-    this.auth.login(this.form.value as any).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
-      error: (err) => this.error.set(err.message || 'Error en el login'),
+    const { identificador, contrasena } = this.form.getRawValue();
+    const loginRequest = {
+      Identificador: identificador,
+      Contrasena: contrasena,
+    };
+    
+    this.auth.login(loginRequest).subscribe({
+      next: () => {
+        // Mostrar mensaje de éxito antes de redirigir
+        this.success.set('¡Login exitoso! Redirigiendo...');
+        this.loading.set(false);
+        
+        // Auto-cerrar la alerta de éxito después de 3 segundos
+        setTimeout(() => {
+          this.success.set(null);
+        }, 3000);
+        
+        // Redirigir después de un breve delay para mostrar el mensaje
+        setTimeout(() => {
+          this.router.navigate(['/dashboard']);
+        }, 1500);
+      },
+      error: (err) => {
+        this.error.set('Credenciales incorrectas. Verifica tu correo y contraseña.');
+        this.loading.set(false);
+        
+        // Auto-cerrar la alerta de error después de 5 segundos
+        setTimeout(() => {
+          this.error.set(null);
+        }, 5000);
+      },
+      complete: () => this.loading.set(false),
     });
   }
 }

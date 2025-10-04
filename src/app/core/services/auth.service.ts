@@ -11,10 +11,10 @@ interface AuthResponse {
 }
 
 interface BackendAuthResponse {
-  Token: string;
-  Nombre: string;
-  Correo: string;
-  Rol: string;
+  token: string;
+  nombre: string;
+  correo: string;
+  rol: string;
 }
 
 interface LoginRequest {
@@ -55,12 +55,12 @@ export class AuthService {
   login(dto: LoginRequest): Observable<AuthResponse> {
   return this.http.post<BackendAuthResponse>(`${this.baseUrl}/Auth/login`, dto).pipe(
     map(res => ({
-      token: res.Token,
+      token: res.token,
       user: {
         id: 0,
-        nombreCompleto: res.Nombre,
-        correo: res.Correo,
-        role: res.Rol,
+        nombreCompleto: res.nombre,
+        correo: res.correo,
+        role: res.rol,
         departamentoId: undefined
       }
     })),
