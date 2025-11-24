@@ -27,5 +27,9 @@ export const ICON_MAPPING = {
   'success': 'check_circle',
   'error': 'error',
   'warning': 'warning',
-  'info': 'info'
+  'info': 'info',
+
+  // Theme
+  'sun': 'wb_sunny',
+  'moon': 'brightness_2'
 };

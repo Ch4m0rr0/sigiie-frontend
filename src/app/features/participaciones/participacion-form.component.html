@@ -1,0 +1,219 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-slate-900 mb-2">
+        {{ isEditMode() ? 'Editar' : 'Nueva' }} Participación
+      </h1>
+      <p class="text-sm text-slate-600">
+        {{ isEditMode() ? 'Modifica los datos de la participación' : 'Completa los datos para crear una nueva participación' }}
+      </p>
+    </div>
+
+    <!-- Loading State -->
+    @if (loading()) {
+      <div class="flex justify-center items-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }
+
+    <!-- Error State -->
+    @if (error() && !loading()) {
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <p class="text-red-800">{{ error() }}</p>
+      </div>
+    }
+
+    <!-- Form -->
+    @if (!loading()) {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+        <div class="space-y-6">
+          <!-- Edición -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Edición <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="number"
+              formControlName="edicionId"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.border-red-500]="edicionId?.invalid && edicionId?.touched"
+              placeholder="ID de la edición">
+            @if (edicionId?.invalid && edicionId?.touched) {
+              <p class="mt-1 text-sm text-red-600">La edición es requerida</p>
+            }
+          </div>
+
+          <!-- Subactividad (Opcional) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Subactividad
+            </label>
+            <select 
+              formControlName="idSubactividad"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option [value]="null">Ninguna (participación directa en edición)</option>
+              @for (sub of subactividades(); track sub.idSubactividad) {
+                <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
+              }
+            </select>
+            <p class="mt-1 text-xs text-gray-500">
+              Si selecciona una subactividad, la participación estará asociada a ella
+            </p>
+          </div>
+
+          <!-- Grupo y Rol -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Número de Grupo
+              </label>
+              <input 
+                type="number"
+                formControlName="grupoNumero"
+                min="1"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ej: 1, 2, 3">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Rol en Equipo
+              </label>
+              <select 
+                formControlName="idRolEquipo"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option [value]="null">Seleccione...</option>
+                @for (rol of rolesEquipo(); track rol.idRolEquipo) {
+                  <option [value]="rol.idRolEquipo">{{ rol.nombre }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Tutor -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Tutor
+            </label>
+            <input 
+              type="number"
+              formControlName="idTutor"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="ID del tutor (docente)">
+          </div>
+
+          <!-- Participante -->
+          <div>
+            <h3 class="text-md font-semibold text-slate-900 mb-3">Participante</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Estudiante ID
+                </label>
+                <input 
+                  type="number"
+                  formControlName="estudianteId"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ID del estudiante">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Docente ID
+                </label>
+                <input 
+                  type="number"
+                  formControlName="docenteId"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ID del docente">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Administrativo ID
+                </label>
+                <input 
+                  type="number"
+                  formControlName="administrativoId"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="ID del administrativo">
+              </div>
+            </div>
+            <p class="mt-2 text-xs text-gray-500">
+              Complete al menos uno de los campos de participante
+            </p>
+          </div>
+
+          <!-- Categoría y Estado -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Categoría de Participación <span class="text-red-500">*</span>
+              </label>
+              <input 
+                type="number"
+                formControlName="categoriaParticipacionId"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                [class.border-red-500]="categoriaParticipacionId?.invalid && categoriaParticipacionId?.touched"
+                placeholder="ID de categoría">
+              @if (categoriaParticipacionId?.invalid && categoriaParticipacionId?.touched) {
+                <p class="mt-1 text-sm text-red-600">La categoría es requerida</p>
+              }
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Estado de Participación <span class="text-red-500">*</span>
+              </label>
+              <input 
+                type="number"
+                formControlName="estadoParticipacionId"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                [class.border-red-500]="estadoParticipacionId?.invalid && estadoParticipacionId?.touched"
+                placeholder="ID de estado">
+              @if (estadoParticipacionId?.invalid && estadoParticipacionId?.touched) {
+                <p class="mt-1 text-sm text-red-600">El estado es requerido</p>
+              }
+            </div>
+          </div>
+
+          <!-- Fecha -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Fecha de Participación <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="date" 
+              formControlName="fechaParticipacion"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.border-red-500]="form.get('fechaParticipacion')?.invalid && form.get('fechaParticipacion')?.touched">
+            @if (form.get('fechaParticipacion')?.invalid && form.get('fechaParticipacion')?.touched) {
+              <p class="mt-1 text-sm text-red-600">La fecha es requerida</p>
+            }
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-6 flex justify-end space-x-4">
+          <button 
+            type="button"
+            [routerLink]="['/participaciones']"
+            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            [disabled]="form.invalid || loading()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+            @if (loading()) {
+              <span class="flex items-center gap-2">
+                <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                Guardando...
+              </span>
+            } @else {
+              Guardar
+            }
+          </button>
+        </div>
+      </form>
+    }
+  </div>
+</div>
+

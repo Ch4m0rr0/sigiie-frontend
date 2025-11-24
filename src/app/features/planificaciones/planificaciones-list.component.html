@@ -1,0 +1,311 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        Planificaciones
+      </h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        Gestiona y organiza las estructuras jerárquicas del sistema.
+      </p>
+    </div>
+    
+    <div class="flex gap-2">
+      <button 
+        (click)="loadAnuales()"
+        class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+        <app-icon icon="calendar_today" size="sm" color="white"></app-icon>
+        <span>Planificaciones Anuales</span>
+      </button>
+      <button 
+        (click)="navigateToCreate()"
+        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+        <app-icon icon="add" size="sm" color="white"></app-icon>
+        <span>Nueva Planificación</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
+    <div class="flex items-center gap-2 mb-4 border-b border-slate-100 pb-2">
+      <app-icon icon="filter_list" size="sm" color="slate-500"></app-icon>
+      <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide">Filtros de Búsqueda</h2>
+    </div>
+    
+    <div class="space-y-4">
+      <!-- Primera fila de filtros -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div class="md:col-span-3">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Tipo</label>
+          <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <app-icon icon="category" size="xs"></app-icon>
+              </span>
+              <select
+                  [value]="filtroTipo() ?? ''"
+                  (change)="filtroTipo.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                  class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer">
+                  <option value="">Todos los tipos</option>
+                  @for (tipo of tiposPlanificacion(); track tipo.idTipoPlanificacion) {
+                    <option [value]="tipo.idTipoPlanificacion">{{ tipo.nombre }}</option>
+                  }
+              </select>
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                  <app-icon icon="expand_more" size="xs"></app-icon>
+              </span>
+          </div>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Año</label>
+          <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <app-icon icon="calendar_today" size="xs"></app-icon>
+              </span>
+              <input 
+                  type="number"
+                  [value]="filtroAnio() ?? ''"
+                  (input)="onAnioInput($event); onFiltroChange()"
+                  placeholder="Ej: 2025"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
+          </div>
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Planificación Padre</label>
+          <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <app-icon icon="account_tree" size="xs"></app-icon>
+              </span>
+              <select
+                  [value]="filtroPadre() ?? ''"
+                  (change)="filtroPadre.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                  class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer">
+                  <option value="">Todas (sin padre)</option>
+                  @for (padre of planificacionesPadre(); track padre.idPlanificacion) {
+                    <option [value]="padre.idPlanificacion">{{ padre.nombre }}</option>
+                  }
+              </select>
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                  <app-icon icon="expand_more" size="xs"></app-icon>
+              </span>
+          </div>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Profundidad</label>
+          <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <app-icon icon="layers" size="xs"></app-icon>
+              </span>
+              <input 
+                  type="number"
+                  [value]="filtroProfundidad() ?? ''"
+                  (input)="filtroProfundidad.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                  placeholder="Nivel"
+                  min="1"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
+          </div>
+        </div>
+
+        <div class="md:col-span-2 flex items-center gap-2">
+          <button 
+            (click)="loadPlanificaciones()"
+            class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
+            <app-icon icon="search" size="xs" color="white"></app-icon>
+            Buscar
+          </button>
+          <button 
+            (click)="clearFilters()"
+            class="px-4 py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-sm font-medium"
+            title="Limpiar filtros">
+            <app-icon icon="restart_alt" size="sm"></app-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- Segunda fila de filtros -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        <div class="md:col-span-3">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Periodo Inicio</label>
+          <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <app-icon icon="event" size="xs"></app-icon>
+              </span>
+              <input 
+                  type="date"
+                  [value]="filtroPeriodoInicio() ?? ''"
+                  (change)="onPeriodoInicioChange($event); onFiltroChange()"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
+          </div>
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="block text-xs font-medium text-slate-500 mb-1.5">Periodo Fin</label>
+          <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <app-icon icon="event" size="xs"></app-icon>
+              </span>
+              <input 
+                  type="date"
+                  [value]="filtroPeriodoFin() ?? ''"
+                  (change)="onPeriodoFinChange($event); onFiltroChange()"
+                  class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none">
+          </div>
+        </div>
+
+        <div class="md:col-span-6 flex items-center gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+                type="checkbox"
+                [checked]="filtroIncluirInactivos()"
+                (change)="filtroIncluirInactivos.set($any($event.target).checked); onFiltroChange()"
+                class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+            <span class="text-xs font-medium text-slate-700">Incluir Inactivas</span>
+          </label>
+
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+                type="checkbox"
+                [checked]="filtroIncluirActividades()"
+                (change)="filtroIncluirActividades.set($any($event.target).checked); onFiltroChange()"
+                class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+            <span class="text-xs font-medium text-slate-700">Incluir Actividades</span>
+          </label>
+
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input 
+                type="checkbox"
+                [checked]="filtroIncluirReportes()"
+                (change)="filtroIncluirReportes.set($any($event.target).checked); onFiltroChange()"
+                class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+            <span class="text-xs font-medium text-slate-700">Incluir Reportes</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+        @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="h-64 bg-slate-200 rounded-xl"></div>
+        }
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5"></app-icon>
+        <div>
+            <h3 class="text-sm font-bold text-red-800">Error al cargar datos</h3>
+            <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+        </div>
+    </div>
+  }
+
+  @if (!loading() && !error() && planificaciones().length > 0) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (planificacion of planificaciones(); track planificacion.idPlanificacion) {
+        
+        <div 
+          (click)="navigateToDetail(planificacion.idPlanificacion)"
+          class="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-400 hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col h-full">
+          
+          <div class="flex justify-between items-start mb-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                    <app-icon icon="folder_open" size="md"></app-icon>
+                </div>
+                <div>
+                   @if (planificacion.nombreTipoPlanificacion) {
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-0.5 block">
+                            {{ planificacion.nombreTipoPlanificacion }}
+                        </span>
+                    }
+                    <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
+                        {{ planificacion.nombre }}
+                    </h3>
+                </div>
+            </div>
+            
+            @if (planificacion.activo) {
+              <span class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Activa
+              </span>
+            } @else {
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-medium">
+                Inactiva
+              </span>
+            }
+          </div>
+
+          <div class="flex-1 mb-4">
+            <p class="text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                {{ planificacion.descripcion || 'Sin descripción disponible.' }}
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-y-2 gap-x-4 py-3 border-t border-b border-slate-100 mb-4">
+             <div class="flex items-center gap-2">
+                <app-icon icon="calendar_today" size="xs" class="text-slate-400"></app-icon>
+                <div class="text-xs">
+                    <span class="block text-slate-400">Año</span>
+                    <span class="font-medium text-slate-700">{{ planificacion.anio }}</span>
+                </div>
+             </div>
+             
+             <div class="flex items-center gap-2">
+                <app-icon icon="account_tree" size="xs" class="text-slate-400"></app-icon>
+                <div class="text-xs">
+                    <span class="block text-slate-400">Dependencias</span>
+                    <span class="font-medium text-slate-700">{{ planificacion.hijasCount || 0 }}</span>
+                </div>
+             </div>
+
+             @if (planificacion.nombrePadre) {
+                <div class="col-span-2 flex items-center gap-2 mt-1">
+                    <app-icon icon="turn_right" size="xs" class="text-slate-400"></app-icon>
+                    <div class="text-xs overflow-hidden">
+                        <span class="block text-slate-400">Pertenece a</span>
+                        <span class="font-medium text-slate-700 truncate block">{{ planificacion.nombrePadre }}</span>
+                    </div>
+                </div>
+             }
+          </div>
+
+          <div class="flex items-center justify-between mt-auto">
+            <span class="text-xs text-slate-400">
+                {{ planificacion.fechaCreacion | date:'mediumDate' }}
+            </span>
+            <div class="flex items-center gap-1 text-sm font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-200">
+                Ver detalle <app-icon icon="arrow_forward" size="xs"></app-icon>
+            </div>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+  @if (!loading() && !error() && planificaciones().length === 0) {
+    <div class="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-xl border border-slate-200 border-dashed">
+        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <app-icon icon="folder_off" size="lg" class="text-slate-400"></app-icon>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">No se encontraron resultados</h3>
+        <p class="text-slate-500 text-sm max-w-sm text-center mt-1 mb-6">
+            No hay planificaciones que coincidan con los filtros. Intenta limpiar la búsqueda o crea una nueva.
+        </p>
+        <div class="flex gap-3">
+            <button (click)="clearFilters()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors">
+                Limpiar Filtros
+            </button>
+            <button (click)="navigateToCreate()" class="px-4 py-2 bg-blue-600 rounded-lg text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+                Crear Planificación
+            </button>
+        </div>
+    </div>
+  }
+</div>

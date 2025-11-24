@@ -18,23 +18,30 @@
     
     <!-- Heading -->
     <div class="text-center mb-8">
-      <h2 class="text-3xl font-bold text-gray-900">Bienvenido</h2>
-      <p class="text-sm text-gray-500 mt-2">Accede a tu cuenta institucional</p>
+      <div class="flex justify-center items-center mb-4">
+        <img 
+          src="/assets/UNAN-MANAGUA.png" 
+          alt="Logo" 
+          class="max-w-[200px] w-auto h-auto object-contain"
+        />
+      </div>
+      <p class="text-sm text-gray-500 mt-2">Ingresa tus credenciales por favor</p>
     </div>
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-6">
       <!-- Correo -->
       <div class="relative">
         <span class="absolute left-3 top-3 text-gray-400">
-          <app-icon icon="person" size="sm" color="gray-400"></app-icon>
+          <app-icon icon="person" size="sm" color="gray-400" className="ml-2"></app-icon>
         </span>
         <input
           id="correo"
           type="email"
           formControlName="identificador"
-          placeholder="tu.correo@institucion.edu"
-          class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 placeholder-gray-400"
+          placeholder="Correo@unan.edu.ni"
+          class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 placeholder-gray-400 italic ml-2"
         />
+        <!-- <app-icon icon="priority_high"></app-icon> -->
         <p *ngIf="identificador?.invalid && identificador?.touched" class="text-red-500 text-sm mt-2">
           Ingresa un correo válido
         </p>
@@ -43,17 +50,23 @@
       <!-- Contraseña -->
       <div class="relative">
         <span class="absolute left-3 top-3 text-gray-400">
-          <app-icon icon="lock" size="sm" color="gray-400"></app-icon>
+          <app-icon icon="lock" size="sm" color="gray-400" className="ml-2"></app-icon>
         </span>
         <input
           id="password"
-          type="password"
+          [type]="showPassword() ? 'text' : 'password'"
           formControlName="contrasena"
           placeholder="••••••••"
-          class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 placeholder-gray-400"
+          class="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-900 placeholder-gray-400 italic ml-2"
         />
-        <button type="button" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
-          <app-icon icon="visibility" size="sm" color="gray-400"></app-icon>
+        <button 
+          type="button" 
+          class="absolute right-3 top-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none"
+          (mousedown)="onPasswordEyeMouseDown()"
+          (mouseup)="onPasswordEyeMouseUp()"
+          (mouseleave)="onPasswordEyeMouseLeave()"
+        >
+          <app-icon [icon]="showPassword() ? 'visibility_off' : 'visibility'" size="sm" color="gray-400"></app-icon>
         </button>
         <p *ngIf="contrasena?.invalid && contrasena?.touched" class="text-red-500 text-sm mt-2">
           La contraseña es requerida
@@ -84,11 +97,4 @@
         <span class="text-sm font-medium">{{ error() }}</span>
       </div>
     </div>
-
-    <!-- Forgot Password -->
-    <div class="flex justify-between items-center mt-4">
-      <a href="#" class="text-sm text-blue-600 hover:underline">¿Olvidaste tu contraseña?</a>
-    </div>
-  </div>
-</div>
   

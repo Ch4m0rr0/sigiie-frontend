@@ -1,0 +1,75 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <p class="text-red-800">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (equipo() && !loading()) {
+    <div class="max-w-4xl mx-auto">
+      <!-- Header -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+        <h1 class="text-3xl font-bold text-slate-900 mb-2">
+          Grupo {{ equipo()!.grupoNumero || grupoNumero() }}
+        </h1>
+        @if (equipo()!.tutor) {
+          <p class="text-slate-600">
+            Tutor: <span class="font-semibold">{{ equipo()!.tutor.nombre || equipo()!.tutor }}</span>
+          </p>
+        }
+      </div>
+
+      <!-- Participantes -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+        <h2 class="text-xl font-semibold text-slate-900 mb-4">Participantes</h2>
+        @if (equipo()!.participantes && equipo()!.participantes.length > 0) {
+          <div class="space-y-2">
+            @for (participante of equipo()!.participantes; track participante.id) {
+              <div class="p-4 border border-slate-200 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="font-medium text-slate-900">
+                      {{ participante.nombre || participante.nombreEstudiante || participante.nombreDocente || participante.nombreAdmin || 'Sin nombre' }}
+                    </p>
+                    @if (participante.nombreRolEquipo) {
+                      <p class="text-sm text-slate-600">
+                        Rol: {{ participante.nombreRolEquipo }}
+                      </p>
+                    }
+                  </div>
+                  @if (participante.estudianteId) {
+                    <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                      Estudiante
+                    </span>
+                  } @else if (participante.docenteId) {
+                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      Docente
+                    </span>
+                  } @else if (participante.administrativoId) {
+                    <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                      Administrativo
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-slate-600 text-center py-8">
+            No hay participantes en este equipo
+          </p>
+        }
+      </div>
+    </div>
+  }
+</div>
+

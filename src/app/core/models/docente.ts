@@ -4,4 +4,5 @@ export interface Docente {
   correo: string;
   departamentoId: number;
   activo: boolean;
+  numeroOrcid?: string; // Opcional
 }

@@ -33,6 +33,7 @@ export class LoginComponent {
   error = signal<string | null>(null);
   success = signal<string | null>(null);
   loading = signal(false);
+  showPassword = signal(false);
 
   // Formulario fuertemente tipado para mayor seguridad y autocompletado.
   form = new FormGroup({
@@ -48,6 +49,22 @@ export class LoginComponent {
 
   get identificador() { return this.form.get('identificador'); }
   get contrasena() { return this.form.get('contrasena'); }
+
+  togglePasswordVisibility() {
+    this.showPassword.set(!this.showPassword());
+  }
+
+  onPasswordEyeMouseDown() {
+    this.showPassword.set(true);
+  }
+
+  onPasswordEyeMouseUp() {
+    this.showPassword.set(false);
+  }
+
+  onPasswordEyeMouseLeave() {
+    this.showPassword.set(false);
+  }
 
   submit() {
     if (this.form.invalid) {
@@ -83,7 +100,23 @@ export class LoginComponent {
         }, 1500);
       },
       error: (err) => {
-        this.error.set('Credenciales incorrectas. Verifica tu correo y contraseña.');
+        console.error('🔴 Error en login:', err);
+        
+        let errorMessage = 'Error inesperado al iniciar sesión';
+        
+        if (err.status === 0) {
+          errorMessage = 'No se puede conectar al servidor. Verifica que el backend esté ejecutándose en https://localhost:7041';
+        } else if (err.status === 400) {
+          errorMessage = 'Datos inválidos. Verifica tu correo y contraseña.';
+        } else if (err.status === 401) {
+          errorMessage = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+        } else if (err.status === 404) {
+          errorMessage = 'Endpoint no encontrado. Verifica la configuración del servidor.';
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        this.error.set(errorMessage);
         this.loading.set(false);
         
         // Auto-cerrar la alerta de error después de 5 segundos

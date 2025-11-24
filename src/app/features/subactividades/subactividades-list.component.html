@@ -1,0 +1,171 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <!-- Header -->
+  <div class="mb-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-slate-900 mb-2">Subactividades</h1>
+        <p class="text-sm text-slate-600">Gestiona las subactividades del sistema</p>
+      </div>
+      <button 
+        (click)="navigateToCreate()"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+        <app-icon icon="add" size="sm" color="white"></app-icon>
+        Nueva Subactividad
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Actividad</label>
+        <select 
+          [value]="filtroActividad() ?? ''"
+          (change)="filtroActividad.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todas</option>
+          @for (actividad of actividades(); track actividad.id) {
+            <option [value]="actividad.id">{{ actividad.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+        <select 
+          [value]="filtroTipo() ?? ''"
+          (change)="filtroTipo.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          @for (tipo of tiposSubactividad(); track tipo.idTipoSubactividad) {
+            <option [value]="tipo.idTipoSubactividad">{{ tipo.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+        <select 
+          [value]="filtroActivo() === null ? '' : filtroActivo() ? 'true' : 'false'"
+          (change)="filtroActivo.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          <option value="true">Activas</option>
+          <option value="false">Inactivas</option>
+        </select>
+      </div>
+
+      <div class="flex items-end">
+        <button 
+          (click)="clearFilters()"
+          class="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+          Limpiar Filtros
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <p class="text-red-800">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Lista de Subactividades -->
+  @if (!loading() && !error()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (subactividad of subactividades(); track subactividad.idSubactividad) {
+        <div 
+          (click)="navigateToDetail(subactividad.idSubactividad)"
+          class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+          
+          <!-- Header -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex-1">
+              <h3 class="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                {{ subactividad.nombre }}
+              </h3>
+              @if (subactividad.nombreActividad) {
+                <p class="text-sm text-slate-600 mt-1">
+                  Actividad: {{ subactividad.nombreActividad }}
+                </p>
+              }
+              @if (subactividad.nombreTipoSubactividad) {
+                <span class="inline-block mt-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                  {{ subactividad.nombreTipoSubactividad }}
+                </span>
+              }
+            </div>
+            @if (subactividad.activo) {
+              <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                Activa
+              </span>
+            } @else {
+              <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+                Inactiva
+              </span>
+            }
+          </div>
+
+          <!-- Descripción -->
+          @if (subactividad.descripcion) {
+            <p class="text-sm text-slate-600 mb-4 line-clamp-2">
+              {{ subactividad.descripcion }}
+            </p>
+          }
+
+          <!-- Información -->
+          <div class="space-y-2 mb-4">
+            @if (subactividad.fechaInicio && subactividad.fechaFin) {
+              <div class="flex items-center gap-2 text-sm text-slate-600">
+                <app-icon icon="date_range" size="sm" color="slate-500"></app-icon>
+                <span>{{ subactividad.fechaInicio | date:'short' }} - {{ subactividad.fechaFin | date:'short' }}</span>
+              </div>
+            }
+            @if (subactividad.nombreDepartamentoResponsable) {
+              <div class="flex items-center gap-2 text-sm text-slate-600">
+                <app-icon icon="business" size="sm" color="slate-500"></app-icon>
+                <span>{{ subactividad.nombreDepartamentoResponsable }}</span>
+              </div>
+            }
+            @if (subactividad.ubicacion) {
+              <div class="flex items-center gap-2 text-sm text-slate-600">
+                <app-icon icon="place" size="sm" color="slate-500"></app-icon>
+                <span>{{ subactividad.ubicacion }}</span>
+              </div>
+            }
+            @if (subactividad.modalidad) {
+              <div class="flex items-center gap-2 text-sm text-slate-600">
+                <app-icon icon="computer" size="sm" color="slate-500"></app-icon>
+                <span>{{ subactividad.modalidad }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Footer -->
+          <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+            <span class="text-xs text-slate-500">
+              Creada: {{ subactividad.fechaCreacion | date:'short' }}
+            </span>
+            <app-icon icon="chevron_right" size="sm" color="slate-400" className="group-hover:text-blue-500 transition-colors"></app-icon>
+          </div>
+        </div>
+      } @empty {
+        <div class="col-span-full text-center py-12">
+          <app-icon icon="assignment" size="lg" color="slate-400"></app-icon>
+          <p class="mt-4 text-slate-600">No se encontraron subactividades</p>
+        </div>
+      }
+    </div>
+  }
+</div>
+

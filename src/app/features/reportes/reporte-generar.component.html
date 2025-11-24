@@ -1,0 +1,259 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-slate-900 mb-2">Generar Reporte</h1>
+      <p class="text-sm text-slate-600">Configura los parámetros para generar un nuevo reporte</p>
+    </div>
+
+    <!-- Error State -->
+    @if (error()) {
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <p class="text-red-800">{{ error() }}</p>
+      </div>
+    }
+
+    <!-- Form -->
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+      <div class="space-y-6">
+        <!-- Tipo de Reporte -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Tipo de Reporte <span class="text-red-500">*</span>
+          </label>
+          <select 
+            formControlName="tipoReporte"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            [class.border-red-500]="tipoReporte?.invalid && tipoReporte?.touched">
+            <option value="">Seleccione...</option>
+            @for (tipo of tiposReporte; track tipo.value) {
+              <option [value]="tipo.value">{{ tipo.label }}</option>
+            }
+          </select>
+          @if (tipoReporte?.invalid && tipoReporte?.touched) {
+            <p class="mt-1 text-sm text-red-600">El tipo de reporte es requerido</p>
+          }
+        </div>
+
+        <!-- Planificación (si aplica) -->
+        @if (tipoReporte?.value === 'planificacion') {
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Planificación <span class="text-red-500">*</span>
+            </label>
+            <select 
+              formControlName="planificacionId"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.border-red-500]="planificacionId?.invalid && planificacionId?.touched">
+              <option value="">Seleccione...</option>
+              @for (planificacion of planificaciones(); track planificacion.idPlanificacion) {
+                <option [value]="planificacion.idPlanificacion">{{ planificacion.nombre }}</option>
+              }
+            </select>
+            @if (planificacionId?.invalid && planificacionId?.touched) {
+              <p class="mt-1 text-sm text-red-600">La planificación es requerida</p>
+            }
+          </div>
+        }
+
+        <!-- Actividad (si aplica) -->
+        @if (tipoReporte?.value === 'actividad') {
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Actividad <span class="text-red-500">*</span>
+            </label>
+            <select 
+              formControlName="actividadId"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.border-red-500]="actividadId?.invalid && actividadId?.touched">
+              <option value="">Seleccione...</option>
+              @for (actividad of actividades(); track actividad.id) {
+                <option [value]="actividad.id">{{ actividad.nombre }}</option>
+              }
+            </select>
+            @if (actividadId?.invalid && actividadId?.touched) {
+              <p class="mt-1 text-sm text-red-600">La actividad es requerida</p>
+            }
+          </div>
+        }
+
+        <!-- Subactividad (si aplica) -->
+        @if (tipoReporte?.value === 'subactividad') {
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Subactividad <span class="text-red-500">*</span>
+            </label>
+            <select 
+              formControlName="subactividadId"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.border-red-500]="subactividadId?.invalid && subactividadId?.touched">
+              <option value="">Seleccione...</option>
+              @for (subactividad of subactividades(); track subactividad.idSubactividad) {
+                <option [value]="subactividad.idSubactividad">{{ subactividad.nombre }}</option>
+              }
+            </select>
+            @if (subactividadId?.invalid && subactividadId?.touched) {
+              <p class="mt-1 text-sm text-red-600">La subactividad es requerida</p>
+            }
+          </div>
+        }
+
+        <!-- Rango de Fechas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Fecha Inicio
+            </label>
+            <input 
+              type="date" 
+              formControlName="fechaInicio"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Fecha Fin
+            </label>
+            <input 
+              type="date" 
+              formControlName="fechaFin"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- Formato -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Formato <span class="text-red-500">*</span>
+          </label>
+          <select 
+            formControlName="formato"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            [class.border-red-500]="formato?.invalid && formato?.touched">
+            @for (formato of formatos; track formato.value) {
+              <option [value]="formato.value">{{ formato.label }}</option>
+            }
+          </select>
+          @if (formato?.invalid && formato?.touched) {
+            <p class="mt-1 text-sm text-red-600">El formato es requerido</p>
+          }
+          <p class="mt-1 text-xs text-slate-500">
+            * El endpoint disponible actualmente solo permite descargar reportes en Excel.
+          </p>
+        </div>
+
+        <!-- Datos del archivo -->
+        <div class="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
+          <h3 class="text-sm font-semibold text-slate-800">Datos del archivo generado</h3>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Nombre del reporte <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="nombre"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ej: Reporte Indicadores 2025"
+              [class.border-red-500]="form.get('nombre')?.invalid && form.get('nombre')?.touched"
+            />
+            @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+              <p class="mt-1 text-sm text-red-600">
+                El nombre es obligatorio (mínimo 3 caracteres).
+              </p>
+            }
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Ruta de almacenamiento <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              formControlName="rutaArchivo"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ej: reportes/indicadores-2025.xlsx"
+              [class.border-red-500]="form.get('rutaArchivo')?.invalid && form.get('rutaArchivo')?.touched"
+            />
+            @if (form.get('rutaArchivo')?.invalid && form.get('rutaArchivo')?.touched) {
+              <p class="mt-1 text-sm text-red-600">La ruta es obligatoria.</p>
+            }
+            <p class="mt-1 text-xs text-slate-500">
+              Solo se almacena como referencia en la base de datos; puedes cambiarla si tu backend lo requiere.
+            </p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de archivo
+            </label>
+            <input
+              type="text"
+              formControlName="tipoArchivo"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-slate-100 text-slate-600 cursor-not-allowed"
+              readonly
+            />
+          </div>
+        </div>
+
+        <!-- Opciones Adicionales -->
+        <div class="space-y-3">
+          <h3 class="text-md font-semibold text-slate-900">Opciones Adicionales</h3>
+          
+          <div class="flex items-center">
+            <input 
+              type="checkbox" 
+              formControlName="incluirEvidencias"
+              id="incluirEvidencias"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <label for="incluirEvidencias" class="ml-2 text-sm font-medium text-gray-700">
+              Incluir Evidencias
+            </label>
+          </div>
+
+          <div class="flex items-center">
+            <input 
+              type="checkbox" 
+              formControlName="incluirParticipaciones"
+              id="incluirParticipaciones"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <label for="incluirParticipaciones" class="ml-2 text-sm font-medium text-gray-700">
+              Incluir Participaciones
+            </label>
+          </div>
+
+          <div class="flex items-center">
+            <input 
+              type="checkbox" 
+              formControlName="incluirIndicadores"
+              id="incluirIndicadores"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <label for="incluirIndicadores" class="ml-2 text-sm font-medium text-gray-700">
+              Incluir Indicadores
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="mt-6 flex justify-end space-x-4">
+        <button 
+          type="button"
+          [routerLink]="['/reportes']"
+          class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+          Cancelar
+        </button>
+        <button 
+          type="submit"
+          [disabled]="form.invalid || generando()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+          @if (generando()) {
+            <span class="flex items-center gap-2">
+              <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+              Generando...
+            </span>
+          } @else {
+            Generar Reporte
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+

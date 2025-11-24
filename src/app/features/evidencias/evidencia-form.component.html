@@ -1,0 +1,175 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-slate-900 mb-2">
+        {{ isEditMode() ? 'Editar' : 'Nueva' }} Evidencia
+      </h1>
+      <p class="text-sm text-slate-600">
+        {{ isEditMode() ? 'Modifica los datos de la evidencia' : 'Completa los datos para crear una nueva evidencia' }}
+      </p>
+    </div>
+
+    <!-- Loading State -->
+    @if (loading()) {
+      <div class="flex justify-center items-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    }
+
+    <!-- Error State -->
+    @if (error() && !loading()) {
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <p class="text-red-800">{{ error() }}</p>
+      </div>
+    }
+
+    <!-- Form -->
+    @if (!loading()) {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+        <div class="space-y-6">
+          <!-- Tipo de Evidencia -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Evidencia <span class="text-red-500">*</span>
+            </label>
+            <select 
+              formControlName="idTipoEvidencia"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.border-red-500]="idTipoEvidencia?.invalid && idTipoEvidencia?.touched">
+              <option value="">Seleccione...</option>
+              @for (tipo of tiposEvidencia(); track tipo.idTipoEvidencia) {
+                <option [value]="tipo.idTipoEvidencia">{{ tipo.nombre }}</option>
+              }
+            </select>
+            @if (idTipoEvidencia?.invalid && idTipoEvidencia?.touched) {
+              <p class="mt-1 text-sm text-red-600">El tipo de evidencia es requerido</p>
+            }
+          </div>
+
+          <!-- Actividad y Subactividad -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Actividad
+              </label>
+              <select 
+                formControlName="idActividad"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option [value]="null">Ninguna</option>
+                @for (actividad of actividades(); track actividad.id) {
+                  <option [value]="actividad.id">{{ actividad.nombre }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Subactividad
+              </label>
+              <select 
+                formControlName="idSubactividad"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option [value]="null">Ninguna</option>
+                @for (sub of subactividades(); track sub.idSubactividad) {
+                  <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Fecha de Evidencia -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Fecha de Evidencia
+            </label>
+            <input 
+              type="date" 
+              formControlName="fechaEvidencia"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <!-- Descripción -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Descripción
+            </label>
+            <textarea 
+              formControlName="descripcion"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Descripción de la evidencia"></textarea>
+          </div>
+
+          <!-- Upload de Archivo -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Archivo
+            </label>
+            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition">
+              <div class="space-y-1 text-center">
+                <app-icon icon="cloud_upload" size="lg" color="slate-400"></app-icon>
+                <div class="flex text-sm text-gray-600">
+                  <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
+                    <span>Seleccione un archivo</span>
+                    <input 
+                      id="file-upload" 
+                      name="file-upload" 
+                      type="file" 
+                      class="sr-only"
+                      (change)="onFileSelected($event)"
+                      accept="image/*,.pdf,.doc,.docx">
+                  </label>
+                  <p class="pl-1">o arrástrelo aquí</p>
+                </div>
+                @if (selectedFile()) {
+                  <p class="text-xs text-gray-500">{{ selectedFile()!.name }}</p>
+                }
+              </div>
+            </div>
+            @if (previewUrl()) {
+              <div class="mt-4">
+                <img [src]="previewUrl()!" alt="Preview" class="max-w-full h-auto rounded-lg border border-gray-300">
+              </div>
+            }
+          </div>
+
+          <!-- Seleccionada para Reporte -->
+          <div class="flex items-center">
+            <input 
+              type="checkbox" 
+              formControlName="seleccionadaParaReporte"
+              id="seleccionadaParaReporte"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+            <label for="seleccionadaParaReporte" class="ml-2 text-sm font-medium text-gray-700">
+              Seleccionada para reporte
+            </label>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-6 flex justify-end space-x-4">
+          <button 
+            type="button"
+            [routerLink]="['/evidencias']"
+            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            [disabled]="form.invalid || loading()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+            @if (loading()) {
+              <span class="flex items-center gap-2">
+                <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                Guardando...
+              </span>
+            } @else {
+              Guardar
+            }
+          </button>
+        </div>
+      </form>
+    }
+  </div>
+</div>
+

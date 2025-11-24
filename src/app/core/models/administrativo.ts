@@ -3,4 +3,5 @@ export interface Administrativo {
   nombreCompleto: string;
   correo: string;
   departamentoId: number;
+  activo?: boolean;
 }

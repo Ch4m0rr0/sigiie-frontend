@@ -1,50 +1,436 @@
-<div class="min-h-screen bg-gray-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <div class="flex justify-between items-center">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">Actividades</h1>
-          <p class="mt-2 text-gray-600">Gestiona las actividades y ediciones del sistema</p>
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        Actividades
+      </h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        Gestión operativa y seguimiento de actividades del sistema.
+      </p>
+    </div>
+    
+    <div class="flex gap-3">
+      <button 
+        (click)="toggleFormIndicadorPadre()"
+        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+        <app-icon icon="add" size="sm" color="white"></app-icon>
+        <span>{{ mostrarFormIndicadorPadre() ? 'Cancelar' : 'Agregar Indicador Padre' }}</span>
+      </button>
+      <button 
+        (click)="toggleFormIndicador()"
+        class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+        <app-icon icon="add" size="sm" color="white"></app-icon>
+        <span>{{ mostrarFormIndicador() ? 'Cancelar' : 'Agregar Indicador Hijo' }}</span>
+      </button>
+      <button 
+        (click)="navigateToCreate()"
+        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+        <app-icon icon="add" size="sm" color="white"></app-icon>
+        <span>Nueva Actividad</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Formulario para crear indicador padre -->
+  @if (mostrarFormIndicadorPadre()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold text-slate-900 mb-4">Nuevo Indicador Padre</h2>
+      <form [formGroup]="formIndicadorPadre" (ngSubmit)="onSubmitIndicadorPadre()" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Código <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="text"
+              formControlName="codigo"
+              placeholder="Ej: 6.1"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+              [class.border-red-500]="formIndicadorPadre.get('codigo')?.invalid && formIndicadorPadre.get('codigo')?.touched">
+            @if (formIndicadorPadre.get('codigo')?.invalid && formIndicadorPadre.get('codigo')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El código es obligatorio</p>
+            }
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Nombre <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="text"
+              formControlName="nombre"
+              placeholder="Nombre del indicador padre"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+              [class.border-red-500]="formIndicadorPadre.get('nombre')?.invalid && formIndicadorPadre.get('nombre')?.touched">
+            @if (formIndicadorPadre.get('nombre')?.invalid && formIndicadorPadre.get('nombre')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
+            }
+          </div>
         </div>
-        <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-          Nueva Actividad
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Descripción
+          </label>
+          <textarea 
+            formControlName="descripcion"
+            rows="3"
+            placeholder="Descripción del indicador..."
+            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" formControlName="activo" class="sr-only peer">
+            <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            <span class="ms-3 text-sm font-medium text-slate-700">Activo</span>
+          </label>
+        </div>
+
+        @if (errorIndicadorPadre()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorIndicadorPadre() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="toggleFormIndicadorPadre()"
+            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="formIndicadorPadre.invalid || loadingIndicadorPadre()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+            @if (loadingIndicadorPadre()) {
+              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span>Guardando...</span>
+            } @else {
+              <app-icon icon="save" size="xs" color="white"></app-icon>
+              <span>Crear Indicador</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Formulario para crear indicador hijo -->
+  @if (mostrarFormIndicador()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold text-slate-900 mb-4">Nuevo Indicador Hijo</h2>
+      <form [formGroup]="formIndicador" (ngSubmit)="onSubmitIndicador()" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Indicador Padre <span class="text-red-500">*</span>
+            </label>
+            <select 
+              formControlName="idIndicadorPadre"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+              [class.border-red-500]="formIndicador.get('idIndicadorPadre')?.invalid && formIndicador.get('idIndicadorPadre')?.touched">
+              <option [value]="null">Seleccione un indicador padre...</option>
+              @for (ind of indicadoresPadre(); track ind.idIndicador) {
+                <option [value]="ind.idIndicador">
+                  {{ ind.codigo }} - {{ ind.nombre }}
+                </option>
+              }
+            </select>
+            @if (formIndicador.get('idIndicadorPadre')?.invalid && formIndicador.get('idIndicadorPadre')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El indicador padre es obligatorio</p>
+            }
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Código <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="text"
+              formControlName="codigo"
+              placeholder="Ej: 6.1.1"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+              [class.border-red-500]="formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched">
+            @if (formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El código es obligatorio</p>
+            }
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Nombre <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="text"
+            formControlName="nombre"
+            placeholder="Nombre del indicador hijo"
+            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+            [class.border-red-500]="formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched">
+          @if (formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched) {
+            <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
+          }
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Descripción
+          </label>
+          <textarea 
+            formControlName="descripcion"
+            rows="3"
+            placeholder="Descripción del indicador..."
+            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" formControlName="activo" class="sr-only peer">
+            <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+            <span class="ms-3 text-sm font-medium text-slate-700">Activo</span>
+          </label>
+        </div>
+
+        @if (errorIndicador()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorIndicador() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="toggleFormIndicador()"
+            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="formIndicador.invalid || loadingIndicador()"
+            class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+            @if (loadingIndicador()) {
+              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span>Guardando...</span>
+            } @else {
+              <app-icon icon="save" size="xs" color="white"></app-icon>
+              <span>Crear Indicador</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+      
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Planificación Asociada</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="folder" size="xs"></app-icon>
+            </span>
+            <select 
+                [value]="filtroPlanificacion() ?? ''"
+                (change)="filtroPlanificacion.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option value="">Todas las planificaciones</option>
+                @for (plan of planificaciones(); track plan.idPlanificacion) {
+                  <option [value]="plan.idPlanificacion">{{ plan.nombre }}</option>
+                }
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+            </span>
+        </div>
+      </div>
+
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Nivel Estratégico</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="layers" size="xs"></app-icon>
+            </span>
+            <select 
+                [value]="filtroNivel() ?? ''"
+                (change)="filtroNivel.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option value="">Todos los niveles</option>
+                @for (nivel of nivelesActividad(); track nivel.idNivel) {
+                  <option [value]="nivel.idNivel">{{ nivel.nombre }}</option>
+                }
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+            </span>
+        </div>
+      </div>
+
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Estado</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="toggle_on" size="xs"></app-icon>
+            </span>
+            <select 
+                [value]="filtroActivo() === null ? '' : (filtroActivo() ? 'true' : 'false')"
+                (change)="filtroActivo.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option value="">Todos</option>
+                <option value="true">Activas</option>
+                <option value="false">Inactivas</option>
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+            </span>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <button 
+          (click)="clearFilters()"
+          class="w-full py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+          <app-icon icon="restart_alt" size="xs"></app-icon>
+          Limpiar
         </button>
       </div>
     </div>
-
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-      <div class="px-4 py-5 sm:p-6">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr *ngFor="let actividad of actividades">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ actividad.nombre }}</td>
-                <td class="px-6 py-4 text-sm text-gray-500">{{ actividad.descripcion }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ actividad.categoriaActividadId }}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span [class]="actividad.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                        class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                    {{ actividad.activo ? 'Activa' : 'Inactiva' }}
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                  <button class="text-red-600 hover:text-red-900">Eliminar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
   </div>
+
+  @if (loading()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+        @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="bg-slate-200 rounded-xl h-64"></div>
+        }
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5"></app-icon>
+        <div>
+            <h3 class="text-sm font-bold text-red-800">Error al cargar actividades</h3>
+            <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+        </div>
+    </div>
+  }
+
+  @if (!loading() && !error() && actividades().length > 0) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (actividad of actividades(); track actividad.id) {
+        
+        <div 
+          (click)="navigateToDetail(actividad.id)"
+          class="bg-white rounded-xl border border-slate-200 p-5 hover:border-emerald-400 hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col h-full">
+          
+          <div class="flex justify-between items-start mb-3">
+            <div class="flex items-start gap-3 overflow-hidden">
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <app-icon icon="assignment" size="sm"></app-icon>
+                </div>
+                
+                <div class="min-w-0">
+                   @if (actividad.nombrePlanificacion) {
+                        <div class="flex items-center gap-1 text-[10px] text-slate-400 mb-0.5 uppercase tracking-wide truncate">
+                            <app-icon icon="folder" size="xs"></app-icon>
+                            <span class="truncate">{{ actividad.nombrePlanificacion }}</span>
+                        </div>
+                   }
+                   <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                       {{ actividad.nombre }}
+                   </h3>
+                </div>
+            </div>
+            
+            @if (actividad.activo) {
+                <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50" title="Activa"></span>
+            } @else {
+                <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-slate-300 ring-4 ring-slate-50" title="Inactiva"></span>
+            }
+          </div>
+
+          @if (actividad.nombreNivel) {
+             <div class="mb-3">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                    <app-icon icon="layers" size="xs" class="mr-1 text-slate-400"></app-icon>
+                    {{ actividad.nombreNivel }}
+                </span>
+             </div>
+           }
+
+          <div class="mb-4">
+             <p class="text-sm text-slate-500 line-clamp-2">
+                 {{ actividad.descripcion || 'Sin descripción detallada.' }}
+             </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 py-3 border-t border-slate-100 mt-auto bg-slate-50/50 rounded-lg p-2">
+             
+             <div class="col-span-2 flex items-center gap-2">
+                <div class="bg-white p-1 rounded text-slate-400 border border-slate-200">
+                    <app-icon icon="business" size="xs"></app-icon>
+                </div>
+                <span class="text-xs text-slate-600 font-medium truncate">
+                    {{ actividad.nombreDepartamentoResponsable || 'Sin asignar' }}
+                </span>
+             </div>
+
+             <div class="flex items-center gap-2" title="Departamentos Involucrados">
+                <div class="bg-white p-1 rounded text-blue-500 border border-slate-200">
+                    <app-icon icon="group" size="xs"></app-icon>
+                </div>
+                <div class="flex flex-col leading-none">
+                    <span class="text-xs font-bold text-slate-700">-</span>
+                    <span class="text-[9px] text-slate-400">Depts</span>
+                </div>
+             </div>
+
+             <div class="flex items-center gap-2" title="Indicadores">
+                <div class="bg-white p-1 rounded text-purple-500 border border-slate-200">
+                    <app-icon icon="assessment" size="xs"></app-icon>
+                </div>
+                <div class="flex flex-col leading-none">
+                    <span class="text-xs font-bold text-slate-700">-</span>
+                    <span class="text-[9px] text-slate-400">KPIs</span>
+                </div>
+             </div>
+             
+             </div>
+
+          <div class="flex items-center justify-between pt-3 mt-1">
+            <span class="text-[10px] text-slate-400">
+                Creado: {{ actividad.fechaCreacion | date:'dd/MM/yy' }}
+            </span>
+            <span class="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                Detalles <app-icon icon="arrow_forward" size="xs"></app-icon>
+            </span>
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+  @if (!loading() && !error() && actividades().length === 0) {
+    <div class="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-xl border border-slate-200 border-dashed">
+        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <app-icon icon="assignment_late" size="lg" class="text-slate-400"></app-icon>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">No se encontraron actividades</h3>
+        <p class="text-slate-500 text-sm max-w-sm text-center mt-1 mb-6">
+            No hay actividades con estos filtros.
+        </p>
+        <div class="flex gap-3">
+             <button (click)="clearFilters()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50">
+                Limpiar
+            </button>
+            <button (click)="navigateToCreate()" class="px-4 py-2 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 shadow-sm">
+                Crear Actividad
+            </button>
+        </div>
+    </div>
+  }
 </div>

@@ -1,0 +1,124 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <p class="text-red-800">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (participacion() && !loading()) {
+    <div class="max-w-4xl mx-auto">
+      <!-- Header -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <h1 class="text-3xl font-bold text-slate-900 mb-2">
+              Participación
+            </h1>
+            <p class="text-lg text-slate-600">
+              {{ participacion()!.nombreEstudiante || participacion()!.nombreDocente || participacion()!.nombreAdmin || 'Participante' }}
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <button 
+              (click)="navigateToEdit()"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+              <app-icon icon="edit" size="sm" color="white"></app-icon>
+              Editar
+            </button>
+            <button 
+              (click)="onDelete()"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2">
+              <app-icon icon="delete" size="sm" color="white"></app-icon>
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+        <h2 class="text-xl font-semibold text-slate-900 mb-4">Detalles de la Participación</h2>
+        
+        <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <dt class="text-sm font-medium text-slate-500 mb-1">ID</dt>
+            <dd class="text-sm text-slate-900">{{ participacion()!.id }}</dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-slate-500 mb-1">Edición ID</dt>
+            <dd class="text-sm text-slate-900">{{ participacion()!.edicionId }}</dd>
+          </div>
+
+          @if (participacion()!.nombreSubactividad) {
+            <div>
+              <dt class="text-sm font-medium text-slate-500 mb-1">Subactividad</dt>
+              <dd class="text-sm text-slate-900">{{ participacion()!.nombreSubactividad }}</dd>
+            </div>
+          }
+
+          @if (participacion()!.grupoNumero) {
+            <div>
+              <dt class="text-sm font-medium text-slate-500 mb-1">Grupo</dt>
+              <dd class="text-sm text-slate-900">
+                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                  Grupo {{ participacion()!.grupoNumero }}
+                </span>
+              </dd>
+            </div>
+          }
+
+          @if (participacion()!.nombreRolEquipo) {
+            <div>
+              <dt class="text-sm font-medium text-slate-500 mb-1">Rol en Equipo</dt>
+              <dd class="text-sm text-slate-900">{{ participacion()!.nombreRolEquipo }}</dd>
+            </div>
+          }
+
+          @if (participacion()!.nombreTutor) {
+            <div>
+              <dt class="text-sm font-medium text-slate-500 mb-1">Tutor</dt>
+              <dd class="text-sm text-slate-900">{{ participacion()!.nombreTutor }}</dd>
+            </div>
+          }
+
+          <div>
+            <dt class="text-sm font-medium text-slate-500 mb-1">Tipo de Participante</dt>
+            <dd class="text-sm text-slate-900">
+              @if (participacion()!.estudianteId || participacion()!.idEstudiante) {
+                <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                  Estudiante
+                </span>
+              } @else if (participacion()!.docenteId || participacion()!.idDocente) {
+                <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                  Docente
+                </span>
+              } @else if (participacion()!.administrativoId || participacion()!.idAdmin) {
+                <span class="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                  Administrativo
+                </span>
+              }
+            </dd>
+          </div>
+
+          <div>
+            <dt class="text-sm font-medium text-slate-500 mb-1">Fecha de Participación</dt>
+            <dd class="text-sm text-slate-900">
+              {{ participacion()!.fechaParticipacion | date:'short' }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  }
+</div>
+

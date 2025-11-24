@@ -1,0 +1,472 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  <div class="max-w-5xl mx-auto">
+    
+    <div class="mb-8 animate-fade-in">
+      <div class="flex items-center gap-3 mb-2">
+        <button [routerLink]="['/actividades']" class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+            <app-icon icon="arrow_back" size="sm"></app-icon>
+        </button>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+            {{ isEditMode() ? 'Editar Actividad' : 'Nueva Actividad' }}
+        </h1>
+      </div>
+      <p class="text-slate-500 text-sm ml-10">
+        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad.' : 'Registra una nueva actividad con todos sus detalles.' }}
+      </p>
+    </div>
+
+    @if (loading()) {
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8 animate-pulse">
+        <div class="space-y-4">
+            <div class="h-4 w-1/4 bg-slate-200 rounded"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-24 bg-slate-100 rounded-lg"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+        </div>
+      </div>
+    }
+
+    @if (error() && !loading()) {
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error" size="md" class="text-red-600 mt-0.5"></app-icon>
+        <div>
+           <h3 class="text-sm font-bold text-red-800">Error al cargar formulario</h3>
+           <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+        </div>
+      </div>
+    }
+
+    @if (!loading()) {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
+        
+        <div class="p-6 md:p-8 space-y-8">
+            
+            <!-- Información Básica -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="edit_note" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Información Básica</h3>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="nombre">
+                        Nombre de la Actividad <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        formControlName="nombre"
+                        id="nombre"
+                        placeholder="Ej: Capacitación de Personal 2024"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                        [class.border-red-500]="nombre?.invalid && nombre?.touched">
+                    @if (nombre?.invalid && nombre?.touched) {
+                        <p class="mt-1.5 text-xs text-red-600">
+                            @if (nombre?.errors?.['required']) { El nombre es obligatorio. }
+                            @else if (nombre?.errors?.['minlength']) { Mínimo 3 caracteres. }
+                        </p>
+                    }
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="descripcion">
+                        Descripción Detallada
+                    </label>
+                    <textarea 
+                        formControlName="descripcion"
+                        id="descripcion"
+                        rows="3"
+                        placeholder="Describe los objetivos y alcance de esta actividad..."
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="codigoActividad">
+                        Código de Actividad
+                    </label>
+                    <input 
+                        type="text" 
+                        formControlName="codigoActividad"
+                        id="codigoActividad"
+                        placeholder="Ej: ACT-2024-001"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Clasificación y Categorización -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="category" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Clasificación y Categorización</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idTipoActividad">
+                            Tipo Actividad
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idTipoActividad"
+                                id="idTipoActividad"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (cat of categoriasActividad(); track cat.id) {
+                                    <option [value]="cat.id">{{ cat.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idEstadoActividad">
+                            Estado Actividad
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idEstadoActividad"
+                                id="idEstadoActividad"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (estado of estadosActividad(); track estado.id) {
+                                    <option [value]="estado.id">{{ estado.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idTipoIniciativa">
+                            Tipo Iniciativa
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idTipoIniciativa"
+                                id="idTipoIniciativa"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (tipo of tiposIniciativa(); track tipo.id) {
+                                    <option [value]="tipo.id">{{ tipo.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idArea">
+                            Área Conocimiento
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idArea"
+                                id="idArea"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (area of areasConocimiento(); track area.id) {
+                                    <option [value]="area.id">{{ area.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idTipoDocumento">
+                            Tipo Documento
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idTipoDocumento"
+                                id="idTipoDocumento"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (tipoDoc of tiposDocumento(); track tipoDoc.id) {
+                                    <option [value]="tipoDoc.id">{{ tipoDoc.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idNivel">
+                            Nivel Actividad
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idNivel"
+                                id="idNivel"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (nivel of nivelesActividad(); track nivel.idNivel) {
+                                    <option [value]="nivel.idNivel">{{ nivel.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="nivelActividad">
+                            Nivel Actividad (Numérico)
+                        </label>
+                        <input 
+                            type="number" 
+                            formControlName="nivelActividad"
+                            id="nivelActividad"
+                            min="1"
+                            placeholder="1"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="semanaMes">
+                            Semana del Mes
+                        </label>
+                        <input 
+                            type="number" 
+                            formControlName="semanaMes"
+                            id="semanaMes"
+                            min="1"
+                            max="4"
+                            placeholder="1-4"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fechas y Período -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="event" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Fechas y Período</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="fechaInicio">
+                            Fecha Inicio
+                        </label>
+                        <input 
+                            type="date" 
+                            formControlName="fechaInicio"
+                            id="fechaInicio"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="fechaFin">
+                            Fecha Fin
+                        </label>
+                        <input 
+                            type="date" 
+                            formControlName="fechaFin"
+                            id="fechaFin"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Departamentos y Responsables -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="business" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Departamentos y Responsables</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="departamentoId">
+                            Departamento
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <app-icon icon="business" size="xs"></app-icon>
+                            </div>
+                            <select 
+                                formControlName="departamentoId"
+                                id="departamentoId"
+                                class="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione departamento...</option>
+                                @for (dept of departamentos(); track dept.id) {
+                                    <option [value]="dept.id">{{ dept.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="departamentoResponsableId">
+                            Departamento Responsable
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                <app-icon icon="business" size="xs"></app-icon>
+                            </div>
+                            <select 
+                                formControlName="departamentoResponsableId"
+                                id="departamentoResponsableId"
+                                class="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione departamento...</option>
+                                @for (dept of departamentos(); track dept.id) {
+                                    <option [value]="dept.id">{{ dept.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información Adicional -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="info" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Información Adicional</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="organizador">
+                            Organizador
+                        </label>
+                        <input 
+                            type="text" 
+                            formControlName="organizador"
+                            id="organizador"
+                            placeholder="Nombre del organizador"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="modalidad">
+                            Modalidad
+                        </label>
+                        <input 
+                            type="text" 
+                            formControlName="modalidad"
+                            id="modalidad"
+                            placeholder="Ej: Presencial, Virtual, Híbrida"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="ubicacion">
+                            Ubicación
+                        </label>
+                        <input 
+                            type="text" 
+                            formControlName="ubicacion"
+                            id="ubicacion"
+                            placeholder="Dirección o lugar donde se realizará la actividad"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Relaciones -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="link" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Relaciones</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-sm font-medium text-slate-700" for="idActividadMensualInst">
+                                Actividad Mensual Institucional
+                            </label>
+                            <a 
+                                [routerLink]="['/actividades-mensuales/nueva']"
+                                class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                Crear nueva
+                            </a>
+                        </div>
+                        <div class="relative">
+                            <select 
+                                formControlName="idActividadMensualInst"
+                                id="idActividadMensualInst"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione...</option>
+                                @for (actMensual of actividadesMensualesInst(); track actMensual.idActividadMensualInst) {
+                                    <option [value]="actMensual.idActividadMensualInst">
+                                        {{ actMensual.nombre || (actMensual.nombreMes || 'Mes ' + actMensual.mes) }} - {{ actMensual.actividadAnual?.nombreIndicador || 'Actividad Anual ' + actMensual.idActividadAnual }}
+                                    </option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                        <p class="mt-1.5 text-xs text-slate-500">
+                            Si no existe la actividad mensual, puedes crear una nueva haciendo clic en "Crear nueva"
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="soporteDocumentoUrl">
+                            Documento de Soporte
+                        </label>
+                        <input 
+                            type="file" 
+                            formControlName="soporteDocumentoUrl"
+                            id="soporteDocumentoUrl"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                        <p class="mt-1.5 text-xs text-slate-500">Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="toggle_on" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
+                </div>
+
+                <div class="pt-2">
+                    <label class="inline-flex items-center cursor-pointer group">
+                        <input type="checkbox" formControlName="activo" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-slate-100 flex flex-col-reverse md:flex-row md:justify-end gap-3">
+                <button 
+                    type="button"
+                    [routerLink]="['/actividades']"
+                    class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 hover:text-slate-900 transition-all">
+                    Cancelar
+                </button>
+                <button 
+                    type="submit"
+                    [disabled]="form.invalid || loading()"
+                    class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all flex items-center justify-center gap-2 min-w-[120px]">
+                    @if (loading()) {
+                        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Guardando...</span>
+                    } @else {
+                        <app-icon icon="save" size="xs"></app-icon>
+                        <span>{{ isEditMode() ? 'Guardar Cambios' : 'Crear Actividad' }}</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+      </form>
+    }
+  </div>
+</div>

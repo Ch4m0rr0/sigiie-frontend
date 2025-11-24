@@ -1,0 +1,176 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  <div class="max-w-3xl mx-auto">
+    
+    <div class="mb-8 animate-fade-in">
+      <div class="flex items-center gap-3 mb-2">
+        <button [routerLink]="['/actividades']" class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+            <app-icon icon="arrow_back" size="sm"></app-icon>
+        </button>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+            {{ isEditMode() ? 'Editar Actividad Mensual Institucional' : 'Nueva Actividad Mensual Institucional' }}
+        </h1>
+      </div>
+      <p class="text-slate-500 text-sm ml-10">
+        {{ isEditMode() ? 'Modifica los detalles de la actividad mensual institucional.' : 'Registra una nueva actividad mensual institucional.' }}
+      </p>
+    </div>
+
+    @if (loading()) {
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8 animate-pulse">
+        <div class="space-y-4">
+            <div class="h-4 w-1/4 bg-slate-200 rounded"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-24 bg-slate-100 rounded-lg"></div>
+        </div>
+      </div>
+    }
+
+    @if (error() && !loading()) {
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error" size="md" class="text-red-600 mt-0.5"></app-icon>
+        <div>
+           <h3 class="text-sm font-bold text-red-800">Error al cargar formulario</h3>
+           <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+        </div>
+      </div>
+    }
+
+    @if (!loading()) {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
+        
+        <div class="p-6 md:p-8 space-y-8">
+            
+            <!-- Información Básica -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="edit_note" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Información Básica</h3>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-sm font-medium text-slate-700" for="idActividadAnual">
+                                Actividad Anual <span class="text-red-500">*</span>
+                            </label>
+                            <a 
+                                [routerLink]="['/actividades-anuales/nueva']"
+                                class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                Crear nueva
+                            </a>
+                        </div>
+                        <div class="relative">
+                            <select 
+                                formControlName="idActividadAnual"
+                                id="idActividadAnual"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
+                                [class.border-red-500]="idActividadAnual?.invalid && idActividadAnual?.touched">
+                                <option [value]="null">Seleccione una actividad anual...</option>
+                                @for (anual of actividadesAnuales(); track anual.idActividadAnual) {
+                                    <option [value]="anual.idActividadAnual">
+                                        {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                                    </option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                        @if (idActividadAnual?.invalid && idActividadAnual?.touched) {
+                            <p class="mt-1.5 text-xs text-red-600">La actividad anual es obligatoria.</p>
+                        }
+                        <p class="mt-1.5 text-xs text-slate-500">
+                            Si no existe la actividad anual, puedes crear una nueva haciendo clic en "Crear nueva"
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="mes">
+                            Mes <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="mes"
+                                id="mes"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
+                                [class.border-red-500]="mes?.invalid && mes?.touched">
+                                <option [value]="null">Seleccione un mes...</option>
+                                @for (mesItem of meses; track mesItem.value) {
+                                    <option [value]="mesItem.value">{{ mesItem.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                        @if (mes?.invalid && mes?.touched) {
+                            <p class="mt-1.5 text-xs text-red-600">El mes es obligatorio.</p>
+                        }
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="nombre">
+                        Nombre
+                    </label>
+                    <input 
+                        type="text" 
+                        formControlName="nombre"
+                        id="nombre"
+                        placeholder="Nombre de la actividad mensual"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="descripcion">
+                        Descripción
+                    </label>
+                    <textarea 
+                        formControlName="descripcion"
+                        id="descripcion"
+                        rows="4"
+                        placeholder="Descripción detallada de la actividad mensual institucional..."
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Estado -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="toggle_on" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
+                </div>
+
+                <div class="pt-2">
+                    <label class="inline-flex items-center cursor-pointer group">
+                        <input type="checkbox" formControlName="activo" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-slate-100 flex flex-col-reverse md:flex-row md:justify-end gap-3">
+                <button 
+                    type="button"
+                    [routerLink]="['/actividades']"
+                    class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 hover:text-slate-900 transition-all">
+                    Cancelar
+                </button>
+                <button 
+                    type="submit"
+                    [disabled]="form.invalid || loading()"
+                    class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all flex items-center justify-center gap-2 min-w-[120px]">
+                    @if (loading()) {
+                        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Guardando...</span>
+                    } @else {
+                        <app-icon icon="save" size="xs"></app-icon>
+                        <span>{{ isEditMode() ? 'Guardar Cambios' : 'Crear Actividad Mensual' }}</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+      </form>
+    }
+  </div>
+</div>
+

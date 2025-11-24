@@ -1,0 +1,144 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <p class="text-red-800">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (evidencia() && !loading()) {
+    <div class="max-w-4xl mx-auto">
+      <!-- Header -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-3 mb-2">
+              <h1 class="text-3xl font-bold text-slate-900">
+                Evidencia #{{ evidencia()!.idEvidencia }}
+              </h1>
+              @if (evidencia()!.nombreTipoEvidencia) {
+                <span class="px-3 py-1 text-sm font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                  {{ evidencia()!.nombreTipoEvidencia }}
+                </span>
+              }
+              @if (evidencia()!.seleccionadaParaReporte) {
+                <span class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                  Para Reporte
+                </span>
+              }
+            </div>
+            @if (evidencia()!.descripcion) {
+              <p class="text-slate-600">{{ evidencia()!.descripcion }}</p>
+            }
+          </div>
+          <div class="flex gap-2">
+            <button 
+              (click)="navigateToEdit()"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+              <app-icon icon="edit" size="sm" color="white"></app-icon>
+              Editar
+            </button>
+            <button 
+              (click)="onDelete()"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2">
+              <app-icon icon="delete" size="sm" color="white"></app-icon>
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información y Preview -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Información -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+          <h2 class="text-xl font-semibold text-slate-900 mb-4">Información</h2>
+          
+          <dl class="space-y-4">
+            <div>
+              <dt class="text-sm font-medium text-slate-500 mb-1">ID</dt>
+              <dd class="text-sm text-slate-900">{{ evidencia()!.idEvidencia }}</dd>
+            </div>
+
+            @if (evidencia()!.nombreSubactividad) {
+              <div>
+                <dt class="text-sm font-medium text-slate-500 mb-1">Subactividad</dt>
+                <dd class="text-sm text-slate-900">{{ evidencia()!.nombreSubactividad }}</dd>
+              </div>
+            }
+
+            @if (evidencia()!.fechaEvidencia) {
+              <div>
+                <dt class="text-sm font-medium text-slate-500 mb-1">Fecha de Evidencia</dt>
+                <dd class="text-sm text-slate-900">
+                  {{ evidencia()!.fechaEvidencia | date:'short' }}
+                </dd>
+              </div>
+            }
+
+            @if (evidencia()!.fechaSubida) {
+              <div>
+                <dt class="text-sm font-medium text-slate-500 mb-1">Fecha de Subida</dt>
+                <dd class="text-sm text-slate-900">
+                  {{ evidencia()!.fechaSubida | date:'short' }}
+                </dd>
+              </div>
+            }
+
+            <div>
+              <dt class="text-sm font-medium text-slate-500 mb-1">Seleccionada para Reporte</dt>
+              <dd class="text-sm text-slate-900">
+                <label class="flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox"
+                    [checked]="evidencia()!.seleccionadaParaReporte"
+                    (change)="toggleSeleccionada()"
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                  <span class="ml-2">{{ evidencia()!.seleccionadaParaReporte ? 'Sí' : 'No' }}</span>
+                </label>
+              </dd>
+            </div>
+          </dl>
+
+          @if (evidencia()!.rutaArchivo && downloadUrl()) {
+            <div class="mt-6">
+              <a 
+                [href]="downloadUrl()!"
+                [download]="evidencia()!.rutaArchivo"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <app-icon icon="download" size="sm" color="white"></app-icon>
+                Descargar Archivo
+              </a>
+            </div>
+          }
+        </div>
+
+        <!-- Preview -->
+        @if (evidencia()!.rutaArchivo && isImage(evidencia()!.rutaArchivo)) {
+          <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+            <h2 class="text-xl font-semibold text-slate-900 mb-4">Vista Previa</h2>
+            @if (downloadUrl()) {
+              <img 
+                [src]="downloadUrl()!" 
+                alt="Preview" 
+                class="w-full h-auto rounded-lg border border-gray-300">
+            } @else {
+              <div class="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+                <p class="text-gray-500">Cargando imagen...</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+

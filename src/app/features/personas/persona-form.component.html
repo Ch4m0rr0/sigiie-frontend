@@ -1,0 +1,336 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 animate-fade-in">
+    <div class="flex items-center gap-3 mb-2">
+      <button 
+        (click)="onCancel()"
+        class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <app-icon icon="arrow_back" size="sm" class="text-slate-600"></app-icon>
+      </button>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        {{ isEditMode() ? 'Editar ' + getTipoLabel() : 'Nuevo ' + getTipoLabel() }}
+      </h1>
+    </div>
+    <p class="text-slate-500 text-sm md:text-base ml-12">
+      {{ isEditMode() ? 'Modifica la información de la persona' : 'Completa el formulario para crear un nuevo ' + getTipoLabel().toLowerCase() }}
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 animate-pulse">
+      <div class="space-y-4">
+        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div class="h-32 bg-slate-200 rounded"></div>
+      </div>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      
+      <!-- Alertas -->
+      @if (error()) {
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <app-icon icon="error" size="md" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-red-800">Error de validación</h3>
+            <div class="text-sm text-red-600 mt-1 whitespace-pre-line">{{ error() }}</div>
+          </div>
+        </div>
+      }
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+        
+        <!-- Nombre Completo -->
+        <div>
+          <label for="nombreCompleto" class="block text-sm font-medium text-slate-700 mb-2">
+            Nombre Completo <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="nombreCompleto"
+            type="text"
+            formControlName="nombreCompleto"
+            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            [class.border-red-300]="form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched"
+            placeholder="Ingresa el nombre completo"
+          />
+          @if (form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">
+              @if (form.get('nombreCompleto')?.errors?.['required']) {
+                El nombre completo es requerido
+              } @else if (form.get('nombreCompleto')?.errors?.['minlength']) {
+                El nombre debe tener al menos 3 caracteres
+              }
+            </p>
+          }
+        </div>
+
+        <!-- Matrícula (solo estudiantes) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="matricula" class="block text-sm font-medium text-slate-700 mb-2">
+              Carnet <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="matricula"
+              type="text"
+              formControlName="matricula"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              [class.border-red-300]="form.get('matricula')?.invalid && form.get('matricula')?.touched"
+              placeholder="Ingresa la matrícula"
+            />
+            @if (form.get('matricula')?.invalid && form.get('matricula')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">Número de carnet es requerido</p>
+            }
+          </div>
+        }
+
+        <!-- Cédula (solo estudiantes, opcional) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="cedula" class="block text-sm font-medium text-slate-700 mb-2">
+              Cédula
+            </label>
+            <input
+              id="cedula"
+              type="text"
+              formControlName="cedula"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="Ingresa la cédula"
+            />
+            <p class="mt-1.5 text-sm text-slate-500">
+              Número de identificación personal
+            </p>
+          </div>
+        }
+
+        <!-- Correo -->
+        <div>
+          <label for="correo" class="block text-sm font-medium text-slate-700 mb-2">
+            Correo Electrónico <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="correo"
+            type="email"
+            formControlName="correo"
+            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            [class.border-red-300]="form.get('correo')?.invalid && form.get('correo')?.touched"
+            placeholder="correo@ejemplo.com"
+          />
+          @if (form.get('correo')?.invalid && form.get('correo')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">
+              @if (form.get('correo')?.errors?.['required']) {
+                El correo es requerido
+              } @else if (form.get('correo')?.errors?.['email']) {
+                Ingresa un correo electrónico válido
+              }
+            </p>
+          }
+        </div>
+
+        <!-- Departamento -->
+        <div>
+          <label for="departamentoId" class="block text-sm font-medium text-slate-700 mb-2">
+            Departamento <span class="text-red-500">*</span>
+          </label>
+          <select
+            id="departamentoId"
+            formControlName="departamentoId"
+            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+            [class.border-red-300]="form.get('departamentoId')?.invalid && form.get('departamentoId')?.touched"
+          >
+            <option value="">Selecciona un departamento</option>
+            @for (dept of departamentos(); track dept.id) {
+              <option [value]="dept.id">{{ dept.nombre }}</option>
+            }
+          </select>
+          @if (form.get('departamentoId')?.invalid && form.get('departamentoId')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">El departamento es requerido</p>
+          }
+        </div>
+
+        <!-- Género (solo estudiantes) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="generoId" class="block text-sm font-medium text-slate-700 mb-2">
+              Sexo <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="generoId"
+              formControlName="generoId"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+              [class.border-red-300]="form.get('generoId')?.invalid && form.get('generoId')?.touched"
+            >
+              <option value="">Selecciona un género</option>
+              @for (genero of generos(); track genero.id) {
+                <option [value]="genero.id">{{ genero.codigo }}</option>
+              }
+            </select>
+            @if (form.get('generoId')?.invalid && form.get('generoId')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">El género es requerido</p>
+            }
+          </div>
+        }
+
+        <!-- Estado (solo estudiantes) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="estadoId" class="block text-sm font-medium text-slate-700 mb-2">
+              Estado <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="estadoId"
+              formControlName="estadoId"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+              [class.border-red-300]="form.get('estadoId')?.invalid && form.get('estadoId')?.touched"
+            >
+              <option value="">Selecciona un estado</option>
+              @for (estado of estadosEstudiante(); track estado.id) {
+                <option [value]="estado.id">{{ estado.nombre }}</option>
+              }
+            </select>
+            @if (form.get('estadoId')?.invalid && form.get('estadoId')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">El estado es requerido</p>
+            }
+          </div>
+        }
+
+        <!-- Fecha Ingreso (solo estudiantes) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="fechaIngreso" class="block text-sm font-medium text-slate-700 mb-2">
+              Fecha de Ingreso <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="fechaIngreso"
+              type="date"
+              formControlName="fechaIngreso"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              [class.border-red-300]="form.get('fechaIngreso')?.invalid && form.get('fechaIngreso')?.touched"
+            />
+            @if (form.get('fechaIngreso')?.invalid && form.get('fechaIngreso')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">La fecha de ingreso es requerida</p>
+            }
+          </div>
+        }
+
+        <!-- Número ORCID (estudiantes y docentes, opcional) -->
+        @if (isEstudiante() || isDocente()) {
+          <div>
+            <label for="numeroOrcid" class="block text-sm font-medium text-slate-700 mb-2">
+              Número ORCID
+            </label>
+            <input
+              id="numeroOrcid"
+              type="text"
+              formControlName="numeroOrcid"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="0000-0000-0000-0000"
+            />
+            <p class="mt-1.5 text-sm text-slate-500">
+              Identificador único para investigadores (opcional)
+            </p>
+          </div>
+        }
+
+        <!-- Carrera (solo estudiantes, opcional) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="carrera" class="block text-sm font-medium text-slate-700 mb-2">
+              Carrera
+            </label>
+            <input
+              id="carrera"
+              type="text"
+              formControlName="carrera"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="Ingresa la carrera (opcional)"
+            />
+            <p class="mt-1.5 text-sm text-slate-500">
+              Carrera o programa de estudios
+            </p>
+          </div>
+        }
+
+        <!-- Categoría Participación (solo estudiantes, opcional) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="idCategoriaParticipacion" class="block text-sm font-medium text-slate-700 mb-2">
+              Categoría Participación
+            </label>
+            <select
+              id="idCategoriaParticipacion"
+              formControlName="idCategoriaParticipacion"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+            >
+              <option value="">Selecciona una categoría (opcional)</option>
+              @for (categoria of categoriasParticipacion(); track categoria.id) {
+                <option [value]="categoria.id">{{ categoria.nombre }}</option>
+              }
+            </select>
+            <p class="mt-1.5 text-sm text-slate-500">
+              Categoría de participación del estudiante (opcional)
+            </p>
+          </div>
+        }
+
+        <!-- Nivel Formación (solo estudiantes, opcional) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="nivelFormacion" class="block text-sm font-medium text-slate-700 mb-2">
+              Nivel Formación
+            </label>
+            <input
+              id="nivelFormacion"
+              type="text"
+              formControlName="nivelFormacion"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="Ingresa el nivel de formación"
+            />
+            <p class="mt-1.5 text-sm text-slate-500">
+              Nivel de formación académica
+            </p>
+          </div>
+        }
+
+        <!-- Activo -->
+        <div class="flex items-center gap-3">
+          <input
+            id="activo"
+            type="checkbox"
+            formControlName="activo"
+            class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+          />
+          <label for="activo" class="text-sm font-medium text-slate-700">
+            Activo
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Botones -->
+      <div class="flex items-center justify-end gap-4">
+        <button
+          type="button"
+          (click)="onCancel()"
+          class="px-6 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="form.invalid || saving()"
+          class="px-6 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
+          @if (saving()) {
+            <span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+            <span>Guardando...</span>
+          } @else {
+            <span>{{ isEditMode() ? 'Actualizar' : 'Crear' }}</span>
+          }
+        </button>
+      </div>
+
+    </form>
+  }
+</div>
+

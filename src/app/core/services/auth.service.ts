@@ -53,7 +53,12 @@ export class AuthService {
   }
 
   login(dto: LoginRequest): Observable<AuthResponse> {
-  return this.http.post<BackendAuthResponse>(`${this.baseUrl}/Auth/login`, dto).pipe(
+  return this.http.post<BackendAuthResponse>(`${this.baseUrl}/Auth/login`, dto, {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  }).pipe(
     map(res => ({
       token: res.token,
       user: {
@@ -78,17 +83,21 @@ export class AuthService {
   let message = 'Error inesperado al iniciar sesión';
 
   if (error.status === 0) {
-    message = 'Backend no disponible. Verifica que el servidor esté en https://localhost:7041.';
+    message = 'No se puede conectar al servidor. Verifica que el backend esté ejecutándose.';
   } else if (error.status === 400) {
     message = 'Datos inválidos. Verifica tu correo y contraseña.';
   } else if (error.status === 401) {
     message = 'Credenciales inválidas.';
   } else if (error.status === 404) {
     message = 'Endpoint no encontrado: /Auth/login.';
+  } else if (error.status === 500) {
+    message = 'Error interno del servidor.';
   } else if (typeof error.error === 'string' && error.error.includes('<!DOCTYPE')) {
-    message = 'El servidor devolvió HTML en lugar de JSON. Verifica la URL.';
+    message = 'El servidor devolvió HTML en lugar de JSON. Verifica la configuración del proxy.';
   } else if (error.error && error.error.message) {
     message = error.error.message;
+  } else if (error.message && error.message.includes('Unexpected token')) {
+    message = 'El servidor devolvió una respuesta inválida. Verifica la configuración del backend.';
   }
 
   return throwError(() => new Error(message));

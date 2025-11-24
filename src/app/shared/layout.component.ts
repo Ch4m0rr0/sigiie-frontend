@@ -7,67 +7,65 @@ import { IconComponent } from './icon/icon.component';
 @Component({
   standalone: true,
   selector: 'app-layout',
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    SidebarComponent,
-    IconComponent,
-  ],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, IconComponent],
   template: `
-    <div class="flex h-screen bg-slate-900">
-      <!-- Sidebar -->
-      <app-sidebar></app-sidebar>
+    <div class="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
       
-      <!-- Main content area -->
-      <div class="flex-1 flex flex-col overflow-hidden">
-        <!-- Top header -->
-        <header class="bg-gradient-to-r from-slate-800 to-slate-700 border-b border-slate-600/50 px-6 py-4 shadow-lg">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-              <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-                  <app-icon icon="dashboard" size="md" color="white"></app-icon>
-                </div>
-                <div>
-                  <h1 class="text-xl font-bold text-white tracking-tight">SIGIIE</h1>
-                  <p class="text-sm text-slate-400">Sistema de Gestión Integral</p>
-                </div>
+      <app-sidebar class="flex-shrink-0"></app-sidebar>
+
+      <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        
+        <header class="bg-white border-b border-slate-200 h-16 flex-shrink-0 z-20 shadow-sm relative">
+          <div class="h-full px-6 flex items-center justify-between gap-4">
+            
+            <div class="flex items-center gap-3">
+              <div class="hidden md:flex items-center text-sm font-medium text-slate-500">
+                <span class="hover:text-slate-800 cursor-pointer transition-colors">Sistema</span>
+                <app-icon icon="chevron_right" size="xs" class="mx-2 text-slate-300"></app-icon>
+                <span class="text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">Panel General</span>
               </div>
             </div>
-            
-            <div class="flex items-center space-x-4">
-              <!-- Search -->
-              <div class="relative hidden md:block">
+
+            <div class="flex items-center gap-3 md:gap-6">
+              
+              <div class="relative hidden md:block group">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <app-icon icon="search" size="sm" color="slate-400"></app-icon>
+                  <app-icon icon="search" size="sm" class="text-slate-400 group-focus-within:text-blue-500 transition-colors"></app-icon>
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Buscar..." 
-                  class="block w-64 pl-10 pr-3 py-2 border border-slate-600 rounded-lg bg-slate-700/50 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                >
+                <input
+                  type="text"
+                  placeholder="Buscar en el sistema..."
+                  class="block w-64 pl-10 pr-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                />
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span class="text-[10px] text-slate-400 font-sans border border-slate-200 rounded px-1.5 bg-white">⌘K</span>
+                </div>
               </div>
-              
-              <!-- Notifications -->
-              <button class="relative p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all duration-200 group">
-                <app-icon icon="notifications" size="lg" color="slate-400"></app-icon>
-                <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
-              
-              <!-- Settings -->
-              <button class="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all duration-200 group">
-                <app-icon icon="settings" size="lg" color="slate-400"></app-icon>
-              </button>
+
+              <div class="h-6 w-px bg-slate-200 hidden md:block"></div>
+
+              <div class="flex items-center gap-2">
+                
+                <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors relative" title="Ayuda">
+                    <app-icon icon="help" size="sm"></app-icon>
+                </button>
+
+                <button class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative" title="Notificaciones">
+                    <app-icon icon="notifications" size="sm"></app-icon>
+                    <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
+                </button>
+
+              </div>
             </div>
           </div>
         </header>
-        
-        <!-- Main content with multi-column layout -->
-        <main class="flex-1 overflow-auto bg-slate-50">
-          <div class="h-full p-6">
+
+        <main class="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50/50 scroll-smooth custom-scrollbar">
+          <div class="h-full w-full">
             <router-outlet></router-outlet>
           </div>
         </main>
+
       </div>
     </div>
   `,

@@ -8,4 +8,9 @@ export interface Estudiante {
   estadoId: number;
   fechaIngreso: Date;
   activo: boolean;
+  numeroOrcid?: string; // Opcional
+  cedula?: string; // Opcional
+  carrera?: string; // Opcional
+  idCategoriaParticipacion?: number; // Opcional
+  nivelFormacion?: string; // Opcional
 }

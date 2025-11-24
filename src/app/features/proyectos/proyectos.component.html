@@ -1,240 +1,187 @@
-<div class="min-h-screen bg-gray-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <div class="flex justify-between items-center">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900">Proyectos</h1>
-          <p class="mt-2 text-gray-600">Gestiona todos los proyectos del sistema</p>
-        </div>
-        <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-          Nuevo Proyecto
-        </button>
-      </div>
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        Proyectos
+      </h1>
+      <p class="text-slate-500 mt-1 text-sm md:text-base">
+        Supervisión y gestión del portafolio de proyectos.
+      </p>
     </div>
+    
+    <button 
+      (click)="navigateToCreate()"
+      class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+      <app-icon icon="add" size="sm" color="white"></app-icon>
+      <span>Nuevo Proyecto</span>
+    </button>
+  </div>
 
-    <!-- Filtros -->
-    <div class="bg-white shadow rounded-lg mb-6">
-      <div class="px-4 py-5 sm:p-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Buscar</label>
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+      
+      <div class="md:col-span-5">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Búsqueda General</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="search" size="xs"></app-icon>
+            </span>
             <input 
-              type="text" 
-              placeholder="Buscar proyectos..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-            <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">Todos</option>
-              <option value="activo">Activo</option>
-              <option value="pausado">Pausado</option>
-              <option value="completado">Completado</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Responsable</label>
-            <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="">Todos</option>
-              <option value="1">Juan Pérez</option>
-              <option value="2">María García</option>
-              <option value="3">Carlos López</option>
-            </select>
-          </div>
-          <div class="flex items-end">
-            <button class="w-full bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-              Filtrar
-            </button>
-          </div>
+                type="text"
+                [value]="filtroBusqueda()"
+                (input)="filtroBusqueda.set($any($event.target).value); onFiltroChange()"
+                placeholder="Nombre, responsable o descripción..."
+                class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+            >
         </div>
       </div>
-    </div>
 
-    <!-- Tabla de Proyectos -->
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-      <div class="px-4 py-5 sm:p-6">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Proyecto
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsable
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha Inicio
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Progreso
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10">
-                      <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-                        <span class="text-sm font-medium text-white">SP</span>
-                      </div>
-                    </div>
-                    <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">Sistema de Gestión</div>
-                      <div class="text-sm text-gray-500">Gestión integral de proyectos</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  Juan Pérez
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                    Activo
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  15/09/2024
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                      <div class="bg-blue-600 h-2 rounded-full" style="width: 75%"></div>
-                    </div>
-                    <span class="text-sm text-gray-600">75%</span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                  <button class="text-red-600 hover:text-red-900">Eliminar</button>
-                </td>
-              </tr>
-              <tr>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10">
-                      <div class="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
-                        <span class="text-sm font-medium text-white">AP</span>
-                      </div>
-                    </div>
-                    <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">Aplicación Móvil</div>
-                      <div class="text-sm text-gray-500">Desarrollo de app móvil</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  María García
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    En Progreso
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  01/10/2024
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                      <div class="bg-green-600 h-2 rounded-full" style="width: 45%"></div>
-                    </div>
-                    <span class="text-sm text-gray-600">45%</span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                  <button class="text-red-600 hover:text-red-900">Eliminar</button>
-                </td>
-              </tr>
-              <tr>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="flex-shrink-0 h-10 w-10">
-                      <div class="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center">
-                        <span class="text-sm font-medium text-white">WP</span>
-                      </div>
-                    </div>
-                    <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">Portal Web</div>
-                      <div class="text-sm text-gray-500">Desarrollo de portal corporativo</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  Carlos López
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                    Completado
-                  </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  20/08/2024
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                      <div class="bg-purple-600 h-2 rounded-full" style="width: 100%"></div>
-                    </div>
-                    <span class="text-sm text-gray-600">100%</span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button class="text-blue-600 hover:text-blue-900 mr-3">Editar</button>
-                  <button class="text-red-600 hover:text-red-900">Eliminar</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="md:col-span-4">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Estado del Proyecto</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="toggle_on" size="xs"></app-icon>
+            </span>
+            <select
+                [value]="filtroEstado() === null ? '' : (filtroEstado() ? 'true' : 'false')"
+                (change)="filtroEstado.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer">
+                <option value="">Todos los estados</option>
+                <option value="true">Activos</option>
+                <option value="false">Inactivos</option>
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+            </span>
         </div>
       </div>
-    </div>
 
-    <!-- Paginación -->
-    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-6 rounded-lg shadow">
-      <div class="flex-1 flex justify-between sm:hidden">
-        <button class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-          Anterior
+      <div class="md:col-span-3">
+        <button 
+          (click)="clearFilters()"
+          class="w-full py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+          <app-icon icon="restart_alt" size="xs"></app-icon>
+          Limpiar Filtros
         </button>
-        <button class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-          Siguiente
-        </button>
-      </div>
-      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p class="text-sm text-gray-700">
-            Mostrando <span class="font-medium">1</span> a <span class="font-medium">3</span> de <span class="font-medium">3</span> resultados
-          </p>
-        </div>
-        <div>
-          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-            <button class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-              <span class="sr-only">Anterior</span>
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-            </button>
-            <button class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-              1
-            </button>
-            <button class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-              <span class="sr-only">Siguiente</span>
-              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-              </svg>
-            </button>
-          </nav>
-        </div>
       </div>
     </div>
   </div>
+
+  @if (loading()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+        @for (i of [1,2,3,4,5,6]; track i) {
+            <div class="h-72 bg-slate-200 rounded-xl"></div>
+        }
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5"></app-icon>
+        <div>
+            <h3 class="text-sm font-bold text-red-800">Error al cargar proyectos</h3>
+            <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+        </div>
+    </div>
+  }
+
+  @if (!loading() && !error() && proyectos().length > 0) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (proyecto of proyectos(); track proyecto.id) {
+        
+        <div 
+          (click)="navigateToDetail(proyecto.id)"
+          class="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-400 hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col h-full">
+          
+          <div class="flex justify-between items-start mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-sm">
+                    {{ ((proyecto.nombreProyecto || proyecto.nombre || '').charAt(0) || 'P').toUpperCase() }}
+                </div>
+                <div>
+                   <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
+                       {{ proyecto.nombreProyecto || proyecto.nombre }}
+                   </h3>
+                   @if (proyecto.estado) {
+                        <span class="inline-flex items-center gap-1 text-[10px] font-medium"
+                              [class.text-emerald-600]="proyecto.estado === 'Activo'"
+                              [class.text-slate-400]="proyecto.estado !== 'Activo'">
+                            <span class="w-1.5 h-1.5 rounded-full"
+                                  [class.bg-emerald-500]="proyecto.estado === 'Activo'"
+                                  [class.bg-slate-400]="proyecto.estado !== 'Activo'"></span>
+                            {{ proyecto.estado }}
+                        </span>
+                    }
+                </div>
+            </div>
+          </div>
+
+          <div class="mb-5">
+             <p class="text-sm text-slate-500 line-clamp-2 min-h-[40px]">
+                 {{ proyecto.descripcion || 'Sin descripción disponible para este proyecto.' }}
+             </p>
+          </div>
+
+          <!-- Información adicional -->
+          @if (proyecto.departamento) {
+            <div class="mb-3">
+              <span class="text-xs text-slate-500">Departamento: </span>
+              <span class="text-xs font-medium text-slate-700">{{ proyecto.departamento }}</span>
+            </div>
+          }
+
+          <div class="grid grid-cols-2 gap-y-3 gap-x-4 border-t border-slate-100 pt-4 mt-auto">
+             
+             @if (proyecto.responsableNombre || proyecto.docentes?.length || proyecto.estudiantes?.length || proyecto.administrativos?.length) {
+                 <div class="col-span-2 flex items-center gap-2">
+                    <app-icon icon="account_circle" size="xs" class="text-slate-400"></app-icon>
+                    <span class="text-xs text-slate-600 truncate font-medium">
+                      {{ proyecto.responsableNombre || 
+                         (proyecto.docentes?.length ? proyecto.docentes?.[0]?.nombreCompleto : '') ||
+                         (proyecto.estudiantes?.length ? proyecto.estudiantes?.[0]?.nombreCompleto : '') ||
+                         (proyecto.administrativos?.length ? proyecto.administrativos?.[0]?.nombreCompleto : '') }}
+                    </span>
+                 </div>
+             }
+
+             <div class="flex items-center gap-2">
+                <app-icon icon="calendar_today" size="xs" class="text-slate-400"></app-icon>
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-slate-400 uppercase">Inicio</span>
+                    <span class="text-xs font-medium text-slate-700">
+                        {{ proyecto.fechaInicio ? (proyecto.fechaInicio | date:'dd MMM yyyy') : '--' }}
+                    </span>
+                </div>
+             </div>
+
+             @if (proyecto.tipoIniciativa || proyecto.tipoInvestigacion) {
+               <div class="col-span-2 flex items-center gap-2">
+                 <app-icon icon="category" size="xs" class="text-slate-400"></app-icon>
+                 <span class="text-xs text-slate-600 truncate font-medium">
+                   {{ proyecto.tipoIniciativa || proyecto.tipoInvestigacion }}
+                 </span>
+               </div>
+             }
+          </div>
+
+        </div>
+      }
+    </div>
+  }
+
+  @if (!loading() && !error() && proyectos().length === 0) {
+    <div class="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-xl border border-slate-200 border-dashed">
+        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+            <app-icon icon="folder_off" size="lg" class="text-slate-400"></app-icon>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">No hay proyectos registrados</h3>
+        <p class="text-slate-500 text-sm max-w-sm text-center mt-1 mb-6">
+            Actualmente no hay datos que coincidan con tu búsqueda. Comienza creando un nuevo proyecto.
+        </p>
+        <button (click)="navigateToCreate()" class="px-5 py-2.5 bg-blue-600 rounded-lg text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm hover:shadow">
+            Crear Primer Proyecto
+        </button>
+    </div>
+  }
 </div>

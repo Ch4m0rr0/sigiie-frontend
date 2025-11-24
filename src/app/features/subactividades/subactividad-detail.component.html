@@ -1,0 +1,228 @@
+<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error() && !loading()) {
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <p class="text-red-800">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Content -->
+  @if (subactividad() && !loading()) {
+    <div class="max-w-6xl mx-auto">
+      <!-- Header -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <h1 class="text-3xl font-bold text-slate-900 mb-2">
+              {{ subactividad()!.nombre }}
+            </h1>
+            @if (subactividad()!.nombreActividad) {
+              <p class="text-slate-600 mb-2">
+                Actividad: <span class="font-semibold">{{ subactividad()!.nombreActividad }}</span>
+              </p>
+            }
+            @if (subactividad()!.nombreTipoSubactividad) {
+              <span class="inline-block px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">
+                {{ subactividad()!.nombreTipoSubactividad }}
+              </span>
+            }
+            @if (subactividad()!.activo) {
+              <span class="ml-2 inline-block px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">
+                Activa
+              </span>
+            }
+          </div>
+          <div class="flex gap-2">
+            <button 
+              (click)="navigateToEdit()"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+              <app-icon icon="edit" size="sm" color="white"></app-icon>
+              Editar
+            </button>
+            <button 
+              (click)="onDelete()"
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2">
+              <app-icon icon="delete" size="sm" color="white"></app-icon>
+              Eliminar
+            </button>
+          </div>
+        </div>
+
+        @if (subactividad()!.descripcion) {
+          <p class="text-slate-600 mb-4">{{ subactividad()!.descripcion }}</p>
+        }
+
+        <!-- Info Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          @if (subactividad()!.fechaInicio && subactividad()!.fechaFin) {
+            <div class="flex items-center gap-2">
+              <app-icon icon="date_range" size="md" color="slate-500"></app-icon>
+              <div>
+                <p class="text-xs text-slate-500">Período</p>
+                <p class="text-sm font-medium text-slate-900">
+                  {{ subactividad()!.fechaInicio | date:'short' }} - {{ subactividad()!.fechaFin | date:'short' }}
+                </p>
+              </div>
+            </div>
+          }
+          @if (subactividad()!.nombreDepartamentoResponsable) {
+            <div class="flex items-center gap-2">
+              <app-icon icon="business" size="md" color="slate-500"></app-icon>
+              <div>
+                <p class="text-xs text-slate-500">Departamento</p>
+                <p class="text-sm font-medium text-slate-900">{{ subactividad()!.nombreDepartamentoResponsable }}</p>
+              </div>
+            </div>
+          }
+          @if (subactividad()!.ubicacion) {
+            <div class="flex items-center gap-2">
+              <app-icon icon="place" size="md" color="slate-500"></app-icon>
+              <div>
+                <p class="text-xs text-slate-500">Ubicación</p>
+                <p class="text-sm font-medium text-slate-900">{{ subactividad()!.ubicacion }}</p>
+              </div>
+            </div>
+          }
+          @if (subactividad()!.modalidad) {
+            <div class="flex items-center gap-2">
+              <app-icon icon="computer" size="md" color="slate-500"></app-icon>
+              <div>
+                <p class="text-xs text-slate-500">Modalidad</p>
+                <p class="text-sm font-medium text-slate-900">{{ subactividad()!.modalidad }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
+        <div class="border-b border-slate-200">
+          <nav class="flex -mb-px">
+            <button
+              (click)="setTab('info')"
+              [class]="'px-6 py-3 text-sm font-medium border-b-2 transition-colors ' + 
+                (activeTab() === 'info' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
+              Información
+            </button>
+            <button
+              (click)="setTab('participantes')"
+              [class]="'px-6 py-3 text-sm font-medium border-b-2 transition-colors ' + 
+                (activeTab() === 'participantes' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
+              Participantes
+              @if (participaciones().length > 0) {
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  {{ participaciones().length }}
+                </span>
+              }
+            </button>
+            <button
+              (click)="setTab('evidencias')"
+              [class]="'px-6 py-3 text-sm font-medium border-b-2 transition-colors ' + 
+                (activeTab() === 'evidencias' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
+              Evidencias
+              @if (evidencias().length > 0) {
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  {{ evidencias().length }}
+                </span>
+              }
+            </button>
+          </nav>
+        </div>
+
+        <div class="p-6">
+          <!-- Tab: Información -->
+          @if (activeTab() === 'info') {
+            <div class="space-y-4">
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">Detalles</h3>
+                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <dt class="text-sm font-medium text-slate-500">ID</dt>
+                    <dd class="text-sm text-slate-900">{{ subactividad()!.idSubactividad }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-sm font-medium text-slate-500">Fecha de Creación</dt>
+                    <dd class="text-sm text-slate-900">
+                      {{ subactividad()!.fechaCreacion | date:'short' }}
+                    </dd>
+                  </div>
+                  @if (subactividad()!.organizador) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Organizador</dt>
+                      <dd class="text-sm text-slate-900">{{ subactividad()!.organizador }}</dd>
+                    </div>
+                  }
+                </dl>
+              </div>
+            </div>
+          }
+
+          <!-- Tab: Participantes -->
+          @if (activeTab() === 'participantes') {
+            <div>
+              @if (participaciones().length > 0) {
+                <div class="space-y-2">
+                  @for (participacion of participaciones(); track participacion.id) {
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <p class="font-medium text-slate-900">
+                        {{ participacion.nombreEstudiante || participacion.nombreDocente || participacion.nombreAdmin || 'Sin nombre' }}
+                      </p>
+                      <p class="text-sm text-slate-600">
+                        @if (participacion.nombreRolEquipo) {
+                          Rol: {{ participacion.nombreRolEquipo }}
+                        }
+                      </p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-600 text-center py-8">
+                  No hay participantes registrados
+                </p>
+              }
+            </div>
+          }
+
+          <!-- Tab: Evidencias -->
+          @if (activeTab() === 'evidencias') {
+            <div>
+              @if (evidencias().length > 0) {
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  @for (evidencia of evidencias(); track evidencia.idEvidencia) {
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                      <p class="font-medium text-slate-900">{{ evidencia.descripcion || 'Sin descripción' }}</p>
+                      <p class="text-sm text-slate-600">
+                        @if (evidencia.nombreTipoEvidencia) {
+                          Tipo: {{ evidencia.nombreTipoEvidencia }}
+                        }
+                      </p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-600 text-center py-8">
+                  No hay evidencias registradas
+                </p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
+

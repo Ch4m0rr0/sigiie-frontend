@@ -1,0 +1,277 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 animate-fade-in">
+    <div class="flex items-center gap-3 mb-2">
+      <button 
+        (click)="cancel()"
+        class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <app-icon icon="arrow_back" size="sm" class="text-slate-600"></app-icon>
+      </button>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        {{ isEditMode() ? 'Editar Proyecto' : 'Nuevo Proyecto' }}
+      </h1>
+    </div>
+    <p class="text-slate-500 text-sm md:text-base ml-12">
+      {{ isEditMode() ? 'Modifica la información del proyecto' : 'Completa el formulario para crear un nuevo proyecto' }}
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 animate-pulse">
+      <div class="space-y-4">
+        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div class="h-32 bg-slate-200 rounded"></div>
+      </div>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      
+      <!-- Alertas -->
+      @if (error()) {
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5"></app-icon>
+          <div>
+            <h3 class="text-sm font-bold text-red-800">Error</h3>
+            <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+          </div>
+        </div>
+      }
+
+      @if (success()) {
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+          <app-icon icon="check_circle" size="md" class="text-green-600 mt-0.5"></app-icon>
+          <div>
+            <h3 class="text-sm font-bold text-green-800">Éxito</h3>
+            <p class="text-sm text-green-600 mt-1">{{ success() }}</p>
+          </div>
+        </div>
+      }
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+        
+        <!-- Nombre -->
+        <div>
+          <label for="nombreProyecto" class="block text-sm font-medium text-slate-700 mb-2">
+            Nombre del Proyecto <span class="text-red-500">*</span>
+          </label>
+          <input
+            id="nombreProyecto"
+            type="text"
+            formControlName="nombreProyecto"
+            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            [class.border-red-300]="form.get('nombreProyecto')?.invalid && form.get('nombreProyecto')?.touched"
+            placeholder="Ingresa el nombre del proyecto"
+          />
+          @if (form.get('nombreProyecto')?.invalid && form.get('nombreProyecto')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">{{ getFieldError('nombreProyecto') }}</p>
+          }
+        </div>
+
+        <!-- Descripción -->
+        <div>
+          <label for="descripcion" class="block text-sm font-medium text-slate-700 mb-2">
+            Descripción
+          </label>
+          <textarea
+            id="descripcion"
+            formControlName="descripcion"
+            rows="4"
+            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+            placeholder="Describe el proyecto..."
+          ></textarea>
+        </div>
+
+        <!-- Estado y Tipo Autor -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="idEstadoProyecto" class="block text-sm font-medium text-slate-700 mb-2">
+              Estado del Proyecto
+            </label>
+            <input
+              id="idEstadoProyecto"
+              type="number"
+              formControlName="idEstadoProyecto"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID del estado"
+            />
+            <p class="mt-1.5 text-xs text-slate-500">Nota: Este campo requiere el ID del estado del proyecto</p>
+          </div>
+
+          <div>
+            <label for="tipoAutor" class="block text-sm font-medium text-slate-700 mb-2">
+              Tipo de Autor
+            </label>
+            <input
+              id="tipoAutor"
+              type="text"
+              formControlName="tipoAutor"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="Tipo de autor"
+            />
+          </div>
+        </div>
+
+        <!-- Fechas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="fechaInicio" class="block text-sm font-medium text-slate-700 mb-2">
+              Fecha de Inicio
+            </label>
+            <input
+              id="fechaInicio"
+              type="date"
+              formControlName="fechaInicio"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label for="fechaFin" class="block text-sm font-medium text-slate-700 mb-2">
+              Fecha de Fin
+            </label>
+            <input
+              id="fechaFin"
+              type="date"
+              formControlName="fechaFin"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <!-- Departamento y Edición -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="departamentoId" class="block text-sm font-medium text-slate-700 mb-2">
+              ID del Departamento
+            </label>
+            <input
+              id="departamentoId"
+              type="number"
+              formControlName="departamentoId"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID del departamento"
+            />
+          </div>
+
+          <div>
+            <label for="idEdicion" class="block text-sm font-medium text-slate-700 mb-2">
+              ID de Edición
+            </label>
+            <input
+              id="idEdicion"
+              type="number"
+              formControlName="idEdicion"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID de la edición (opcional)"
+            />
+            <p class="mt-1.5 text-xs text-slate-500">Si se especifica, las fechas se tomarán de la edición</p>
+          </div>
+        </div>
+
+        <!-- Tipos y Áreas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="idTipoIniciativa" class="block text-sm font-medium text-slate-700 mb-2">
+              ID Tipo de Iniciativa
+            </label>
+            <input
+              id="idTipoIniciativa"
+              type="number"
+              formControlName="idTipoIniciativa"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID tipo iniciativa"
+            />
+          </div>
+
+          <div>
+            <label for="idTipoInvestigacion" class="block text-sm font-medium text-slate-700 mb-2">
+              ID Tipo de Investigación
+            </label>
+            <input
+              id="idTipoInvestigacion"
+              type="number"
+              formControlName="idTipoInvestigacion"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID tipo investigación"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="idAreaConocimiento" class="block text-sm font-medium text-slate-700 mb-2">
+              ID Área de Conocimiento
+            </label>
+            <input
+              id="idAreaConocimiento"
+              type="number"
+              formControlName="idAreaConocimiento"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID área conocimiento"
+            />
+          </div>
+
+          <div>
+            <label for="idTipoDocumento" class="block text-sm font-medium text-slate-700 mb-2">
+              ID Tipo de Documento
+            </label>
+            <input
+              id="idTipoDocumento"
+              type="number"
+              formControlName="idTipoDocumento"
+              class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="ID tipo documento"
+            />
+          </div>
+        </div>
+
+        <!-- Archivo de Soporte -->
+        <div>
+          <label for="archivoSoporte" class="block text-sm font-medium text-slate-700 mb-2">
+            Archivo de Soporte
+          </label>
+          <input
+            id="archivoSoporte"
+            type="file"
+            (change)="onFileSelected($event)"
+            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          />
+          <p class="mt-1.5 text-xs text-slate-500">Formatos permitidos: PDF, DOC, DOCX, JPG, PNG</p>
+        </div>
+
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="flex flex-col sm:flex-row gap-3 justify-end">
+        <button
+          type="button"
+          (click)="cancel()"
+          class="px-6 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+          [disabled]="saving()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-blue-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          [disabled]="form.invalid || saving()"
+        >
+          @if (saving()) {
+            <span class="spinner"></span>
+            <span>Guardando...</span>
+          } @else {
+            <app-icon icon="save" size="sm" color="white"></app-icon>
+            <span>{{ isEditMode() ? 'Actualizar' : 'Crear' }} Proyecto</span>
+          }
+        </button>
+      </div>
+
+    </form>
+  }
+
+</div>
+
