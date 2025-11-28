@@ -42,6 +42,16 @@ export const routes: Routes = [
           import('../features/usuarios').then(m => m.ListUsuariosComponent)
       },
       {
+        path: 'usuarios/nuevo',
+        loadComponent: () =>
+          import('../features/usuarios').then(m => m.UsuarioFormComponent)
+      },
+      {
+        path: 'usuarios/editar/:id',
+        loadComponent: () =>
+          import('../features/usuarios').then(m => m.UsuarioFormComponent)
+      },
+      {
         path: 'catalogos',
         loadComponent: () =>
           import('../features/catalogos').then(m => m.ListCatalogosComponent)
@@ -100,26 +110,6 @@ export const routes: Routes = [
         path: 'actividades-anuales/:id/editar',
         loadComponent: () =>
           import('../features/actividades-anuales').then(m => m.ActividadAnualFormComponent)
-      },
-      {
-        path: 'planificaciones',
-        loadComponent: () =>
-          import('../features/planificaciones').then(m => m.PlanificacionesListComponent)
-      },
-      {
-        path: 'planificaciones/nueva',
-        loadComponent: () =>
-          import('../features/planificaciones').then(m => m.PlanificacionFormComponent)
-      },
-      {
-        path: 'planificaciones/:id',
-        loadComponent: () =>
-          import('../features/planificaciones').then(m => m.PlanificacionDetailComponent)
-      },
-      {
-        path: 'planificaciones/:id/editar',
-        loadComponent: () =>
-          import('../features/planificaciones').then(m => m.PlanificacionFormComponent)
       },
       {
         path: 'subactividades',

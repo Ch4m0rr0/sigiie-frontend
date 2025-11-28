@@ -64,6 +64,12 @@ export class IndicadorService {
     if (data.descripcion !== undefined && data.descripcion !== null && data.descripcion.trim() !== '') {
       payload.Descripcion = data.descripcion.trim();
     }
+    if (data.anio !== undefined && data.anio !== null) {
+      payload.Anio = Number(data.anio);
+    }
+    if (data.meta !== undefined && data.meta !== null) {
+      payload.Meta = Number(data.meta);
+    }
     if (data.lineaEstrategica !== undefined && data.lineaEstrategica !== null && data.lineaEstrategica.trim() !== '') {
       payload.LineaEstrategica = data.lineaEstrategica.trim();
     }
@@ -133,6 +139,12 @@ export class IndicadorService {
         // Campos opcionales
         if (data.descripcion !== undefined && data.descripcion !== null && data.descripcion !== '') {
           payload.Descripcion = typeof data.descripcion === 'string' ? data.descripcion.trim() : data.descripcion;
+        }
+        if (data.anio !== undefined && data.anio !== null) {
+          payload.Anio = Number(data.anio);
+        }
+        if (data.meta !== undefined && data.meta !== null) {
+          payload.Meta = Number(data.meta);
         }
         if (data.lineaEstrategica !== undefined && data.lineaEstrategica !== null && data.lineaEstrategica !== '') {
           payload.LineaEstrategica = typeof data.lineaEstrategica === 'string' ? data.lineaEstrategica.trim() : data.lineaEstrategica;
@@ -242,14 +254,23 @@ export class IndicadorService {
     return this.http.get(`${this.apiUrl}/${id}/actividades`);
   }
 
-  importarExcel(file: File): Observable<any> {
-    const formData = new FormData();
-    formData.append('file', file);
-    return this.http.post(`${this.apiUrl}/importar-excel`, formData);
+  importarDesdeAnio(data: { anioOrigen: number, anioDestino: number, actualizarExistentes: boolean }): Observable<any> {
+    const payload = {
+      AnioOrigen: data.anioOrigen,
+      AnioDestino: data.anioDestino,
+      ActualizarExistentes: data.actualizarExistentes
+    };
+    return this.http.post(`${this.apiUrl}/importar-desde-anio`, payload);
   }
 
-  exportarPlantilla(): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/exportar-plantilla`, { responseType: 'blob' });
+  importarDesdeExcel(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post(`${this.apiUrl}/importar-desde-excel`, formData);
+  }
+
+  descargarPlantillaExcel(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/plantilla-excel`, { responseType: 'blob' });
   }
 
   private mapIndicador(item: any): Indicador {
@@ -265,7 +286,9 @@ export class IndicadorService {
       activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
       fechaCreacion: item.fechaCreacion || item.FechaCreacion || new Date().toISOString(),
       idIndicadorPadre: item.idIndicadorPadre || item.IdIndicadorPadre || undefined,
-      nivel: item.nivel || item.Nivel || undefined
+      nivel: item.nivel || item.Nivel || undefined,
+      anio: item.anio !== undefined ? item.anio : (item.Anio !== undefined ? item.Anio : undefined),
+      meta: item.meta !== undefined ? item.meta : (item.Meta !== undefined ? item.Meta : undefined)
     };
   }
   

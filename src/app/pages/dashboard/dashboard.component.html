@@ -5,9 +5,7 @@
       <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
         Dashboard General
       </h1>
-      <p class="text-slate-500 mt-1 text-sm md:text-base">
-        Bienvenido de vuelta, resumen del sistema en tiempo real.
-      </p>
+
     </div>
 
     <div class="flex items-center gap-3">
@@ -37,20 +35,8 @@
 
   @if (!loading()) {
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
       
-      <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 group">
-        <div class="flex justify-between items-start mb-4">
-            <div class="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <app-icon icon="folder" size="md"></app-icon>
-            </div>
-        </div>
-        <div>
-            <h3 class="text-2xl font-bold text-slate-900">{{ totalPlanificaciones() }}</h3>
-            <p class="text-sm font-medium text-slate-500">Planificaciones</p>
-        </div>
-      </div>
-
       <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200 group">
         <div class="flex justify-between items-start mb-4">
             <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -146,21 +132,200 @@
 
       <div class="space-y-6">
         
+        <!-- Accesos Directos -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
                 <h3 class="font-semibold text-slate-800">Accesos Directos</h3>
             </div>
             <div class="p-2">
-                <a routerLink="/planificaciones/nueva" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
-                        <app-icon icon="add" size="sm"></app-icon>
+                <a routerLink="/actividades/nueva" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                        <app-icon icon="assignment" size="sm"></app-icon>
                     </div>
                     <div class="flex-1">
-                        <p class="text-sm font-medium text-slate-700">Nueva Planificación</p>
+                        <p class="text-sm font-medium text-slate-700">Registrar Actividad</p>
                     </div>
-                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-blue-500 transition-colors" size="sm"></app-icon>
+                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-emerald-500 transition-colors" size="sm"></app-icon>
                 </a>
 
+                <a routerLink="/reportes" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
+                    <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all">
+                        <app-icon icon="description" size="sm"></app-icon>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-slate-700">Generar Reportes</p>
+                    </div>
+                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-purple-500 transition-colors" size="sm"></app-icon>
+                </a>
+            </div>
+        </div>
+
+        <!-- Vista Especial Métricas -->
+        @if (vistaEspecialMetricas()) {
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+              <h3 class="font-semibold text-slate-800">Métricas Especiales</h3>
+            </div>
+            <div class="p-6 space-y-3">
+              @if (vistaEspecialMetricas()!.metricas && isArray(vistaEspecialMetricas()!.metricas) && vistaEspecialMetricas()!.metricas.length > 0) {
+                @for (metrica of vistaEspecialMetricas()!.metricas; track $index) {
+                  <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span class="text-sm font-medium text-slate-700">{{ metrica.nombre || metrica.label || metrica.indicador || 'Métrica' }}</span>
+                    <span class="text-lg font-bold text-slate-900">{{ metrica.valor || metrica.total || metrica.count || 0 }}</span>
+                  </div>
+                }
+              } @else {
+                @if (vistaEspecialMetricas()!.promedioParticipacionesPorActividad !== undefined || 
+                     vistaEspecialMetricas()!.promedioEvidenciasPorProyecto !== undefined || 
+                     vistaEspecialMetricas()!.tasaCompletitud !== undefined) {
+                  <div class="space-y-3">
+                    @if (vistaEspecialMetricas()!.promedioParticipacionesPorActividad !== undefined) {
+                      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm font-medium text-slate-700">Promedio Participaciones por Actividad</span>
+                        <span class="text-lg font-bold text-slate-900">{{ vistaEspecialMetricas()!.promedioParticipacionesPorActividad }}</span>
+                      </div>
+                    }
+                    @if (vistaEspecialMetricas()!.promedioEvidenciasPorProyecto !== undefined) {
+                      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm font-medium text-slate-700">Promedio Evidencias por Proyecto</span>
+                        <span class="text-lg font-bold text-slate-900">{{ vistaEspecialMetricas()!.promedioEvidenciasPorProyecto }}</span>
+                      </div>
+                    }
+                    @if (vistaEspecialMetricas()!.tasaCompletitud !== undefined) {
+                      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm font-medium text-slate-700">Tasa de Completitud</span>
+                        <span class="text-lg font-bold text-slate-900">{{ vistaEspecialMetricas()!.tasaCompletitud }}%</span>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  @if (getMetricasKeys(vistaEspecialMetricas()).length > 0) {
+                    @for (item of getMetricasKeys(vistaEspecialMetricas()); track item.key) {
+                      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-sm font-medium text-slate-700">{{ item.key | titlecase }}</span>
+                        <span class="text-lg font-bold text-slate-900">{{ item.value }}</span>
+                      </div>
+                    }
+                  } @else {
+                    <div class="text-center py-8">
+                      <p class="text-sm text-slate-500">No hay métricas disponibles</p>
+                    </div>
+                  }
+                }
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Vista Especial Rendimiento -->
+        @if (vistaEspecialRendimiento()) {
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+              <h3 class="font-semibold text-slate-800">Rendimiento</h3>
+            </div>
+            <div class="p-6 space-y-6">
+              <!-- Indicadores de Eficiencia -->
+              @if (vistaEspecialRendimiento()!.indicadoresEficiencia && isArray(vistaEspecialRendimiento()!.indicadoresEficiencia)) {
+                <div class="space-y-4">
+                  <h4 class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Indicadores de Eficiencia</h4>
+                  @for (indicador of vistaEspecialRendimiento()!.indicadoresEficiencia; track $index) {
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <div class="flex items-center justify-between mb-3">
+                        <span class="text-sm font-medium text-slate-700">{{ indicador.indicador || indicador.nombre || 'Indicador' }}</span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-lg font-bold text-slate-900">{{ indicador.valor || 0 }}</span>
+                          @if (indicador.unidad) {
+                            <span class="text-sm text-slate-500">{{ indicador.unidad }}</span>
+                          }
+                        </div>
+                      </div>
+                      @if (indicador.tendencia) {
+                        <div class="flex items-center gap-2 mt-2">
+                          <span class="text-xs font-medium px-2 py-1 rounded-full"
+                            [class.bg-blue-100]="indicador.tendencia === 'Estable'"
+                            [class.text-blue-700]="indicador.tendencia === 'Estable'"
+                            [class.bg-green-100]="indicador.tendencia === 'Mejorando'"
+                            [class.text-green-700]="indicador.tendencia === 'Mejorando'"
+                            [class.bg-red-100]="indicador.tendencia === 'Empeorando'"
+                            [class.text-red-700]="indicador.tendencia === 'Empeorando'">
+                            {{ indicador.tendencia }}
+                          </span>
+                        </div>
+                      }
+                      @if (indicador.valor !== undefined && indicador.unidad === '%') {
+                        <div class="w-full bg-slate-200 rounded-full h-2 mt-3">
+                          <div class="bg-blue-600 h-2 rounded-full transition-all" [style.width.%]="min(indicador.valor || 0, 100)"></div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Rendimiento Mensual -->
+              @if (vistaEspecialRendimiento()!.rendimientoMensual && isArray(vistaEspecialRendimiento()!.rendimientoMensual)) {
+                <div class="space-y-4">
+                  <h4 class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Rendimiento Mensual</h4>
+                  @for (rendimiento of vistaEspecialRendimiento()!.rendimientoMensual; track $index) {
+                    <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <div class="flex items-center justify-between mb-3">
+                        <div>
+                          <p class="text-sm font-medium text-slate-700">{{ rendimiento.mes || 'Mes' }} {{ rendimiento.anio || '' }}</p>
+                          <p class="text-xs text-slate-500 mt-1">
+                            {{ rendimiento.actividadesCompletadas || 0 }} de {{ rendimiento.actividadesPlanificadas || 0 }} actividades completadas
+                          </p>
+                        </div>
+                        <div class="text-right">
+                          <p class="text-lg font-bold text-slate-900">{{ rendimiento.eficiencia || 0 }}%</p>
+                          <p class="text-xs text-slate-500">Eficiencia</p>
+                        </div>
+                      </div>
+                      @if (rendimiento.actividadesPlanificadas > 0) {
+                        <div class="w-full bg-slate-200 rounded-full h-2 mt-3">
+                          <div class="bg-emerald-600 h-2 rounded-full transition-all" 
+                            [style.width.%]="min((rendimiento.actividadesCompletadas || 0) / rendimiento.actividadesPlanificadas * 100, 100)"></div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Métricas generales -->
+              <div class="space-y-3 pt-4 border-t border-slate-200">
+                @if (vistaEspecialRendimiento()!.promedioParticipacionesPorActividad !== undefined) {
+                  <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span class="text-sm font-medium text-slate-700">Promedio Participaciones por Actividad</span>
+                    <span class="text-lg font-bold text-slate-900">{{ vistaEspecialRendimiento()!.promedioParticipacionesPorActividad }}</span>
+                  </div>
+                }
+                @if (vistaEspecialRendimiento()!.promedioEvidenciasPorProyecto !== undefined) {
+                  <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span class="text-sm font-medium text-slate-700">Promedio Evidencias por Proyecto</span>
+                    <span class="text-lg font-bold text-slate-900">{{ vistaEspecialRendimiento()!.promedioEvidenciasPorProyecto }}</span>
+                  </div>
+                }
+                @if (vistaEspecialRendimiento()!.tasaCompletitud !== undefined) {
+                  <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                    <span class="text-sm font-medium text-slate-700">Tasa de Completitud</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg font-bold text-slate-900">{{ vistaEspecialRendimiento()!.tasaCompletitud }}%</span>
+                      <div class="w-24 bg-slate-200 rounded-full h-2">
+                        <div class="bg-blue-600 h-2 rounded-full transition-all" [style.width.%]="min(vistaEspecialRendimiento()!.tasaCompletitud || 0, 100)"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
+                <h3 class="font-semibold text-slate-800">Accesos Directos</h3>
+            </div>
+            <div class="p-2">
                 <a routerLink="/actividades/nueva" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
                     <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all">
                         <app-icon icon="assignment" size="sm"></app-icon>

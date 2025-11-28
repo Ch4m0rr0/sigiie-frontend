@@ -136,18 +136,33 @@ export class ActividadesService {
       IdTipoIniciativa: actividad.idTipoIniciativa,
       FechaInicio: actividad.fechaInicio,
       FechaFin: actividad.fechaFin,
+      FechaEvento: actividad.fechaEvento,
       IdEstadoActividad: actividad.idEstadoActividad,
       IdTipoActividad: actividad.idTipoActividad || actividad.categoriaActividadId,
       IdArea: actividad.idArea || actividad.areaConocimientoId,
       IdTipoDocumento: actividad.idTipoDocumento,
       Organizador: actividad.organizador,
       Modalidad: actividad.modalidad,
-      Ubicacion: actividad.ubicacion,
+      IdCapacidadInstalada: actividad.idCapacidadInstalada,
       IdNivel: actividad.idNivel,
       NivelActividad: actividad.nivelActividad ?? 1,
       SemanaMes: actividad.semanaMes,
       CodigoActividad: actividad.codigoActividad,
       IdActividadMensualInst: actividad.idActividadMensualInst,
+      EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true,
+      IdIndicador: actividad.idIndicador,
+      IdActividadAnual: actividad.idActividadAnual,
+      Objetivo: actividad.objetivo,
+      CantidadMaximaParticipantesEstudiantes: actividad.cantidadMaximaParticipantesEstudiantes,
+      TipoResumenAccion: actividad.tipoResumenAccion,
+      MetaAlcanzada: actividad.metaAlcanzada,
+      MetaCumplimiento: actividad.metaCumplimiento,
+      ValoracionIndicadorEstrategico: actividad.valoracionIndicadorEstrategico,
+      BrechaEstrategica: actividad.brechaEstrategica,
+      Anio: actividad.anio,
+      HoraRealizacion: actividad.horaRealizacion,
+      CantidadParticipantesProyectados: actividad.cantidadParticipantesProyectados,
+      IdTipoProtagonista: actividad.idTipoProtagonista,
       IdTipoActividadJerarquica: actividad.idTipoActividadJerarquica
     };
     
@@ -189,6 +204,9 @@ export class ActividadesService {
     if (actividad.fechaFin !== undefined) {
       dto.FechaFin = actividad.fechaFin;
     }
+    if (actividad.fechaEvento !== undefined) {
+      dto.FechaEvento = actividad.fechaEvento;
+    }
     if (actividad.idEstadoActividad !== undefined) {
       dto.IdEstadoActividad = actividad.idEstadoActividad;
     }
@@ -207,6 +225,9 @@ export class ActividadesService {
     if (actividad.modalidad !== undefined) {
       dto.Modalidad = actividad.modalidad;
     }
+    if (actividad.idCapacidadInstalada !== undefined) {
+      dto.IdCapacidadInstalada = actividad.idCapacidadInstalada;
+    }
     if (actividad.ubicacion !== undefined) {
       dto.Ubicacion = actividad.ubicacion;
     }
@@ -224,6 +245,48 @@ export class ActividadesService {
     }
     if (actividad.idActividadMensualInst !== undefined) {
       dto.IdActividadMensualInst = actividad.idActividadMensualInst;
+    }
+    if (actividad.esPlanificada !== undefined) {
+      dto.EsPlanificada = actividad.esPlanificada;
+    }
+    if (actividad.idIndicador !== undefined) {
+      dto.IdIndicador = actividad.idIndicador;
+    }
+    if (actividad.idActividadAnual !== undefined) {
+      dto.IdActividadAnual = actividad.idActividadAnual;
+    }
+    if (actividad.objetivo !== undefined) {
+      dto.Objetivo = actividad.objetivo;
+    }
+    if (actividad.cantidadMaximaParticipantesEstudiantes !== undefined) {
+      dto.CantidadMaximaParticipantesEstudiantes = actividad.cantidadMaximaParticipantesEstudiantes;
+    }
+    if (actividad.tipoResumenAccion !== undefined) {
+      dto.TipoResumenAccion = actividad.tipoResumenAccion;
+    }
+    if (actividad.metaAlcanzada !== undefined) {
+      dto.MetaAlcanzada = actividad.metaAlcanzada;
+    }
+    if (actividad.metaCumplimiento !== undefined) {
+      dto.MetaCumplimiento = actividad.metaCumplimiento;
+    }
+    if (actividad.valoracionIndicadorEstrategico !== undefined) {
+      dto.ValoracionIndicadorEstrategico = actividad.valoracionIndicadorEstrategico;
+    }
+    if (actividad.brechaEstrategica !== undefined) {
+      dto.BrechaEstrategica = actividad.brechaEstrategica;
+    }
+    if (actividad.anio !== undefined) {
+      dto.Anio = actividad.anio;
+    }
+    if (actividad.horaRealizacion !== undefined) {
+      dto.HoraRealizacion = actividad.horaRealizacion;
+    }
+    if (actividad.cantidadParticipantesProyectados !== undefined) {
+      dto.CantidadParticipantesProyectados = actividad.cantidadParticipantesProyectados;
+    }
+    if (actividad.idTipoProtagonista !== undefined) {
+      dto.IdTipoProtagonista = actividad.idTipoProtagonista;
     }
     if (actividad.idTipoActividadJerarquica !== undefined) {
       dto.IdTipoActividadJerarquica = actividad.idTipoActividadJerarquica;
@@ -355,15 +418,44 @@ export class ActividadesService {
     );
   }
 
+  /**
+   * POST /api/actividades/{idActividad}/indicadores
+   * Asocia un indicador a una actividad
+   */
+  agregarIndicador(idActividad: number, idIndicador: number): Observable<ActividadIndicador> {
+    const payload = {
+      IdIndicador: idIndicador
+    };
+    return this.http.post<any>(`${this.apiUrl}/${idActividad}/indicadores`, payload).pipe(
+      map(response => {
+        const item = response.data || response;
+        return {
+          idActividadIndicador: item.idActividadIndicador || item.IdActividadIndicador || item.id,
+          idActividad: item.idActividad || item.IdActividad,
+          idIndicador: item.idIndicador || item.IdIndicador,
+          nombreIndicador: item.nombreIndicador || item.NombreIndicador,
+          codigoIndicador: item.codigoIndicador || item.CodigoIndicador,
+          metaAnual: item.metaAnual || item.MetaAnual,
+          metaPeriodo: item.metaPeriodo || item.MetaPeriodo,
+          metaAlcanzada: item.metaAlcanzada || item.MetaAlcanzada,
+          porcentajeCumplimiento: item.porcentajeCumplimiento || item.PorcentajeCumplimiento,
+          valoracionCualitativa: item.valoracionCualitativa || item.ValoracionCualitativa,
+          brechas: item.brechas || item.Brechas,
+          evidenciaResumen: item.evidenciaResumen || item.EvidenciaResumen
+        };
+      })
+    );
+  }
+
   getSubactividades(id: number): Observable<Subactividad[]> {
     return this.http.get<any>(`${this.apiUrl}/${id}/subactividades`).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
-          idSubactividad: item.idSubactividad || item.IdSubactividad || item.id,
-          idActividad: item.idActividad || item.IdActividad,
+          idSubactividad: item.idSubactividad || item.IdSubactividad || item.id || 0,
+          idActividad: item.idActividad || item.IdActividad || 0,
           nombreActividad: item.nombreActividad || item.NombreActividad,
-          nombre: item.nombre || item.Nombre,
+          nombre: item.nombre || item.Nombre || '',
           descripcion: item.descripcion || item.Descripcion,
           idTipoSubactividad: item.idTipoSubactividad || item.IdTipoSubactividad,
           nombreTipoSubactividad: item.nombreTipoSubactividad || item.NombreTipoSubactividad,
@@ -375,8 +467,11 @@ export class ActividadesService {
           modalidad: item.modalidad || item.Modalidad,
           organizador: item.organizador || item.Organizador,
           activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
+          creadoPor: item.creadoPor || item.CreadoPor || 0,
           fechaCreacion: item.fechaCreacion || item.FechaCreacion || new Date().toISOString(),
-          fechaModificacion: item.fechaModificacion || item.FechaModificacion
+          fechaModificacion: item.fechaModificacion || item.FechaModificacion,
+          idCapacidadInstalada: item.idCapacidadInstalada || item.IdCapacidadInstalada,
+          idDocenteOrganizador: item.idDocenteOrganizador || item.IdDocenteOrganizador
         })) : [];
       }),
       catchError(error => {
@@ -499,8 +594,11 @@ export class ActividadesService {
         modalidad: s.Modalidad || s.modalidad,
         organizador: s.Organizador || s.organizador,
         activo: s.Activo !== undefined ? s.Activo : (s.activo !== undefined ? s.activo : true),
+        creadoPor: s.CreadoPor || s.creadoPor || 0,
         fechaCreacion: s.FechaCreacion || s.fechaCreacion || new Date().toISOString(),
-        fechaModificacion: s.FechaModificacion || s.fechaModificacion
+        fechaModificacion: s.FechaModificacion || s.fechaModificacion,
+        idCapacidadInstalada: s.IdCapacidadInstalada || s.idCapacidadInstalada,
+        idDocenteOrganizador: s.IdDocenteOrganizador || s.idDocenteOrganizador
       }));
     };
 
@@ -591,6 +689,7 @@ export class ActividadesService {
       // Fechas
       fechaInicio: formatDate(item.FechaInicio || item.fechaInicio),
       fechaFin: formatDate(item.FechaFin || item.fechaFin),
+      fechaEvento: formatDate(item.FechaEvento || item.fechaEvento),
       
       // Documentos
       soporteDocumentoUrl: item.SoporteDocumentoUrl || item.soporteDocumentoUrl,
@@ -612,6 +711,7 @@ export class ActividadesService {
       // Información adicional
       organizador: item.Organizador || item.organizador,
       modalidad: item.Modalidad || item.modalidad,
+      idCapacidadInstalada: item.IdCapacidadInstalada || item.idCapacidadInstalada,
       ubicacion: item.Ubicacion || item.ubicacion,
       
       // Nivel
@@ -627,6 +727,29 @@ export class ActividadesService {
       codigoIndicador: item.CodigoIndicador || item.codigoIndicador,
       idTipoActividadJerarquica: item.IdTipoActividadJerarquica || item.idTipoActividadJerarquica,
       nombreTipoActividadJerarquica: item.NombreTipoActividadJerarquica || item.nombreTipoActividadJerarquica,
+      
+      // Planificación
+      esPlanificada: item.EsPlanificada !== undefined ? item.EsPlanificada : (item.esPlanificada !== undefined ? item.esPlanificada : true),
+      idIndicador: item.IdIndicador || item.idIndicador,
+      nombreIndicador: item.NombreIndicador || item.nombreIndicador,
+      codigoIndicadorAsociado: item.CodigoIndicadorAsociado || item.codigoIndicadorAsociado,
+      nombreIndicadorAsociado: item.NombreIndicadorAsociado || item.nombreIndicadorAsociado,
+      metaIndicador: item.MetaIndicador !== undefined ? item.MetaIndicador : (item.metaIndicador !== undefined ? item.metaIndicador : undefined),
+      idActividadAnual: item.IdActividadAnual || item.idActividadAnual,
+      nombreActividadAnual: item.NombreActividadAnual || item.nombreActividadAnual,
+      
+      // Objetivos y Metas
+      objetivo: item.Objetivo || item.objetivo,
+      cantidadMaximaParticipantesEstudiantes: item.CantidadMaximaParticipantesEstudiantes || item.cantidadMaximaParticipantesEstudiantes,
+      tipoResumenAccion: item.TipoResumenAccion || item.tipoResumenAccion,
+      metaAlcanzada: item.MetaAlcanzada !== undefined ? item.MetaAlcanzada : (item.metaAlcanzada !== undefined ? item.metaAlcanzada : undefined),
+      metaCumplimiento: item.MetaCumplimiento !== undefined ? item.MetaCumplimiento : (item.metaCumplimiento !== undefined ? item.metaCumplimiento : undefined),
+      valoracionIndicadorEstrategico: item.ValoracionIndicadorEstrategico || item.valoracionIndicadorEstrategico,
+      brechaEstrategica: item.BrechaEstrategica || item.brechaEstrategica,
+      anio: item.Anio || item.anio,
+      horaRealizacion: item.HoraRealizacion || item.horaRealizacion,
+      cantidadParticipantesProyectados: item.CantidadParticipantesProyectados || item.cantidadParticipantesProyectados,
+      idTipoProtagonista: item.IdTipoProtagonista || item.idTipoProtagonista,
       
       // Usuario creador
       creadoPor: item.CreadoPor || item.creadoPor || 0,

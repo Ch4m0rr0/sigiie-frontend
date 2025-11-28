@@ -2,7 +2,9 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PlanificacionService } from '../../core/services/planificacion.service';
-import type { Planificacion, PlanificacionArbol, PlanificacionResumen, PlanificacionUpdate } from '../../core/models/planificacion';
+import { ActividadesService } from '../../core/services/actividades.service';
+import type { Planificacion, PlanificacionArbol, PlanificacionResumen, PlanificacionUpdate, PlanificacionActividadCreate } from '../../core/models/planificacion';
+import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { firstValueFrom } from 'rxjs';
@@ -15,19 +17,27 @@ import { firstValueFrom } from 'rxjs';
 })
 export class PlanificacionDetailComponent implements OnInit {
   private planificacionService = inject(PlanificacionService);
+  private actividadesService = inject(ActividadesService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   planificacion = signal<Planificacion | null>(null);
   hijas = signal<PlanificacionArbol[]>([]);
   actividades = signal<any[]>([]);
+  todasLasActividades = signal<Actividad[]>([]); // Para el selector de asociar
   resumen = signal<PlanificacionResumen | null>(null);
   arbolCompleto = signal<PlanificacionArbol | null>(null);
   loading = signal(false);
   loadingActividades = signal(false);
   loadingResumen = signal(false);
+  loadingTodasActividades = signal(false);
   error = signal<string | null>(null);
   activeTab = signal<'info' | 'hijas' | 'actividades' | 'reportes' | 'resumen' | 'arbol'>('info');
+  
+  // Para el modal/formulario de asociar actividad
+  mostrarModalAsociar = signal(false);
+  actividadSeleccionada = signal<number | null>(null);
+  asociando = signal(false);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -327,6 +337,125 @@ export class PlanificacionDetailComponent implements OnInit {
         this.loadingActividades.set(false);
       }
     });
+  }
+
+  loadTodasLasActividades(): void {
+    if (this.todasLasActividades().length > 0) {
+      return; // Ya están cargadas
+    }
+    
+    this.loadingTodasActividades.set(true);
+    this.actividadesService.getAll().subscribe({
+      next: (data) => {
+        // Filtrar las que ya están asociadas
+        const actividadesAsociadas = this.actividades().map(a => a.id || a.idActividad);
+        const disponibles = data.filter(a => !actividadesAsociadas.includes(a.id));
+        this.todasLasActividades.set(disponibles);
+        this.loadingTodasActividades.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading todas las actividades:', err);
+        this.loadingTodasActividades.set(false);
+      }
+    });
+  }
+
+  abrirModalAsociar(): void {
+    this.loadTodasLasActividades();
+    this.mostrarModalAsociar.set(true);
+    this.actividadSeleccionada.set(null);
+  }
+
+  cerrarModalAsociar(): void {
+    this.mostrarModalAsociar.set(false);
+    this.actividadSeleccionada.set(null);
+  }
+
+  asociarActividad(): void {
+    const planificacionId = this.planificacion()?.idPlanificacion;
+    const actividadId = this.actividadSeleccionada();
+    
+    if (!planificacionId || !actividadId) {
+      this.error.set('Debes seleccionar una actividad');
+      return;
+    }
+
+    this.asociando.set(true);
+    const data: PlanificacionActividadCreate = {
+      idPlanificacion: planificacionId,
+      idActividad: actividadId,
+      anio: this.planificacion()?.anio,
+      activo: true
+    };
+
+    this.planificacionService.asociarActividad(planificacionId, data).subscribe({
+      next: () => {
+        console.log('✅ Actividad asociada exitosamente');
+        this.cerrarModalAsociar();
+        // Recargar actividades
+        this.loadActividades(planificacionId);
+        // Actualizar lista de disponibles
+        this.todasLasActividades.set(
+          this.todasLasActividades().filter(a => a.id !== actividadId)
+        );
+        this.asociando.set(false);
+      },
+      error: (err) => {
+        console.error('❌ Error al asociar actividad:', err);
+        this.error.set('Error al asociar la actividad. Por favor, intenta nuevamente.');
+        this.asociando.set(false);
+      }
+    });
+  }
+
+  desasociarActividad(actividad: any): void {
+    const planificacionId = this.planificacion()?.idPlanificacion;
+    
+    if (!planificacionId) {
+      this.error.set('No se pudo obtener el ID de la planificación');
+      return;
+    }
+
+    // Obtener el idPlanificacionActividad de la actividad
+    const idPlanificacionActividad = actividad.idPlanificacionActividad || actividad.IdPlanificacionActividad;
+    
+    if (!idPlanificacionActividad) {
+      this.error.set('No se pudo obtener el ID de la asociación. Por favor, recarga la página.');
+      return;
+    }
+
+    if (!confirm('¿Estás seguro de que deseas desasociar esta actividad de la planificación?')) {
+      return;
+    }
+
+    this.loadingActividades.set(true);
+    this.planificacionService.desasociarActividad(idPlanificacionActividad).subscribe({
+      next: () => {
+        console.log('✅ Actividad desasociada exitosamente');
+        // Recargar actividades
+        this.loadActividades(planificacionId);
+        // Recargar todas las actividades para que aparezca en el selector
+        this.todasLasActividades.set([]);
+        this.loadTodasLasActividades();
+      },
+      error: (err) => {
+        console.error('❌ Error al desasociar actividad:', err);
+        this.error.set('Error al desasociar la actividad. Por favor, intenta nuevamente.');
+        this.loadingActividades.set(false);
+      }
+    });
+  }
+
+  crearNuevaActividad(): void {
+    const planificacionId = this.planificacion()?.idPlanificacion;
+    if (planificacionId) {
+      // Navegar al formulario de actividad con el ID de planificación en query params
+      this.router.navigate(['/actividades/nueva'], {
+        queryParams: { planificacionId: planificacionId }
+      });
+    } else {
+      this.router.navigate(['/actividades/nueva']);
+    }
   }
 
   loadResumen(id: number): void {

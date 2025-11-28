@@ -18,20 +18,23 @@ import type { TipoDocumentoDivulgado } from '../../core/models/tipo-documento-di
 import type { AreaConocimiento } from '../../core/models/area-conocimiento';
 import type { EstadoActividad } from '../../core/models/estado-actividad';
 import type { TipoActividadJerarquica } from '../../core/models/tipo-actividad-jerarquica';
-import type { NivelActividad } from '../../core/models/catalogos-nuevos';
+import type { NivelActividad, TipoSubactividad } from '../../core/models/catalogos-nuevos';
 import type { Indicador } from '../../core/models/indicador';
 
 // Spartan UI
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
-type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'areasconocimiento' | 'estadosactividad' | 'tiposactividadjerarquica' | 'nivelesactividad' | 'indicadorespadre' | 'indicadoreshijo';
+type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'areasconocimiento' | 'estadosactividad' | 'tiposactividadjerarquica' | 'nivelesactividad' | 'tipossubactividad' | 'indicadores' | 'capacidadesinstaladas';
 
 interface CatalogoItem {
   id: number;
   codigo?: string;
   nombre?: string;
   descripcion?: string;
+  nombreJefe?: string;
+  correoJefe?: string;
+  telefonoJefe?: string;
 }
 
 @Component({
@@ -70,6 +73,11 @@ export class ListCatalogosComponent implements OnInit {
     codigo: new FormControl(''),
     nombre: new FormControl(''),
     descripcion: new FormControl(''),
+    anio: new FormControl<number | null>(null),
+    meta: new FormControl<number | null>(null),
+    nombreJefe: new FormControl(''),
+    correoJefe: new FormControl(''),
+    telefonoJefe: new FormControl(''),
   });
 
   // Signals for reactive data
@@ -88,8 +96,9 @@ export class ListCatalogosComponent implements OnInit {
   estadosactividad = signal<EstadoActividad[]>([]);
   tiposactividadjerarquica = signal<TipoActividadJerarquica[]>([]);
   nivelesactividad = signal<NivelActividad[]>([]);
-  indicadorespadre = signal<Indicador[]>([]);
-  indicadoreshijo = signal<Indicador[]>([]);
+  tipossubactividad = signal<TipoSubactividad[]>([]);
+  indicadores = signal<Indicador[]>([]);
+  capacidadesinstaladas = signal<any[]>([]);
   
   // Loading state
   isLoading = signal<boolean>(false);
@@ -110,7 +119,7 @@ export class ListCatalogosComponent implements OnInit {
     if (this.selectedCatalogo === 'generos') {
       this.form.get('codigo')?.setValidators([Validators.required, Validators.minLength(1)]);
       this.form.get('nombre')?.clearValidators();
-    } else if (this.selectedCatalogo === 'indicadorespadre' || this.selectedCatalogo === 'indicadoreshijo') {
+    } else if (this.selectedCatalogo === 'indicadores') {
       // Para indicadores, tanto codigo como nombre son requeridos
       this.form.get('codigo')?.setValidators([Validators.required, Validators.minLength(1)]);
       this.form.get('nombre')?.setValidators([Validators.required, Validators.minLength(3)]);
@@ -139,8 +148,9 @@ export class ListCatalogosComponent implements OnInit {
       estadosactividad: 'Estado Actividad',
       tiposactividadjerarquica: 'Tipo Actividad Jerárquica',
       nivelesactividad: 'Nivel Actividad',
-      indicadorespadre: 'Indicador Padre',
-      indicadoreshijo: 'Indicador Hijo',
+      tipossubactividad: 'Tipo Subactividad',
+      indicadores: 'Indicadores',
+      capacidadesinstaladas: 'Capacidad Instalada',
     };
     return names[this.selectedCatalogo];
   }
@@ -162,8 +172,9 @@ export class ListCatalogosComponent implements OnInit {
       { value: 'estadosactividad', label: 'Estado Actividad' },
       { value: 'tiposactividadjerarquica', label: 'Tipo Actividad Jerárquica' },
       { value: 'nivelesactividad', label: 'Nivel Actividad' },
-      { value: 'indicadorespadre', label: 'Indicador Padre' },
-      { value: 'indicadoreshijo', label: 'Indicador Hijo' },
+      { value: 'tipossubactividad', label: 'Tipo Subactividad' },
+      { value: 'indicadores', label: 'Indicadores' },
+      { value: 'capacidadesinstaladas', label: 'Capacidad Instalada' },
     ];
   }
 
@@ -183,7 +194,7 @@ export class ListCatalogosComponent implements OnInit {
 
   currentItems(): any[] {
     switch (this.selectedCatalogo) {
-      case 'departamentos': return this.departamentos().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
+      case 'departamentos': return this.departamentos().map(({id, nombre, descripcion, nombreJefe, correoJefe, telefonoJefe}) => ({id, nombre, descripcion, nombreJefe, correoJefe, telefonoJefe}));
       case 'generos': return this.generos().map(({id, codigo, descripcion}) => ({id, codigo, descripcion}));
       case 'estadoestudiantes': return this.estadoestudiantes().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'estadoparticipaciones': return this.estadoparticipaciones().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
@@ -202,8 +213,9 @@ export class ListCatalogosComponent implements OnInit {
       }));
       case 'tiposactividadjerarquica': return this.tiposactividadjerarquica().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion}) => ({id: idNivel, nombre, descripcion}));
-      case 'indicadorespadre': return this.indicadorespadre().map(({idIndicador, codigo, nombre, descripcion}) => ({id: idIndicador, codigo, nombre, descripcion}));
-      case 'indicadoreshijo': return this.indicadoreshijo().map(({idIndicador, codigo, nombre, descripcion}) => ({id: idIndicador, codigo, nombre, descripcion}));
+      case 'tipossubactividad': return this.tipossubactividad().map(({idTipoSubactividad, nombre, descripcion}) => ({id: idTipoSubactividad, nombre, descripcion}));
+      case 'indicadores': return this.indicadores().map(({idIndicador, codigo, nombre, descripcion}) => ({id: idIndicador, codigo, nombre, descripcion}));
+      case 'capacidadesinstaladas': return this.capacidadesinstaladas().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       default: return [];
     }
   }
@@ -213,7 +225,7 @@ export class ListCatalogosComponent implements OnInit {
       return item.codigo || item.Codigo || '';
     }
     // Para indicadores, mostrar código y nombre
-    if (this.selectedCatalogo === 'indicadorespadre' || this.selectedCatalogo === 'indicadoreshijo') {
+    if (this.selectedCatalogo === 'indicadores') {
       const codigo = item.codigo || item.Codigo || '';
       const nombre = item.nombre || item.Nombre || '';
       return codigo && nombre ? `${codigo} - ${nombre}` : (codigo || nombre);
@@ -226,11 +238,14 @@ export class ListCatalogosComponent implements OnInit {
   }
 
   getItemId(item: any): number | undefined {
-    if (this.selectedCatalogo === 'indicadorespadre' || this.selectedCatalogo === 'indicadoreshijo') {
+    if (this.selectedCatalogo === 'indicadores') {
       return item.id || (item as any).idIndicador;
     }
     if (this.selectedCatalogo === 'nivelesactividad') {
       return item.id || (item as any).idNivel;
+    }
+    if (this.selectedCatalogo === 'tipossubactividad') {
+      return item.id || (item as any).idTipoSubactividad;
     }
     return item.id;
   }
@@ -247,6 +262,14 @@ export class ListCatalogosComponent implements OnInit {
     this.catalogosService.getDepartamentos().subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Departamentos cargados:', data);
+        console.log('✅ LOAD ALL CATALOGOS - Primer departamento (ejemplo):', data[0]);
+        if (data[0]) {
+          console.log('✅ LOAD ALL CATALOGOS - Campos del jefe:', {
+            nombreJefe: data[0].nombreJefe,
+            correoJefe: data[0].correoJefe,
+            telefonoJefe: data[0].telefonoJefe
+          });
+        }
         this.departamentos.set(data);
       },
       error: error => console.error('❌ LOAD ALL CATALOGOS - Error cargando departamentos:', error)
@@ -344,29 +367,36 @@ export class ListCatalogosComponent implements OnInit {
       }
     });
 
-    // Cargar indicadores padre (sin padre)
-    this.indicadorService.getPadres().subscribe({
+    this.catalogosService.getTiposSubactividad().subscribe({
       next: data => {
-        console.log('✅ LOAD ALL CATALOGOS - Indicadores padre cargados:', data);
-        this.indicadorespadre.set(data);
-        this.isLoading.set(false);
+        this.tipossubactividad.set(data);
       },
       error: error => {
-        console.error('❌ LOAD ALL CATALOGOS - Error cargando indicadores padre:', error);
-        this.isLoading.set(false);
+        console.error('Error loading tipos subactividad:', error);
       }
     });
 
-    // Cargar indicadores hijo (con padre)
+    // Cargar indicadores
     this.indicadorService.getAll().subscribe({
       next: data => {
-        // Filtrar solo los que tienen padre
-        const hijos = data.filter(ind => ind.idIndicadorPadre);
-        console.log('✅ LOAD ALL CATALOGOS - Indicadores hijo cargados:', hijos);
-        this.indicadoreshijo.set(hijos);
+        console.log('✅ LOAD ALL CATALOGOS - Indicadores cargados:', data);
+        this.indicadores.set(data);
       },
       error: error => {
-        console.error('❌ LOAD ALL CATALOGOS - Error cargando indicadores hijo:', error);
+        console.error('❌ LOAD ALL CATALOGOS - Error cargando indicadores:', error);
+      }
+    });
+
+    // Cargar capacidades instaladas
+    this.catalogosService.getCapacidadesInstaladas().subscribe({
+      next: data => {
+        console.log('✅ LOAD ALL CATALOGOS - Capacidades instaladas cargadas:', data);
+        this.capacidadesinstaladas.set(data);
+        this.isLoading.set(false);
+      },
+      error: error => {
+        console.error('❌ LOAD ALL CATALOGOS - Error cargando capacidades instaladas:', error);
+        this.isLoading.set(false);
       }
     });
   }
@@ -384,10 +414,13 @@ export class ListCatalogosComponent implements OnInit {
     this.isEditing = true;
     // Para nivelesactividad, el id puede venir como idNivel
     // Para indicadores, el id viene como idIndicador
-    if (this.selectedCatalogo === 'indicadorespadre' || this.selectedCatalogo === 'indicadoreshijo') {
+    // Para tipossubactividad, el id viene como idTipoSubactividad
+    if (this.selectedCatalogo === 'indicadores') {
       this.editingId = item.id || (item as any).idIndicador;
     } else if (this.selectedCatalogo === 'nivelesactividad') {
       this.editingId = item.id || (item as any).idNivel;
+    } else if (this.selectedCatalogo === 'tipossubactividad') {
+      this.editingId = item.id || (item as any).idTipoSubactividad;
     } else {
       this.editingId = item.id;
     }
@@ -401,7 +434,12 @@ export class ListCatalogosComponent implements OnInit {
     this.form.patchValue({ 
       codigo: item.codigo || '', 
       nombre: nombreValue || '', 
-      descripcion: item.descripcion || '' 
+      descripcion: item.descripcion || '',
+      anio: (item as any).anio !== undefined ? (item as any).anio : ((item as any).Anio !== undefined ? (item as any).Anio : null),
+      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null),
+      nombreJefe: item.nombreJefe || '',
+      correoJefe: item.correoJefe || '',
+      telefonoJefe: item.telefonoJefe || ''
     });
   }
 
@@ -433,8 +471,9 @@ export class ListCatalogosComponent implements OnInit {
       case 'estadosactividad': obs = this.catalogosService.deleteEstadoActividad(id); break;
       case 'tiposactividadjerarquica': obs = this.catalogosService.deleteTipoActividadJerarquica(id); break;
       case 'nivelesactividad': obs = this.catalogosService.deleteNivelActividad(id); break;
-      case 'indicadorespadre':
-      case 'indicadoreshijo': obs = this.indicadorService.delete(id); break;
+      case 'tipossubactividad': obs = this.catalogosService.deleteTipoSubactividad(id); break;
+      case 'indicadores': obs = this.indicadorService.delete(id); break;
+      case 'capacidadesinstaladas': obs = this.catalogosService.deleteCapacidadInstalada(id); break;
       default:
         console.error('Unknown catalog type for deletion:', this.selectedCatalogo);
         return;
@@ -462,16 +501,24 @@ export class ListCatalogosComponent implements OnInit {
     const codigo = this.form.value.codigo as string;
     const nombre = this.form.value.nombre as string;
     const descripcion = this.form.value.descripcion as string;
+    const anio = this.form.value.anio;
+    const meta = this.form.value.meta;
     
-    console.log('Form values:', { codigo, nombre, descripcion });
+    console.log('Form values:', { codigo, nombre, descripcion, anio, meta });
     console.log('Selected catalog:', this.selectedCatalogo);
     
     let data: any;
     if (this.selectedCatalogo === 'generos') {
       data = { codigo, descripcion };
-    } else if (this.selectedCatalogo === 'indicadorespadre' || this.selectedCatalogo === 'indicadoreshijo') {
-      // Para indicadores, necesitamos tanto codigo como nombre
-      data = { codigo, nombre, descripcion };
+    } else if (this.selectedCatalogo === 'indicadores') {
+      // Para indicadores, necesitamos tanto codigo como nombre, y opcionalmente año y meta
+      data = { 
+        codigo, 
+        nombre, 
+        descripcion,
+        anio: anio !== null && anio !== undefined ? Number(anio) : undefined,
+        meta: meta !== null && meta !== undefined ? Number(meta) : undefined
+      };
     } else {
       data = { nombre, descripcion };
     }
@@ -485,7 +532,7 @@ export class ListCatalogosComponent implements OnInit {
     }
   }
 
-  createItem(data: { nombre?: string, codigo?: string, descripcion?: string }) {
+  createItem(data: { nombre?: string, codigo?: string, descripcion?: string, anio?: number, meta?: number, nombreJefe?: string, correoJefe?: string, telefonoJefe?: string }) {
     console.log('🔄 CREATE ITEM - Iniciando creación');
     console.log('🔄 CREATE ITEM - Datos:', data);
     console.log('🔄 CREATE ITEM - Catálogo seleccionado:', this.selectedCatalogo);
@@ -498,7 +545,13 @@ export class ListCatalogosComponent implements OnInit {
           console.error('Invalid data for departamento:', data);
           return;
         }
-        obs = this.catalogosService.createDepartamento({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createDepartamento({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          nombreJefe: data.nombreJefe || '',
+          correoJefe: data.correoJefe || '',
+          telefonoJefe: data.telefonoJefe || ''
+        }); 
         break;
         
       case 'generos': 
@@ -625,33 +678,37 @@ export class ListCatalogosComponent implements OnInit {
         obs = this.catalogosService.createNivelActividad({ nombre: data.nombre, descripcion: data.descripcion || '', activo: true }); 
         break;
         
-      case 'indicadorespadre':
+      case 'tipossubactividad': 
+        if (!data.nombre) {
+          console.error('Invalid data for tipo subactividad:', data);
+          return;
+        }
+        obs = this.catalogosService.createTipoSubactividad({ nombre: data.nombre, descripcion: data.descripcion || '', activo: true }); 
+        break;
+        
+      case 'indicadores':
         if (!data.codigo || !data.nombre) {
-          console.error('Invalid data for indicador padre:', data);
+          console.error('Invalid data for indicador:', data);
           return;
         }
         obs = this.indicadorService.create({ 
           codigo: data.codigo.trim(), 
           nombre: data.nombre.trim(), 
           descripcion: data.descripcion?.trim() || undefined,
+          anio: data.anio,
+          meta: data.meta,
           activo: true
-          // No incluir idIndicadorPadre para crear un indicador padre
         });
         break;
         
-      case 'indicadoreshijo':
-        if (!data.codigo || !data.nombre) {
-          console.error('Invalid data for indicador hijo:', data);
+      case 'capacidadesinstaladas':
+        if (!data.nombre) {
+          console.error('Invalid data for capacidad instalada:', data);
           return;
         }
-        // Para indicadores hijo, necesitamos un padre, pero por ahora lo dejamos sin padre
-        // El usuario debería seleccionar el padre en un formulario más completo
-        obs = this.indicadorService.create({ 
-          codigo: data.codigo.trim(), 
+        obs = this.catalogosService.createCapacidadInstalada({ 
           nombre: data.nombre.trim(), 
-          descripcion: data.descripcion?.trim() || undefined,
-          activo: true
-          // Nota: idIndicadorPadre debería venir del formulario, pero por ahora no lo incluimos
+          descripcion: data.descripcion?.trim() || '' 
         });
         break;
         
@@ -679,7 +736,7 @@ export class ListCatalogosComponent implements OnInit {
     });
   }
 
-  updateItem(id: number, data: { nombre?: string, codigo?: string, descripcion?: string }) {
+  updateItem(id: number, data: { nombre?: string, codigo?: string, descripcion?: string, anio?: number, meta?: number, nombreJefe?: string, correoJefe?: string, telefonoJefe?: string }) {
     console.log('🔄 UPDATE ITEM - Iniciando actualización');
     console.log('🔄 UPDATE ITEM - ID:', id);
     console.log('🔄 UPDATE ITEM - Datos:', data);
@@ -693,7 +750,13 @@ export class ListCatalogosComponent implements OnInit {
           console.error('Invalid data for departamento:', data);
           return;
         }
-        obs = this.catalogosService.updateDepartamento(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateDepartamento(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          nombreJefe: data.nombreJefe || '',
+          correoJefe: data.correoJefe || '',
+          telefonoJefe: data.telefonoJefe || ''
+        }); 
         break;
         
       case 'generos': 
@@ -815,21 +878,45 @@ export class ListCatalogosComponent implements OnInit {
         }); 
         break;
         
-      case 'indicadorespadre':
-      case 'indicadoreshijo':
+      case 'tipossubactividad': 
+        if (!data.nombre) {
+          console.error('Invalid data for tipo subactividad:', data);
+          return;
+        }
+        // Obtener el tipo subactividad actual para mantener el estado activo
+        const tipoSubactividadActual = this.tipossubactividad().find(t => t.idTipoSubactividad === id);
+        obs = this.catalogosService.updateTipoSubactividad(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '', 
+          activo: tipoSubactividadActual?.activo !== undefined ? tipoSubactividadActual.activo : true 
+        }); 
+        break;
+        
+      case 'indicadores':
         if (!data.codigo || !data.nombre) {
           console.error('Invalid data for indicador:', data);
           return;
         }
         // Obtener el indicador actual para mantener el estado activo y otros campos
-        const indicadorActual = (this.selectedCatalogo === 'indicadorespadre' 
-          ? this.indicadorespadre() 
-          : this.indicadoreshijo()).find(ind => ind.idIndicador === id);
+        const indicadorActual = this.indicadores().find(ind => ind.idIndicador === id);
         obs = this.indicadorService.update(id, {
           codigo: data.codigo.trim(),
           nombre: data.nombre.trim(),
           descripcion: data.descripcion?.trim() || undefined,
+          anio: data.anio,
+          meta: data.meta,
           activo: indicadorActual?.activo !== undefined ? indicadorActual.activo : true
+        });
+        break;
+        
+      case 'capacidadesinstaladas':
+        if (!data.nombre) {
+          console.error('Invalid data for capacidad instalada:', data);
+          return;
+        }
+        obs = this.catalogosService.updateCapacidadInstalada(id, { 
+          nombre: data.nombre.trim(), 
+          descripcion: data.descripcion?.trim() || '' 
         });
         break;
         

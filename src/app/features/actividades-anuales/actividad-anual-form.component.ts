@@ -39,13 +39,21 @@ export class ActividadAnualFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadIndicadores();
-
+    
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode.set(true);
       this.actividadAnualId.set(+id);
       this.loadActividadAnual(+id);
+    } else {
+      // Si es creación nueva, verificar si viene un indicador desde query params
+      const idIndicador = this.route.snapshot.queryParams['idIndicador'];
+      if (idIndicador) {
+        // Cargar indicadores y luego preseleccionar
+        this.loadIndicadoresWithPreselect(+idIndicador);
+      } else {
+        this.loadIndicadores();
+      }
     }
   }
 
@@ -64,6 +72,23 @@ export class ActividadAnualFormComponent implements OnInit {
     this.indicadorService.getAll().subscribe({
       next: (data) => {
         this.indicadores.set(data);
+      },
+      error: (err) => {
+        console.error('Error loading indicadores:', err);
+        this.error.set('Error al cargar los indicadores');
+      }
+    });
+  }
+
+  loadIndicadoresWithPreselect(idIndicador: number): void {
+    this.indicadorService.getAll().subscribe({
+      next: (data) => {
+        this.indicadores.set(data);
+        // Preseleccionar el indicador después de cargar
+        const indicador = data.find((ind: Indicador) => ind.idIndicador === idIndicador);
+        if (indicador) {
+          this.form.patchValue({ idIndicador: idIndicador });
+        }
       },
       error: (err) => {
         console.error('Error loading indicadores:', err);
@@ -101,14 +126,30 @@ export class ActividadAnualFormComponent implements OnInit {
       this.error.set(null);
 
       const formValue = this.form.value;
+      const currentYear = new Date().getFullYear();
+
+      // Asegurar que anio siempre tenga un valor válido
+      let anioValue: number;
+      if (formValue.anio === null || formValue.anio === undefined || formValue.anio === '') {
+        anioValue = currentYear;
+      } else {
+        anioValue = Number(formValue.anio);
+        // Si la conversión falla o es NaN, usar el año actual
+        if (isNaN(anioValue) || anioValue < 2000 || anioValue > 2100) {
+          anioValue = currentYear;
+        }
+      }
 
       const data: ActividadAnualCreate = {
         idIndicador: Number(formValue.idIndicador), // Asegurar que sea número
-        anio: Number(formValue.anio), // Asegurar que sea número
+        anio: anioValue, // Asegurar que siempre sea un número válido
         nombre: formValue.nombre?.trim() || undefined,
         descripcion: formValue.descripcion?.trim() || undefined,
         activo: formValue.activo ?? true
       };
+
+      console.log('🔄 FormComponent - Datos a enviar:', JSON.stringify(data, null, 2));
+      console.log('🔄 FormComponent - anioValue:', anioValue, 'tipo:', typeof anioValue);
 
       if (this.isEditMode()) {
         this.actividadAnualService.update(this.actividadAnualId()!, data).subscribe({

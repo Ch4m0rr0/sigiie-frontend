@@ -101,9 +101,11 @@ export class PlanificacionFormComponent implements OnInit {
       this.loading.set(true);
       this.error.set(null);
 
-      // Convertir activo a booleano explícitamente
-      const activoValue = this.form.value.activo;
-      const activoBoolean = activoValue === true || activoValue === 'true' || activoValue === 1 || activoValue === '1';
+      // Al crear una nueva planificación, siempre debe ser activa
+      // Al editar, usar el valor del formulario
+      const activoValue = this.isEditMode() 
+        ? (this.form.value.activo === true || this.form.value.activo === 'true' || this.form.value.activo === 1 || this.form.value.activo === '1')
+        : true; // Siempre true para nuevas planificaciones
       
       const data: PlanificacionCreate = {
         nombre: this.form.value.nombre,
@@ -112,12 +114,12 @@ export class PlanificacionFormComponent implements OnInit {
         periodoInicio: this.form.value.periodoInicio || undefined,
         periodoFin: this.form.value.periodoFin || undefined,
         anio: +this.form.value.anio, // Asegurar que sea número
-        activo: activoBoolean
+        activo: activoValue
       };
       
       console.log('🔍 FormComponent - Datos del formulario antes de enviar:', this.form.value);
       console.log('🔍 FormComponent - Valor activo del formulario:', activoValue, 'Tipo:', typeof activoValue);
-      console.log('🔍 FormComponent - Valor activo convertido a booleano:', activoBoolean);
+      console.log('🔍 FormComponent - Valor activo procesado:', activoValue);
       console.log('🔍 FormComponent - Datos procesados para crear:', data);
 
       if (this.isEditMode()) {
@@ -128,7 +130,7 @@ export class PlanificacionFormComponent implements OnInit {
           periodoInicio: data.periodoInicio || '',
           periodoFin: data.periodoFin || '',
           anio: data.anio,
-          activo: activoBoolean // Usar el mismo valor booleano convertido
+          activo: activoValue // Usar el valor procesado
         };
         this.planificacionService.update(this.planificacionId()!, updateData).subscribe({
           next: (success) => {

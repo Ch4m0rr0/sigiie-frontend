@@ -23,6 +23,7 @@ export interface Actividad {
   // Fechas
   fechaInicio?: string; // DateOnly del backend
   fechaFin?: string; // DateOnly del backend
+  fechaEvento?: string; // DateOnly del backend
   
   // Documentos
   soporteDocumentoUrl?: string;
@@ -44,7 +45,8 @@ export interface Actividad {
   // Información adicional
   organizador?: string;
   modalidad?: string;
-  ubicacion?: string;
+  idCapacidadInstalada?: number;
+  ubicacion?: string; // Legacy
   
   // Nivel
   idNivel?: number;
@@ -59,6 +61,29 @@ export interface Actividad {
   codigoIndicador?: string;
   idTipoActividadJerarquica?: number;
   nombreTipoActividadJerarquica?: string;
+  
+  // Planificación
+  esPlanificada?: boolean;
+  idIndicador?: number;
+  nombreIndicador?: string;
+  codigoIndicadorAsociado?: string;
+  nombreIndicadorAsociado?: string;
+  metaIndicador?: number;
+  idActividadAnual?: number;
+  nombreActividadAnual?: string;
+  
+  // Objetivos y Metas
+  objetivo?: string;
+  cantidadMaximaParticipantesEstudiantes?: number;
+  tipoResumenAccion?: string;
+  metaAlcanzada?: number;
+  metaCumplimiento?: number;
+  valoracionIndicadorEstrategico?: string;
+  brechaEstrategica?: string;
+  anio?: number;
+  horaRealizacion?: string; // TimeOnly del backend
+  cantidadParticipantesProyectados?: number;
+  idTipoProtagonista?: number;
   
   // Usuario creador
   creadoPor: number;
@@ -99,18 +124,34 @@ export interface ActividadCreate {
   idTipoIniciativa?: number;
   fechaInicio?: string; // DateOnly en formato string
   fechaFin?: string; // DateOnly en formato string
+  fechaEvento?: string; // DateOnly en formato string
   idEstadoActividad?: number;
   idTipoActividad?: number;
   idArea?: number;
   idTipoDocumento?: number;
   organizador?: string;
   modalidad?: string;
-  ubicacion?: string;
+  idCapacidadInstalada?: number;
+  ubicacion?: string; // Legacy - se mapeará a idCapacidadInstalada
   idNivel?: number;
   nivelActividad?: number; // Default: 1
   semanaMes?: number;
   codigoActividad?: string;
   idActividadMensualInst?: number;
+  esPlanificada?: boolean;
+  idIndicador?: number;
+  idActividadAnual?: number;
+  objetivo?: string;
+  cantidadMaximaParticipantesEstudiantes?: number;
+  tipoResumenAccion?: string;
+  metaAlcanzada?: number;
+  metaCumplimiento?: number;
+  valoracionIndicadorEstrategico?: string;
+  brechaEstrategica?: string;
+  anio?: number;
+  horaRealizacion?: string; // TimeOnly en formato string (HH:mm:ss)
+  cantidadParticipantesProyectados?: number;
+  idTipoProtagonista?: number;
   idTipoActividadJerarquica?: number;
   
   // Campos legacy para compatibilidad

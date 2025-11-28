@@ -208,6 +208,7 @@ export class ListPersonasComponent implements OnInit {
     // Validar que el ID sea válido
     if (!id || id <= 0 || isNaN(id)) {
       console.error('❌ ID inválido para editar:', id);
+      alert('No se puede editar este registro. El ID no es válido. Por favor, contacte al administrador.');
       return;
     }
     const tipo = this.selectedTipo();

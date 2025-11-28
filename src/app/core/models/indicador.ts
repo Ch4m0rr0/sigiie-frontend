@@ -3,6 +3,8 @@ export interface Indicador {
   codigo: string;
   nombre: string;
   descripcion?: string;
+  meta?: number;
+  anio?: number;
   lineaEstrategica?: string;
   objetivoEstrategico?: string;
   accionEstrategica?: string;
@@ -17,6 +19,8 @@ export interface IndicadorCreate {
   codigo: string;
   nombre: string;
   descripcion?: string;
+  meta?: number;
+  anio?: number;
   lineaEstrategica?: string;
   objetivoEstrategico?: string;
   accionEstrategica?: string;

@@ -84,3 +84,24 @@ export interface PlanificacionResumen {
   reportesResumen?: any[];
 }
 
+// Relación entre Planificación y Actividad (tabla Planificacion_Actividad_Instancia)
+export interface PlanificacionActividad {
+  idPlanificacionActividad: number;
+  idPlanificacion: number;
+  idActividad: number;
+  anio: number;
+  asignadoPor: number;
+  fechaAsignacion: string; // DateTime
+  activo: boolean;
+  // Campos adicionales que pueden venir del join
+  nombreActividad?: string;
+  nombrePlanificacion?: string;
+}
+
+export interface PlanificacionActividadCreate {
+  idPlanificacion: number;
+  idActividad: number;
+  anio?: number; // Si no se proporciona, usar el año de la planificación
+  activo?: boolean; // Default: true
+}
+

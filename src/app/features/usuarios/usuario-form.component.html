@@ -1,0 +1,213 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 animate-fade-in">
+    <div class="flex items-center gap-3 mb-2">
+      <button 
+        (click)="onCancel()"
+        class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+        <app-icon icon="arrow_back" size="sm" class="text-slate-600"></app-icon>
+      </button>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        {{ isEditMode() ? 'Editar Usuario' : 'Nuevo Usuario' }}
+      </h1>
+    </div>
+    <p class="text-slate-500 text-sm md:text-base ml-12">
+      {{ isEditMode() ? 'Modifica la información del usuario' : 'Completa el formulario para crear un nuevo usuario' }}
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 animate-pulse">
+      <div class="space-y-4">
+        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div class="h-32 bg-slate-200 rounded"></div>
+      </div>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+      
+      <!-- Alertas -->
+      @if (error()) {
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <app-icon icon="error" size="md" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+          <div class="flex-1">
+            <h3 class="text-sm font-bold text-red-800">Error de validación</h3>
+            <div class="text-sm text-red-600 mt-1 whitespace-pre-line">{{ error() }}</div>
+          </div>
+        </div>
+      }
+
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+        
+        <!-- Nombre Completo -->
+        <div class="relative my-4">
+          <input
+            id="nombreCompleto"
+            type="text"
+            formControlName="nombreCompleto"
+            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
+            [class.border-red-300]="form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched"
+            [class.border-blue-300]="form.get('nombreCompleto')?.value || form.get('nombreCompleto')?.touched"
+            placeholder=" "
+            required
+          />
+          <label for="nombreCompleto" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+            Nombre Completo <span class="text-red-500">*</span>
+          </label>
+          @if (form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">
+              @if (form.get('nombreCompleto')?.errors?.['required']) {
+                El nombre completo es requerido
+              } @else if (form.get('nombreCompleto')?.errors?.['minlength']) {
+                El nombre debe tener al menos 3 caracteres
+              }
+            </p>
+          }
+        </div>
+
+        <!-- Correo -->
+        <div class="relative my-4">
+          <input
+            id="correo"
+            type="email"
+            formControlName="correo"
+            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
+            [class.border-red-300]="form.get('correo')?.invalid && form.get('correo')?.touched"
+            [class.border-blue-300]="form.get('correo')?.value || form.get('correo')?.touched"
+            placeholder=" "
+            required
+          />
+          <label for="correo" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+            Correo Electrónico <span class="text-red-500">*</span>
+          </label>
+          @if (form.get('correo')?.invalid && form.get('correo')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">
+              @if (form.get('correo')?.errors?.['required']) {
+                El correo es requerido
+              } @else if (form.get('correo')?.errors?.['email']) {
+                El correo no es válido
+              }
+            </p>
+          }
+        </div>
+
+        <!-- Contraseña (solo para crear) -->
+        @if (!isEditMode()) {
+          <div class="relative my-4">
+            <input
+              id="contraseña"
+              type="password"
+              formControlName="contraseña"
+              class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
+              [class.border-red-300]="form.get('contraseña')?.invalid && form.get('contraseña')?.touched"
+              [class.border-blue-300]="form.get('contraseña')?.value || form.get('contraseña')?.touched"
+              placeholder=" "
+              required
+            />
+            <label for="contraseña" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+              Contraseña <span class="text-red-500">*</span>
+            </label>
+            @if (form.get('contraseña')?.invalid && form.get('contraseña')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">
+                @if (form.get('contraseña')?.errors?.['required']) {
+                  La contraseña es requerida
+                } @else if (form.get('contraseña')?.errors?.['minlength']) {
+                  La contraseña debe tener al menos 6 caracteres
+                }
+              </p>
+            }
+          </div>
+        }
+
+        <!-- Rol -->
+        <div class="relative my-4">
+          <select
+            id="idRol"
+            formControlName="idRol"
+            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300 appearance-none cursor-pointer"
+            [class.border-red-300]="form.get('idRol')?.invalid && form.get('idRol')?.touched"
+            [class.border-blue-300]="form.get('idRol')?.value || form.get('idRol')?.touched"
+            required
+          >
+            <option [ngValue]="null">Seleccione un rol...</option>
+            @for (rol of roles(); track rol.id) {
+              <option [ngValue]="rol.id">{{ rol.nombre }}</option>
+            }
+          </select>
+          <label for="idRol" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not([value=''])]:-translate-y-1/2 peer-[:not([value=''])]:scale-90 peer-[:not([value=''])]:m-0 peer-[:not([value=''])]:ml-5 peer-[:not([value=''])]:py-[0.4em] peer-[:not([value=''])]:px-[0.4em] peer-[:not([value=''])]:bg-gray-200">
+            Rol <span class="text-red-500">*</span>
+          </label>
+          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+            <app-icon icon="expand_more" size="sm"></app-icon>
+          </span>
+          @if (form.get('idRol')?.invalid && form.get('idRol')?.touched) {
+            <p class="mt-1.5 text-sm text-red-600">El rol es requerido</p>
+          }
+        </div>
+
+        <!-- Departamento -->
+        <div class="relative my-4">
+          <select
+            id="departamentoId"
+            formControlName="departamentoId"
+            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300 appearance-none cursor-pointer"
+            [class.border-blue-300]="form.get('departamentoId')?.value || form.get('departamentoId')?.touched"
+          >
+            <option [ngValue]="null">Seleccione un departamento (opcional)...</option>
+            @for (departamento of departamentos(); track departamento.id) {
+              <option [ngValue]="departamento.id">{{ departamento.nombre }}</option>
+            }
+          </select>
+          <label for="departamentoId" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not([value=''])]:-translate-y-1/2 peer-[:not([value=''])]:scale-90 peer-[:not([value=''])]:m-0 peer-[:not([value=''])]:ml-5 peer-[:not([value=''])]:py-[0.4em] peer-[:not([value=''])]:px-[0.4em] peer-[:not([value=''])]:bg-gray-200">
+            Departamento
+          </label>
+          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+            <app-icon icon="expand_more" size="sm"></app-icon>
+          </span>
+        </div>
+
+        <!-- Activo (solo para editar) -->
+        @if (isEditMode()) {
+          <div class="flex items-center gap-3 my-4">
+            <input
+              type="checkbox"
+              id="activo"
+              formControlName="activo"
+              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label for="activo" class="text-sm font-medium text-gray-700 cursor-pointer">
+              Usuario activo
+            </label>
+          </div>
+        }
+
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="flex items-center justify-end gap-3">
+        <button
+          type="button"
+          (click)="onCancel()"
+          class="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium">
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="saving() || form.invalid"
+          class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+          @if (saving()) {
+            <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <span>Guardando...</span>
+          } @else {
+            <span>{{ isEditMode() ? 'Actualizar' : 'Crear' }} Usuario</span>
+          }
+        </button>
+      </div>
+
+    </form>
+  }
+</div>
+

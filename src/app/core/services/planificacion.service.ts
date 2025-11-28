@@ -9,7 +9,9 @@ import type {
   PlanificacionUpdate,
   PlanificacionFilterDto,
   PlanificacionArbol,
-  PlanificacionResumen
+  PlanificacionResumen,
+  PlanificacionActividad,
+  PlanificacionActividadCreate
 } from '../models/planificacion';
 
 @Injectable({ providedIn: 'root' })
@@ -111,8 +113,11 @@ export class PlanificacionService {
   // Alineado con IPlanificacionService.CreateAsync()
   create(data: PlanificacionCreate): Observable<Planificacion> {
     // El backend espera PlanificacionCreateDto con PascalCase
-    // Asegurar que Activo sea un booleano explícito
-    const activoValue = data.activo !== undefined ? Boolean(data.activo) : true;
+    // SIEMPRE crear como activa (true) por defecto
+    // Si viene undefined o null, forzar a true
+    const activoValue = data.activo !== undefined && data.activo !== null 
+      ? Boolean(data.activo) 
+      : true; // Por defecto siempre activa
     
     const dto: any = {
       Nombre: data.nombre,
@@ -122,14 +127,14 @@ export class PlanificacionService {
       PeriodoInicio: data.periodoInicio || null,
       PeriodoFin: data.periodoFin || null,
       Anio: data.anio,
-      Activo: activoValue
+      Activo: true // SIEMPRE true al crear
     };
     
-    console.log('🔄 CREATE Planificacion - Valor Activo enviado:', activoValue, 'Tipo:', typeof activoValue);
+    console.log('🔄 CREATE Planificacion - Valor Activo enviado: true (forzado para nuevas planificaciones)');
     
-    // Remover campos null
+    // Remover campos null (excepto Activo que siempre debe estar)
     Object.keys(dto).forEach(key => {
-      if (dto[key] === null) {
+      if (dto[key] === null && key !== 'Activo') {
         delete dto[key];
       }
     });
@@ -350,9 +355,10 @@ export class PlanificacionService {
     );
   }
 
-  // GET /api/planificaciones/{id}/actividades
-  getActividades(id: number): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/${id}/actividades`).pipe(
+  // GET /api/PlanificacionActividadInstancia/planificacion/{idPlanificacion}
+  getActividades(idPlanificacion: number): Observable<any[]> {
+    const instanciaApiUrl = `${environment.apiUrl}/PlanificacionActividadInstancia`;
+    return this.http.get<any>(`${instanciaApiUrl}/planificacion/${idPlanificacion}`).pipe(
       map(response => {
         // Manejar respuesta null o undefined
         if (!response) {
@@ -361,7 +367,37 @@ export class PlanificacionService {
         }
         
         const items = response.data || response;
-        return Array.isArray(items) ? items : [];
+        const instancias = Array.isArray(items) ? items : [];
+        
+        // Mapear las instancias a actividades con el idPlanificacionActividad
+        return instancias.map((instancia: any) => {
+          const idPlanificacionActividad = instancia.IdPlanificacionActividad || instancia.idPlanificacionActividad;
+          
+          // Si la instancia tiene la actividad completa anidada
+          if (instancia.Actividad || instancia.actividad) {
+            const actividad = instancia.Actividad || instancia.actividad;
+            return {
+              ...actividad,
+              idPlanificacionActividad: idPlanificacionActividad,
+              IdPlanificacionActividad: idPlanificacionActividad
+            };
+          }
+          
+          // Si no tiene la actividad anidada, construir un objeto con los datos disponibles
+          return {
+            id: instancia.IdActividad || instancia.idActividad,
+            idActividad: instancia.IdActividad || instancia.idActividad,
+            idPlanificacionActividad: idPlanificacionActividad,
+            IdPlanificacionActividad: idPlanificacionActividad,
+            nombreActividad: instancia.NombreActividad || instancia.nombreActividad,
+            nombre: instancia.NombreActividad || instancia.nombreActividad,
+            descripcion: instancia.Descripcion || instancia.descripcion,
+            fechaInicio: instancia.FechaInicio || instancia.fechaInicio,
+            fechaFin: instancia.FechaFin || instancia.fechaFin,
+            nombreDepartamento: instancia.NombreDepartamento || instancia.nombreDepartamento,
+            ...instancia
+          };
+        });
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -372,6 +408,70 @@ export class PlanificacionService {
         return of([]);
       })
     );
+  }
+
+  // POST /api/PlanificacionActividadInstancia - Asociar una actividad existente
+  asociarActividad(planificacionId: number, data: PlanificacionActividadCreate): Observable<PlanificacionActividad> {
+    const instanciaApiUrl = `${environment.apiUrl}/PlanificacionActividadInstancia`;
+    
+    const dto: any = {
+      IdPlanificacion: data.idPlanificacion || planificacionId,
+      IdActividad: data.idActividad,
+      Anio: data.anio || null,
+      Activo: data.activo !== undefined ? data.activo : true
+    };
+
+    // Remover campos null (excepto Activo que siempre debe estar)
+    Object.keys(dto).forEach(key => {
+      if (dto[key] === null && key !== 'Activo') {
+        delete dto[key];
+      }
+    });
+
+    console.log('🔄 POST Asociar Actividad - PlanificacionId:', planificacionId, 'DTO:', dto);
+    console.log('🔄 POST Asociar Actividad - URL:', instanciaApiUrl);
+
+    return this.http.post<any>(instanciaApiUrl, dto).pipe(
+      map(response => {
+        const item = response.data || response;
+        return this.mapPlanificacionActividad(item);
+      }),
+      catchError(error => {
+        console.error('❌ POST Asociar Actividad - Error:', error);
+        throw error;
+      })
+    );
+  }
+
+  // DELETE /api/PlanificacionActividadInstancia/{id} - Desasociar una actividad
+  // Necesita el idPlanificacionActividad (ID de la instancia), no el idActividad
+  desasociarActividad(idPlanificacionActividad: number): Observable<boolean> {
+    const instanciaApiUrl = `${environment.apiUrl}/PlanificacionActividadInstancia`;
+    console.log('🔄 DELETE Desasociar Actividad - IdPlanificacionActividad:', idPlanificacionActividad);
+    console.log('🔄 DELETE Desasociar Actividad - URL:', `${instanciaApiUrl}/${idPlanificacionActividad}`);
+    
+    return this.http.delete<any>(`${instanciaApiUrl}/${idPlanificacionActividad}`).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('❌ DELETE Desasociar Actividad - Error:', error);
+        throw error;
+      })
+    );
+  }
+
+  // Mapeo de PlanificacionActividad
+  private mapPlanificacionActividad(item: any): PlanificacionActividad {
+    return {
+      idPlanificacionActividad: item.IdPlanificacionActividad || item.idPlanificacionActividad || 0,
+      idPlanificacion: item.IdPlanificacion || item.idPlanificacion || 0,
+      idActividad: item.IdActividad || item.idActividad || 0,
+      anio: item.Anio || item.anio || 0,
+      asignadoPor: item.AsignadoPor || item.asignadoPor || 0,
+      fechaAsignacion: item.FechaAsignacion || item.fechaAsignacion || new Date().toISOString(),
+      activo: item.Activo !== undefined ? item.Activo : (item.activo !== undefined ? item.activo : true),
+      nombreActividad: item.NombreActividad || item.nombreActividad,
+      nombrePlanificacion: item.NombrePlanificacion || item.nombrePlanificacion
+    };
   }
 
   // GET /api/planificaciones/{id}/resumen

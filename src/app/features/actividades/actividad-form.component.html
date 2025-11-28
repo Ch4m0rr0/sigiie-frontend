@@ -43,388 +43,591 @@
 
     @if (!loading()) {
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
-        
         <div class="p-6 md:p-8 space-y-8">
             
+            <!-- Planificación - Mover al inicio -->
+            <div class="space-y-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                    <app-icon icon="calendar_today" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Planificación</h3>
+                </div>
+
+                <div class="pt-2">
+                    <label class="inline-flex items-center cursor-pointer group">
+                        <input type="checkbox" formControlName="esPlanificada" class="sr-only peer">
+                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Planificada</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idIndicador">
+                            Indicador
+                            @if (form.get('idIndicador')?.disabled) {
+                                <span class="text-xs text-slate-500 font-normal ml-1">(No editable)</span>
+                            }
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idIndicador"
+                                id="idIndicador"
+                                class="w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none"
+                                [class.bg-white]="!form.get('idIndicador')?.disabled"
+                                [class.bg-slate-100]="form.get('idIndicador')?.disabled"
+                                [class.border-slate-300]="!form.get('idIndicador')?.disabled"
+                                [class.border-slate-200]="form.get('idIndicador')?.disabled"
+                                [class.text-slate-900]="!form.get('idIndicador')?.disabled"
+                                [class.text-slate-600]="form.get('idIndicador')?.disabled"
+                                [class.cursor-pointer]="!form.get('idIndicador')?.disabled"
+                                [class.cursor-not-allowed]="form.get('idIndicador')?.disabled"
+                                [class.focus:ring-2]="!form.get('idIndicador')?.disabled"
+                                [class.focus:ring-emerald-500/20]="!form.get('idIndicador')?.disabled"
+                                [class.focus:border-emerald-500]="!form.get('idIndicador')?.disabled">
+                                <option [value]="null">Seleccione indicador...</option>
+                                @for (indicador of indicadores(); track indicador.idIndicador) {
+                                    <option [value]="indicador.idIndicador">{{ indicador.codigo }} - {{ indicador.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon 
+                                [icon]="form.get('idIndicador')?.disabled ? 'lock' : 'expand_more'" 
+                                size="sm" 
+                                class="absolute right-3 top-2.5 pointer-events-none"
+                                [class.text-slate-400]="!form.get('idIndicador')?.disabled"
+                                [class.text-slate-500]="form.get('idIndicador')?.disabled"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-sm font-medium text-slate-700" for="idActividadAnual">
+                                Actividad Anual
+                            </label>
+                            @if (form.get('idIndicador')?.value) {
+                                <button
+                                    type="button"
+                                    (click)="crearNuevaActividadAnual()"
+                                    class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors">
+                                    <app-icon icon="add" size="xs"></app-icon>
+                                    <span>Nueva</span>
+                                </button>
+                            }
+                        </div>
+                        <div class="relative">
+                            <select 
+                                formControlName="idActividadAnual"
+                                id="idActividadAnual"
+                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                                <option [value]="null">Seleccione actividad anual...</option>
+                                @if (actividadesAnualesFiltradas().length > 0) {
+                                    @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
+                                        <option [value]="anual.idActividadAnual">
+                                            {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                                        </option>
+                                    }
+                                } @else if (form.get('idIndicador')?.value) {
+                                    <option disabled>No hay actividades anuales para este indicador</option>
+                                } @else {
+                                    <option disabled>Seleccione un indicador primero</option>
+                                }
+                            </select>
+                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idActividadMensualInst">
+                        Actividad Mensual Institucional
+                    </label>
+                    <div class="relative">
+                        <select 
+                            formControlName="idActividadMensualInst"
+                            id="idActividadMensualInst"
+                            class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
+                            <option [value]="null">Seleccione actividad mensual...</option>
+                            @if (actividadesMensualesFiltradas().length > 0) {
+                                @for (mensual of actividadesMensualesFiltradas(); track mensual.idActividadMensualInst) {
+                                    <option [value]="mensual.idActividadMensualInst">
+                                        {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
+                                    </option>
+                                }
+                            } @else if (form.get('idActividadAnual')?.value) {
+                                <option disabled>No hay actividades mensuales para esta actividad anual</option>
+                            } @else {
+                                <option disabled>Seleccione una actividad anual primero</option>
+                            }
+                        </select>
+                        <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                    </div>
+                </div>
+            </div>
+
             <!-- Información Básica -->
             <div class="space-y-6">
                 <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
                     <app-icon icon="edit_note" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Información Básica</h3>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Información de la Actividad</h3>
                 </div>
 
+                <!-- Nombre de la actividad -->
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="nombre">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
                         Nombre de la Actividad <span class="text-red-500">*</span>
                     </label>
                     <input 
-                        type="text" 
-                        formControlName="nombre"
-                        id="nombre"
-                        placeholder="Ej: Capacitación de Personal 2024"
+                        type="text"
+                        formControlName="nombreActividad"
+                        placeholder="Ej: Taller de investigación"
                         class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                        [class.border-red-500]="nombre?.invalid && nombre?.touched">
-                    @if (nombre?.invalid && nombre?.touched) {
-                        <p class="mt-1.5 text-xs text-red-600">
-                            @if (nombre?.errors?.['required']) { El nombre es obligatorio. }
-                            @else if (nombre?.errors?.['minlength']) { Mínimo 3 caracteres. }
-                        </p>
+                        [class.border-red-500]="form.get('nombreActividad')?.invalid && form.get('nombreActividad')?.touched">
+                    @if (form.get('nombreActividad')?.invalid && form.get('nombreActividad')?.touched) {
+                        <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
                     }
                 </div>
 
+                <!-- Descripción y Objetivo -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Descripción
+                        </label>
+                        <textarea 
+                            formControlName="descripcion"
+                            rows="3"
+                            placeholder="Descripción detallada de la actividad..."
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Objetivo
+                        </label>
+                        <textarea 
+                            formControlName="objetivo"
+                            rows="3"
+                            placeholder="Objetivo principal de la actividad..."
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tipo de Actividad, Área y Tipo de Documento -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="descripcion">
-                        Descripción Detallada
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Tipo de Actividad
                     </label>
-                    <textarea 
-                        formControlName="descripcion"
-                        id="descripcion"
-                        rows="3"
-                        placeholder="Describe los objetivos y alcance de esta actividad..."
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none"></textarea>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="category" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idTipoActividad"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione tipo...</option>
+                            @for (tipo of categoriasActividad(); track tipo.idCategoriaActividad || tipo.id) {
+                                <option [ngValue]="tipo.idCategoriaActividad || tipo.id">
+                                    {{ tipo.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
+                    </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="codigoActividad">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Área de Conocimiento
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="school" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idArea"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione área...</option>
+                            @for (area of areasConocimiento(); track area.id) {
+                                <option [ngValue]="area.id">
+                                    {{ area.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Tipo de Documento
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="description" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idTipoDocumento"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione tipo...</option>
+                            @for (tipo of tiposDocumento(); track tipo.id) {
+                                <option [ngValue]="tipo.id">
+                                    {{ tipo.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modalidad, Capacidad Instalada y Código -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Modalidad
+                    </label>
+                    <select 
+                        formControlName="modalidad"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                        <option value="">Seleccione modalidad...</option>
+                        <option value="Presencial">Presencial</option>
+                        <option value="Virtual">Virtual</option>
+                        <option value="Híbrida">Híbrida</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Capacidad Instalada
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="location_on" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idCapacidadInstalada"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione capacidad...</option>
+                            @for (capacidad of capacidadesInstaladas(); track capacidad.id) {
+                                <option [ngValue]="capacidad.id">
+                                    {{ capacidad.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
                         Código de Actividad
                     </label>
                     <input 
-                        type="text" 
+                        type="text"
                         formControlName="codigoActividad"
-                        id="codigoActividad"
                         placeholder="Ej: ACT-2024-001"
                         class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                 </div>
             </div>
 
-            <!-- Clasificación y Categorización -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="category" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Clasificación y Categorización</h3>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idTipoActividad">
-                            Tipo Actividad
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idTipoActividad"
-                                id="idTipoActividad"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (cat of categoriasActividad(); track cat.id) {
-                                    <option [value]="cat.id">{{ cat.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idEstadoActividad">
-                            Estado Actividad
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idEstadoActividad"
-                                id="idEstadoActividad"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (estado of estadosActividad(); track estado.id) {
-                                    <option [value]="estado.id">{{ estado.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idTipoIniciativa">
-                            Tipo Iniciativa
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idTipoIniciativa"
-                                id="idTipoIniciativa"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (tipo of tiposIniciativa(); track tipo.id) {
-                                    <option [value]="tipo.id">{{ tipo.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idArea">
-                            Área Conocimiento
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idArea"
-                                id="idArea"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (area of areasConocimiento(); track area.id) {
-                                    <option [value]="area.id">{{ area.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idTipoDocumento">
-                            Tipo Documento
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idTipoDocumento"
-                                id="idTipoDocumento"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (tipoDoc of tiposDocumento(); track tipoDoc.id) {
-                                    <option [value]="tipoDoc.id">{{ tipoDoc.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idNivel">
-                            Nivel Actividad
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idNivel"
-                                id="idNivel"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (nivel of nivelesActividad(); track nivel.idNivel) {
-                                    <option [value]="nivel.idNivel">{{ nivel.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
+            <!-- Nivel y Tipo de Protagonista -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Nivel de Actividad
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="layers" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idNivel"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione nivel...</option>
+                            @for (nivel of nivelesActividad(); track nivel.idNivel) {
+                                <option [ngValue]="nivel.idNivel">
+                                    {{ nivel.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="nivelActividad">
-                            Nivel Actividad (Numérico)
-                        </label>
-                        <input 
-                            type="number" 
-                            formControlName="nivelActividad"
-                            id="nivelActividad"
-                            min="1"
-                            placeholder="1"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="semanaMes">
-                            Semana del Mes
-                        </label>
-                        <input 
-                            type="number" 
-                            formControlName="semanaMes"
-                            id="semanaMes"
-                            min="1"
-                            max="4"
-                            placeholder="1-4"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Tipo de Protagonista
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="people" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idTipoProtagonista"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione tipo...</option>
+                            @for (tipo of tiposProtagonista(); track tipo.id) {
+                                <option [ngValue]="tipo.id">
+                                    {{ tipo.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Fechas y Período -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="event" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Fechas y Período</h3>
+            <!-- Participantes -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Cantidad Máxima Participantes Estudiantes
+                    </label>
+                    <input 
+                        type="number"
+                        formControlName="cantidadMaximaParticipantesEstudiantes"
+                        min="0"
+                        placeholder="Ej: 50"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="fechaInicio">
-                            Fecha Inicio
-                        </label>
-                        <input 
-                            type="date" 
-                            formControlName="fechaInicio"
-                            id="fechaInicio"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Cantidad Participantes Proyectados
+                    </label>
+                    <input 
+                        type="number"
+                        formControlName="cantidadParticipantesProyectados"
+                        min="0"
+                        placeholder="Ej: 30"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="fechaFin">
-                            Fecha Fin
-                        </label>
-                        <input 
-                            type="date" 
-                            formControlName="fechaFin"
-                            id="fechaFin"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Año
+                    </label>
+                    <input 
+                        type="number"
+                        formControlName="anio"
+                        min="2000"
+                        max="2100"
+                        placeholder="Ej: 2024"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Fechas -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Fecha de Inicio
+                    </label>
+                    <input 
+                        type="date"
+                        formControlName="fechaInicio"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Fecha de Fin
+                    </label>
+                    <input 
+                        type="date"
+                        formControlName="fechaFin"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Fecha del Evento
+                    </label>
+                    <input 
+                        type="date"
+                        formControlName="fechaEvento"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Hora de Realización
+                    </label>
+                    <input 
+                        type="time"
+                        formControlName="horaRealizacion"
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Departamentos y Tipos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Departamento Responsable
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="business" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="departamentoResponsableId"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione departamento...</option>
+                            @for (dept of departamentos(); track dept.id) {
+                                <option [ngValue]="dept.id">
+                                    {{ dept.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Tipo de Iniciativa
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="lightbulb" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idTipoIniciativa"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione tipo...</option>
+                            @for (tipo of tiposIniciativa(); track tipo.id) {
+                                <option [ngValue]="tipo.id">
+                                    {{ tipo.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Estado de Actividad
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                            <app-icon icon="toggle_on" size="xs"></app-icon>
+                        </span>
+                        <select 
+                            formControlName="idEstadoActividad"
+                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                            <option [ngValue]="null">Seleccione estado...</option>
+                            @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                                <option [ngValue]="estado.idEstadoActividad || estado.id">
+                                    {{ estado.nombre }}
+                                </option>
+                            }
+                        </select>
+                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                            <app-icon icon="expand_more" size="xs"></app-icon>
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Departamentos y Responsables -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="business" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Departamentos y Responsables</h3>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="departamentoId">
-                            Departamento
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                <app-icon icon="business" size="xs"></app-icon>
-                            </div>
-                            <select 
-                                formControlName="departamentoId"
-                                id="departamentoId"
-                                class="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione departamento...</option>
-                                @for (dept of departamentos(); track dept.id) {
-                                    <option [value]="dept.id">{{ dept.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="departamentoResponsableId">
-                            Departamento Responsable
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                <app-icon icon="business" size="xs"></app-icon>
-                            </div>
-                            <select 
-                                formControlName="departamentoResponsableId"
-                                id="departamentoResponsableId"
-                                class="w-full pl-9 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione departamento...</option>
-                                @for (dept of departamentos(); track dept.id) {
-                                    <option [value]="dept.id">{{ dept.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                    </div>
-                </div>
+            <!-- Organizador -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Organizador
+                </label>
+                <input 
+                    type="text"
+                    formControlName="organizador"
+                    placeholder="Ej: Departamento de Investigación"
+                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
             </div>
 
-            <!-- Información Adicional -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="info" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Información Adicional</h3>
+
+            <!-- Metas y Valoraciones -->
+            <div class="border-t border-slate-200 pt-6 mt-6">
+                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700 mb-4">
+                    <app-icon icon="assessment" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Metas y Valoraciones</h3>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="organizador">
-                            Organizador
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Meta Alcanzada
                         </label>
                         <input 
-                            type="text" 
-                            formControlName="organizador"
-                            id="organizador"
-                            placeholder="Nombre del organizador"
+                            type="number"
+                            formControlName="metaAlcanzada"
+                            step="0.01"
+                            min="0"
+                            placeholder="Ej: 100"
                             class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="modalidad">
-                            Modalidad
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Meta Cumplimiento (%)
                         </label>
                         <input 
-                            type="text" 
-                            formControlName="modalidad"
-                            id="modalidad"
-                            placeholder="Ej: Presencial, Virtual, Híbrida"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="ubicacion">
-                            Ubicación
-                        </label>
-                        <input 
-                            type="text" 
-                            formControlName="ubicacion"
-                            id="ubicacion"
-                            placeholder="Dirección o lugar donde se realizará la actividad"
+                            type="number"
+                            formControlName="metaCumplimiento"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            placeholder="Ej: 85.5"
                             class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                     </div>
                 </div>
-            </div>
 
-            <!-- Relaciones -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="link" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Relaciones</h3>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Tipo/Resumen de Acción
+                    </label>
+                    <input 
+                        type="text"
+                        formControlName="tipoResumenAccion"
+                        placeholder="Ej: Taller de investigación, Conferencia, etc."
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-sm font-medium text-slate-700" for="idActividadMensualInst">
-                                Actividad Mensual Institucional
-                            </label>
-                            <a 
-                                [routerLink]="['/actividades-mensuales/nueva']"
-                                class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
-                                <app-icon icon="add" size="xs"></app-icon>
-                                Crear nueva
-                            </a>
-                        </div>
-                        <div class="relative">
-                            <select 
-                                formControlName="idActividadMensualInst"
-                                id="idActividadMensualInst"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione...</option>
-                                @for (actMensual of actividadesMensualesInst(); track actMensual.idActividadMensualInst) {
-                                    <option [value]="actMensual.idActividadMensualInst">
-                                        {{ actMensual.nombre || (actMensual.nombreMes || 'Mes ' + actMensual.mes) }} - {{ actMensual.actividadAnual?.nombreIndicador || 'Actividad Anual ' + actMensual.idActividadAnual }}
-                                    </option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                        <p class="mt-1.5 text-xs text-slate-500">
-                            Si no existe la actividad mensual, puedes crear una nueva haciendo clic en "Crear nueva"
-                        </p>
-                    </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Valoración Indicador Estratégico
+                    </label>
+                    <textarea 
+                        formControlName="valoracionIndicadorEstrategico"
+                        rows="3"
+                        placeholder="Valoración cualitativa del indicador estratégico..."
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="soporteDocumentoUrl">
-                            Documento de Soporte
-                        </label>
-                        <input 
-                            type="file" 
-                            formControlName="soporteDocumentoUrl"
-                            id="soporteDocumentoUrl"
-                            accept=".pdf,.doc,.docx,.xls,.xlsx"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-                        <p class="mt-1.5 text-xs text-slate-500">Formatos permitidos: PDF, DOC, DOCX, XLS, XLSX</p>
-                    </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                        Brecha Estratégica
+                    </label>
+                    <textarea 
+                        formControlName="brechaEstrategica"
+                        rows="3"
+                        placeholder="Brecha estratégica identificada..."
+                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
                 </div>
             </div>
 

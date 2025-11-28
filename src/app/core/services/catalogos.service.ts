@@ -31,11 +31,18 @@ export class CatalogosService {
     return this.http.get<any>(`${this.apiUrl}/departamentos`).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({ 
-          id: item.idDepartamento || item.Id || item.id, 
-          nombre: item.nombre || item.Nombre, 
-          descripcion: item.descripcion || item.Descripcion || '' 
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          // Log para debugging
+          console.log('📦 Departamento recibido del backend:', item);
+          return {
+            id: item.idDepartamento || item.Id || item.id, 
+            nombre: item.nombre || item.Nombre, 
+            descripcion: item.descripcion || item.Descripcion || '',
+            nombreJefe: item.nombreJefe || item.NombreJefe || item.nombreJefeDepartamento || item.NombreJefeDepartamento || '',
+            correoJefe: item.correoJefe || item.CorreoJefe || item.correoJefeDepartamento || item.CorreoJefeDepartamento || '',
+            telefonoJefe: item.telefonoJefe || item.TelefonoJefe || item.telefonoJefeDepartamento || item.TelefonoJefeDepartamento || ''
+          };
+        }) : [];
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -49,14 +56,37 @@ export class CatalogosService {
   }
 
   createDepartamento(departamento: Omit<Departamento, 'id'>): Observable<Departamento> {
-    const data = { Nombre: departamento.nombre, Descripcion: departamento.descripcion };
+    const data = { 
+      Nombre: departamento.nombre, 
+      Descripcion: departamento.descripcion,
+      NombreJefe: departamento.nombreJefe,
+      CorreoJefe: departamento.correoJefe,
+      TelefonoJefe: departamento.telefonoJefe
+    };
+    console.log('📤 CREATE DEPARTAMENTO - Datos enviados:', data);
     return this.http.post<any>(`${this.apiUrl}/departamentos`, data).pipe(
-      map(item => ({ id: item.Id, nombre: item.Nombre, descripcion: item.Descripcion }))
+      map(item => {
+        console.log('📥 CREATE DEPARTAMENTO - Respuesta del backend:', item);
+        return {
+          id: item.Id || item.id,
+          nombre: item.Nombre || item.nombre,
+          descripcion: item.Descripcion || item.descripcion || '',
+          nombreJefe: item.NombreJefe || item.nombreJefe || '',
+          correoJefe: item.CorreoJefe || item.correoJefe || '',
+          telefonoJefe: item.TelefonoJefe || item.telefonoJefe || ''
+        };
+      })
     );
   }
 
   updateDepartamento(id: number, departamento: Omit<Departamento, 'id'>): Observable<void> {
-    const data = { Nombre: departamento.nombre, Descripcion: departamento.descripcion };
+    const data = { 
+      Nombre: departamento.nombre, 
+      Descripcion: departamento.descripcion,
+      NombreJefe: departamento.nombreJefe,
+      CorreoJefe: departamento.correoJefe,
+      TelefonoJefe: departamento.telefonoJefe
+    };
     return this.http.put<void>(`${this.apiUrl}/departamentos/${id}`, data);
   }
 
@@ -1099,6 +1129,7 @@ export class CatalogosService {
   }
 
   // Tipo Subactividad
+  // Endpoint: /api/tipo-subactividad (kebab-case, siguiendo el patrón de /api/subactividades)
   getTiposSubactividad(): Observable<TipoSubactividad[]> {
     return this.http.get<any>(`${this.apiUrl}/tipo-subactividad`).pipe(
       map(response => {
@@ -1111,7 +1142,11 @@ export class CatalogosService {
         })) : [];
       }),
       catchError(error => {
-        console.error('Error fetching tipos subactividad:', error);
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/tipo-subactividad no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching tipos subactividad:', error);
+        }
         return of([]);
       })
     );
@@ -1119,13 +1154,26 @@ export class CatalogosService {
 
   createTipoSubactividad(tipo: Omit<TipoSubactividad, 'idTipoSubactividad'>): Observable<TipoSubactividad> {
     const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion, Activo: tipo.activo };
+    console.log('🔄 CREATE TipoSubactividad - URL:', `${this.apiUrl}/tipo-subactividad`);
+    console.log('🔄 CREATE TipoSubactividad - DTO:', data);
+    
     return this.http.post<any>(`${this.apiUrl}/tipo-subactividad`, data).pipe(
-      map(item => ({
-        idTipoSubactividad: item.idTipoSubactividad || item.IdTipoSubactividad,
-        nombre: item.nombre || item.Nombre,
-        descripcion: item.descripcion || item.Descripcion,
-        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
-      }))
+      map(item => {
+        const result = {
+          idTipoSubactividad: item.idTipoSubactividad || item.IdTipoSubactividad,
+          nombre: item.nombre || item.Nombre,
+          descripcion: item.descripcion || item.Descripcion,
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+        };
+        console.log('✅ CREATE TipoSubactividad - Resultado:', result);
+        return result;
+      }),
+      catchError(error => {
+        console.error('❌ CREATE TipoSubactividad - Error:', error);
+        console.error('❌ Error status:', error.status);
+        console.error('❌ Error message:', error.message);
+        throw error;
+      })
     );
   }
 
@@ -1544,6 +1592,120 @@ export class CatalogosService {
         }
         console.error('Error deleting tipo actividad jerarquica:', error);
         return of(false);
+      })
+    );
+  }
+
+  // Tipo Protagonista - Endpoint: /api/tipo-protagonista
+  getTiposProtagonista(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/tipo-protagonista`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idTipoProtagonista || item.IdTipoProtagonista || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/tipo-protagonista no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching tipos protagonista:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  // Capacidades Instaladas - Endpoint: /api/capacidad-instalaciones
+  getCapacidadesInstaladas(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/capacidad-instalaciones`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
+          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/capacidad-instalaciones no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching capacidades instaladas:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  // CRUD para Capacidades Instaladas
+  getCapacidadInstaladaById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/capacidad-instalaciones/${id}`).pipe(
+      map(response => {
+        const item = response.data || response;
+        return {
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
+          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error fetching capacidad instalada:', error);
+        throw error;
+      })
+    );
+  }
+
+  createCapacidadInstalada(data: { nombre: string, descripcion?: string }): Observable<any> {
+    const dto = {
+      NombreInstalacion: data.nombre,
+      Descripcion: data.descripcion || ''
+    };
+    return this.http.post<any>(`${this.apiUrl}/capacidad-instalaciones`, dto).pipe(
+      map(response => {
+        const item = response.data || response;
+        return {
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
+          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error creating capacidad instalada:', error);
+        throw error;
+      })
+    );
+  }
+
+  updateCapacidadInstalada(id: number, data: { nombre: string, descripcion?: string }): Observable<any> {
+    const dto = {
+      NombreInstalacion: data.nombre,
+      Descripcion: data.descripcion || ''
+    };
+    return this.http.put<any>(`${this.apiUrl}/capacidad-instalaciones/${id}`, dto).pipe(
+      map(response => {
+        const item = response.data || response;
+        return {
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
+          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error updating capacidad instalada:', error);
+        throw error;
+      })
+    );
+  }
+
+  deleteCapacidadInstalada(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/capacidad-instalaciones/${id}`).pipe(
+      catchError(error => {
+        console.error('❌ Error deleting capacidad instalada:', error);
+        throw error;
       })
     );
   }

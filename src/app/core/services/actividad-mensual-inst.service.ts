@@ -67,22 +67,43 @@ export class ActividadMensualInstService {
   }
 
   create(data: ActividadMensualInstCreate): Observable<ActividadMensualInst> {
+    // Validar y asegurar que los campos requeridos tengan valores válidos
+    if (data.idActividadAnual === null || data.idActividadAnual === undefined) {
+      throw new Error('idActividadAnual es requerido');
+    }
+    if (data.mes === null || data.mes === undefined) {
+      throw new Error('mes es requerido');
+    }
+
     // Convertir a PascalCase para el backend
     const payload: any = {
-      IdActividadAnual: data.idActividadAnual,
-      Mes: data.mes,
+      IdActividadAnual: Number(data.idActividadAnual), // Asegurar que sea número
+      Mes: Number(data.mes), // Asegurar que sea número
       Activo: data.activo !== undefined ? data.activo : true
     };
     
     // Agregar campos opcionales solo si están presentes
-    if (data.nombre !== undefined && data.nombre !== null) payload.Nombre = data.nombre;
-    if (data.descripcion !== undefined && data.descripcion !== null) payload.Descripcion = data.descripcion;
-    if (data.metaMensual !== undefined && data.metaMensual !== null) payload.MetaMensual = data.metaMensual;
-    if (data.metaAlcanzada !== undefined && data.metaAlcanzada !== null) payload.MetaAlcanzada = data.metaAlcanzada;
-    if (data.porcentajeCumplimiento !== undefined && data.porcentajeCumplimiento !== null) payload.PorcentajeCumplimiento = data.porcentajeCumplimiento;
-    if (data.valoracionCualitativa !== undefined && data.valoracionCualitativa !== null) payload.ValoracionCualitativa = data.valoracionCualitativa;
-    if (data.brechas !== undefined && data.brechas !== null) payload.Brechas = data.brechas;
-    if (data.evidenciaResumen !== undefined && data.evidenciaResumen !== null) payload.EvidenciaResumen = data.evidenciaResumen;
+    if (data.nombre !== undefined && data.nombre !== null && data.nombre.trim() !== '') {
+      payload.Nombre = data.nombre.trim();
+    }
+    if (data.descripcion !== undefined && data.descripcion !== null && data.descripcion.trim() !== '') {
+      payload.Descripcion = data.descripcion.trim();
+    }
+    if (data.metaMensual !== undefined && data.metaMensual !== null) payload.MetaMensual = Number(data.metaMensual);
+    if (data.metaAlcanzada !== undefined && data.metaAlcanzada !== null) payload.MetaAlcanzada = Number(data.metaAlcanzada);
+    if (data.porcentajeCumplimiento !== undefined && data.porcentajeCumplimiento !== null) payload.PorcentajeCumplimiento = Number(data.porcentajeCumplimiento);
+    if (data.valoracionCualitativa !== undefined && data.valoracionCualitativa !== null && data.valoracionCualitativa.trim() !== '') {
+      payload.ValoracionCualitativa = data.valoracionCualitativa.trim();
+    }
+    if (data.brechas !== undefined && data.brechas !== null && data.brechas.trim() !== '') {
+      payload.Brechas = data.brechas.trim();
+    }
+    if (data.evidenciaResumen !== undefined && data.evidenciaResumen !== null && data.evidenciaResumen.trim() !== '') {
+      payload.EvidenciaResumen = data.evidenciaResumen.trim();
+    }
+
+    console.log('🔄 CREATE ActividadMensualInst - Payload enviado:', JSON.stringify(payload, null, 2));
+    console.log('🔄 CREATE ActividadMensualInst - URL:', this.apiUrl);
 
     return this.http.post<any>(this.apiUrl, payload).pipe(
       map(response => {
@@ -94,6 +115,14 @@ export class ActividadMensualInstService {
       }),
       catchError(error => {
         console.error('❌ Error creating actividad mensual institucional:', error);
+        console.error('❌ Error status:', error.status);
+        console.error('❌ Error message:', error.message);
+        if (error.error) {
+          console.error('❌ Error body:', error.error);
+          if (error.error.errors) {
+            console.error('❌ Validation errors:', error.error.errors);
+          }
+        }
         throw error;
       })
     );

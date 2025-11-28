@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Observable } from 'rxjs';
 import { PersonasService } from '../../core/services/personas.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import type { Estudiante } from '../../core/models/estudiante';
@@ -103,8 +104,11 @@ export class PersonaFormComponent implements OnInit {
       this.form = this.fb.group({
         nombreCompleto: ['', [Validators.required, Validators.minLength(3)]],
         correo: ['', [Validators.required, Validators.email]],
+        generoId: [null, Validators.required], // Requerido según DocenteCreateDto
         departamentoId: [null, Validators.required],
         numeroOrcid: [''], // Opcional
+        cedula: [''], // Opcional
+        nivelAcademico: [''], // Opcional
         activo: [true]
       });
     } else {
@@ -112,7 +116,11 @@ export class PersonaFormComponent implements OnInit {
       this.form = this.fb.group({
         nombreCompleto: ['', [Validators.required, Validators.minLength(3)]],
         correo: ['', [Validators.required, Validators.email]],
+        generoId: [null, Validators.required], // Requerido según AdministrativoCreateDto
         departamentoId: [null, Validators.required],
+        numeroOrcid: [''], // Opcional
+        cedula: [''], // Opcional
+        puesto: [''], // Opcional
         activo: [true]
       });
     }
@@ -125,12 +133,16 @@ export class PersonaFormComponent implements OnInit {
       error: (err) => console.error('Error loading departamentos:', err)
     });
 
-    // Cargar géneros y estados solo para estudiantes
-    if (this.tipoPersona() === 'estudiantes') {
+    // Cargar géneros para estudiantes, docentes y administrativos
+    if (this.tipoPersona() === 'estudiantes' || this.tipoPersona() === 'docentes' || this.tipoPersona() === 'administrativos') {
       this.catalogosService.getGeneros().subscribe({
         next: (data) => this.generos.set(data),
         error: (err) => console.error('Error loading generos:', err)
       });
+    }
+    
+    // Cargar estados solo para estudiantes
+    if (this.tipoPersona() === 'estudiantes') {
 
       this.catalogosService.getEstadosEstudiante().subscribe({
         next: (data) => this.estadosEstudiante.set(data),
@@ -157,21 +169,11 @@ export class PersonaFormComponent implements OnInit {
     this.error.set(null);
 
     const tipo = this.tipoPersona();
-    let request;
 
     if (tipo === 'estudiantes') {
-      request = this.personasService.getEstudiante(id);
-    } else if (tipo === 'docentes') {
-      request = this.personasService.getDocente(id);
-    } else {
-      request = this.personasService.getAdministrativo(id);
-    }
-
-    request.subscribe({
-      next: (persona) => {
-        if (persona) {
-          if (tipo === 'estudiantes') {
-            const estudiante = persona as Estudiante;
+      this.personasService.getEstudiante(id).subscribe({
+        next: (estudiante: Estudiante | null) => {
+          if (estudiante) {
             this.form.patchValue({
               nombreCompleto: estudiante.nombreCompleto,
               matricula: estudiante.matricula,
@@ -189,33 +191,70 @@ export class PersonaFormComponent implements OnInit {
               nivelFormacion: estudiante.nivelFormacion || '',
               activo: estudiante.activo
             });
-          } else if (tipo === 'docentes') {
-            const docente = persona as Docente;
+          }
+          this.loading.set(false);
+        },
+        error: (err: any) => {
+          console.error('Error loading estudiante:', err);
+          this.error.set('Error al cargar los datos. Por favor, intenta nuevamente.');
+          this.loading.set(false);
+        }
+      });
+    } else if (tipo === 'docentes') {
+      this.personasService.getDocente(id).subscribe({
+        next: (docente: Docente | null) => {
+          if (docente) {
             this.form.patchValue({
               nombreCompleto: docente.nombreCompleto,
               correo: docente.correo,
+              generoId: docente.generoId,
               departamentoId: docente.departamentoId,
               numeroOrcid: docente.numeroOrcid || '',
+              cedula: docente.cedula || '',
+              nivelAcademico: docente.nivelAcademico || '',
               activo: docente.activo
             });
-          } else {
-            const administrativo = persona as Administrativo;
+          }
+          this.loading.set(false);
+        },
+        error: (err: any) => {
+          console.error('Error loading docente:', err);
+          this.error.set('Error al cargar los datos. Por favor, intenta nuevamente.');
+          this.loading.set(false);
+        }
+      });
+    } else {
+      this.personasService.getAdministrativo(id).subscribe({
+        next: (administrativo: Administrativo | null) => {
+          if (administrativo) {
+            // Si generoId es 0, intentar buscar el género por el código/descripción del backend
+            let generoIdValue = administrativo.generoId;
+            if (generoIdValue === 0 && this.generos().length > 0) {
+              // El backend podría haber devuelto Genero como string, pero no lo tenemos aquí
+              // Por ahora, usamos el valor que viene del mapeo
+              console.warn('⚠️ loadPersona - generoId es 0 para administrativo, podría necesitar búsqueda por string');
+            }
+            
             this.form.patchValue({
               nombreCompleto: administrativo.nombreCompleto,
               correo: administrativo.correo,
+              generoId: generoIdValue || null,
               departamentoId: administrativo.departamentoId,
+              numeroOrcid: administrativo.numeroOrcid || '',
+              cedula: administrativo.cedula || '',
+              puesto: administrativo.puesto || '',
               activo: administrativo.activo ?? true
             });
           }
+          this.loading.set(false);
+        },
+        error: (err: any) => {
+          console.error('Error loading administrativo:', err);
+          this.error.set('Error al cargar los datos. Por favor, intenta nuevamente.');
+          this.loading.set(false);
         }
-        this.loading.set(false);
-      },
-      error: (err) => {
-        console.error('Error loading persona:', err);
-        this.error.set('Error al cargar los datos. Por favor, intenta nuevamente.');
-        this.loading.set(false);
-      }
-    });
+      });
+    }
   }
 
   onSubmit(): void {
@@ -242,30 +281,63 @@ export class PersonaFormComponent implements OnInit {
         return;
       }
       
-      let request;
-
       if (tipo === 'estudiantes') {
-        request = this.personasService.updateEstudiante(id, formValue);
+        // Filtrar solo los campos válidos para el DTO
+        const estudianteData: Partial<Estudiante> = {
+          nombreCompleto: formValue.nombreCompleto,
+          matricula: formValue.matricula,
+          correo: formValue.correo,
+          generoId: formValue.generoId ? +formValue.generoId : undefined,
+          departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
+          estadoId: formValue.estadoId ? +formValue.estadoId : undefined,
+          activo: formValue.activo ?? true,
+          numeroOrcid: formValue.numeroOrcid || undefined,
+          cedula: formValue.cedula || undefined,
+          carrera: formValue.carrera || undefined,
+          idCategoriaParticipacion: formValue.idCategoriaParticipacion ? +formValue.idCategoriaParticipacion : undefined,
+          nivelFormacion: formValue.nivelFormacion || undefined,
+          fechaIngreso: formValue.fechaIngreso ? new Date(formValue.fechaIngreso) : undefined
+        };
+        
+        this.personasService.updateEstudiante(id, estudianteData).subscribe({
+          next: () => {
+            this.router.navigate(['/personas']);
+          },
+          error: (err: any) => {
+            console.error('Error updating estudiante:', err);
+            const errorMessage = err.error?.message || 
+                                err.error?.title || 
+                                err.message || 
+                                'Error al actualizar el estudiante. Verifica que todos los campos requeridos estén completos.';
+            this.error.set(errorMessage);
+            this.saving.set(false);
+          }
+        });
       } else if (tipo === 'docentes') {
-        request = this.personasService.updateDocente(id, formValue);
+        this.personasService.updateDocente(id, formValue).subscribe({
+          next: () => {
+            this.router.navigate(['/personas']);
+          },
+          error: (err: any) => {
+            console.error('Error updating docente:', err);
+            this.error.set(err.error?.message || 'Error al actualizar. Por favor, intenta nuevamente.');
+            this.saving.set(false);
+          }
+        });
       } else {
-        request = this.personasService.updateAdministrativo(id, formValue);
+        this.personasService.updateAdministrativo(id, formValue).subscribe({
+          next: () => {
+            this.router.navigate(['/personas']);
+          },
+          error: (err: any) => {
+            console.error('Error updating administrativo:', err);
+            this.error.set(err.error?.message || 'Error al actualizar. Por favor, intenta nuevamente.');
+            this.saving.set(false);
+          }
+        });
       }
-
-      request.subscribe({
-        next: () => {
-          this.router.navigate(['/personas']);
-        },
-        error: (err) => {
-          console.error('Error updating persona:', err);
-          this.error.set(err.error?.message || 'Error al actualizar. Por favor, intenta nuevamente.');
-          this.saving.set(false);
-        }
-      });
     } else {
       // Crear
-      let request;
-
       if (tipo === 'estudiantes') {
         // Validar que todos los campos requeridos estén presentes
         if (!formValue.nombreCompleto || !formValue.matricula || !formValue.correo || 
@@ -295,41 +367,13 @@ export class PersonaFormComponent implements OnInit {
         console.log('🔄 FormComponent - Datos del estudiante a crear:', estudianteData);
         console.log('🔄 FormComponent - Tipo de fechaIngreso:', typeof estudianteData.fechaIngreso);
         console.log('🔄 FormComponent - fechaIngreso value:', estudianteData.fechaIngreso);
-        request = this.personasService.createEstudiante(estudianteData);
-      } else if (tipo === 'docentes') {
-        // Validar que todos los campos requeridos estén presentes
-        if (!formValue.nombreCompleto || !formValue.correo || !formValue.departamentoId) {
-          this.error.set('Por favor, completa todos los campos requeridos.');
-          this.saving.set(false);
-          return;
-        }
         
-        const docenteData: Omit<Docente, 'id'> = {
-          nombreCompleto: formValue.nombreCompleto.trim(),
-          correo: formValue.correo.trim(),
-          departamentoId: +formValue.departamentoId,
-          numeroOrcid: formValue.numeroOrcid?.trim() || undefined,
-          activo: formValue.activo ?? true
-        };
-        
-        console.log('🔄 FormComponent - Datos del docente a crear:', docenteData);
-        request = this.personasService.createDocente(docenteData);
-      } else {
-        const administrativoData: Omit<Administrativo, 'id'> = {
-          nombreCompleto: formValue.nombreCompleto,
-          correo: formValue.correo,
-          departamentoId: formValue.departamentoId,
-          activo: formValue.activo ?? true
-        };
-        request = this.personasService.createAdministrativo(administrativoData);
-      }
-
-      request.subscribe({
-        next: () => {
-          this.router.navigate(['/personas']);
-        },
-        error: (err) => {
-          console.error('❌ Error creating persona:', err);
+        this.personasService.createEstudiante(estudianteData).subscribe({
+          next: () => {
+            this.router.navigate(['/personas']);
+          },
+          error: (err: any) => {
+            console.error('❌ Error creating estudiante:', err);
           console.error('❌ Error details:', {
             status: err.status,
             statusText: err.statusText,
@@ -421,7 +465,152 @@ export class PersonaFormComponent implements OnInit {
           this.saving.set(false);
         }
       });
+      } else if (tipo === 'docentes') {
+        // Validar que todos los campos requeridos estén presentes
+        if (!formValue.nombreCompleto || !formValue.correo || !formValue.generoId || !formValue.departamentoId) {
+          this.error.set('Por favor, completa todos los campos requeridos.');
+          this.saving.set(false);
+          return;
+        }
+        
+        const docenteData: Omit<Docente, 'id'> = {
+          nombreCompleto: formValue.nombreCompleto.trim(),
+          correo: formValue.correo.trim(),
+          generoId: +formValue.generoId, // Requerido según DocenteCreateDto
+          departamentoId: +formValue.departamentoId,
+          numeroOrcid: formValue.numeroOrcid?.trim() || undefined,
+          cedula: formValue.cedula?.trim() || undefined,
+          nivelAcademico: formValue.nivelAcademico?.trim() || undefined,
+          activo: formValue.activo ?? true
+        };
+        
+        console.log('🔄 FormComponent - Datos del docente a crear:', docenteData);
+        
+        this.personasService.createDocente(docenteData).subscribe({
+          next: () => {
+            this.router.navigate(['/personas']);
+          },
+          error: (err: any) => {
+            this.handleCreateError(err);
+          }
+        });
+      } else {
+        // Validar que todos los campos requeridos estén presentes
+        if (!formValue.nombreCompleto || !formValue.correo || !formValue.generoId || !formValue.departamentoId) {
+          this.error.set('Por favor, completa todos los campos requeridos.');
+          this.saving.set(false);
+          return;
+        }
+        
+        const administrativoData: Omit<Administrativo, 'id'> = {
+          nombreCompleto: formValue.nombreCompleto.trim(),
+          correo: formValue.correo.trim(),
+          generoId: +formValue.generoId, // Requerido según AdministrativoCreateDto
+          departamentoId: +formValue.departamentoId,
+          numeroOrcid: formValue.numeroOrcid?.trim() || undefined,
+          cedula: formValue.cedula?.trim() || undefined,
+          puesto: formValue.puesto?.trim() || undefined,
+          activo: formValue.activo ?? true
+        };
+        
+        console.log('🔄 FormComponent - Datos del administrativo a crear:', administrativoData);
+        
+        this.personasService.createAdministrativo(administrativoData).subscribe({
+          next: () => {
+            this.router.navigate(['/personas']);
+          },
+          error: (err: any) => {
+            this.handleCreateError(err);
+          }
+        });
+      }
     }
+  }
+
+  private handleCreateError(err: any): void {
+    console.error('❌ Error creating persona:', err);
+    console.error('❌ Error details:', {
+      status: err.status,
+      statusText: err.statusText,
+      error: err.error,
+      message: err.message
+    });
+    
+    let errorMessage = 'Error al crear. Por favor, intenta nuevamente.';
+    
+    // Detectar violaciones de restricciones UNIQUE en SQL
+    if (err.error && typeof err.error === 'string') {
+      const errorStr = err.error;
+      // Detectar violación de UNIQUE en Correo
+      if (errorStr.includes("UQ_Estudiantes_Correo") || errorStr.includes("UQ_Docentes_Correo") || errorStr.includes("UQ_Administrativos_Correo") || 
+          (errorStr.includes("duplicate key") && errorStr.includes("Correo"))) {
+        const correoMatch = errorStr.match(/duplicate key value is \(([^)]+)\)/);
+        const correo = correoMatch ? correoMatch[1] : 'este correo';
+        errorMessage = `El correo electrónico ${correo} ya está registrado. Por favor, usa otro correo.`;
+      }
+      // Detectar violación de UNIQUE en NumeroOrcid (para estudiantes, docentes o administrativos)
+      else if (errorStr.includes("UQ_Estudiantes_ORCID") || errorStr.includes("UQ_Docentes_ORCID") || errorStr.includes("UQ_Administrativos_ORCID") || 
+               (errorStr.includes("duplicate key") && errorStr.includes("ORCID"))) {
+        const orcidMatch = errorStr.match(/duplicate key value is \(([^)]+)\)/);
+        const orcid = orcidMatch ? orcidMatch[1] : 'este número ORCID';
+        if (orcid === '<NULL>' || orcid === 'NULL' || orcid === 'null') {
+          errorMessage = 'Error: El sistema no permite múltiples registros sin número ORCID. Este es un problema del backend que debe corregirse.';
+        } else {
+          errorMessage = `El número ORCID ${orcid} ya está registrado. Por favor, verifica el número ORCID.`;
+        }
+      }
+      // Detectar violación de UNIQUE en NumeroCarnet
+      else if (errorStr.includes("UQ_Estudiantes") && errorStr.includes("NumeroCarnet") || errorStr.includes("duplicate key") && errorStr.includes("Carnet")) {
+        errorMessage = 'La matrícula ya está registrada. Por favor, verifica la matrícula.';
+      }
+      // Detectar otras violaciones de UNIQUE
+      else if (errorStr.includes("Violation of UNIQUE KEY constraint")) {
+        const constraintMatch = errorStr.match(/constraint '([^']+)'/);
+        const constraint = constraintMatch ? constraintMatch[1] : 'única';
+        errorMessage = `Ya existe un registro con estos datos (restricción: ${constraint}). Por favor, verifica la información.`;
+      }
+    }
+    
+    if (err.error) {
+      // Errores de validación de ASP.NET Core
+      if (err.error.errors && typeof err.error.errors === 'object') {
+        console.error('❌ Validation errors:', err.error.errors);
+        const validationErrors: string[] = [];
+        
+        // Iterar sobre cada campo con errores
+        Object.keys(err.error.errors).forEach(key => {
+          const fieldErrors = err.error.errors[key];
+          if (Array.isArray(fieldErrors)) {
+            fieldErrors.forEach((msg: string) => {
+              validationErrors.push(`${key}: ${msg}`);
+            });
+          } else {
+            validationErrors.push(`${key}: ${fieldErrors}`);
+          }
+        });
+        
+        errorMessage = validationErrors.length > 0 
+          ? validationErrors.join('\n')
+          : err.error.title || 'Errores de validación';
+      } else if (typeof err.error === 'string') {
+        // Error del backend como string (excepción)
+        const exceptionMatch = err.error.match(/Exception:\s*(.+?)(?:\r\n|$)/);
+        if (exceptionMatch) {
+          errorMessage = `Error del servidor: ${exceptionMatch[1]}`;
+        } else {
+          errorMessage = err.error;
+        }
+      } else if (err.error.message) {
+        errorMessage = err.error.message;
+      } else if (err.error.title) {
+        errorMessage = err.error.title;
+      } else if (err.status === 500) {
+        errorMessage = 'Error interno del servidor. Por favor, verifica que todos los datos sean correctos e intenta nuevamente.';
+      }
+    }
+    
+    this.error.set(errorMessage);
+    this.saving.set(false);
   }
 
   onCancel(): void {

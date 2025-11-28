@@ -65,6 +65,7 @@ export class PlanificacionesListComponent implements OnInit {
     this.planificaciones.set([]);
 
     // Construir filtros según PlanificacionFilterDto
+    // Solo incluir filtros cuando tengan valores o cuando los checkboxes estén activados
     const filters: PlanificacionFilterDto = {};
     
     if (this.filtroTipo() !== null) {
@@ -79,9 +80,11 @@ export class PlanificacionesListComponent implements OnInit {
       filters.PadreId = this.filtroPadre()!;
     }
     
-    if (this.filtroIncluirInactivos()) {
+    // Solo incluir inactivas si el checkbox está activado
+    if (this.filtroIncluirInactivos() === true) {
       filters.IncluirInactivos = true;
     }
+    // Si no está activado, el servicio filtrará solo activas por defecto
     
     if (this.filtroPeriodoInicio()) {
       filters.PeriodoInicio = this.filtroPeriodoInicio()!;
@@ -95,11 +98,13 @@ export class PlanificacionesListComponent implements OnInit {
       filters.Profundidad = this.filtroProfundidad()!;
     }
     
-    if (this.filtroIncluirActividades()) {
+    // Solo incluir actividades si el checkbox está activado
+    if (this.filtroIncluirActividades() === true) {
       filters.IncluirActividades = true;
     }
     
-    if (this.filtroIncluirReportes()) {
+    // Solo incluir reportes si el checkbox está activado
+    if (this.filtroIncluirReportes() === true) {
       filters.IncluirReportes = true;
     }
 
@@ -183,7 +188,8 @@ export class PlanificacionesListComponent implements OnInit {
       filters.PadreId = this.filtroPadre()!;
     }
     
-    if (this.filtroIncluirInactivos()) {
+    // Solo incluir inactivas si el checkbox está activado
+    if (this.filtroIncluirInactivos() === true) {
       filters.IncluirInactivos = true;
     }
     

@@ -64,6 +64,7 @@ export interface ReportePorDepartamento {
 export class ReportesService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/reportes`;
+  private exportarUrl = `${environment.apiUrl}/exportar`;
 
   /**
    * GET /api/Reportes
@@ -137,92 +138,204 @@ export class ReportesService {
   }
 
   /**
-   * POST /api/Reportes/generar/excel
-   * Generar reporte en Excel
+   * POST /api/exportar/excel/actividades
+   * Exportar actividades a Excel
    */
-  generarExcel(config: ReporteConfig): Observable<Blob> {
-    console.log('🔄 POST Generar Excel - URL:', `${this.apiUrl}/generar/excel`);
-    console.log('🔄 POST Generar Excel - Config:', config);
+  exportarExcelActividades(config?: ReporteConfig): Observable<Blob> {
+    console.log('🔄 POST Exportar Excel Actividades - URL:', `${this.exportarUrl}/excel/actividades`);
     
-    // Convertir a PascalCase para el backend
-    const requestedFormat = (config.formato || 'excel').toLowerCase();
-    if (requestedFormat !== 'excel') {
-      console.warn(
-        '⚠️ POST Generar Excel - Formato solicitado "%s" no soportado por el endpoint /generar/excel. Se forzará a "excel".',
-        requestedFormat
-      );
+    const dto: any = {};
+    if (config) {
+      if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.planificacionId) dto.PlanificacionId = config.planificacionId;
+      if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
+      if (config.fechaFin) dto.FechaFin = config.fechaFin;
     }
-
-    const nombre = config.nombre?.trim() || `Reporte ${config.tipoReporte} ${new Date().toISOString().split('T')[0]}`;
-    const rutaArchivo =
-      config.rutaArchivo?.trim() ||
-      `reportes/${config.tipoReporte}-${Date.now()}.xlsx`;
-    const tipoArchivo = (config.tipoArchivo || 'excel').toLowerCase();
-
-    const dto: any = {
-      TipoReporte: config.tipoReporte,
-      PlanificacionId: config.planificacionId || null,
-      ActividadId: config.actividadId || null,
-      SubactividadId: config.subactividadId || null,
-      FechaInicio: config.fechaInicio || null,
-      FechaFin: config.fechaFin || null,
-      Formato: 'excel',
-      IncluirEvidencias: config.incluirEvidencias || false,
-      IncluirParticipaciones: config.incluirParticipaciones || false,
-      IncluirIndicadores: config.incluirIndicadores || false,
-      Nombre: nombre,
-      RutaArchivo: rutaArchivo,
-      TipoArchivo: tipoArchivo === 'xlsx' ? 'excel' : tipoArchivo
-    };
     
-    // Remover campos null
-    Object.keys(dto).forEach(key => {
-      if (dto[key] === null) {
-        delete dto[key];
+    console.log('🔄 POST Exportar Excel Actividades - DTO enviado:', dto);
+    
+    return this.http.post<Blob>(`${this.exportarUrl}/excel/actividades`, dto, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       }
-    });
-    
-    console.log('🔄 POST Generar Excel - DTO enviado:', dto);
-    
-    return this.http.post<Blob>(`${this.apiUrl}/generar/excel`, dto, {
-      responseType: 'blob' as 'json'
     }).pipe(
       map(blob => {
-        console.log('✅ POST Generar Excel - Archivo recibido, tamaño:', blob.size);
+        console.log('✅ POST Exportar Excel Actividades - Archivo recibido, tamaño:', blob.size);
         return blob;
       }),
       catchError(error => {
-        console.error('❌ POST Generar Excel - Error:', error);
-        if (error?.error instanceof Blob) {
-          return from(error.error.text() as Promise<string>).pipe(
-            switchMap((text: string) => {
-              let parsed: any = text;
-              try {
-                parsed = JSON.parse(text);
-              } catch {
-                // keep raw text
-              }
-
-              const backendMessage =
-                typeof parsed === 'string'
-                  ? parsed
-                  : parsed?.detail || parsed?.message || parsed?.title || text;
-
-              (error as any).backendMessage = backendMessage;
-              (error as any).validationErrors = parsed?.errors;
-              (error as any).error = parsed;
-
-              if (parsed?.errors && typeof parsed.errors === 'object') {
-                console.error('❌ POST Generar Excel - Validaciones recibidas:', parsed.errors);
-              }
-
-              return throwError(() => error);
-            })
-          );
-        }
-        return throwError(() => error);
+        console.error('❌ POST Exportar Excel Actividades - Error:', error);
+        return this.handleBlobError(error);
       })
     );
+  }
+
+  /**
+   * POST /api/exportar/excel/todo
+   * Exportar todo a Excel
+   */
+  exportarExcelTodo(config?: ReporteConfig): Observable<Blob> {
+    console.log('🔄 POST Exportar Excel Todo - URL:', `${this.exportarUrl}/excel/todo`);
+    
+    const dto: any = {};
+    if (config) {
+      if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
+      if (config.fechaFin) dto.FechaFin = config.fechaFin;
+    }
+    
+    console.log('🔄 POST Exportar Excel Todo - DTO enviado:', dto);
+    
+    return this.http.post<Blob>(`${this.exportarUrl}/excel/todo`, dto, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }).pipe(
+      map(blob => {
+        console.log('✅ POST Exportar Excel Todo - Archivo recibido, tamaño:', blob.size);
+        return blob;
+      }),
+      catchError(error => {
+        console.error('❌ POST Exportar Excel Todo - Error:', error);
+        return this.handleBlobError(error);
+      })
+    );
+  }
+
+  /**
+   * POST /api/exportar/excel/participaciones
+   * Exportar participaciones a Excel
+   */
+  exportarExcelParticipaciones(config?: ReporteConfig): Observable<Blob> {
+    console.log('🔄 POST Exportar Excel Participaciones - URL:', `${this.exportarUrl}/excel/participaciones`);
+    
+    const dto: any = {};
+    if (config) {
+      if (config.subactividadId) dto.SubactividadId = config.subactividadId;
+      if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
+      if (config.fechaFin) dto.FechaFin = config.fechaFin;
+    }
+    
+    console.log('🔄 POST Exportar Excel Participaciones - DTO enviado:', dto);
+    
+    return this.http.post<Blob>(`${this.exportarUrl}/excel/participaciones`, dto, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }).pipe(
+      map(blob => {
+        console.log('✅ POST Exportar Excel Participaciones - Archivo recibido, tamaño:', blob.size);
+        return blob;
+      }),
+      catchError(error => {
+        console.error('❌ POST Exportar Excel Participaciones - Error:', error);
+        return this.handleBlobError(error);
+      })
+    );
+  }
+
+  /**
+   * GET /api/exportar/plantillas/participantes
+   * Obtener plantilla de participantes
+   */
+  obtenerPlantillaParticipantes(): Observable<Blob> {
+    console.log('🔄 GET Plantilla Participantes - URL:', `${this.exportarUrl}/plantillas/participantes`);
+    
+    return this.http.get<Blob>(`${this.exportarUrl}/plantillas/participantes`, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }).pipe(
+      map(blob => {
+        console.log('✅ GET Plantilla Participantes - Archivo recibido, tamaño:', blob.size);
+        return blob;
+      }),
+      catchError(error => {
+        console.error('❌ GET Plantilla Participantes - Error:', error);
+        return this.handleBlobError(error);
+      })
+    );
+  }
+
+  /**
+   * POST /api/exportar/importar/participantes/{idSubactividad}
+   * Importar participantes desde Excel
+   */
+  importarParticipantes(idSubactividad: number, archivo: File): Observable<any> {
+    console.log('🔄 POST Importar Participantes - URL:', `${this.exportarUrl}/importar/participantes/${idSubactividad}`);
+    
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    
+    return this.http.post<any>(`${this.exportarUrl}/importar/participantes/${idSubactividad}`, formData).pipe(
+      map(response => {
+        console.log('✅ POST Importar Participantes - Respuesta recibida:', response);
+        return response.data || response;
+      }),
+      catchError(error => {
+        console.error('❌ POST Importar Participantes - Error:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * POST /api/Reportes/generar/excel
+   * Generar reporte en Excel (método legacy, ahora usa exportarExcelActividades)
+   * @deprecated Usar exportarExcelActividades, exportarExcelTodo o exportarExcelParticipaciones
+   */
+  generarExcel(config: ReporteConfig): Observable<Blob> {
+    console.log('🔄 POST Generar Excel (legacy) - Redirigiendo a exportarExcelActividades');
+    
+    // Determinar qué endpoint usar basado en el tipo de reporte
+    const tipoReporte = (config.tipoReporte || '').toLowerCase();
+    
+    if (tipoReporte.includes('participacion') || tipoReporte.includes('participaciones')) {
+      return this.exportarExcelParticipaciones(config);
+    } else if (tipoReporte.includes('todo') || tipoReporte === 'completo') {
+      return this.exportarExcelTodo(config);
+    } else {
+      // Por defecto, exportar actividades
+      return this.exportarExcelActividades(config);
+    }
+  }
+
+  /**
+   * Manejar errores de respuesta Blob
+   */
+  private handleBlobError(error: any): Observable<never> {
+    if (error?.error instanceof Blob) {
+      return from(error.error.text() as Promise<string>).pipe(
+        switchMap((text: string) => {
+          let parsed: any = text;
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            // keep raw text
+          }
+
+          const backendMessage =
+            typeof parsed === 'string'
+              ? parsed
+              : parsed?.detail || parsed?.message || parsed?.title || text;
+
+          (error as any).backendMessage = backendMessage;
+          (error as any).validationErrors = parsed?.errors;
+          (error as any).error = parsed;
+
+          if (parsed?.errors && typeof parsed.errors === 'object') {
+            console.error('❌ Error con validaciones:', parsed.errors);
+          }
+
+          return throwError(() => error);
+        })
+      );
+    }
+    return throwError(() => error);
   }
 
   /**

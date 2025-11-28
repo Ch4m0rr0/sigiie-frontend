@@ -14,8 +14,11 @@ export interface Subactividad {
   modalidad?: string;
   organizador?: string;
   activo: boolean;
+  creadoPor: number;
   fechaCreacion: string;
   fechaModificacion?: string;
+  idCapacidadInstalada?: number;
+  idDocenteOrganizador?: number;
 }
 
 export interface SubactividadCreate {
@@ -30,5 +33,24 @@ export interface SubactividadCreate {
   modalidad?: string;
   organizador?: string;
   activo?: boolean;
+  idCapacidadInstalada?: number;
+  idDocenteOrganizador?: number;
+}
+
+export interface SubactividadUpdate extends Partial<SubactividadCreate> {
+  // Todos los campos son opcionales en Update
+}
+
+export interface SubactividadFilterDto {
+  IdActividad?: number;
+  IdTipoSubactividad?: number;
+  DepartamentoResponsableId?: number;
+  BusquedaTexto?: string;
+  Nombre?: string;
+  FechaInicioDesde?: string;
+  FechaInicioHasta?: string;
+  FechaFinDesde?: string;
+  FechaFinHasta?: string;
+  Activo?: boolean;
 }
 

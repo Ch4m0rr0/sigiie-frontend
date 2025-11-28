@@ -5,10 +5,14 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
+import { PersonasService } from '../../core/services/personas.service';
+import { SubactividadResponsableService, type SubactividadResponsableCreate } from '../../core/services/subactividad-responsable.service';
 import type { SubactividadCreate } from '../../core/models/subactividad';
 import type { Actividad } from '../../core/models/actividad';
 import type { TipoSubactividad } from '../../core/models/catalogos-nuevos';
 import type { Departamento } from '../../core/models/departamento';
+import type { Docente } from '../../core/models/docente';
+import type { Administrativo } from '../../core/models/administrativo';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
@@ -29,6 +33,8 @@ export class SubactividadFormComponent implements OnInit {
   private subactividadService = inject(SubactividadService);
   private actividadesService = inject(ActividadesService);
   private catalogosService = inject(CatalogosService);
+  private personasService = inject(PersonasService);
+  private subactividadResponsableService = inject(SubactividadResponsableService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -36,6 +42,9 @@ export class SubactividadFormComponent implements OnInit {
   actividades = signal<Actividad[]>([]);
   tiposSubactividad = signal<TipoSubactividad[]>([]);
   departamentos = signal<Departamento[]>([]);
+  docentes = signal<Docente[]>([]);
+  administrativos = signal<Administrativo[]>([]);
+  tipoResponsable = signal<'docente' | 'administrativo' | null>(null);
   isEditMode = signal(false);
   subactividadId = signal<number | null>(null);
   loading = signal(false);
@@ -46,6 +55,8 @@ export class SubactividadFormComponent implements OnInit {
     this.loadActividades();
     this.loadTiposSubactividad();
     this.loadDepartamentos();
+    this.loadDocentes();
+    this.loadAdministrativos();
 
     const id = this.route.snapshot.paramMap.get('id');
     const actividadId = this.route.snapshot.queryParamMap.get('actividadId');
@@ -69,10 +80,28 @@ export class SubactividadFormComponent implements OnInit {
       fechaInicio: [''],
       fechaFin: [''],
       departamentoResponsableId: [null],
+      tipoResponsable: [null],
+      idDocenteResponsable: [null],
+      idAdministrativoResponsable: [null],
       ubicacion: [''],
       modalidad: [''],
       organizador: [''],
       activo: [true]
+    });
+
+    // Cuando cambia el tipo de responsable, limpiar el otro campo
+    this.form.get('tipoResponsable')?.valueChanges.subscribe(tipo => {
+      this.tipoResponsable.set(tipo);
+      if (tipo === 'docente') {
+        this.form.patchValue({ idAdministrativoResponsable: null }, { emitEvent: false });
+      } else if (tipo === 'administrativo') {
+        this.form.patchValue({ idDocenteResponsable: null }, { emitEvent: false });
+      } else {
+        this.form.patchValue({ 
+          idDocenteResponsable: null, 
+          idAdministrativoResponsable: null 
+        }, { emitEvent: false });
+      }
     });
   }
 
@@ -97,6 +126,20 @@ export class SubactividadFormComponent implements OnInit {
     });
   }
 
+  loadDocentes(): void {
+    this.personasService.listDocentes().subscribe({
+      next: (data) => this.docentes.set(data),
+      error: (err) => console.error('Error loading docentes:', err)
+    });
+  }
+
+  loadAdministrativos(): void {
+    this.personasService.listAdministrativos().subscribe({
+      next: (data) => this.administrativos.set(data),
+      error: (err) => console.error('Error loading administrativos:', err)
+    });
+  }
+
   loadSubactividad(id: number): void {
     this.loading.set(true);
     this.subactividadService.getById(id).subscribe({
@@ -114,7 +157,31 @@ export class SubactividadFormComponent implements OnInit {
           organizador: data.organizador || '',
           activo: data.activo
         });
-        this.loading.set(false);
+        
+        // Cargar responsables de la subactividad
+        this.subactividadResponsableService.getBySubactividad(id).subscribe({
+          next: (responsables) => {
+            if (responsables && responsables.length > 0) {
+              const responsable = responsables[0]; // Tomar el primero si hay varios
+              if (responsable.idDocente) {
+                this.form.patchValue({
+                  tipoResponsable: 'docente',
+                  idDocenteResponsable: responsable.idDocente
+                });
+              } else if (responsable.idAdministrativo) {
+                this.form.patchValue({
+                  tipoResponsable: 'administrativo',
+                  idAdministrativoResponsable: responsable.idAdministrativo
+                });
+              }
+            }
+            this.loading.set(false);
+          },
+          error: (err) => {
+            console.warn('Error loading responsables:', err);
+            this.loading.set(false);
+          }
+        });
       },
       error: (err) => {
         console.error('Error loading subactividad:', err);
@@ -146,7 +213,70 @@ export class SubactividadFormComponent implements OnInit {
       if (this.isEditMode()) {
         this.subactividadService.update(this.subactividadId()!, data).subscribe({
           next: () => {
-            this.router.navigate(['/subactividades']);
+            // Actualizar responsable si se seleccionó uno
+            const tipoResponsable = this.form.value.tipoResponsable;
+            const idDocente = this.form.value.idDocenteResponsable;
+            const idAdministrativo = this.form.value.idAdministrativoResponsable;
+
+            // Primero obtener los responsables existentes
+            this.subactividadResponsableService.getBySubactividad(this.subactividadId()!).subscribe({
+              next: (responsablesExistentes) => {
+                if (tipoResponsable && (idDocente || idAdministrativo)) {
+                  // Si ya existe un responsable, actualizarlo; si no, crear uno nuevo
+                  if (responsablesExistentes && responsablesExistentes.length > 0) {
+                    const responsableExistente = responsablesExistentes[0];
+                    const responsableData: SubactividadResponsableCreate = {
+                      idSubactividad: this.subactividadId()!,
+                      idDocente: tipoResponsable === 'docente' ? idDocente : undefined,
+                      idAdministrativo: tipoResponsable === 'administrativo' ? idAdministrativo : undefined,
+                      activo: true
+                    };
+                    this.subactividadResponsableService.update(responsableExistente.idSubactividadResponsable, responsableData).subscribe({
+                      next: () => {
+                        console.log('✅ Responsable actualizado correctamente');
+                        this.router.navigate(['/subactividades']);
+                      },
+                      error: (err: any) => {
+                        console.error('Error actualizando responsable:', err);
+                        this.router.navigate(['/subactividades']);
+                      }
+                    });
+                  } else {
+                    // Crear nuevo responsable
+                    const responsableData: SubactividadResponsableCreate = {
+                      idSubactividad: this.subactividadId()!,
+                      idDocente: tipoResponsable === 'docente' ? idDocente : undefined,
+                      idAdministrativo: tipoResponsable === 'administrativo' ? idAdministrativo : undefined,
+                      activo: true
+                    };
+                    this.subactividadResponsableService.create(responsableData).subscribe({
+                      next: () => {
+                        console.log('✅ Responsable creado correctamente');
+                        this.router.navigate(['/subactividades']);
+                      },
+                      error: (err: any) => {
+                        console.error('Error creando responsable:', err);
+                        this.router.navigate(['/subactividades']);
+                      }
+                    });
+                  }
+                } else {
+                  // Si no se seleccionó responsable, eliminar los existentes
+                  if (responsablesExistentes && responsablesExistentes.length > 0) {
+                    responsablesExistentes.forEach(responsable => {
+                      this.subactividadResponsableService.delete(responsable.idSubactividadResponsable).subscribe({
+                        error: (err: any) => console.error('Error eliminando responsable:', err)
+                      });
+                    });
+                  }
+                  this.router.navigate(['/subactividades']);
+                }
+              },
+              error: (err: any) => {
+                console.warn('Error obteniendo responsables:', err);
+                this.router.navigate(['/subactividades']);
+              }
+            });
           },
           error: (err: any) => {
             console.error('Error saving subactividad:', err);
@@ -156,8 +286,34 @@ export class SubactividadFormComponent implements OnInit {
         });
       } else {
         this.subactividadService.create(data).subscribe({
-          next: () => {
-            this.router.navigate(['/subactividades']);
+          next: (subactividadCreada) => {
+            // Crear responsable si se seleccionó uno
+            const tipoResponsable = this.form.value.tipoResponsable;
+            const idDocente = this.form.value.idDocenteResponsable;
+            const idAdministrativo = this.form.value.idAdministrativoResponsable;
+
+            if (tipoResponsable && (idDocente || idAdministrativo)) {
+              const responsableData: SubactividadResponsableCreate = {
+                idSubactividad: subactividadCreada.idSubactividad,
+                idDocente: tipoResponsable === 'docente' ? idDocente : undefined,
+                idAdministrativo: tipoResponsable === 'administrativo' ? idAdministrativo : undefined,
+                activo: true
+              };
+
+              this.subactividadResponsableService.create(responsableData).subscribe({
+                next: () => {
+                  console.log('✅ Responsable asignado correctamente');
+                  this.router.navigate(['/subactividades']);
+                },
+                error: (err: any) => {
+                  console.error('Error asignando responsable:', err);
+                  // Aún así navegar, el responsable se puede asignar después
+                  this.router.navigate(['/subactividades']);
+                }
+              });
+            } else {
+              this.router.navigate(['/subactividades']);
+            }
           },
           error: (err: any) => {
             console.error('Error saving subactividad:', err);

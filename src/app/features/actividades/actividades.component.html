@@ -5,38 +5,720 @@
       <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
         Actividades
       </h1>
-      <p class="text-slate-500 mt-1 text-sm md:text-base">
-        Gestión operativa y seguimiento de actividades del sistema.
-      </p>
     </div>
     
-    <div class="flex gap-3">
-      <button 
-        (click)="toggleFormIndicadorPadre()"
-        class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
-        <app-icon icon="add" size="sm" color="white"></app-icon>
-        <span>{{ mostrarFormIndicadorPadre() ? 'Cancelar' : 'Agregar Indicador Padre' }}</span>
-      </button>
-      <button 
-        (click)="toggleFormIndicador()"
-        class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
-        <app-icon icon="add" size="sm" color="white"></app-icon>
-        <span>{{ mostrarFormIndicador() ? 'Cancelar' : 'Agregar Indicador Hijo' }}</span>
-      </button>
-      <button 
-        (click)="navigateToCreate()"
-        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
-        <app-icon icon="add" size="sm" color="white"></app-icon>
-        <span>Nueva Actividad</span>
-      </button>
+    <div class="flex gap-3 flex-wrap">
+      <!-- Dropdown Indicador Seleccionado -->
+      <div class="relative">
+        <button 
+          type="button"
+          (click)="toggleDropdownIndicadorSeleccionado()"
+          class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+          <span>{{ getIndicadorSeleccionadoNombre() }}</span>
+          <app-icon icon="expand_more" size="sm" color="white" [class.rotate-180]="mostrarDropdownIndicadorSeleccionado()"></app-icon>
+        </button>
+        
+        <!-- Dropdown de indicadores -->
+        @if (mostrarDropdownIndicadorSeleccionado() && indicadores().length > 0) {
+          <div class="absolute z-50 mt-1 right-0 bg-white border border-slate-300 rounded-lg shadow-lg min-w-[280px] max-h-60 overflow-y-auto">
+            <div class="py-1">
+              <button
+                type="button"
+                (click)="seleccionarIndicadorGlobal(null)"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
+                [class.bg-blue-50]="indicadorSeleccionado() === null">
+                <app-icon icon="close" size="xs" class="text-blue-600"></app-icon>
+                Ninguno
+              </button>
+              @for (indicador of indicadores(); track indicador.idIndicador) {
+                <button
+                  type="button"
+                  (click)="seleccionarIndicadorGlobal(indicador.idIndicador)"
+                  class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
+                  [class.bg-blue-50]="indicadorSeleccionado() === indicador.idIndicador">
+                  <app-icon icon="check_circle" size="xs" class="text-blue-600" [class.opacity-0]="indicadorSeleccionado() !== indicador.idIndicador"></app-icon>
+                  {{ indicador.codigo }} - {{ indicador.nombre }}
+                </button>
+              }
+            </div>
+          </div>
+        } @else if (mostrarDropdownIndicadorSeleccionado() && indicadores().length === 0) {
+          <div class="absolute z-50 mt-1 right-0 bg-white border border-slate-300 rounded-lg shadow-lg min-w-[280px]">
+            <div class="py-4 px-4 text-center text-sm text-slate-500">
+              No hay indicadores disponibles. Cree uno primero.
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Botón Nueva Actividad con dropdown condicional -->
+      <div class="relative">
+        <button 
+          type="button"
+          (click)="toggleDropdownActividad()"
+          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95"
+          [class.opacity-50]="!indicadorSeleccionado()"
+          [class.cursor-not-allowed]="!indicadorSeleccionado()">
+          <span>Nueva Actividad</span>
+          <app-icon icon="add" size="sm" color="white" [class.rotate-180]="mostrarDropdownTipoActividad()"></app-icon>
+        </button>
+        
+        <!-- Dropdown de opciones de actividad (solo si hay indicador seleccionado) -->
+        @if (mostrarDropdownTipoActividad() && indicadorSeleccionado()) {
+          <div class="absolute z-50 mt-1 right-0 bg-white border border-slate-300 rounded-lg shadow-lg min-w-[220px]">
+            <div class="py-1">
+              <button
+                type="button"
+                (click)="seleccionarTipoActividad('anual')"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2">
+                <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                Actividad anual
+              </button>
+              <button
+                type="button"
+                (click)="seleccionarTipoActividad('no-planificada')"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2">
+                <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
+                Actividad no planificada
+              </button>
+            </div>
+          </div>
+        }
+      </div>
     </div>
   </div>
 
-  <!-- Formulario para crear indicador padre -->
-  @if (mostrarFormIndicadorPadre()) {
+  <!-- Formulario para nueva actividad -->
+  @if (mostrarFormNuevaActividad()) {
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-      <h2 class="text-lg font-semibold text-slate-900 mb-4">Nuevo Indicador Padre</h2>
-      <form [formGroup]="formIndicadorPadre" (ngSubmit)="onSubmitIndicadorPadre()" class="space-y-4">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-slate-900">
+          {{ tipoActividadSeleccionado() === 'anual' ? 'Nueva Actividad Anual' : 'Nueva Actividad no Planificada' }}
+        </h2>
+        <button 
+          type="button"
+          (click)="cerrarFormNuevaActividad()"
+          class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+          <app-icon icon="close" size="sm"></app-icon>
+        </button>
+      </div>
+      
+      <form [formGroup]="formNuevaActividad" (ngSubmit)="onSubmitNuevaActividad()" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Indicador (solo lectura, viene del indicador seleccionado) -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Indicador <span class="text-xs text-slate-500">(Puedes cambiar el indicador regresando al boton de indicador seleccionado si lo deseas)</span>
+            </label>
+            <div class="relative">
+              <input 
+                type="text"
+                [value]="getIndicadorFormNombre()"
+                readonly
+                disabled
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-600 cursor-not-allowed">
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="lock" size="xs"></app-icon>
+              </span>
+            </div>
+            @if (!indicadorSeleccionado()) {
+              <p class="mt-1 text-xs text-amber-600">
+                ⚠️ Debe seleccionar un indicador en el botón "Indicador Seleccionado" antes de crear una actividad.
+              </p>
+            }
+          </div>
+
+          <!-- Seleccionar Actividad Anual -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-sm font-medium text-slate-700">
+                Actividad Anual
+              </label>
+              @if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
+                <button
+                  type="button"
+                  (click)="crearNuevaActividadAnual()"
+                  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors">
+                  <app-icon icon="add" size="xs"></app-icon>
+                  <span>Nueva</span>
+                </button>
+              }
+            </div>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="calendar_today" size="xs"></app-icon>
+              </span>
+              <select 
+                formControlName="idActividadAnual"
+                class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option [ngValue]="null">Seleccione actividad anual...</option>
+                @if (actividadesAnualesFiltradas().length > 0) {
+                  @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
+                    <option [ngValue]="anual.idActividadAnual">
+                      {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                    </option>
+                  }
+                } @else if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
+                  <option disabled>No hay actividades anuales para este indicador</option>
+                } @else {
+                  <option disabled>Seleccione un indicador primero</option>
+                }
+              </select>
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+              </span>
+            </div>
+          </div>
+
+          <!-- Seleccionar Actividad Mensual -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Actividad Mensual Institucional
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="calendar_month" size="xs"></app-icon>
+              </span>
+              <select 
+                formControlName="idActividadMensualInst"
+                class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option [ngValue]="null">Seleccione actividad mensual...</option>
+                @if (actividadesMensualesFiltradas().length > 0) {
+                  @for (mensual of actividadesMensualesFiltradas(); track mensual.idActividadMensualInst) {
+                    <option [ngValue]="mensual.idActividadMensualInst">
+                      {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
+                    </option>
+                  }
+                } @else if (formNuevaActividad.get('idActividadAnual')?.value) {
+                  <option disabled>No hay actividades mensuales para esta actividad anual</option>
+                } @else {
+                  <option disabled>Seleccione una actividad anual primero</option>
+                }
+              </select>
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos adicionales que aparecen cuando se seleccionan actividad anual y mensual -->
+        @if (formNuevaActividad.get('idActividadAnual')?.value && formNuevaActividad.get('idActividadMensualInst')?.value) {
+          <div class="border-t border-slate-200 pt-6 mt-6 space-y-6">
+            <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+              <app-icon icon="edit_note" size="sm"></app-icon>
+              <h3 class="text-sm font-bold uppercase tracking-wide">Información de la Actividad</h3>
+            </div>
+
+            <!-- Nombre de la actividad -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                Nombre de la Actividad <span class="text-red-500">*</span>
+              </label>
+              <input 
+                type="text"
+                formControlName="nombreActividad"
+                placeholder="Ej: Taller de investigación"
+                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                [class.border-red-500]="formNuevaActividad.get('nombreActividad')?.invalid && formNuevaActividad.get('nombreActividad')?.touched">
+              @if (formNuevaActividad.get('nombreActividad')?.invalid && formNuevaActividad.get('nombreActividad')?.touched) {
+                <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
+              }
+            </div>
+
+            <!-- Descripción y Objetivo -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Descripción
+                </label>
+                <textarea 
+                  formControlName="descripcion"
+                  rows="3"
+                  placeholder="Descripción detallada de la actividad..."
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Objetivo
+                </label>
+                <textarea 
+                  formControlName="objetivo"
+                  rows="3"
+                  placeholder="Objetivo principal de la actividad..."
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+              </div>
+            </div>
+
+            <!-- Fechas -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Fecha de Inicio
+                </label>
+                <input 
+                  type="date"
+                  formControlName="fechaInicio"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Fecha de Fin
+                </label>
+                <input 
+                  type="date"
+                  formControlName="fechaFin"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Fecha del Evento
+                </label>
+                <input 
+                  type="date"
+                  formControlName="fechaEvento"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Hora de Realización
+                </label>
+                <input 
+                  type="time"
+                  formControlName="horaRealizacion"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+            </div>
+
+            <!-- Departamentos y Tipos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Departamento Responsable
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="business" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="departamentoResponsableId"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione departamento...</option>
+                    @for (dept of departamentos(); track dept.idDepartamento || dept.id) {
+                      <option [ngValue]="dept.idDepartamento || dept.id">
+                        {{ dept.nombre || dept.Nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Tipo de Iniciativa
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="lightbulb" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idTipoIniciativa"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione tipo...</option>
+                    @for (tipo of tiposIniciativa(); track tipo.idTipoIniciativa || tipo.id) {
+                      <option [ngValue]="tipo.idTipoIniciativa || tipo.id">
+                        {{ tipo.nombre || tipo.Nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Estado de Actividad
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="toggle_on" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idEstadoActividad"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione estado...</option>
+                    @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                      <option [ngValue]="estado.idEstadoActividad || estado.id">
+                        {{ estado.nombre || estado.Nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tipo de Actividad, Área y Tipo de Documento -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Tipo de Actividad
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="category" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idTipoActividad"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione tipo...</option>
+                    @for (tipo of tiposActividad(); track tipo.idCategoriaActividad || tipo.id) {
+                      <option [ngValue]="tipo.idCategoriaActividad || tipo.id">
+                        {{ tipo.nombre || tipo.Nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Área de Conocimiento
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="school" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idArea"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione área...</option>
+                    @for (area of areasConocimiento(); track area.idArea || area.id) {
+                      <option [ngValue]="area.idArea || area.id">
+                        {{ area.nombre || area.Nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Tipo de Documento
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="description" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idTipoDocumento"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione tipo...</option>
+                    @for (tipo of tiposDocumento(); track tipo.idTipoDocumento || tipo.id) {
+                      <option [ngValue]="tipo.idTipoDocumento || tipo.id">
+                        {{ tipo.nombre || tipo.Nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modalidad, Capacidad Instalada y Código -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Modalidad
+                </label>
+                <select 
+                  formControlName="modalidad"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                  <option value="">Seleccione modalidad...</option>
+                  <option value="Presencial">Presencial</option>
+                  <option value="Virtual">Virtual</option>
+                  <option value="Híbrida">Híbrida</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Capacidad Instalada
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="location_on" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idCapacidadInstalada"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione capacidad...</option>
+                    @for (capacidad of capacidadesInstaladas(); track capacidad.id) {
+                      <option [ngValue]="capacidad.id">
+                        {{ capacidad.nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Código de Actividad
+                </label>
+                <input 
+                  type="text"
+                  formControlName="codigoActividad"
+                  placeholder="Ej: ACT-2024-001"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+            </div>
+
+            <!-- Nivel y Tipo de Protagonista -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Nivel de Actividad
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="layers" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idNivel"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione nivel...</option>
+                    @for (nivel of nivelesActividad(); track nivel.idNivel) {
+                      <option [ngValue]="nivel.idNivel">
+                        {{ nivel.nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Tipo de Protagonista
+                </label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                    <app-icon icon="people" size="xs"></app-icon>
+                  </span>
+                  <select 
+                    formControlName="idTipoProtagonista"
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    <option [ngValue]="null">Seleccione tipo...</option>
+                    @for (tipo of tiposProtagonista(); track tipo.id) {
+                      <option [ngValue]="tipo.id">
+                        {{ tipo.nombre }}
+                      </option>
+                    }
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Participantes -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Cantidad Máxima Participantes Estudiantes
+                </label>
+                <input 
+                  type="number"
+                  formControlName="cantidadMaximaParticipantesEstudiantes"
+                  min="0"
+                  placeholder="Ej: 50"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Cantidad Participantes Proyectados
+                </label>
+                <input 
+                  type="number"
+                  formControlName="cantidadParticipantesProyectados"
+                  min="0"
+                  placeholder="Ej: 30"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Año
+                </label>
+                <input 
+                  type="number"
+                  formControlName="anio"
+                  min="2000"
+                  max="2100"
+                  placeholder="Ej: 2024"
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+            </div>
+
+            <!-- Metas y Valoraciones -->
+            <div class="border-t border-slate-200 pt-6 mt-6">
+              <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700 mb-4">
+                <app-icon icon="assessment" size="sm"></app-icon>
+                <h3 class="text-sm font-bold uppercase tracking-wide">Metas y Valoraciones</h3>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Meta Alcanzada
+                  </label>
+                  <input 
+                    type="number"
+                    formControlName="metaAlcanzada"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ej: 100"
+                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Meta Cumplimiento (%)
+                  </label>
+                  <input 
+                    type="number"
+                    formControlName="metaCumplimiento"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="Ej: 85.5"
+                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Tipo/Resumen de Acción
+                </label>
+                <input 
+                  type="text"
+                  formControlName="tipoResumenAccion"
+                  placeholder="Ej: Taller de investigación, Conferencia, etc."
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+              </div>
+
+              <div class="mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Valoración Indicador Estratégico
+                </label>
+                <textarea 
+                  formControlName="valoracionIndicadorEstrategico"
+                  rows="3"
+                  placeholder="Valoración cualitativa del indicador estratégico..."
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+              </div>
+
+              <div class="mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                  Brecha Estratégica
+                </label>
+                <textarea 
+                  formControlName="brechaEstrategica"
+                  rows="3"
+                  placeholder="Brecha estratégica identificada..."
+                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (errorNuevaActividad()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorNuevaActividad() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="cerrarFormNuevaActividad()"
+            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="formNuevaActividad.invalid || loadingNuevaActividad()"
+            class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+            @if (loadingNuevaActividad()) {
+              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span>Creando...</span>
+            } @else {
+              <app-icon icon="check" size="xs" color="white"></app-icon>
+              <span>Crear Actividad</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Formulario para crear indicador -->
+  @if (mostrarFormIndicador()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-slate-900">Nuevo Indicador</h2>
+        <div class="flex gap-2 flex-wrap">
+          <button 
+            type="button"
+            (click)="toggleFormImportarAnio()"
+            class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95 text-sm">
+            <app-icon icon="upload" size="xs" color="white"></app-icon>
+            <span>{{ mostrarFormImportarAnio() ? 'Cancelar' : 'Importar desde Año' }}</span>
+          </button>
+          <button 
+            type="button"
+            (click)="toggleFormImportarExcel()"
+            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95 text-sm">
+            <app-icon icon="upload_file" size="xs" color="white"></app-icon>
+            <span>{{ mostrarFormImportarExcel() ? 'Cancelar' : 'Importar desde Excel' }}</span>
+          </button>
+          <button 
+            type="button"
+            (click)="descargarPlantillaExcel()"
+            class="flex items-center gap-2 bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95 text-sm">
+            <app-icon icon="download" size="xs" color="white"></app-icon>
+            <span>Descargar Plantilla</span>
+          </button>
+        </div>
+      </div>
+      <form [formGroup]="formIndicador" (ngSubmit)="onSubmitIndicador()" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1.5">
@@ -46,9 +728,9 @@
               type="text"
               formControlName="codigo"
               placeholder="Ej: 6.1"
-              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              [class.border-red-500]="formIndicadorPadre.get('codigo')?.invalid && formIndicadorPadre.get('codigo')?.touched">
-            @if (formIndicadorPadre.get('codigo')?.invalid && formIndicadorPadre.get('codigo')?.touched) {
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+              [class.border-red-500]="formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched">
+            @if (formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched) {
               <p class="mt-1 text-xs text-red-600">El código es obligatorio</p>
             }
           </div>
@@ -60,119 +742,49 @@
             <input 
               type="text"
               formControlName="nombre"
-              placeholder="Nombre del indicador padre"
-              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-              [class.border-red-500]="formIndicadorPadre.get('nombre')?.invalid && formIndicadorPadre.get('nombre')?.touched">
-            @if (formIndicadorPadre.get('nombre')?.invalid && formIndicadorPadre.get('nombre')?.touched) {
+              placeholder="Nombre del indicador"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+              [class.border-red-500]="formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched">
+            @if (formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched) {
               <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
             }
           </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Descripción
-          </label>
-          <textarea 
-            formControlName="descripcion"
-            rows="3"
-            placeholder="Descripción del indicador..."
-            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"></textarea>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" formControlName="activo" class="sr-only peer">
-            <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            <span class="ms-3 text-sm font-medium text-slate-700">Activo</span>
-          </label>
-        </div>
-
-        @if (errorIndicadorPadre()) {
-          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorIndicadorPadre() }}</p>
-          </div>
-        }
-
-        <div class="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            (click)="toggleFormIndicadorPadre()"
-            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            [disabled]="formIndicadorPadre.invalid || loadingIndicadorPadre()"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
-            @if (loadingIndicadorPadre()) {
-              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              <span>Guardando...</span>
-            } @else {
-              <app-icon icon="save" size="xs" color="white"></app-icon>
-              <span>Crear Indicador</span>
-            }
-          </button>
-        </div>
-      </form>
-    </div>
-  }
-
-  <!-- Formulario para crear indicador hijo -->
-  @if (mostrarFormIndicador()) {
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-      <h2 class="text-lg font-semibold text-slate-900 mb-4">Nuevo Indicador Hijo</h2>
-      <form [formGroup]="formIndicador" (ngSubmit)="onSubmitIndicador()" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1.5">
-              Indicador Padre <span class="text-red-500">*</span>
+              Año
             </label>
-            <select 
-              formControlName="idIndicadorPadre"
+            <input 
+              type="number"
+              formControlName="anio"
+              placeholder="Ej: 2024"
+              min="2000"
+              max="2100"
               class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-              [class.border-red-500]="formIndicador.get('idIndicadorPadre')?.invalid && formIndicador.get('idIndicadorPadre')?.touched">
-              <option [value]="null">Seleccione un indicador padre...</option>
-              @for (ind of indicadoresPadre(); track ind.idIndicador) {
-                <option [value]="ind.idIndicador">
-                  {{ ind.codigo }} - {{ ind.nombre }}
-                </option>
-              }
-            </select>
-            @if (formIndicador.get('idIndicadorPadre')?.invalid && formIndicador.get('idIndicadorPadre')?.touched) {
-              <p class="mt-1 text-xs text-red-600">El indicador padre es obligatorio</p>
+              [class.border-red-500]="formIndicador.get('anio')?.invalid && formIndicador.get('anio')?.touched">
+            @if (formIndicador.get('anio')?.invalid && formIndicador.get('anio')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El año debe ser válido</p>
             }
           </div>
 
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1.5">
-              Código <span class="text-red-500">*</span>
+              Meta
             </label>
             <input 
-              type="text"
-              formControlName="codigo"
-              placeholder="Ej: 6.1.1"
+              type="number"
+              formControlName="meta"
+              placeholder="Ej: 100"
+              min="0"
+              step="0.01"
               class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-              [class.border-red-500]="formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched">
-            @if (formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched) {
-              <p class="mt-1 text-xs text-red-600">El código es obligatorio</p>
+              [class.border-red-500]="formIndicador.get('meta')?.invalid && formIndicador.get('meta')?.touched">
+            @if (formIndicador.get('meta')?.invalid && formIndicador.get('meta')?.touched) {
+              <p class="mt-1 text-xs text-red-600">La meta debe ser un número válido</p>
             }
           </div>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1.5">
-            Nombre <span class="text-red-500">*</span>
-          </label>
-          <input 
-            type="text"
-            formControlName="nombre"
-            placeholder="Nombre del indicador hijo"
-            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
-            [class.border-red-500]="formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched">
-          @if (formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched) {
-            <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
-          }
         </div>
 
         <div>
@@ -224,51 +836,153 @@
     </div>
   }
 
+  <!-- Formulario para importar desde año -->
+  @if (mostrarFormImportarAnio()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold text-slate-900 mb-4">Importar Indicadores desde Año</h2>
+      <form [formGroup]="formImportarAnio" (ngSubmit)="onSubmitImportarAnio()" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Año Origen <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="number"
+              formControlName="anioOrigen"
+              placeholder="Ej: 2023"
+              min="2000"
+              max="2100"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+              [class.border-red-500]="formImportarAnio.get('anioOrigen')?.invalid && formImportarAnio.get('anioOrigen')?.touched">
+            @if (formImportarAnio.get('anioOrigen')?.invalid && formImportarAnio.get('anioOrigen')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El año origen es obligatorio</p>
+            }
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              Año Destino <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="number"
+              formControlName="anioDestino"
+              placeholder="Ej: 2024"
+              min="2000"
+              max="2100"
+              class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+              [class.border-red-500]="formImportarAnio.get('anioDestino')?.invalid && formImportarAnio.get('anioDestino')?.touched">
+            @if (formImportarAnio.get('anioDestino')?.invalid && formImportarAnio.get('anioDestino')?.touched) {
+              <p class="mt-1 text-xs text-red-600">El año destino es obligatorio</p>
+            }
+          </div>
+
+          <div class="flex items-end">
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" formControlName="actualizarExistentes" class="sr-only peer">
+              <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span class="ms-3 text-sm font-medium text-slate-700">Actualizar existentes</span>
+            </label>
+          </div>
+        </div>
+
+        @if (errorImportarAnio()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorImportarAnio() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="toggleFormImportarAnio()"
+            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="formImportarAnio.invalid || loadingImportarAnio()"
+            class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+            @if (loadingImportarAnio()) {
+              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span>Importando...</span>
+            } @else {
+              <app-icon icon="upload" size="xs" color="white"></app-icon>
+              <span>Importar</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  }
+
+  <!-- Formulario para importar desde Excel -->
+  @if (mostrarFormImportarExcel()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+      <h2 class="text-lg font-semibold text-slate-900 mb-4">Importar Indicadores desde Excel</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            Archivo Excel <span class="text-red-500">*</span>
+          </label>
+          <div class="mt-2">
+            <input 
+              type="file"
+              accept=".xlsx,.xls"
+              (change)="onFileSelected($event)"
+              class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+            <p class="mt-1 text-xs text-slate-500">
+              Formatos aceptados: .xlsx, .xls
+            </p>
+            @if (archivoExcel) {
+              <p class="mt-2 text-sm text-emerald-600 font-medium">
+                <app-icon icon="check_circle" size="xs" class="inline-block mr-1"></app-icon>
+                Archivo seleccionado: {{ archivoExcel.name }}
+              </p>
+            }
+          </div>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p class="text-sm text-blue-800">
+            <app-icon icon="info" size="xs" class="inline-block mr-1"></app-icon>
+            <strong>Nota:</strong> Si no tienes la plantilla, puedes descargarla haciendo clic en "Descargar Plantilla Excel".
+          </p>
+        </div>
+
+        @if (errorImportarExcel()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorImportarExcel() }}</p>
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            (click)="toggleFormImportarExcel()"
+            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            (click)="onSubmitImportarExcel()"
+            [disabled]="!archivoExcel || loadingImportarExcel()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+            @if (loadingImportarExcel()) {
+              <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span>Importando...</span>
+            } @else {
+              <app-icon icon="upload_file" size="xs" color="white"></app-icon>
+              <span>Importar</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
       
-      <div class="md:col-span-4">
-        <label class="block text-xs font-medium text-slate-500 mb-1.5">Planificación Asociada</label>
-        <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <app-icon icon="folder" size="xs"></app-icon>
-            </span>
-            <select 
-                [value]="filtroPlanificacion() ?? ''"
-                (change)="filtroPlanificacion.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
-                <option value="">Todas las planificaciones</option>
-                @for (plan of planificaciones(); track plan.idPlanificacion) {
-                  <option [value]="plan.idPlanificacion">{{ plan.nombre }}</option>
-                }
-            </select>
-            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <app-icon icon="expand_more" size="xs"></app-icon>
-            </span>
-        </div>
-      </div>
-
-      <div class="md:col-span-3">
-        <label class="block text-xs font-medium text-slate-500 mb-1.5">Nivel Estratégico</label>
-        <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <app-icon icon="layers" size="xs"></app-icon>
-            </span>
-            <select 
-                [value]="filtroNivel() ?? ''"
-                (change)="filtroNivel.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
-                <option value="">Todos los niveles</option>
-                @for (nivel of nivelesActividad(); track nivel.idNivel) {
-                  <option [value]="nivel.idNivel">{{ nivel.nombre }}</option>
-                }
-            </select>
-            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <app-icon icon="expand_more" size="xs"></app-icon>
-            </span>
-        </div>
-      </div>
-
       <div class="md:col-span-3">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Estado</label>
         <div class="relative">
@@ -289,12 +1003,58 @@
         </div>
       </div>
 
-      <div class="md:col-span-2">
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Anual</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="calendar_today" size="xs"></app-icon>
+            </span>
+            <select 
+                [value]="filtroActividadAnual() ?? ''"
+                (change)="filtroActividadAnual.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option value="">Todas las actividades anuales</option>
+                @for (anual of actividadesAnuales(); track anual.idActividadAnual) {
+                  <option [value]="anual.idActividadAnual">
+                    {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                  </option>
+                }
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+            </span>
+        </div>
+      </div>
+
+      <div class="md:col-span-3">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Mensual Institucional</label>
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <app-icon icon="calendar_month" size="xs"></app-icon>
+            </span>
+            <select 
+                [value]="filtroActividadMensualInst() ?? ''"
+                (change)="filtroActividadMensualInst.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
+                <option value="">Todas las actividades mensuales</option>
+                @for (mensual of actividadesMensualesInst(); track mensual.idActividadMensualInst) {
+                  <option [value]="mensual.idActividadMensualInst">
+                    {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
+                  </option>
+                }
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon icon="expand_more" size="xs"></app-icon>
+            </span>
+        </div>
+      </div>
+
+      <div class="md:col-span-3">
         <button 
           (click)="clearFilters()"
           class="w-full py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-sm font-medium flex items-center justify-center gap-2">
           <app-icon icon="restart_alt" size="xs"></app-icon>
-          Limpiar
+          Limpiar Filtros
         </button>
       </div>
     </div>

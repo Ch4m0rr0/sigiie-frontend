@@ -54,14 +54,17 @@ export class ActividadMensualFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadActividadesAnuales();
-
+    
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode.set(true);
       this.actividadMensualId.set(+id);
       this.loadActividadMensual(+id);
     }
+
+    // Leer idIndicador de query params (si viene desde el dropdown de actividades)
+    const idIndicador = this.route.snapshot.queryParams['idIndicador'];
+    this.loadActividadesAnuales(idIndicador ? +idIndicador : undefined);
   }
 
   initializeForm(): void {
@@ -74,8 +77,9 @@ export class ActividadMensualFormComponent implements OnInit {
     });
   }
 
-  loadActividadesAnuales(): void {
-    this.actividadAnualService.getAll().subscribe({
+  loadActividadesAnuales(idIndicador?: number): void {
+    const filters = idIndicador ? { idIndicador } : undefined;
+    this.actividadAnualService.getAll(filters).subscribe({
       next: (data) => {
         this.actividadesAnuales.set(data);
       },
@@ -116,13 +120,46 @@ export class ActividadMensualFormComponent implements OnInit {
 
       const formValue = this.form.value;
 
+      // Validar y convertir valores numéricos
+      // Los valores del select pueden venir como string, null o número
+      let idActividadAnual: number;
+      let mes: number;
+
+      // Convertir idActividadAnual
+      if (formValue.idActividadAnual === null || formValue.idActividadAnual === undefined || formValue.idActividadAnual === '') {
+        this.error.set('La actividad anual es requerida');
+        this.loading.set(false);
+        return;
+      }
+      idActividadAnual = Number(formValue.idActividadAnual);
+      if (isNaN(idActividadAnual) || idActividadAnual <= 0) {
+        this.error.set('La actividad anual seleccionada no es válida');
+        this.loading.set(false);
+        return;
+      }
+
+      // Convertir mes
+      if (formValue.mes === null || formValue.mes === undefined || formValue.mes === '') {
+        this.error.set('El mes es requerido');
+        this.loading.set(false);
+        return;
+      }
+      mes = Number(formValue.mes);
+      if (isNaN(mes) || mes < 1 || mes > 12) {
+        this.error.set('El mes debe estar entre 1 y 12');
+        this.loading.set(false);
+        return;
+      }
+
       const data: ActividadMensualInstCreate = {
-        idActividadAnual: formValue.idActividadAnual,
-        mes: formValue.mes,
+        idActividadAnual: idActividadAnual,
+        mes: mes,
         nombre: formValue.nombre?.trim() || undefined,
         descripcion: formValue.descripcion?.trim() || undefined,
         activo: formValue.activo ?? true
       };
+
+      console.log('🔄 FormComponent - Datos a enviar:', JSON.stringify(data, null, 2));
 
       if (this.isEditMode()) {
         this.actividadMensualInstService.update(this.actividadMensualId()!, data).subscribe({
@@ -142,7 +179,29 @@ export class ActividadMensualFormComponent implements OnInit {
           },
           error: (err: any) => {
             console.error('Error saving actividad mensual:', err);
-            this.error.set('Error al crear la actividad mensual institucional');
+            let errorMessage = 'Error al crear la actividad mensual institucional';
+            
+            if (err.error) {
+              // Intentar extraer mensajes de validación del backend
+              if (err.error.errors) {
+                const validationErrors = err.error.errors;
+                const errorMessages = Object.keys(validationErrors).map(key => {
+                  const messages = Array.isArray(validationErrors[key]) 
+                    ? validationErrors[key].join(', ') 
+                    : validationErrors[key];
+                  return `${key}: ${messages}`;
+                });
+                errorMessage = `Errores de validación:\n${errorMessages.join('\n')}`;
+              } else if (err.error.message) {
+                errorMessage = err.error.message;
+              } else if (typeof err.error === 'string') {
+                errorMessage = err.error;
+              }
+            } else if (err.message) {
+              errorMessage = err.message;
+            }
+            
+            this.error.set(errorMessage);
             this.loading.set(false);
           }
         });

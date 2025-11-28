@@ -61,10 +61,23 @@ export class ActividadAnualService {
   }
 
   create(data: ActividadAnualCreate): Observable<ActividadAnual> {
+    // Validar y asegurar que anio siempre tenga un valor válido
+    const currentYear = new Date().getFullYear();
+    let anioValue: number;
+    if (data.anio === null || data.anio === undefined || data.anio === 0) {
+      anioValue = currentYear;
+    } else {
+      anioValue = Number(data.anio);
+      // Si la conversión falla o es NaN, usar el año actual
+      if (isNaN(anioValue) || anioValue < 2000 || anioValue > 2100) {
+        anioValue = currentYear;
+      }
+    }
+
     // Convertir a PascalCase para el backend
     const payload: any = {
       IdIndicador: Number(data.idIndicador), // Asegurar que sea número
-      Anio: Number(data.anio), // Asegurar que sea número
+      Anio: anioValue, // Asegurar que siempre sea un número válido
       Activo: data.activo !== undefined ? data.activo : true
     };
     

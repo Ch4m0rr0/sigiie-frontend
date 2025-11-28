@@ -68,14 +68,6 @@
               Información
             </button>
             <button
-              (click)="setTab('planificacion')"
-              [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
-                (activeTab() === 'planificacion' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
-              Planificación
-            </button>
-            <button
               (click)="setTab('departamentos')"
               [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
                 (activeTab() === 'departamentos' 
@@ -140,19 +132,6 @@
                 </span>
               }
             </button>
-            <button
-              (click)="setTab('ediciones')"
-              [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
-                (activeTab() === 'ediciones' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
-              Ediciones
-              @if (ediciones().length > 0) {
-                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
-                  {{ ediciones().length }}
-                </span>
-              }
-            </button>
           </nav>
         </div>
 
@@ -164,40 +143,108 @@
                 <h3 class="text-lg font-semibold text-slate-900 mb-2">Detalles</h3>
                 <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <dt class="text-sm font-medium text-slate-500">ID</dt>
-                    <dd class="text-sm text-slate-900">{{ actividad()!.id }}</dd>
-                  </div>
-                  <div>
-                    <dt class="text-sm font-medium text-slate-500">Fecha de Creación</dt>
+                    <dt class="text-sm font-medium text-slate-500">Estado de Planificación</dt>
                     <dd class="text-sm text-slate-900">
-                      {{ actividad()!.fechaCreacion | date:'short' }}
+                      @if (actividad()!.esPlanificada) {
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                          <app-icon icon="check_circle" size="xs"></app-icon>
+                          Planificada
+                        </span>
+                      } @else {
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">
+                          <app-icon icon="cancel" size="xs"></app-icon>
+                          No Planificada
+                        </span>
+                      }
                     </dd>
                   </div>
+                  
+                  @if (actividad()!.fechaInicio) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Fecha de Inicio</dt>
+                      <dd class="text-sm text-slate-900">
+                        {{ actividad()!.fechaInicio | date:'shortDate' }}
+                      </dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.fechaFin) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Fecha de Fin</dt>
+                      <dd class="text-sm text-slate-900">
+                        {{ actividad()!.fechaFin | date:'shortDate' }}
+                      </dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.fechaEvento) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Fecha del Evento</dt>
+                      <dd class="text-sm text-slate-900">
+                        {{ actividad()!.fechaEvento | date:'shortDate' }}
+                      </dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.modalidad) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Modalidad</dt>
+                      <dd class="text-sm text-slate-900">{{ actividad()!.modalidad }}</dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.nombreDepartamentoResponsable) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Departamento Responsable</dt>
+                      <dd class="text-sm text-slate-900">{{ actividad()!.nombreDepartamentoResponsable }}</dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.nombreTipoActividad) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Tipo de Actividad</dt>
+                      <dd class="text-sm text-slate-900">{{ actividad()!.nombreTipoActividad }}</dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.nombreEstadoActividad) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Estado</dt>
+                      <dd class="text-sm text-slate-900">{{ actividad()!.nombreEstadoActividad }}</dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.nombreIndicador || actividad()!.codigoIndicadorAsociado) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Indicador</dt>
+                      <dd class="text-sm text-slate-900">
+                        @if (actividad()!.codigoIndicadorAsociado) {
+                          <span class="font-mono">{{ actividad()!.codigoIndicadorAsociado }}</span>
+                          @if (actividad()!.nombreIndicador) {
+                            <span class="text-slate-500 ml-2">- {{ actividad()!.nombreIndicador }}</span>
+                          }
+                        } @else if (actividad()!.nombreIndicador) {
+                          {{ actividad()!.nombreIndicador }}
+                        }
+                      </dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.organizador) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Organizador</dt>
+                      <dd class="text-sm text-slate-900">{{ actividad()!.organizador }}</dd>
+                    </div>
+                  }
+                  
+                  @if (actividad()!.codigoActividad) {
+                    <div>
+                      <dt class="text-sm font-medium text-slate-500">Código de Actividad</dt>
+                      <dd class="text-sm text-slate-900 font-mono">{{ actividad()!.codigoActividad }}</dd>
+                    </div>
+                  }
                 </dl>
               </div>
-            </div>
-          }
-
-          <!-- Tab: Planificación -->
-          @if (activeTab() === 'planificacion') {
-            <div>
-              @if (actividad()!.nombrePlanificacion) {
-                <div class="p-4 border border-slate-200 rounded-lg">
-                  <p class="font-medium text-slate-900 mb-2">Planificación Asociada</p>
-                  <p class="text-slate-600">{{ actividad()!.nombrePlanificacion }}</p>
-                  @if (actividad()!.idPlanificacion) {
-                    <button 
-                      [routerLink]="['/planificaciones', actividad()!.idPlanificacion]"
-                      class="mt-2 text-sm text-blue-600 hover:underline">
-                      Ver planificación →
-                    </button>
-                  }
-                </div>
-              } @else {
-                <p class="text-slate-600 text-center py-8">
-                  No hay planificación asociada
-                </p>
-              }
             </div>
           }
 
@@ -287,42 +334,22 @@
           <!-- Tab: Indicadores -->
           @if (activeTab() === 'indicadores') {
             <div class="space-y-6">
-              <!-- Botón para agregar indicador hijo -->
+              <!-- Botón para agregar indicador -->
               <div class="flex justify-end">
                 <button
                   (click)="toggleFormIndicador()"
                   class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition flex items-center gap-2">
                   <app-icon icon="add" size="sm" color="white"></app-icon>
-                  {{ mostrarFormIndicador() ? 'Cancelar' : 'Agregar Indicador Hijo' }}
+                  {{ mostrarFormIndicador() ? 'Cancelar' : 'Agregar Indicador' }}
                 </button>
               </div>
 
-              <!-- Formulario para crear indicador hijo -->
+              <!-- Formulario para crear indicador -->
               @if (mostrarFormIndicador()) {
                 <div class="bg-slate-50 border border-slate-200 rounded-lg p-6">
-                  <h3 class="text-lg font-semibold text-slate-900 mb-4">Nuevo Indicador Hijo</h3>
+                  <h3 class="text-lg font-semibold text-slate-900 mb-4">Nuevo Indicador</h3>
                   <form [formGroup]="formIndicador" (ngSubmit)="onSubmitIndicador()" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                          Indicador Padre <span class="text-red-500">*</span>
-                        </label>
-                        <select 
-                          formControlName="idIndicadorPadre"
-                          class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                          [class.border-red-500]="formIndicador.get('idIndicadorPadre')?.invalid && formIndicador.get('idIndicadorPadre')?.touched">
-                          <option [value]="null">Seleccione un indicador padre...</option>
-                          @for (ind of indicadoresPadre(); track ind.idIndicador) {
-                            <option [value]="ind.idIndicador">
-                              {{ ind.codigo }} - {{ ind.nombre }}
-                            </option>
-                          }
-                        </select>
-                        @if (formIndicador.get('idIndicadorPadre')?.invalid && formIndicador.get('idIndicadorPadre')?.touched) {
-                          <p class="mt-1 text-xs text-red-600">El indicador padre es obligatorio</p>
-                        }
-                      </div>
-
                       <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">
                           Código <span class="text-red-500">*</span>
@@ -330,28 +357,64 @@
                         <input 
                           type="text"
                           formControlName="codigo"
-                          placeholder="Ej: 6.1.1"
+                          placeholder="Ej: 6.1"
                           class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
                           [class.border-red-500]="formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched">
                         @if (formIndicador.get('codigo')?.invalid && formIndicador.get('codigo')?.touched) {
                           <p class="mt-1 text-xs text-red-600">El código es obligatorio</p>
                         }
                       </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                          Nombre <span class="text-red-500">*</span>
+                        </label>
+                        <input 
+                          type="text"
+                          formControlName="nombre"
+                          placeholder="Nombre del indicador"
+                          class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                          [class.border-red-500]="formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched">
+                        @if (formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched) {
+                          <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
+                        }
+                      </div>
                     </div>
 
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Nombre <span class="text-red-500">*</span>
-                      </label>
-                      <input 
-                        type="text"
-                        formControlName="nombre"
-                        placeholder="Nombre del indicador hijo"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
-                        [class.border-red-500]="formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched">
-                      @if (formIndicador.get('nombre')?.invalid && formIndicador.get('nombre')?.touched) {
-                        <p class="mt-1 text-xs text-red-600">El nombre es obligatorio</p>
-                      }
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                          Año
+                        </label>
+                        <input 
+                          type="number"
+                          formControlName="anio"
+                          placeholder="Ej: 2024"
+                          min="2000"
+                          max="2100"
+                          class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                          [class.border-red-500]="formIndicador.get('anio')?.invalid && formIndicador.get('anio')?.touched">
+                        @if (formIndicador.get('anio')?.invalid && formIndicador.get('anio')?.touched) {
+                          <p class="mt-1 text-xs text-red-600">El año debe ser válido</p>
+                        }
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                          Meta
+                        </label>
+                        <input 
+                          type="number"
+                          formControlName="meta"
+                          placeholder="Ej: 100"
+                          min="0"
+                          step="0.01"
+                          class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                          [class.border-red-500]="formIndicador.get('meta')?.invalid && formIndicador.get('meta')?.touched">
+                        @if (formIndicador.get('meta')?.invalid && formIndicador.get('meta')?.touched) {
+                          <p class="mt-1 text-xs text-red-600">La meta debe ser un número válido</p>
+                        }
+                      </div>
                     </div>
 
                     <div>
@@ -606,95 +669,6 @@
             </div>
           }
 
-          <!-- Tab: Ediciones -->
-          @if (activeTab() === 'ediciones') {
-            <div>
-              @if (ediciones().length > 0) {
-                <div class="space-y-4">
-                  @for (edicion of ediciones(); track edicion.idEdicion) {
-                    <div class="border border-slate-200 rounded-lg p-6 hover:bg-slate-50 transition">
-                      <div class="flex items-start justify-between mb-4">
-                        <div class="flex-1">
-                          <h4 class="text-lg font-semibold text-slate-900 mb-2">
-                            Edición {{ edicion.anio }}
-                          </h4>
-                          @if (edicion.nombreActividad) {
-                            <p class="text-sm text-slate-600 mb-2">
-                              Actividad: {{ edicion.nombreActividad }}
-                            </p>
-                          }
-                        </div>
-                        @if (edicion.cupos !== undefined) {
-                          <div class="text-right">
-                            <div class="text-2xl font-bold text-slate-900">
-                              {{ edicion.cupos }}
-                            </div>
-                            <div class="text-xs text-slate-500">Cupos</div>
-                          </div>
-                        }
-                      </div>
-
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200">
-                        <div>
-                          <dt class="text-xs font-medium text-slate-500 mb-1">Año</dt>
-                          <dd class="text-sm text-slate-900 font-medium">{{ edicion.anio }}</dd>
-                        </div>
-                        @if (edicion.fechaInicio) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Fecha de Inicio</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.fechaInicio | date:'short' }}</dd>
-                          </div>
-                        }
-                        @if (edicion.fechaFin) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Fecha de Fin</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.fechaFin | date:'short' }}</dd>
-                          </div>
-                        }
-                        @if (edicion.categoria) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Categoría</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.categoria }}</dd>
-                          </div>
-                        }
-                        @if (edicion.lugar) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Lugar</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.lugar }}</dd>
-                          </div>
-                        }
-                        @if (edicion.creadoPor) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Creado Por (ID)</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.creadoPor }}</dd>
-                          </div>
-                        }
-                        @if (edicion.fechaCreacion) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Fecha de Creación</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.fechaCreacion | date:'short' }}</dd>
-                          </div>
-                        }
-                        @if (edicion.fechaModificacion) {
-                          <div>
-                            <dt class="text-xs font-medium text-slate-500 mb-1">Fecha de Modificación</dt>
-                            <dd class="text-sm text-slate-900">{{ edicion.fechaModificacion | date:'short' }}</dd>
-                          </div>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <div class="text-center py-12">
-                  <p class="text-slate-600 mb-2">No hay ediciones registradas</p>
-                  <p class="text-sm text-slate-500">
-                    Las ediciones representan las diferentes versiones o instancias de esta actividad a lo largo de los años.
-                  </p>
-                </div>
-              }
-            </div>
-          }
         </div>
       </div>
     </div>

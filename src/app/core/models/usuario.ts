@@ -1,12 +1,26 @@
 export interface Usuario {
-  id: number;
+  idUsuario: number;
+  id: number; // Alias para compatibilidad, siempre presente
   nombreCompleto: string;
   correo: string;
-  identificador: string;
-  contrasena?: string; // Opcional para updates
-  role: string;
-  departamentoId?: number;
+  rolNombre: string;
+  permisos: string[];
   activo: boolean;
-  creadoPor?: number;
-  fechaCreacion: Date;
+  departamentoId?: number;
+}
+
+export interface UsuarioCreate {
+  nombreCompleto: string;
+  correo: string;
+  contraseña: string;
+  idRol: number;
+  departamentoId?: number;
+}
+
+export interface UsuarioUpdate {
+  nombreCompleto: string;
+  correo: string;
+  idRol: number;
+  activo: boolean;
+  departamentoId?: number;
 }

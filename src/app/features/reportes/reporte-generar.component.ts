@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { Observable } from 'rxjs';
 import { ReportesService, ReporteConfig } from '../../core/services/reportes.service';
 import { PlanificacionService } from '../../core/services/planificacion.service';
 import { ActividadesService } from '../../core/services/actividades.service';
@@ -187,22 +188,50 @@ export class ReporteGenerarComponent implements OnInit {
         tipoArchivo: this.form.value.tipoArchivo || 'excel'
       };
 
-      // El nuevo endpoint genera Excel directamente, así que usamos generarExcel
-      this.reportesService.generarExcel(config).subscribe({
+      // Determinar qué método de exportación usar basado en el tipo de reporte
+      const tipoReporte = (config.tipoReporte || '').toLowerCase();
+      let exportObservable: Observable<Blob>;
+      
+      if (tipoReporte.includes('participacion') || tipoReporte.includes('participaciones')) {
+        exportObservable = this.reportesService.exportarExcelParticipaciones(config);
+      } else if (tipoReporte.includes('todo') || tipoReporte === 'completo') {
+        exportObservable = this.reportesService.exportarExcelTodo(config);
+      } else {
+        // Por defecto, exportar actividades
+        exportObservable = this.reportesService.exportarExcelActividades(config);
+      }
+      
+      exportObservable.subscribe({
         next: (blob) => {
           console.log('✅ ReporteGenerarComponent - Reporte generado exitosamente, tamaño:', blob.size);
           this.generando.set(false);
           
+          // Verificar que el blob sea válido
+          if (!blob || blob.size === 0) {
+            this.error.set('El archivo generado está vacío o es inválido.');
+            return;
+          }
+          
+          // Crear un nuevo Blob con el tipo MIME correcto para Excel
+          const excelBlob = new Blob([blob], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          });
+          
           // Descargar el archivo Excel generado
-          const url = window.URL.createObjectURL(blob);
+          const url = window.URL.createObjectURL(excelBlob);
           const a = document.createElement('a');
           a.href = url;
-          const nombreArchivo = `reporte-${config.tipoReporte}-${new Date().toISOString().split('T')[0]}.xlsx`;
+          const fecha = new Date().toISOString().split('T')[0];
+          const nombreArchivo = `reporte-${config.tipoReporte || 'exportacion'}-${fecha}.xlsx`;
           a.download = nombreArchivo;
           document.body.appendChild(a);
           a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
+          
+          // Limpiar después de un breve delay
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+          }, 100);
           
           // Navegar a la lista de reportes
           this.router.navigate(['/reportes']);
