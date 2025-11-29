@@ -53,20 +53,18 @@
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
         
         <!-- Nombre -->
-        <div class="relative my-4">
+        <div>
+          <label for="nombreProyecto" class="block text-sm font-medium text-gray-700 mb-2">
+            Nombre del Proyecto <span class="text-red-500">*</span>
+          </label>
           <input
             id="nombreProyecto"
             type="text"
             formControlName="nombreProyecto"
-            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-            [class.border-red-300]="form.get('nombreProyecto')?.invalid && form.get('nombreProyecto')?.touched"
-            [class.border-blue-300]="form.get('nombreProyecto')?.value || form.get('nombreProyecto')?.touched"
-            placeholder=" "
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [class.border-red-500]="form.get('nombreProyecto')?.invalid && form.get('nombreProyecto')?.touched"
             required
           />
-          <label for="nombreProyecto" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
-            Nombre del Proyecto <span class="text-red-500">*</span>
-          </label>
           @if (form.get('nombreProyecto')?.invalid && form.get('nombreProyecto')?.touched) {
             <p class="mt-1.5 text-sm text-red-600">{{ getFieldError('nombreProyecto') }}</p>
           }
@@ -88,18 +86,16 @@
 
         <!-- Estado y Tipo Autor -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="relative my-4">
+          <div>
+            <label for="idEstadoProyecto" class="block text-sm font-medium text-gray-700 mb-2">
+              Estado del Proyecto
+            </label>
             <input
               id="idEstadoProyecto"
               type="number"
               formControlName="idEstadoProyecto"
-              class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-              [class.border-blue-300]="form.get('idEstadoProyecto')?.value"
-              placeholder=" "
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
-            <label for="idEstadoProyecto" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
-              Estado del Proyecto
-            </label>
             <p class="mt-1.5 text-xs text-slate-500">Nota: Este campo requiere el ID del estado del proyecto</p>
           </div>
 

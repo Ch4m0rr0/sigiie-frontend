@@ -15,6 +15,7 @@ export interface UsuarioCreate {
   contraseña: string;
   idRol: number;
   departamentoId?: number;
+  permisos?: number[]; // IDs de permisos a asignar
 }
 
 export interface UsuarioUpdate {
@@ -23,4 +24,5 @@ export interface UsuarioUpdate {
   idRol: number;
   activo: boolean;
   departamentoId?: number;
+  permisos?: number[]; // IDs de permisos a asignar
 }

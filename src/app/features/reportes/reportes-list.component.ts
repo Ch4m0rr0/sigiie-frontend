@@ -1,13 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { ReportesService, ReporteGenerado } from '../../core/services/reportes.service';
-import { PlanificacionService } from '../../core/services/planificacion.service';
-import { ActividadesService } from '../../core/services/actividades.service';
-import type { Planificacion } from '../../core/models/planificacion';
-import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
+import { filter, Subscription } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -15,11 +12,10 @@ import { BrnButtonImports } from '@spartan-ng/brain/button';
   imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
   templateUrl: './reportes-list.component.html',
 })
-export class ReportesListComponent implements OnInit {
+export class ReportesListComponent implements OnInit, OnDestroy {
   private reportesService = inject(ReportesService);
-  private planificacionService = inject(PlanificacionService);
-  private actividadesService = inject(ActividadesService);
   private router = inject(Router);
+  private routerSubscription?: Subscription;
 
   reportes = signal<ReporteGenerado[]>([]);
   loading = signal(false);
@@ -27,6 +23,24 @@ export class ReportesListComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadReportes();
+    
+    // Recargar reportes cuando se navega a esta ruta desde otra página
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: any) => {
+        if (event.url === '/reportes' || event.urlAfterRedirects === '/reportes') {
+          // Recargar después de un breve delay para asegurar que el backend haya procesado
+          setTimeout(() => {
+            this.loadReportes();
+          }, 300);
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   loadReportes(): void {

@@ -59,8 +59,6 @@ export interface Actividad {
   idActividadMensualInst?: number;
   nombreActividadMensualInst?: string;
   codigoIndicador?: string;
-  idTipoActividadJerarquica?: number;
-  nombreTipoActividadJerarquica?: string;
   
   // Planificación
   esPlanificada?: boolean;
@@ -107,8 +105,6 @@ export interface Actividad {
   categoriaActividadId?: number; // Alias para idTipoActividad
   tipoUnidadId?: number; // No existe en backend actual
   areaConocimientoId?: number; // Alias para idArea
-  idPlanificacion?: number; // No existe en backend actual
-  nombrePlanificacion?: string; // No existe en backend actual
   departamento?: string; // Alias para nombreDepartamento
   creadoPorId?: number; // Alias para creadoPor
   creadoPorNombre?: string; // Alias para nombreCreador
@@ -152,14 +148,12 @@ export interface ActividadCreate {
   horaRealizacion?: string; // TimeOnly en formato string (HH:mm:ss)
   cantidadParticipantesProyectados?: number;
   idTipoProtagonista?: number;
-  idTipoActividadJerarquica?: number;
   
   // Campos legacy para compatibilidad
   nombre?: string; // Alias para nombreActividad
   categoriaActividadId?: number; // Alias para idTipoActividad
   tipoUnidadId?: number; // No se usa en backend
   areaConocimientoId?: number; // Alias para idArea
-  idPlanificacion?: number; // No se usa en backend
   activo?: boolean; // No se usa en backend
 }
 

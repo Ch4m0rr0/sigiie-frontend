@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, of, throwError, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -91,6 +91,48 @@ export class ReportesService {
           return of([]);
         }
         return throwError(() => new Error(backendMessage));
+      })
+    );
+  }
+
+  /**
+   * POST /api/Reportes
+   * Crear un nuevo reporte en la base de datos
+   * NOTA: Este endpoint puede no existir en el backend. Si falla, se ignora silenciosamente.
+   */
+  create(reporte: Partial<ReporteGenerado>): Observable<ReporteGenerado | null> {
+    console.log('🔄 POST Crear Reporte - URL:', this.apiUrl);
+    console.log('🔄 POST Crear Reporte - DTO:', reporte);
+    
+    // Convertir a PascalCase para el backend
+    const dto: any = {};
+    if (reporte.nombre) dto.Nombre = reporte.nombre;
+    if (reporte.tipoReporte) dto.TipoReporte = reporte.tipoReporte;
+    if (reporte.formato) dto.Formato = reporte.formato;
+    if (reporte.rutaArchivo) dto.RutaArchivo = reporte.rutaArchivo;
+    if (reporte['tipoArchivo']) dto.TipoArchivo = reporte['tipoArchivo'];
+    if (reporte.estado) dto.Estado = reporte.estado;
+    if (reporte.fechaGeneracion) {
+      dto.FechaGeneracion = typeof reporte.fechaGeneracion === 'string' 
+        ? reporte.fechaGeneracion 
+        : (reporte.fechaGeneracion as Date).toISOString();
+    }
+    
+    return this.http.post<any>(this.apiUrl, dto).pipe(
+      map(response => {
+        const item = response.data || response;
+        console.log('✅ POST Crear Reporte - Respuesta recibida:', item);
+        return this.mapReporte(item);
+      }),
+      catchError(error => {
+        // Si el endpoint no existe (404) o no está permitido (405), retornar null silenciosamente
+        if (error.status === 404 || error.status === 405) {
+          console.warn('⚠️ POST Crear Reporte - Endpoint no disponible. El reporte no se guardará en la BD.');
+          return of(null);
+        }
+        console.error('❌ POST Crear Reporte - Error:', error);
+        // Para otros errores, también retornar null para no bloquear el flujo
+        return of(null);
       })
     );
   }
@@ -285,23 +327,159 @@ export class ReportesService {
 
   /**
    * POST /api/Reportes/generar/excel
-   * Generar reporte en Excel (método legacy, ahora usa exportarExcelActividades)
-   * @deprecated Usar exportarExcelActividades, exportarExcelTodo o exportarExcelParticipaciones
+   * Generar reporte en Excel y guardarlo en la base de datos
+   * Este endpoint genera el Excel y lo guarda en la tabla Reporte_Generado
    */
   generarExcel(config: ReporteConfig): Observable<Blob> {
-    console.log('🔄 POST Generar Excel (legacy) - Redirigiendo a exportarExcelActividades');
+    console.log('🔄 POST Generar Excel - URL:', `${this.apiUrl}/generar/excel`);
+    console.log('🔄 POST Generar Excel - Config:', config);
     
-    // Determinar qué endpoint usar basado en el tipo de reporte
-    const tipoReporte = (config.tipoReporte || '').toLowerCase();
+    // Construir el DTO en PascalCase para el backend
+    const dto: any = {
+      TipoReporte: config.tipoReporte || '',
+      Formato: config.formato || 'excel',
+      Nombre: config.nombre || `Reporte ${config.tipoReporte || 'General'}`,
+      RutaArchivo: config.rutaArchivo || `reportes/${config.tipoReporte || 'exportacion'}-${Date.now()}.xlsx`,
+      TipoArchivo: config.tipoArchivo || 'excel'
+    };
     
-    if (tipoReporte.includes('participacion') || tipoReporte.includes('participaciones')) {
-      return this.exportarExcelParticipaciones(config);
-    } else if (tipoReporte.includes('todo') || tipoReporte === 'completo') {
-      return this.exportarExcelTodo(config);
-    } else {
-      // Por defecto, exportar actividades
-      return this.exportarExcelActividades(config);
-    }
+    // Agregar campos opcionales
+    if (config.actividadId) dto.ActividadId = config.actividadId;
+    if (config.subactividadId) dto.SubactividadId = config.subactividadId;
+    if (config.planificacionId) dto.PlanificacionId = config.planificacionId;
+    if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
+    if (config.fechaFin) dto.FechaFin = config.fechaFin;
+    if (config.incluirEvidencias !== undefined) dto.IncluirEvidencias = config.incluirEvidencias;
+    if (config.incluirParticipaciones !== undefined) dto.IncluirParticipaciones = config.incluirParticipaciones;
+    if (config.incluirIndicadores !== undefined) dto.IncluirIndicadores = config.incluirIndicadores;
+    
+    return this.http.post<Blob>(`${this.apiUrl}/generar/excel`, dto, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      },
+      observe: 'response' // Necesitamos ver los headers de la respuesta
+    }).pipe(
+      switchMap(response => {
+        const blob = response.body;
+        if (!blob) {
+          return throwError(() => new Error('No se recibió ningún archivo del servidor'));
+        }
+        
+        // Verificar el Content-Type de la respuesta
+        const contentType = response.headers.get('content-type') || '';
+        console.log('📄 POST Generar Excel - Content-Type recibido:', contentType);
+        console.log('📄 POST Generar Excel - Status:', response.status);
+        console.log('📄 POST Generar Excel - Tamaño del blob:', blob.size, 'bytes');
+        
+        // Si el backend devolvió JSON (puede ser éxito con metadatos o error)
+        if (contentType.includes('application/json') || contentType.includes('text/html') || contentType.includes('text/plain')) {
+          return from(blob.text()).pipe(
+            switchMap((text: string) => {
+              let jsonData: any;
+              try {
+                jsonData = JSON.parse(text);
+              } catch {
+                jsonData = { message: text || 'Error desconocido del servidor' };
+              }
+              
+              console.log('📄 POST Generar Excel - JSON recibido:', jsonData);
+              console.log('📄 POST Generar Excel - Status:', response.status);
+              console.log('📄 POST Generar Excel - Tiene id?', !!jsonData.id);
+              console.log('📄 POST Generar Excel - Tiene rutaArchivo?', !!jsonData.rutaArchivo);
+              
+              // Si el status es 201 y tiene id, el backend guardó el reporte y devolvió metadatos
+              // Usamos el endpoint GET /api/Reportes/descargar/{id} para descargar el archivo
+              if (response.status === 201 && jsonData.id) {
+                console.log('✅ POST Generar Excel - El backend guardó el reporte con ID:', jsonData.id);
+                console.log('📥 Descargando archivo Excel usando endpoint de descarga con ID:', jsonData.id);
+                
+                // Usar el método descargar del servicio que usa el endpoint correcto
+                return this.descargar(jsonData.id).pipe(
+                  map(downloadedBlob => {
+                    console.log('✅ Archivo Excel descargado exitosamente, tamaño:', downloadedBlob.size, 'bytes');
+                    return downloadedBlob;
+                  }),
+                  catchError(downloadError => {
+                    console.error('❌ Error al descargar el archivo Excel:', downloadError);
+                    
+                    let errorMessage = `El reporte se generó exitosamente (ID: ${jsonData.id}) pero no se pudo descargar el archivo.`;
+                    let backendMessage = downloadError.message || 'Error al descargar el archivo generado';
+                    
+                    // Si el endpoint no existe (404), proporcionar un mensaje más específico
+                    if (downloadError.status === 404) {
+                      errorMessage = `El reporte se generó exitosamente (ID: ${jsonData.id}) pero el endpoint de descarga no está disponible.`;
+                      backendMessage = 'El endpoint GET /api/Reportes/descargar/{id} no existe en el backend. Por favor, verifica que el backend tenga implementado este endpoint o que el POST /api/Reportes/generar/excel devuelva el archivo directamente.';
+                    }
+                    
+                    return throwError(() => ({
+                      status: downloadError.status || 500,
+                      error: jsonData,
+                      message: errorMessage,
+                      backendMessage: backendMessage
+                    }));
+                  })
+                );
+              }
+              
+              // Si es un error real (status diferente de 201 o no tiene rutaArchivo)
+              console.error('❌ POST Generar Excel - El servidor devolvió un error o no tiene rutaArchivo. Status:', response.status, 'rutaArchivo:', jsonData.rutaArchivo);
+              return throwError(() => ({
+                status: response.status,
+                error: jsonData,
+                message: jsonData.message || jsonData.title || jsonData.detail || 'Error al generar el reporte',
+                backendMessage: jsonData.message || jsonData.title || jsonData.detail
+              }));
+            })
+          );
+        }
+        
+        // Validar que el blob sea un archivo Excel válido
+        // Los archivos .xlsx son archivos ZIP, deben empezar con "PK" (50 4B en hex)
+        if (blob.size < 4) {
+          return throwError(() => new Error('El archivo recibido es demasiado pequeño para ser un Excel válido'));
+        }
+        
+        return from(blob.slice(0, 4).arrayBuffer()).pipe(
+          switchMap((buffer: ArrayBuffer) => {
+            const bytes = new Uint8Array(buffer);
+            const isValidExcel = bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK" (ZIP signature)
+            
+            if (!isValidExcel) {
+              // Si no es un Excel válido, intentar leer como texto para ver qué devolvió el servidor
+              return from(blob.text()).pipe(
+                switchMap((text: string) => {
+                  console.error('❌ POST Generar Excel - El archivo no es un Excel válido. Contenido recibido:', text.substring(0, 200));
+                  let errorData: any;
+                  try {
+                    errorData = JSON.parse(text);
+                  } catch {
+                    errorData = { message: 'El servidor no devolvió un archivo Excel válido' };
+                  }
+                  return throwError(() => ({
+                    status: response.status,
+                    error: errorData,
+                    message: errorData.message || errorData.title || errorData.detail || 'El servidor no devolvió un archivo Excel válido',
+                    backendMessage: errorData.message || errorData.title || errorData.detail
+                  }));
+                })
+              );
+            }
+            
+            console.log('✅ POST Generar Excel - Archivo Excel válido recibido, tamaño:', blob.size, 'bytes');
+            return of(blob);
+          })
+        );
+      }),
+      catchError(error => {
+        console.error('❌ POST Generar Excel - Error:', error);
+        // Si ya es un error manejado, pasarlo directamente
+        if (error.backendMessage || error.message) {
+          return throwError(() => error);
+        }
+        return this.handleBlobError(error);
+      })
+    );
   }
 
   /**
@@ -345,15 +523,101 @@ export class ReportesService {
   descargar(idReporte: number): Observable<Blob> {
     console.log('🔄 GET Descargar Reporte - URL:', `${this.apiUrl}/descargar/${idReporte}`);
     return this.http.get<Blob>(`${this.apiUrl}/descargar/${idReporte}`, {
-      responseType: 'blob' as 'json'
+      responseType: 'blob' as 'json',
+      observe: 'response',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
     }).pipe(
-      map(blob => {
-        console.log('✅ GET Descargar Reporte - Archivo recibido, tamaño:', blob.size);
-        return blob;
+      switchMap(response => {
+        const blob = response.body;
+        if (!blob) {
+          return throwError(() => new Error('No se recibió ningún archivo del servidor'));
+        }
+        
+        const contentType = response.headers.get('content-type') || '';
+        console.log('📄 GET Descargar Reporte - Content-Type:', contentType);
+        console.log('📄 GET Descargar Reporte - Tamaño:', blob.size, 'bytes');
+        
+        // Si el backend devolvió JSON, HTML o texto plano (error o metadatos), leerlo y lanzar error
+        if (contentType.includes('application/json') || contentType.includes('text/html') || contentType.includes('text/plain')) {
+          return from(blob.text()).pipe(
+            switchMap((text: string) => {
+              let errorData: any;
+              try {
+                errorData = JSON.parse(text);
+              } catch {
+                // Si no es JSON, puede ser texto plano con información del reporte
+                errorData = { message: text || 'Error desconocido del servidor' };
+              }
+              
+              console.error('❌ GET Descargar Reporte - El servidor devolvió un error o metadatos en lugar del archivo:', errorData);
+              
+              // Si el texto contiene información del reporte, el backend está devolviendo metadatos en lugar del archivo
+              if (text.includes('Reporte:') || text.includes('Tipo:') || text.includes('Ruta:')) {
+                return throwError(() => ({
+                  status: 500,
+                  error: errorData,
+                  message: 'El servidor devolvió información del reporte en lugar del archivo Excel. Por favor, verifica que el endpoint GET /api/Reportes/descargar/{id} esté configurado para devolver el archivo binario con el Content-Type correcto.',
+                  backendMessage: 'El endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend debe devolver el archivo binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                }));
+              }
+              
+              return throwError(() => ({
+                status: response.status,
+                error: errorData,
+                message: errorData.message || errorData.title || errorData.detail || 'Error al descargar el reporte',
+                backendMessage: errorData.message || errorData.title || errorData.detail
+              }));
+            })
+          );
+        }
+        
+        // Validar que el blob sea un archivo Excel válido
+        // Los archivos .xlsx son archivos ZIP, deben empezar con "PK" (50 4B en hex)
+        if (blob.size < 4) {
+          return throwError(() => new Error('El archivo recibido es demasiado pequeño para ser un Excel válido'));
+        }
+        
+        return from(blob.slice(0, 4).arrayBuffer()).pipe(
+          switchMap((buffer: ArrayBuffer) => {
+            const bytes = new Uint8Array(buffer);
+            const isValidExcel = bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK" (ZIP signature)
+            
+            if (!isValidExcel) {
+              // Si no es un Excel válido, intentar leer como texto para ver qué devolvió el servidor
+              return from(blob.text()).pipe(
+                switchMap((text: string) => {
+                  console.error('❌ GET Descargar Reporte - El archivo no es un Excel válido. Contenido recibido:', text);
+                  
+                  // Si el texto contiene información del reporte, el backend está devolviendo metadatos en lugar del archivo
+                  if (text.includes('Reporte:') || text.includes('Tipo:') || text.includes('Ruta:')) {
+                    return throwError(() => ({
+                      status: 500,
+                      error: { message: text },
+                      message: 'El servidor devolvió información del reporte en lugar del archivo Excel. Por favor, verifica que el endpoint GET /api/Reportes/descargar/{id} esté configurado para devolver el archivo binario con el Content-Type correcto.',
+                      backendMessage: 'El endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend debe devolver el archivo binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    }));
+                  }
+                  
+                  return throwError(() => ({
+                    status: 500,
+                    error: { message: text },
+                    message: 'El archivo recibido no es un Excel válido. El servidor puede haber devuelto un error.',
+                    backendMessage: text.substring(0, 200)
+                  }));
+                })
+              );
+            }
+            
+            console.log('✅ GET Descargar Reporte - Archivo Excel válido recibido, tamaño:', blob.size, 'bytes');
+            return of(blob);
+          })
+        );
       }),
       catchError(error => {
         console.error('❌ GET Descargar Reporte - Error:', error);
-        throw error;
+        return throwError(() => error);
       })
     );
   }

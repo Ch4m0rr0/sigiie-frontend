@@ -7,6 +7,7 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import type { Usuario, UsuarioCreate, UsuarioUpdate } from '../../core/models/usuario';
 import type { Rol } from '../../core/models/rol';
 import type { Departamento } from '../../core/models/departamento';
+import type { Permiso } from '../../core/models/permiso';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
@@ -41,6 +42,7 @@ export class UsuarioFormComponent implements OnInit {
   // Catálogos
   roles = signal<Rol[]>([]);
   departamentos = signal<Departamento[]>([]);
+  permisos = signal<Permiso[]>([]);
 
   ngOnInit(): void {
     // Verificar si es modo edición
@@ -69,6 +71,7 @@ export class UsuarioFormComponent implements OnInit {
       contraseña: ['', this.isEditMode() ? [] : [Validators.required, Validators.minLength(6)]],
       idRol: [null, Validators.required],
       departamentoId: [null],
+      permisos: [[]], // Array de IDs de permisos
       activo: [true]
     });
   }
@@ -90,6 +93,12 @@ export class UsuarioFormComponent implements OnInit {
     this.catalogosService.getDepartamentos().subscribe({
       next: (data) => this.departamentos.set(data),
       error: (err) => console.error('Error loading departamentos:', err)
+    });
+
+    // Cargar permisos
+    this.usuariosService.listPermisos().subscribe({
+      next: (data) => this.permisos.set(data),
+      error: (err) => console.error('Error loading permisos:', err)
     });
   }
 
@@ -120,11 +129,20 @@ export class UsuarioFormComponent implements OnInit {
           }
         }
         
+        // Mapear permisos de nombres a IDs
+        let permisosIds: number[] = [];
+        if (usuario.permisos && usuario.permisos.length > 0 && this.permisos().length > 0) {
+          permisosIds = this.permisos()
+            .filter(p => usuario.permisos.includes(p.nombre))
+            .map(p => p.id);
+        }
+        
         this.form.patchValue({
           nombreCompleto: usuario.nombreCompleto,
           correo: usuario.correo,
           idRol: idRol,
           departamentoId: usuario.departamentoId,
+          permisos: permisosIds,
           activo: usuario.activo
         });
         
@@ -158,7 +176,10 @@ export class UsuarioFormComponent implements OnInit {
         correo: formValue.correo,
         idRol: +formValue.idRol,
         activo: formValue.activo ?? true,
-        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined
+        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
+        permisos: formValue.permisos && Array.isArray(formValue.permisos) 
+          ? formValue.permisos.map((p: any) => +p).filter((p: number) => !isNaN(p))
+          : []
       };
 
       this.usuariosService.update(this.usuarioId()!, updateData).subscribe({
@@ -183,7 +204,10 @@ export class UsuarioFormComponent implements OnInit {
         correo: formValue.correo,
         contraseña: formValue.contraseña,
         idRol: +formValue.idRol,
-        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined
+        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
+        permisos: formValue.permisos && Array.isArray(formValue.permisos) 
+          ? formValue.permisos.map((p: any) => +p).filter((p: number) => !isNaN(p))
+          : []
       };
 
       this.usuariosService.create(createData).subscribe({
@@ -197,6 +221,20 @@ export class UsuarioFormComponent implements OnInit {
         }
       });
     }
+  }
+
+  togglePermiso(permisoId: number, event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const currentPermisos = this.form.get('permisos')?.value || [];
+    let newPermisos: number[];
+    
+    if (checkbox.checked) {
+      newPermisos = [...currentPermisos, permisoId];
+    } else {
+      newPermisos = currentPermisos.filter((id: number) => id !== permisoId);
+    }
+    
+    this.form.patchValue({ permisos: newPermisos });
   }
 
   onCancel(): void {

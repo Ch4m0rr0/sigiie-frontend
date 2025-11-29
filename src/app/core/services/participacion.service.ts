@@ -61,41 +61,181 @@ export class ParticipacionService {
    * El backend espera ParticipacionCreateDto con PascalCase
    */
   create(data: ParticipacionCreate): Observable<Participacion> {
-    // Convertir a PascalCase para el backend
-    const dto: any = {
-      EdicionId: data.edicionId,
-      IdSubactividad: data.idSubactividad,
-      GrupoNumero: data.grupoNumero,
-      IdRolEquipo: data.idRolEquipo,
-      IdTutor: data.idTutor,
-      EstudianteId: data.estudianteId,
-      DocenteId: data.docenteId,
-      AdministrativoId: data.administrativoId,
-      CategoriaParticipacionId: data.categoriaParticipacionId,
-      EstadoParticipacionId: data.estadoParticipacionId,
-      FechaParticipacion: data.fechaParticipacion 
-        ? (data.fechaParticipacion instanceof Date 
-          ? data.fechaParticipacion.toISOString() 
-          : typeof data.fechaParticipacion === 'string' 
-            ? data.fechaParticipacion 
-            : new Date(data.fechaParticipacion).toISOString())
-        : new Date().toISOString()
+    // El backend espera un formato unificado, pero este método se usa para crear una sola participación
+    // Por compatibilidad, creamos el formato unificado con un solo participante
+    return this.createUnificada([data]).pipe(
+      map(participaciones => participaciones[0]) // Devolver solo la primera
+    );
+  }
+
+  /**
+   * Crea participaciones usando el formato unificado que espera el backend
+   */
+  createUnificada(participaciones: ParticipacionCreate[]): Observable<Participacion[]> {
+    // Función helper para convertir a número si es necesario
+    const toNumber = (value: any): number | undefined => {
+      if (value === null || value === undefined || value === '') return undefined;
+      const num = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+      return isNaN(num) ? undefined : num;
     };
+
+    if (participaciones.length === 0) {
+      throw new Error('Debe proporcionar al menos una participación');
+    }
+
+    // Usar los datos de la primera participación para los campos comunes
+    const primera = participaciones[0];
     
-    // Remover campos undefined
-    Object.keys(dto).forEach(key => {
-      if (dto[key] === undefined || dto[key] === null) {
-        delete dto[key];
+    // Agrupar participantes por tipo
+    const estudiantes: Array<{ id: number; idRolEquipo?: number }> = [];
+    const docentes: Array<{ id: number; idRolEquipo?: number }> = [];
+    const administrativos: Array<{ id: number; idRolEquipo?: number }> = [];
+
+    participaciones.forEach(p => {
+      const rolEquipo = toNumber(p.idRolEquipo);
+      if (p.estudianteId) {
+        const estudianteId = toNumber(p.estudianteId);
+        if (estudianteId !== undefined) {
+          estudiantes.push({
+            id: estudianteId,
+            idRolEquipo: rolEquipo
+          });
+        }
+      } else if (p.docenteId) {
+        const docenteId = toNumber(p.docenteId);
+        if (docenteId !== undefined) {
+          docentes.push({
+            id: docenteId,
+            idRolEquipo: rolEquipo
+          });
+        }
+      } else if (p.administrativoId) {
+        const administrativoId = toNumber(p.administrativoId);
+        if (administrativoId !== undefined) {
+          administrativos.push({
+            id: administrativoId,
+            idRolEquipo: rolEquipo
+          });
+        }
       }
     });
+
+    // Construir el DTO en el formato que espera el backend (camelCase)
+    const dto: any = {
+      idEdicion: toNumber(primera.edicionId),
+      idEstadoParticipacion: toNumber(primera.estadoParticipacionId),
+      idCategoriaParticipacionParticipante: toNumber(primera.categoriaParticipacionId),
+      participantesExistentes: {}
+    };
+
+    // Agregar campos opcionales solo si tienen valor (0 es un valor válido)
+    const grupoNumero = toNumber(primera.grupoNumero);
+    if (grupoNumero !== undefined && grupoNumero !== null) {
+      dto.grupoNumero = grupoNumero;
+    }
+
+    const idTutor = toNumber(primera.idTutor);
+    console.log('🔍 idTutor antes de convertir:', primera.idTutor, 'después:', idTutor);
+    if (idTutor !== undefined && idTutor !== null) {
+      dto.idTutor = idTutor;
+    }
+
+    const idSubactividad = toNumber(primera.idSubactividad);
+    if (idSubactividad !== undefined && idSubactividad !== null) {
+      dto.idSubactividad = idSubactividad;
+    }
+
+    // Agregar participantes solo si hay
+    if (estudiantes.length > 0) {
+      dto.participantesExistentes.estudiantes = estudiantes;
+    }
+    if (docentes.length > 0) {
+      dto.participantesExistentes.docentes = docentes;
+    }
+    if (administrativos.length > 0) {
+      dto.participantesExistentes.administrativos = administrativos;
+    }
+
+    console.log('🔄 POST Participación Unificada - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 POST Participación Unificada - Verificando campos:', {
+      tieneIdSubactividad: !!dto.idSubactividad,
+      idSubactividad: dto.idSubactividad,
+      tieneIdTutor: !!dto.idTutor,
+      idTutor: dto.idTutor,
+      tieneIdCategoria: !!dto.idCategoriaParticipacionParticipante,
+      idCategoria: dto.idCategoriaParticipacionParticipante
+    });
     
-    return this.http.post<any>(this.apiUrl, dto).pipe(
+    // Intentar primero con el endpoint /unificada, si falla usar el endpoint base
+    return this.http.post<any>(`${this.apiUrl}/unificada`, dto).pipe(
+      catchError(error => {
+        // Si el endpoint /unificada no está disponible (405 o 404), intentar con el endpoint base
+        if (error.status === 405 || error.status === 404) {
+          console.warn('⚠️ Endpoint /unificada no disponible, intentando con endpoint base');
+          return this.http.post<any>(this.apiUrl, dto).pipe(
+            catchError(innerError => {
+              console.error('❌ Error también con endpoint base:', innerError);
+              throw innerError;
+            })
+          );
+        }
+        throw error;
+      }),
       map(response => {
-        const item = response.data || response;
-        return this.mapParticipacion(item);
+        console.log('✅ POST Participación Unificada - Respuesta completa:', response);
+        console.log('✅ POST Participación Unificada - Tipo de respuesta:', typeof response);
+        console.log('✅ POST Participación Unificada - Claves de respuesta:', response ? Object.keys(response) : []);
+        
+        // El backend devuelve un ParticipacionUnificadaResultDto con participacionesCreadas
+        const participacionesCreadas = response.data?.participacionesCreadas || 
+                                       response.participacionesCreadas || 
+                                       (Array.isArray(response.data) ? response.data : [response.data || response]);
+        
+        console.log('✅ POST Participación Unificada - Participaciones creadas extraídas:', participacionesCreadas);
+        console.log('✅ POST Participación Unificada - ¿Es array?', Array.isArray(participacionesCreadas));
+        
+        if (Array.isArray(participacionesCreadas)) {
+          const mapeadas = participacionesCreadas
+            .filter((item: any) => item !== null && item !== undefined)
+            .map((item: any) => {
+              console.log('✅ POST Participación Unificada - Item antes de mapear:', item);
+              console.log('✅ POST Participación Unificada - Campos específicos del item:', {
+                idParticipacion: item.idParticipacion,
+                idSubactividad: item.idSubactividad,
+                nombreSubactividad: item.nombreSubactividad,
+                idTutor: item.idTutor,
+                nombreTutor: item.nombreTutor,
+                grupoNumero: item.grupoNumero
+              });
+              return this.mapParticipacion(item);
+            });
+          console.log('✅ POST Participación Unificada - Participaciones mapeadas:', mapeadas);
+          return mapeadas;
+        }
+        
+        // Si es un solo objeto, devolverlo en un array
+        if (participacionesCreadas) {
+          console.log('✅ POST Participación Unificada - Participación única antes de mapear:', participacionesCreadas);
+          const mapeada = this.mapParticipacion(participacionesCreadas);
+          console.log('✅ POST Participación Unificada - Participación única mapeada:', mapeada);
+          return [mapeada];
+        }
+        
+        // Si no hay datos, devolver array vacío
+        console.warn('⚠️ POST Participación Unificada - No se encontraron participaciones creadas en la respuesta');
+        return [];
       }),
       catchError(error => {
-        console.error('Error al crear participación:', error);
+        console.error('❌ Error al crear participación unificada:', error);
+        console.error('❌ Error status:', error.status);
+        console.error('❌ Error message:', error.message);
+        if (error.error) {
+          console.error('❌ Error body:', error.error);
+          if (error.error.errors) {
+            console.error('❌ Validation errors:', error.error.errors);
+          }
+        }
+        console.error('❌ DTO que causó el error:', JSON.stringify(dto, null, 2));
         throw error;
       })
     );
@@ -104,8 +244,9 @@ export class ParticipacionService {
   /**
    * Actualiza una participación existente
    * El backend espera ParticipacionUpdateDto con PascalCase
+   * El backend devuelve bool o null cuando es exitoso
    */
-  update(id: number, data: Partial<ParticipacionCreate>): Observable<Participacion> {
+  update(id: number, data: Partial<ParticipacionCreate>): Observable<Participacion | null> {
     // Convertir a PascalCase para el backend
     const dto: any = {};
     
@@ -134,10 +275,10 @@ export class ParticipacionService {
       dto.AdministrativoId = data.administrativoId;
     }
     if (data.categoriaParticipacionId !== undefined) {
-      dto.CategoriaParticipacionId = data.categoriaParticipacionId;
+      dto.IdCategoriaParticipacionParticipante = data.categoriaParticipacionId;
     }
     if (data.estadoParticipacionId !== undefined) {
-      dto.EstadoParticipacionId = data.estadoParticipacionId;
+      dto.IdEstadoParticipacion = data.estadoParticipacionId;
     }
     if (data.fechaParticipacion !== undefined) {
       dto.FechaParticipacion = data.fechaParticipacion instanceof Date 
@@ -147,7 +288,17 @@ export class ParticipacionService {
     
     return this.http.put<any>(`${this.apiUrl}/${id}`, dto).pipe(
       map(response => {
+        // El backend puede devolver bool, null, o un objeto con data
+        // Si es null/undefined/true/false, la actualización fue exitosa pero no hay datos de retorno
+        if (response === null || response === undefined || response === true || response === false) {
+          // La actualización fue exitosa, devolvemos null (el componente manejará la navegación)
+          return null;
+        }
+        // Si hay datos, los mapeamos
         const item = response.data || response;
+        if (!item) {
+          return null;
+        }
         return this.mapParticipacion(item);
       }),
       catchError(error => {
@@ -225,8 +376,8 @@ export class ParticipacionService {
         EstudianteId: item.estudianteId,
         DocenteId: item.docenteId,
         AdministrativoId: item.administrativoId,
-        CategoriaParticipacionId: item.categoriaParticipacionId,
-        EstadoParticipacionId: item.estadoParticipacionId,
+        IdCategoriaParticipacionParticipante: item.categoriaParticipacionId,
+        IdEstadoParticipacion: item.estadoParticipacionId,
         FechaParticipacion: item.fechaParticipacion 
           ? (item.fechaParticipacion instanceof Date 
             ? item.fechaParticipacion.toISOString() 
@@ -269,31 +420,92 @@ export class ParticipacionService {
   }
 
   private mapParticipacion(item: any): Participacion {
-    return {
+    // Log detallado del item recibido (solo para debugging)
+    const idParticipacion = item.idParticipacion || item.IdParticipacion || item.id;
+    const idSubactividad = item.idSubactividad || item.IdSubactividad;
+    const idTutor = item.idTutor || item.IdTutor;
+    
+    // Extraer nombres de objetos anidados (navegación de Entity Framework)
+    // Para subactividad
+    const subactividadNav = item.IdSubactividadNavigation || item.idSubactividadNavigation || 
+                            item.Subactividad || item.subactividad;
+    const nombreSubactividad = item.nombreSubactividad || item.NombreSubactividad ||
+                              subactividadNav?.nombre || subactividadNav?.Nombre ||
+                              subactividadNav?.NombreSubactividad || subactividadNav?.nombreSubactividad;
+    
+    // Para tutor (puede ser Docente)
+    const tutorNav = item.IdTutorNavigation || item.idTutorNavigation || 
+                     item.Tutor || item.tutor ||
+                     item.IdDocenteNavigation || item.idDocenteNavigation ||
+                     item.Docente || item.docente;
+    const nombreTutor = item.nombreTutor || item.NombreTutor ||
+                        tutorNav?.nombreCompleto || tutorNav?.NombreCompleto ||
+                        tutorNav?.nombre || tutorNav?.Nombre ||
+                        (tutorNav?.primerNombre && tutorNav?.primerApellido 
+                          ? `${tutorNav.primerNombre} ${tutorNav.primerApellido}` 
+                          : undefined) ||
+                        (tutorNav?.PrimerNombre && tutorNav?.PrimerApellido 
+                          ? `${tutorNav.PrimerNombre} ${tutorNav.PrimerApellido}` 
+                          : undefined);
+    
+    // Para rol equipo
+    const rolEquipoNav = item.IdRolEquipoNavigation || item.idRolEquipoNavigation ||
+                         item.RolEquipo || item.rolEquipo;
+    const nombreRolEquipo = item.nombreRolEquipo || item.NombreRolEquipo ||
+                           rolEquipoNav?.nombre || rolEquipoNav?.Nombre;
+    
+    // Log de advertencia solo cuando hay IDs pero no nombres (para debugging)
+    if (idSubactividad && !nombreSubactividad) {
+      console.warn('⚠️ Participación tiene idSubactividad pero no nombreSubactividad:', {
+        idParticipacion,
+        idSubactividad,
+        itemKeys: Object.keys(item)
+      });
+    }
+    if (idTutor && !nombreTutor) {
+      console.warn('⚠️ Participación tiene idTutor pero no nombreTutor:', {
+        idParticipacion,
+        idTutor,
+        itemKeys: Object.keys(item),
+        itemNombreTutor: item.nombreTutor,
+        itemNombreTutorPascal: item.NombreTutor
+      });
+    }
+    
+    // Log del objeto final antes de retornarlo
+    const participacionMapeada = {
       id: item.idParticipacion || item.IdParticipacion || item.id,
       idParticipacion: item.idParticipacion || item.IdParticipacion || item.id,
-      edicionId: item.edicionId || item.EdicionId,
-      idSubactividad: item.idSubactividad || item.IdSubactividad,
-      nombreSubactividad: item.nombreSubactividad || item.NombreSubactividad,
+      edicionId: item.edicionId || item.EdicionId || item.idEdicion || item.IdEdicion,
+      idSubactividad: idSubactividad,
+      nombreSubactividad: nombreSubactividad,
       grupoNumero: item.grupoNumero || item.GrupoNumero,
       idRolEquipo: item.idRolEquipo || item.IdRolEquipo,
-      nombreRolEquipo: item.nombreRolEquipo || item.NombreRolEquipo,
-      idTutor: item.idTutor || item.IdTutor,
-      nombreTutor: item.nombreTutor || item.NombreTutor,
-      estudianteId: item.estudianteId || item.EstudianteId,
+      nombreRolEquipo: nombreRolEquipo,
+      idTutor: idTutor,
+      nombreTutor: nombreTutor,
+      estudianteId: item.estudianteId || item.EstudianteId || item.idEstudiante || item.IdEstudiante,
       idEstudiante: item.estudianteId || item.EstudianteId || item.idEstudiante || item.IdEstudiante,
-      docenteId: item.docenteId || item.DocenteId,
+      docenteId: item.docenteId || item.DocenteId || item.idDocente || item.IdDocente,
       idDocente: item.docenteId || item.DocenteId || item.idDocente || item.IdDocente,
-      administrativoId: item.administrativoId || item.AdministrativoId,
+      administrativoId: item.administrativoId || item.AdministrativoId || item.idAdmin || item.IdAdmin,
       idAdmin: item.administrativoId || item.AdministrativoId || item.idAdmin || item.IdAdmin,
-      nombreEstudiante: item.nombreEstudiante || item.NombreEstudiante,
-      nombreDocente: item.nombreDocente || item.NombreDocente,
-      nombreAdmin: item.nombreAdmin || item.NombreAdmin,
-      categoriaParticipacionId: item.categoriaParticipacionId || item.CategoriaParticipacionId,
-      estadoParticipacionId: item.estadoParticipacionId || item.EstadoParticipacionId,
+      nombreEstudiante: item.nombreEstudiante || item.NombreEstudiante ||
+                       (item.IdEstudianteNavigation?.nombreCompleto || item.idEstudianteNavigation?.nombreCompleto ||
+                        item.Estudiante?.nombreCompleto || item.estudiante?.nombreCompleto),
+      nombreDocente: item.nombreDocente || item.NombreDocente ||
+                    (item.IdDocenteNavigation?.nombreCompleto || item.idDocenteNavigation?.nombreCompleto ||
+                     item.Docente?.nombreCompleto || item.docente?.nombreCompleto),
+      nombreAdmin: item.nombreAdmin || item.NombreAdmin ||
+                  (item.IdAdminNavigation?.nombreCompleto || item.idAdminNavigation?.nombreCompleto ||
+                   item.Admin?.nombreCompleto || item.admin?.nombreCompleto),
+      categoriaParticipacionId: item.categoriaParticipacionId || item.CategoriaParticipacionId || item.idCategoriaParticipacionParticipante || item.IdCategoriaParticipacionParticipante,
+      estadoParticipacionId: item.estadoParticipacionId || item.EstadoParticipacionId || item.idEstadoParticipacion || item.IdEstadoParticipacion,
       idEstadoParticipacion: item.estadoParticipacionId || item.EstadoParticipacionId || item.idEstadoParticipacion || item.IdEstadoParticipacion,
-      fechaParticipacion: item.fechaParticipacion ? new Date(item.fechaParticipacion) : new Date()
+      fechaParticipacion: (item.fechaParticipacion || item.FechaParticipacion || item.fechaRegistro || item.FechaRegistro) ? new Date(item.fechaParticipacion || item.FechaParticipacion || item.fechaRegistro || item.FechaRegistro) : new Date()
     };
+    
+    return participacionMapeada;
   }
 }
 

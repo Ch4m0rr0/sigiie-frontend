@@ -26,6 +26,8 @@ export class ListUsuariosComponent implements OnInit {
   deletingId = signal<number | null>(null);
   error = signal<string | null>(null);
   lastLoadTime = signal<Date | null>(null);
+  showPermisosModal = signal<boolean>(false);
+  usuarioSeleccionado = signal<Usuario | null>(null);
 
   usuariosFiltrados = computed<Usuario[]>(() => {
     const usuarios = this.usuarios();
@@ -135,5 +137,15 @@ export class ListUsuariosComponent implements OnInit {
       return usuario.id;
     }
     return 0;
+  }
+
+  verPermisos(usuario: Usuario) {
+    this.usuarioSeleccionado.set(usuario);
+    this.showPermisosModal.set(true);
+  }
+
+  cerrarPermisosModal() {
+    this.showPermisosModal.set(false);
+    this.usuarioSeleccionado.set(null);
   }
 }

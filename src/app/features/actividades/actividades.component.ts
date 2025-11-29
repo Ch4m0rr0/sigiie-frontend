@@ -3,13 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { ActividadesService } from '../../core/services/actividades.service';
-import { PlanificacionService } from '../../core/services/planificacion.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { IndicadorService } from '../../core/services/indicador.service';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
 import type { Actividad } from '../../core/models/actividad';
-import type { Planificacion } from '../../core/models/planificacion';
 import type { NivelActividad } from '../../core/models/catalogos-nuevos';
 import type { Indicador } from '../../core/models/indicador';
 import type { ActividadAnual } from '../../core/models/actividad-anual';
@@ -25,7 +23,6 @@ import { BrnButtonImports } from '@spartan-ng/brain/button';
 })
 export class ListActividadesComponent implements OnInit {
   private actividadesService = inject(ActividadesService);
-  private planificacionService = inject(PlanificacionService);
   private catalogosService = inject(CatalogosService);
   private indicadorService = inject(IndicadorService);
   private actividadAnualService = inject(ActividadAnualService);
@@ -35,7 +32,6 @@ export class ListActividadesComponent implements OnInit {
   private elementRef = inject(ElementRef);
 
   actividades = signal<Actividad[]>([]);
-  planificaciones = signal<Planificacion[]>([]);
   nivelesActividad = signal<NivelActividad[]>([]);
   indicadores = signal<Indicador[]>([]);
   actividadesAnuales = signal<ActividadAnual[]>([]);
@@ -290,13 +286,6 @@ export class ListActividadesComponent implements OnInit {
         this.actividadesAnualesFiltradas.set([]);
         this.cargandoRelaciones = false;
       }
-    });
-  }
-
-  loadPlanificaciones(): void {
-    this.planificacionService.getAll().subscribe({
-      next: (data) => this.planificaciones.set(data),
-      error: (err) => console.error('Error loading planificaciones:', err)
     });
   }
 

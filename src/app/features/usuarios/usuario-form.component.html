@@ -43,20 +43,18 @@
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
         
         <!-- Nombre Completo -->
-        <div class="relative my-4">
+        <div>
+          <label for="nombreCompleto" class="block text-sm font-medium text-gray-700 mb-2">
+            Nombre Completo <span class="text-red-500">*</span>
+          </label>
           <input
             id="nombreCompleto"
             type="text"
             formControlName="nombreCompleto"
-            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-            [class.border-red-300]="form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched"
-            [class.border-blue-300]="form.get('nombreCompleto')?.value || form.get('nombreCompleto')?.touched"
-            placeholder=" "
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [class.border-red-500]="form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched"
             required
           />
-          <label for="nombreCompleto" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
-            Nombre Completo <span class="text-red-500">*</span>
-          </label>
           @if (form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched) {
             <p class="mt-1.5 text-sm text-red-600">
               @if (form.get('nombreCompleto')?.errors?.['required']) {
@@ -69,20 +67,18 @@
         </div>
 
         <!-- Correo -->
-        <div class="relative my-4">
+        <div>
+          <label for="correo" class="block text-sm font-medium text-gray-700 mb-2">
+            Correo Electrónico <span class="text-red-500">*</span>
+          </label>
           <input
             id="correo"
             type="email"
             formControlName="correo"
-            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-            [class.border-red-300]="form.get('correo')?.invalid && form.get('correo')?.touched"
-            [class.border-blue-300]="form.get('correo')?.value || form.get('correo')?.touched"
-            placeholder=" "
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            [class.border-red-500]="form.get('correo')?.invalid && form.get('correo')?.touched"
             required
           />
-          <label for="correo" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
-            Correo Electrónico <span class="text-red-500">*</span>
-          </label>
           @if (form.get('correo')?.invalid && form.get('correo')?.touched) {
             <p class="mt-1.5 text-sm text-red-600">
               @if (form.get('correo')?.errors?.['required']) {
@@ -96,20 +92,18 @@
 
         <!-- Contraseña (solo para crear) -->
         @if (!isEditMode()) {
-          <div class="relative my-4">
+          <div>
+            <label for="contraseña" class="block text-sm font-medium text-gray-700 mb-2">
+              Contraseña <span class="text-red-500">*</span>
+            </label>
             <input
               id="contraseña"
               type="password"
               formControlName="contraseña"
-              class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-              [class.border-red-300]="form.get('contraseña')?.invalid && form.get('contraseña')?.touched"
-              [class.border-blue-300]="form.get('contraseña')?.value || form.get('contraseña')?.touched"
-              placeholder=" "
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('contraseña')?.invalid && form.get('contraseña')?.touched"
               required
             />
-            <label for="contraseña" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
-              Contraseña <span class="text-red-500">*</span>
-            </label>
             @if (form.get('contraseña')?.invalid && form.get('contraseña')?.touched) {
               <p class="mt-1.5 text-sm text-red-600">
                 @if (form.get('contraseña')?.errors?.['required']) {
@@ -123,50 +117,84 @@
         }
 
         <!-- Rol -->
-        <div class="relative my-4">
-          <select
-            id="idRol"
-            formControlName="idRol"
-            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300 appearance-none cursor-pointer"
-            [class.border-red-300]="form.get('idRol')?.invalid && form.get('idRol')?.touched"
-            [class.border-blue-300]="form.get('idRol')?.value || form.get('idRol')?.touched"
-            required
-          >
-            <option [ngValue]="null">Seleccione un rol...</option>
-            @for (rol of roles(); track rol.id) {
-              <option [ngValue]="rol.id">{{ rol.nombre }}</option>
-            }
-          </select>
-          <label for="idRol" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not([value=''])]:-translate-y-1/2 peer-[:not([value=''])]:scale-90 peer-[:not([value=''])]:m-0 peer-[:not([value=''])]:ml-5 peer-[:not([value=''])]:py-[0.4em] peer-[:not([value=''])]:px-[0.4em] peer-[:not([value=''])]:bg-gray-200">
+        <div>
+          <label for="idRol" class="block text-sm font-medium text-gray-700 mb-2">
             Rol <span class="text-red-500">*</span>
           </label>
-          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
-            <app-icon icon="expand_more" size="sm"></app-icon>
-          </span>
+          <div class="relative">
+            <select
+              id="idRol"
+              formControlName="idRol"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+              [class.border-red-500]="form.get('idRol')?.invalid && form.get('idRol')?.touched"
+              required
+            >
+              <option [ngValue]="null">Seleccione un rol...</option>
+              @for (rol of roles(); track rol.id) {
+                <option [ngValue]="rol.id">{{ rol.nombre }}</option>
+              }
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+              <app-icon icon="expand_more" size="sm"></app-icon>
+            </span>
+          </div>
           @if (form.get('idRol')?.invalid && form.get('idRol')?.touched) {
             <p class="mt-1.5 text-sm text-red-600">El rol es requerido</p>
           }
         </div>
 
         <!-- Departamento -->
-        <div class="relative my-4">
-          <select
-            id="departamentoId"
-            formControlName="departamentoId"
-            class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300 appearance-none cursor-pointer"
-            [class.border-blue-300]="form.get('departamentoId')?.value || form.get('departamentoId')?.touched"
-          >
-            <option [ngValue]="null">Seleccione un departamento (opcional)...</option>
-            @for (departamento of departamentos(); track departamento.id) {
-              <option [ngValue]="departamento.id">{{ departamento.nombre }}</option>
-            }
-          </select>
-          <label for="departamentoId" class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not([value=''])]:-translate-y-1/2 peer-[:not([value=''])]:scale-90 peer-[:not([value=''])]:m-0 peer-[:not([value=''])]:ml-5 peer-[:not([value=''])]:py-[0.4em] peer-[:not([value=''])]:px-[0.4em] peer-[:not([value=''])]:bg-gray-200">
+        <div>
+          <label for="departamentoId" class="block text-sm font-medium text-gray-700 mb-2">
             Departamento
           </label>
-          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
-            <app-icon icon="expand_more" size="sm"></app-icon>
-          </span>
+          <div class="relative">
+            <select
+              id="departamentoId"
+              formControlName="departamentoId"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer"
+            >
+              <option [ngValue]="null">Seleccione un departamento (opcional)...</option>
+              @for (departamento of departamentos(); track departamento.id) {
+                <option [ngValue]="departamento.id">{{ departamento.nombre }}</option>
+              }
+            </select>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+              <app-icon icon="expand_more" size="sm"></app-icon>
+            </span>
+          </div>
+        </div>
+
+        <!-- Permisos -->
+        <div class="relative my-4">
+          <label class="text-base block mb-2 text-gray-700 font-medium">
+            Permisos (opcional)
+          </label>
+          <div class="border-2 border-gray-300 rounded-[20px] p-4 max-h-64 overflow-y-auto">
+            @if (permisos().length === 0) {
+              <p class="text-sm text-gray-500 text-center py-4">Cargando permisos...</p>
+            } @else {
+              <div class="space-y-2">
+                @for (permiso of permisos(); track permiso.id) {
+                  <label class="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                    <input
+                      type="checkbox"
+                      [value]="permiso.id"
+                      [checked]="form.get('permisos')?.value?.includes(permiso.id)"
+                      (change)="togglePermiso(permiso.id, $event)"
+                      class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <div class="flex-1">
+                      <span class="text-sm font-medium text-gray-900">{{ permiso.nombre }}</span>
+                      @if (permiso.descripcion) {
+                        <p class="text-xs text-gray-500">{{ permiso.descripcion }}</p>
+                      }
+                    </div>
+                  </label>
+                }
+              </div>
+            }
+          </div>
         </div>
 
         <!-- Activo (solo para editar) -->

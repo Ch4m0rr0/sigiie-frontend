@@ -15,9 +15,8 @@ import type { TipoInvestigacion } from '../models/tipo-investigacion';
 import type { TipoDocumento } from '../models/tipo-documento';
 import type { TipoDocumentoDivulgado } from '../models/tipo-documento-divulgado';
 import type { AreaConocimiento } from '../models/area-conocimiento';
-import type { TipoPlanificacion, NivelActividad, TipoSubactividad, TipoEvidencia, RolEquipo } from '../models/catalogos-nuevos';
+import type { NivelActividad, TipoSubactividad, TipoEvidencia, RolEquipo } from '../models/catalogos-nuevos';
 import type { EstadoActividad } from '../models/estado-actividad';
-import type { TipoActividadJerarquica } from '../models/tipo-actividad-jerarquica';
 
 @Injectable({ providedIn: 'root' })
 export class CatalogosService {
@@ -954,84 +953,6 @@ export class CatalogosService {
     );
   }
 
-  // Tipo Planificacion
-  getTiposPlanificacion(): Observable<TipoPlanificacion[]> {
-    return this.http.get<any>(`${this.apiUrl}/TipoPlanificacion`).pipe(
-      map(response => {
-        const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({
-          idTipoPlanificacion: item.idTipoPlanificacion || item.IdTipoPlanificacion || item.id,
-          nombre: item.nombre || item.Nombre,
-          descripcion: item.descripcion || item.Descripcion,
-          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
-        })) : [];
-      }),
-      catchError(error => {
-        // Silenciar errores 404 si el endpoint no existe aún
-        if (error.status !== 404) {
-          console.error('Error fetching tipos planificacion:', error);
-        }
-        return of([]);
-      })
-    );
-  }
-
-  createTipoPlanificacion(tipo: Omit<TipoPlanificacion, 'idTipoPlanificacion'>): Observable<TipoPlanificacion> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion, Activo: tipo.activo };
-    return this.http.post<any>(`${this.apiUrl}/TipoPlanificacion`, data).pipe(
-      map(item => ({
-        idTipoPlanificacion: item.idTipoPlanificacion || item.IdTipoPlanificacion,
-        nombre: item.nombre || item.Nombre,
-        descripcion: item.descripcion || item.Descripcion,
-        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
-      }))
-    );
-  }
-
-  updateTipoPlanificacion(id: number, tipo: Omit<TipoPlanificacion, 'idTipoPlanificacion'>): Observable<TipoPlanificacion> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion, Activo: tipo.activo };
-    return this.http.put<any>(`${this.apiUrl}/TipoPlanificacion/${id}`, data).pipe(
-      map(response => {
-        if (!response) {
-          return {
-            idTipoPlanificacion: id,
-            nombre: tipo.nombre,
-            descripcion: tipo.descripcion || '',
-            activo: tipo.activo !== undefined ? tipo.activo : true
-          };
-        }
-        
-        const item = response.data || response;
-        if (!item) {
-          return {
-            idTipoPlanificacion: id,
-            nombre: tipo.nombre,
-            descripcion: tipo.descripcion || '',
-            activo: tipo.activo !== undefined ? tipo.activo : true
-          };
-        }
-        
-        return {
-          idTipoPlanificacion: item.idTipoPlanificacion || item.IdTipoPlanificacion || id,
-          nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
-          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : (tipo.activo !== undefined ? tipo.activo : true))
-        };
-      }),
-      catchError(error => {
-        console.error('Error updating tipo planificacion:', error);
-        if (!error) {
-          throw new Error('Error desconocido al actualizar tipo planificacion');
-        }
-        throw error;
-      })
-    );
-  }
-
-  deleteTipoPlanificacion(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/TipoPlanificacion/${id}`);
-  }
-
   // Nivel Actividad
   // Endpoint: /api/nivel-actividad
   getNivelesActividad(): Observable<NivelActividad[]> {
@@ -1227,7 +1148,8 @@ export class CatalogosService {
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
-          idTipoEvidencia: item.idTipoEvidencia || item.IdTipoEvidencia || item.id,
+          // Usar ?? en lugar de || para no perder IDs numéricos 0
+          idTipoEvidencia: item.idTipoEvidencia ?? item.IdTipoEvidencia ?? item.id,
           nombre: item.nombre || item.Nombre,
           descripcion: item.descripcion || item.Descripcion,
           activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
@@ -1493,108 +1415,6 @@ export class CatalogosService {
     );
   }
 
-  // Tipo Actividad Jerarquica
-  // Endpoint: /api/tipo-actividad-jerarquica
-  getTiposActividadJerarquica(): Observable<TipoActividadJerarquica[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-actividad-jerarquica`).pipe(
-      map(response => {
-        const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({
-          id: item.idTipoActividadJerarquica || item.IdTipoActividadJerarquica || item.Id || item.id,
-          idTipoActividadJerarquica: item.idTipoActividadJerarquica || item.IdTipoActividadJerarquica || item.Id || item.id,
-          nombre: item.nombre || item.Nombre,
-          descripcion: item.descripcion || item.Descripcion || ''
-        })) : [];
-      }),
-      catchError(error => {
-        if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/tipo-actividad-jerarquica no encontrado (404)');
-        } else {
-          console.error('❌ Error fetching tipos actividad jerarquica:', error);
-        }
-        return of([]);
-      })
-    );
-  }
-
-  createTipoActividadJerarquica(tipo: Omit<TipoActividadJerarquica, 'id'>): Observable<TipoActividadJerarquica> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
-    return this.http.post<any>(`${this.apiUrl}/tipo-actividad-jerarquica`, data).pipe(
-      map(response => {
-        const item = response.data || response;
-        if (!item) {
-          return {
-            id: 0,
-            nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
-          };
-        }
-        return {
-          id: item.idTipoActividadJerarquica || item.IdTipoActividadJerarquica || item.Id || item.id || 0,
-          idTipoActividadJerarquica: item.idTipoActividadJerarquica || item.IdTipoActividadJerarquica || item.Id || item.id || 0,
-          nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
-        };
-      }),
-      catchError(error => {
-        console.error('Error creating tipo actividad jerarquica:', error);
-        throw error;
-      })
-    );
-  }
-
-  updateTipoActividadJerarquica(id: number, tipo: Omit<TipoActividadJerarquica, 'id'>): Observable<TipoActividadJerarquica> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
-    return this.http.put<any>(`${this.apiUrl}/tipo-actividad-jerarquica/${id}`, data).pipe(
-      map(response => {
-        if (!response) {
-          return {
-            id: id,
-            idTipoActividadJerarquica: id,
-            nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
-          };
-        }
-        
-        const item = response.data || response;
-        if (!item) {
-          return {
-            id: id,
-            idTipoActividadJerarquica: id,
-            nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
-          };
-        }
-        
-        return {
-          id: item.idTipoActividadJerarquica || item.IdTipoActividadJerarquica || item.Id || item.id || id,
-          idTipoActividadJerarquica: item.idTipoActividadJerarquica || item.IdTipoActividadJerarquica || item.Id || item.id || id,
-          nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
-        };
-      }),
-      catchError(error => {
-        console.error('Error updating tipo actividad jerarquica:', error);
-        if (!error) {
-          throw new Error('Error desconocido al actualizar tipo actividad jerarquica');
-        }
-        throw error;
-      })
-    );
-  }
-
-  deleteTipoActividadJerarquica(id: number): Observable<boolean> {
-    return this.http.delete<any>(`${this.apiUrl}/tipo-actividad-jerarquica/${id}`).pipe(
-      map(() => true),
-      catchError(error => {
-        if (error.status === 404) {
-          return of(false);
-        }
-        console.error('Error deleting tipo actividad jerarquica:', error);
-        return of(false);
-      })
-    );
-  }
 
   // Tipo Protagonista - Endpoint: /api/tipo-protagonista
   getTiposProtagonista(): Observable<any[]> {

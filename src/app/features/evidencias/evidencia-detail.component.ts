@@ -6,6 +6,7 @@ import { EvidenciaService } from '../../core/services/evidencia.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
+import { environment } from '../../../environments/environment';
 
 @Component({
   standalone: true,
@@ -38,7 +39,13 @@ export class EvidenciaDetailComponent implements OnInit {
       next: (data) => {
         this.evidencia.set(data);
         if (data.rutaArchivo) {
-          this.loadDownloadUrl(id);
+          // El backend devuelve una ruta relativa como "/storage/evidencias/archivo.ext"
+          // Necesitamos usar la URL completa del backend porque el proxy solo maneja /api
+          const backendBase = this.getBackendBaseUrl();
+          const url = `${backendBase}${data.rutaArchivo}`;
+          this.downloadUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
+        } else {
+          this.downloadUrl.set(null);
         }
         this.loading.set(false);
       },
@@ -47,16 +54,6 @@ export class EvidenciaDetailComponent implements OnInit {
         this.error.set('Error al cargar la evidencia');
         this.loading.set(false);
       }
-    });
-  }
-
-  loadDownloadUrl(id: number): void {
-    this.evidenciaService.download(id).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        this.downloadUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
-      },
-      error: (err) => console.error('Error loading download URL:', err)
     });
   }
 
@@ -101,6 +98,27 @@ export class EvidenciaDetailComponent implements OnInit {
     if (!rutaArchivo) return false;
     const extension = rutaArchivo.toLowerCase().split('.').pop();
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '');
+  }
+
+  /**
+   * Obtiene la URL base del backend desde environment.apiUrl
+   * Si apiUrl es absoluta (https://...), extrae la base URL
+   * Si apiUrl es relativa (/api), usa window.location.origin
+   */
+  private getBackendBaseUrl(): string {
+    const apiUrl = environment.apiUrl;
+    // Si apiUrl es absoluta (contiene http:// o https://), extraer la base URL
+    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+      try {
+        const url = new URL(apiUrl);
+        return `${url.protocol}//${url.host}`;
+      } catch {
+        // Si falla el parsing, usar window.location.origin como fallback
+        return window.location.origin;
+      }
+    }
+    // Si apiUrl es relativa, usar window.location.origin
+    return window.location.origin;
   }
 }
 

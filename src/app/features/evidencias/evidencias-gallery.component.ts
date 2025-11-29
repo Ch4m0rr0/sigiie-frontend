@@ -10,6 +10,7 @@ import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { environment } from '../../../environments/environment';
 
 @Component({
   standalone: true,
@@ -89,18 +90,16 @@ export class EvidenciasGalleryComponent implements OnInit {
   }
 
   loadPreviews(evidencias: Evidencia[]): void {
+    const backendBase = this.getBackendBaseUrl();
     evidencias.forEach(evidencia => {
       if (evidencia.rutaArchivo && this.isImage(evidencia.rutaArchivo)) {
-        this.evidenciaService.download(evidencia.idEvidencia).subscribe({
-          next: (blob) => {
-            const url = window.URL.createObjectURL(blob);
-            const safeUrl = this.sanitizer.bypassSecurityTrustUrl(url);
-            const urls = this.previewUrls();
-            urls.set(evidencia.idEvidencia, safeUrl);
-            this.previewUrls.set(new Map(urls));
-          },
-          error: (err) => console.error('Error loading preview:', err)
-        });
+        // El backend devuelve una ruta relativa como "/storage/evidencias/archivo.ext"
+        // Necesitamos usar la URL completa del backend porque el proxy solo maneja /api
+        const url = `${backendBase}${evidencia.rutaArchivo}`;
+        const safeUrl = this.sanitizer.bypassSecurityTrustUrl(url);
+        const urls = this.previewUrls();
+        urls.set(evidencia.idEvidencia, safeUrl);
+        this.previewUrls.set(new Map(urls));
       }
     });
   }
@@ -141,6 +140,27 @@ export class EvidenciasGalleryComponent implements OnInit {
     this.filtroTipo.set(null);
     this.filtroSeleccionadas.set(null);
     this.loadEvidencias();
+  }
+
+  /**
+   * Obtiene la URL base del backend desde environment.apiUrl
+   * Si apiUrl es absoluta (https://...), extrae la base URL
+   * Si apiUrl es relativa (/api), usa window.location.origin
+   */
+  private getBackendBaseUrl(): string {
+    const apiUrl = environment.apiUrl;
+    // Si apiUrl es absoluta (contiene http:// o https://), extraer la base URL
+    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+      try {
+        const url = new URL(apiUrl);
+        return `${url.protocol}//${url.host}`;
+      } catch {
+        // Si falla el parsing, usar window.location.origin como fallback
+        return window.location.origin;
+      }
+    }
+    // Si apiUrl es relativa, usar window.location.origin
+    return window.location.origin;
   }
 }
 

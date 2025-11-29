@@ -1,12 +1,5 @@
 // Catálogos nuevos para las nuevas funcionalidades
 
-export interface TipoPlanificacion {
-  idTipoPlanificacion: number;
-  nombre: string;
-  descripcion?: string;
-  activo: boolean;
-}
-
 export interface NivelActividad {
   idNivel: number;
   nombre: string; // Centro, Departamento, Multi

@@ -148,14 +148,10 @@
           @if (activeTab() === 'info') {
             <div class="space-y-4">
               <div>
-                <h3 class="text-lg font-semibold text-slate-900 mb-2">Detalles</h3>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">Detalles de la subactividad</h3>
                 <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <dt class="text-sm font-medium text-slate-500">ID</dt>
-                    <dd class="text-sm text-slate-900">{{ subactividad()!.idSubactividad }}</dd>
-                  </div>
-                  <div>
-                    <dt class="text-sm font-medium text-slate-500">Fecha de Creación</dt>
+                    <dt class="text-sm font-medium text-slate-500">Fecha de creación</dt>
                     <dd class="text-sm text-slate-900">
                       {{ subactividad()!.fechaCreacion | date:'short' }}
                     </dd>

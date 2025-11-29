@@ -67,6 +67,11 @@ export class UsuariosService {
       dto.DepartamentoId = usuario.departamentoId;
     }
 
+    // Agregar permisos si están presentes
+    if (usuario.permisos && usuario.permisos.length > 0) {
+      dto.Permisos = usuario.permisos;
+    }
+
     return this.http.post<any>(this.apiUrl, dto).pipe(
       map(item => this.mapUsuario(item))
     );
@@ -83,6 +88,11 @@ export class UsuariosService {
     
     if (usuario.departamentoId !== undefined) {
       dto.DepartamentoId = usuario.departamentoId;
+    }
+
+    // Agregar permisos si están presentes
+    if (usuario.permisos !== undefined) {
+      dto.Permisos = usuario.permisos;
     }
 
     return this.http.put<any>(`${this.apiUrl}/${id}`, dto).pipe(

@@ -4,11 +4,14 @@ import { Router, RouterModule } from '@angular/router';
 import { ParticipacionService } from '../../core/services/participacion.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
+import { PersonasService } from '../../core/services/personas.service';
 import type { Participacion } from '../../core/models/participacion';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { RolEquipo } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
+import { forkJoin, of } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   standalone: true,
@@ -20,6 +23,7 @@ export class ParticipacionesListComponent implements OnInit {
   private participacionService = inject(ParticipacionService);
   private subactividadService = inject(SubactividadService);
   private catalogosService = inject(CatalogosService);
+  private personasService = inject(PersonasService);
   private router = inject(Router);
 
   participaciones = signal<Participacion[]>([]);
@@ -68,8 +72,7 @@ export class ParticipacionesListComponent implements OnInit {
           if (this.filtroGrupo()) {
             filtered = filtered.filter(p => p.grupoNumero === this.filtroGrupo()!);
           }
-          this.participaciones.set(filtered);
-          this.loading.set(false);
+          this.enriquecerParticipaciones(filtered);
         },
         error: (err) => {
           console.error('Error loading participaciones:', err);
@@ -87,8 +90,7 @@ export class ParticipacionesListComponent implements OnInit {
           if (this.filtroGrupo()) {
             filtered = filtered.filter(p => p.grupoNumero === this.filtroGrupo()!);
           }
-          this.participaciones.set(filtered);
-          this.loading.set(false);
+          this.enriquecerParticipaciones(filtered);
         },
         error: (err) => {
           console.error('Error loading participaciones:', err);
@@ -116,6 +118,95 @@ export class ParticipacionesListComponent implements OnInit {
     this.filtroRolEquipo.set(null);
     this.filtroGrupo.set(null);
     this.loadParticipaciones();
+  }
+
+  /**
+   * Enriquece las participaciones con nombres desde los catálogos cuando no están disponibles
+   */
+  private enriquecerParticipaciones(participaciones: Participacion[]): void {
+    // Si las participaciones ya tienen los nombres desde el backend, usarlas directamente
+    // Solo enriquecer si faltan nombres
+    const participacionesEnriquecidas = participaciones.map((p) => {
+      // Verificar si necesita enriquecimiento
+      const necesitaEnriquecimiento = (!p.nombreSubactividad && p.idSubactividad) || 
+                                      (!p.nombreRolEquipo && p.idRolEquipo);
+      
+      // Si no necesita enriquecimiento, devolver la participación original
+      if (!necesitaEnriquecimiento) {
+        return p;
+      }
+      
+      // Solo crear copia si vamos a modificar
+      const participacion = { ...p };
+      
+      // Completar nombreSubactividad desde el catálogo de subactividades
+      if (!participacion.nombreSubactividad && participacion.idSubactividad) {
+        const subactividad = this.subactividades().find(s => s.idSubactividad === participacion.idSubactividad);
+        if (subactividad) {
+          participacion.nombreSubactividad = subactividad.nombre;
+        }
+      }
+      
+      // Completar nombreRolEquipo desde el catálogo de roles
+      if (!participacion.nombreRolEquipo && participacion.idRolEquipo) {
+        const rol = this.rolesEquipo().find(r => r.idRolEquipo === participacion.idRolEquipo);
+        if (rol) {
+          participacion.nombreRolEquipo = rol.nombre;
+        }
+      }
+      
+      return participacion;
+    });
+    
+    // Si aún faltan nombres de tutores, obtenerlos del backend
+    const tutoresFaltantes = participacionesEnriquecidas.filter(p => 
+      !p.nombreTutor && p.idTutor
+    );
+    
+    if (tutoresFaltantes.length > 0) {
+      // Obtener IDs únicos de tutores para evitar consultas duplicadas
+      const tutorIdsUnicos = [...new Set(tutoresFaltantes.map(p => p.idTutor!))];
+      
+      // Obtener todos los tutores únicos en paralelo
+      const tutorRequests = tutorIdsUnicos.map(id => 
+        this.personasService.getDocente(id).pipe(
+          map(docente => ({ idTutor: id, tutor: docente }))
+        )
+      );
+      
+      forkJoin(tutorRequests).subscribe({
+        next: (resultados) => {
+          // Crear un mapa de ID de tutor a nombre
+          const tutorMap = new Map<number, string>();
+          resultados.forEach(r => {
+            if (r.tutor && r.idTutor) {
+              tutorMap.set(r.idTutor, r.tutor.nombreCompleto);
+            }
+          });
+          
+          // Aplicar los nombres de tutores
+          const finales = participacionesEnriquecidas.map(p => {
+            if (!p.nombreTutor && p.idTutor && tutorMap.has(p.idTutor)) {
+              return { ...p, nombreTutor: tutorMap.get(p.idTutor)! };
+            }
+            return p;
+          });
+          
+          this.participaciones.set(finales);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          console.error('Error obteniendo tutores:', err);
+          // Aún así, mostrar las participaciones con los datos que tenemos
+          this.participaciones.set(participacionesEnriquecidas);
+          this.loading.set(false);
+        }
+      });
+    } else {
+      // No hay tutores faltantes, solo establecer las participaciones
+      this.participaciones.set(participacionesEnriquecidas);
+      this.loading.set(false);
+    }
   }
 }
 

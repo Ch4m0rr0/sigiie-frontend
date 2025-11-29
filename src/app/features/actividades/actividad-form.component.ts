@@ -3,10 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadesService } from '../../core/services/actividades.service';
-import { PlanificacionService } from '../../core/services/planificacion.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import type { ActividadCreate } from '../../core/models/actividad';
-import type { Planificacion, PlanificacionActividadCreate } from '../../core/models/planificacion';
 import type { Departamento } from '../../core/models/departamento';
 import type { CategoriaActividad } from '../../core/models/categoria-actividad';
 import type { TipoUnidad } from '../../core/models/tipo-unidad';
@@ -41,7 +39,6 @@ import { BrnLabelImports } from '@spartan-ng/brain/label';
 export class ActividadFormComponent implements OnInit {
   private fb = inject(FormBuilder);
   private actividadesService = inject(ActividadesService);
-  private planificacionService = inject(PlanificacionService);
   private catalogosService = inject(CatalogosService);
   private actividadMensualInstService = inject(ActividadMensualInstService);
   private indicadorService = inject(IndicadorService);
@@ -50,7 +47,6 @@ export class ActividadFormComponent implements OnInit {
   private router = inject(Router);
 
   form!: FormGroup;
-  planificaciones = signal<Planificacion[]>([]);
   departamentos = signal<Departamento[]>([]);
   categoriasActividad = signal<CategoriaActividad[]>([]);
   tiposUnidad = signal<TipoUnidad[]>([]);
@@ -72,12 +68,10 @@ export class ActividadFormComponent implements OnInit {
   error = signal<string | null>(null);
   private cargandoRelaciones = false;
 
-  planificacionIdFromQuery = signal<number | null>(null);
   indicadorIdFromQuery = signal<number | null>(null);
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadPlanificaciones();
     this.loadDepartamentos();
     this.loadCategoriasActividad();
     this.loadTiposUnidad();
@@ -97,16 +91,6 @@ export class ActividadFormComponent implements OnInit {
       this.isEditMode.set(true);
       this.actividadId.set(+id);
       this.loadActividad(+id);
-    }
-
-    // Leer planificacionId de query params (si viene desde el detalle de planificación)
-    const planificacionId = this.route.snapshot.queryParams['planificacionId'];
-    if (planificacionId) {
-      this.planificacionIdFromQuery.set(+planificacionId);
-      // Pre-seleccionar la planificación en el formulario si existe el campo
-      if (this.form.get('idPlanificacion')) {
-        this.form.patchValue({ idPlanificacion: +planificacionId });
-      }
     }
 
     // Leer idIndicador de query params (si viene desde la vista de actividades)
@@ -159,7 +143,6 @@ export class ActividadFormComponent implements OnInit {
       categoriaActividadId: [null],
       tipoUnidadId: [null],
       areaConocimientoId: [null],
-      idPlanificacion: [null],
       ubicacion: [''], // Legacy - se mapeará a idCapacidadInstalada
       activo: [true]
     });
@@ -215,14 +198,6 @@ export class ActividadFormComponent implements OnInit {
       }
     });
   }
-
-  loadPlanificaciones(): void {
-    this.planificacionService.getAll().subscribe({
-      next: (data) => this.planificaciones.set(data),
-      error: (err) => console.error('Error loading planificaciones:', err)
-    });
-  }
-
 
   loadDepartamentos(): void {
     this.catalogosService.getDepartamentos().subscribe({
@@ -641,7 +616,6 @@ export class ActividadFormComponent implements OnInit {
       } else {
         this.actividadesService.create(data).subscribe({
           next: (actividadCreada) => {
-            const planificacionId = this.planificacionIdFromQuery();
             const indicadorId = this.indicadorIdFromQuery();
             
             // Si viene un indicador, asociarlo a la actividad
@@ -650,18 +624,15 @@ export class ActividadFormComponent implements OnInit {
               this.actividadesService.agregarIndicador(actividadCreada.id, indicadorId).subscribe({
                 next: () => {
                   console.log('✅ Indicador asociado exitosamente a la actividad');
-                  // Continuar con la lógica de planificación si existe
-                  this.handlePlanificacionAsociacion(actividadCreada.id, planificacionId);
+                  this.router.navigate(['/actividades']);
                 },
                 error: (errIndicador) => {
                   console.error('❌ Error al asociar indicador a actividad:', errIndicador);
-                  // Continuar con la lógica de planificación aunque falle la asociación del indicador
-                  this.handlePlanificacionAsociacion(actividadCreada.id, planificacionId);
+                  this.router.navigate(['/actividades']);
                 }
               });
             } else {
-              // Si no viene indicador, solo manejar planificación
-              this.handlePlanificacionAsociacion(actividadCreada.id, planificacionId);
+              this.router.navigate(['/actividades']);
             }
           },
           error: (err: any) => {
@@ -676,37 +647,7 @@ export class ActividadFormComponent implements OnInit {
     }
   }
 
-  private handlePlanificacionAsociacion(actividadId: number, planificacionId: number | null): void {
-    // Si viene desde el detalle de planificación, asociar automáticamente
-    if (planificacionId) {
-      console.log('🔄 Asociando actividad recién creada a planificación:', planificacionId);
-      const asociacionData = {
-        idPlanificacion: planificacionId,
-        idActividad: actividadId,
-        anio: undefined, // Se usará el año de la planificación
-        activo: true
-      };
-
-      this.planificacionService.asociarActividad(planificacionId, asociacionData).subscribe({
-        next: () => {
-          console.log('✅ Actividad asociada exitosamente a la planificación');
-          // Redirigir a la lista de actividades
-          this.router.navigate(['/actividades']);
-        },
-        error: (errAsociar) => {
-          console.error('❌ Error al asociar actividad a planificación:', errAsociar);
-          // Redirigir a la lista de actividades
-          this.router.navigate(['/actividades']);
-        }
-      });
-    } else {
-      // Si no viene de planificación, redirigir a la lista de actividades
-      this.router.navigate(['/actividades']);
-    }
-  }
-
   get nombre() { return this.form.get('nombre'); }
-  get idPlanificacion() { return this.form.get('idPlanificacion'); }
   get departamentoResponsableId() { return this.form.get('departamentoResponsableId'); }
 }
 

@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
@@ -13,6 +14,7 @@ import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
+import { environment } from '../../../environments/environment';
 
 @Component({
   standalone: true,
@@ -35,6 +37,7 @@ export class EvidenciaFormComponent implements OnInit {
   private actividadesService = inject(ActividadesService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private sanitizer = inject(DomSanitizer);
 
   form!: FormGroup;
   subactividades = signal<Subactividad[]>([]);
@@ -45,7 +48,7 @@ export class EvidenciaFormComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   selectedFile = signal<File | null>(null);
-  previewUrl = signal<string | null>(null);
+  previewUrl = signal<string | SafeUrl | null>(null);
 
   ngOnInit(): void {
     this.initializeForm();
@@ -118,7 +121,13 @@ export class EvidenciaFormComponent implements OnInit {
           tipo: data.tipo || ''
         });
         if (data.rutaArchivo) {
-          this.previewUrl.set(data.rutaArchivo);
+          // El backend devuelve una ruta relativa como "/storage/evidencias/archivo.ext"
+          // Necesitamos usar la URL completa del backend porque el proxy solo maneja /api
+          const backendBase = this.getBackendBaseUrl();
+          const url = `${backendBase}${data.rutaArchivo}`;
+          this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
+        } else {
+          this.previewUrl.set(null);
         }
         this.loading.set(false);
       },
@@ -154,11 +163,25 @@ export class EvidenciaFormComponent implements OnInit {
       this.loading.set(true);
       this.error.set(null);
 
+      // Normalizar y validar idTipoEvidencia como número
+      const rawTipo = this.form.value.idTipoEvidencia;
+      const idTipoEvidencia =
+        rawTipo === '' || rawTipo === null || rawTipo === undefined
+          ? undefined
+          : Number(rawTipo);
+
+      if (idTipoEvidencia === undefined || Number.isNaN(idTipoEvidencia)) {
+        this.loading.set(false);
+        this.error.set('Debe seleccionar un tipo de evidencia válido.');
+        this.form.get('idTipoEvidencia')?.markAsTouched();
+        return;
+      }
+
       const data: EvidenciaCreate = {
         idProyecto: this.form.value.idProyecto || undefined,
         idActividad: this.form.value.idActividad || undefined,
         idSubactividad: this.form.value.idSubactividad || undefined,
-        idTipoEvidencia: this.form.value.idTipoEvidencia,
+        idTipoEvidencia,
         fechaEvidencia: this.form.value.fechaEvidencia || undefined,
         seleccionadaParaReporte: this.form.value.seleccionadaParaReporte || false,
         descripcion: this.form.value.descripcion || undefined,
@@ -180,7 +203,15 @@ export class EvidenciaFormComponent implements OnInit {
           }
         });
       } else {
-        // Sin archivo (solo actualizar datos)
+        // Sin archivo
+        if (!this.isEditMode()) {
+          // El backend requiere al menos un archivo para crear evidencia nueva
+          this.error.set('Debe seleccionar un archivo para guardar la evidencia');
+          this.loading.set(false);
+          return;
+        }
+
+        // Sin archivo en modo edición: solo actualizar metadatos
         if (this.isEditMode()) {
           this.evidenciaService.update(this.evidenciaId()!, data).subscribe({
             next: () => {
@@ -211,5 +242,26 @@ export class EvidenciaFormComponent implements OnInit {
   }
 
   get idTipoEvidencia() { return this.form.get('idTipoEvidencia'); }
+
+  /**
+   * Obtiene la URL base del backend desde environment.apiUrl
+   * Si apiUrl es absoluta (https://...), extrae la base URL
+   * Si apiUrl es relativa (/api), usa window.location.origin
+   */
+  private getBackendBaseUrl(): string {
+    const apiUrl = environment.apiUrl;
+    // Si apiUrl es absoluta (contiene http:// o https://), extraer la base URL
+    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
+      try {
+        const url = new URL(apiUrl);
+        return `${url.protocol}//${url.host}`;
+      } catch {
+        // Si falla el parsing, usar window.location.origin como fallback
+        return window.location.origin;
+      }
+    }
+    // Si apiUrl es relativa, usar window.location.origin
+    return window.location.origin;
+  }
 }
 

@@ -52,78 +52,64 @@
           <h3 class="text-lg font-medium text-gray-900 mb-4">{{ isEditing ? 'Editar' : 'Agregar' }} {{ getCatalogoName() }}</h3>
           <form [formGroup]="form" (ngSubmit)="onSubmit()">
             <!-- Código field for géneros e indicadores -->
-            <div class="relative my-4" *ngIf="selectedCatalogo === 'generos' || selectedCatalogo === 'indicadores'">
-              <input type="text" formControlName="codigo" class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300" 
-                     placeholder=" "
-                     [class.border-blue-300]="form.get('codigo')?.value"
-                     required>
-              <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+            <div *ngIf="selectedCatalogo === 'generos' || selectedCatalogo === 'indicadores'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
                 Código <span class="text-red-500">*</span>
               </label>
+              <input type="text" formControlName="codigo" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                     required>
             </div>
             <!-- Nombre field for other catalogos -->
-            <div class="relative my-4" *ngIf="selectedCatalogo !== 'generos'">
-              <input type="text" formControlName="nombre" class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                     placeholder=" "
-                     [class.border-blue-300]="form.get('nombre')?.value"
-                     required>
-              <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+            <div *ngIf="selectedCatalogo !== 'generos'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
                 Nombre <span class="text-red-500">*</span>
               </label>
+              <input type="text" formControlName="nombre" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     required>
             </div>
-            <div class="relative my-4" *ngIf="selectedCatalogo !== 'departamentos'">
-              <input type="text" formControlName="descripcion" class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                     placeholder=" "
-                     [class.border-blue-300]="form.get('descripcion')?.value">
-              <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+            <div *ngIf="selectedCatalogo !== 'departamentos'">
+              <label class="block text-sm font-medium text-gray-700 mb-2">
                 Descripción
               </label>
+              <input type="text" formControlName="descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
             <!-- Campos del Jefe del Departamento -->
             <div *ngIf="selectedCatalogo === 'departamentos'" class="space-y-4 mb-4">
               <h4 class="text-base font-medium text-gray-700 mt-4 mb-2">Información del Jefe del Departamento</h4>
-              <div class="relative my-4">
-                <input type="text" formControlName="nombreJefe" class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                       placeholder=" "
-                       [class.border-blue-300]="form.get('nombreJefe')?.value">
-                <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
                   Nombre del Jefe
                 </label>
+                <input type="text" formControlName="nombreJefe" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="relative my-4">
-                  <input type="email" formControlName="correoJefe" class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                         placeholder=" "
-                         [class.border-blue-300]="form.get('correoJefe')?.value">
-                  <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
                     Correo Electrónico
                   </label>
+                  <input type="email" formControlName="correoJefe" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
-                <div class="relative my-4">
-                  <input type="tel" formControlName="telefonoJefe" class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                         placeholder=" "
-                         [class.border-blue-300]="form.get('telefonoJefe')?.value">
-                  <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
                     Teléfono
                   </label>
+                  <input type="tel" formControlName="telefonoJefe" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
               </div>
             </div>
             <!-- Año y Meta fields for indicadores -->
             <div *ngIf="selectedCatalogo === 'indicadores'" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div class="relative my-4">
-                <input type="number" formControlName="anio" min="2000" max="2100" placeholder=" " class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                       [class.border-blue-300]="form.get('anio')?.value">
-                <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
                   Año
                 </label>
+                <input type="number" formControlName="anio" min="2000" max="2100" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
-              <div class="relative my-4">
-                <input type="number" formControlName="meta" min="0" step="0.01" placeholder=" " class="w-full text-base py-[0.8em] px-[0.8em] outline-none border-2 border-gray-300 bg-transparent rounded-[20px] peer transition-all duration-300"
-                       [class.border-blue-300]="form.get('meta')?.value">
-                <label class="text-base absolute left-0 py-[0.8em] px-[0.8em] ml-2 pointer-events-none transition-all duration-300 text-gray-500 peer-focus:-translate-y-1/2 peer-focus:scale-90 peer-focus:m-0 peer-focus:ml-5 peer-focus:py-[0.4em] peer-focus:px-[0.4em] peer-focus:bg-gray-200 peer-[:not(:placeholder-shown)]:-translate-y-1/2 peer-[:not(:placeholder-shown)]:scale-90 peer-[:not(:placeholder-shown)]:m-0 peer-[:not(:placeholder-shown)]:ml-5 peer-[:not(:placeholder-shown)]:py-[0.4em] peer-[:not(:placeholder-shown)]:px-[0.4em] peer-[:not(:placeholder-shown)]:bg-gray-200">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
                   Meta
                 </label>
+                <input type="number" formControlName="meta" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
             </div>
             <div class="flex justify-end space-x-3">

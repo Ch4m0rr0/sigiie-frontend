@@ -163,7 +163,6 @@ export class ActividadesService {
       HoraRealizacion: actividad.horaRealizacion,
       CantidadParticipantesProyectados: actividad.cantidadParticipantesProyectados,
       IdTipoProtagonista: actividad.idTipoProtagonista,
-      IdTipoActividadJerarquica: actividad.idTipoActividadJerarquica
     };
     
     // Remover campos undefined
@@ -288,9 +287,6 @@ export class ActividadesService {
     if (actividad.idTipoProtagonista !== undefined) {
       dto.IdTipoProtagonista = actividad.idTipoProtagonista;
     }
-    if (actividad.idTipoActividadJerarquica !== undefined) {
-      dto.IdTipoActividadJerarquica = actividad.idTipoActividadJerarquica;
-    }
     
     return this.http.put<any>(`${this.apiUrl}/${id}`, dto).pipe(
       map(() => true),
@@ -332,19 +328,6 @@ export class ActividadesService {
   }
 
   // NUEVOS MÉTODOS
-  getByPlanificacion(planificacionId: number): Observable<Actividad[]> {
-    return this.http.get<any>(`${this.apiUrl}/por-planificacion/${planificacionId}`).pipe(
-      map(response => {
-        const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => this.mapActividad(item)) : [];
-      }),
-      catchError(error => {
-        console.error('Error fetching actividades por planificacion:', error);
-        return of([]);
-      })
-    );
-  }
-
   getByNivel(nivelId: number): Observable<Actividad[]> {
     const params = new HttpParams().set('nivelId', nivelId.toString());
     return this.http.get<any>(`${this.apiUrl}/por-nivel`, { params }).pipe(
@@ -725,8 +708,6 @@ export class ActividadesService {
       idActividadMensualInst: item.IdActividadMensualInst || item.idActividadMensualInst,
       nombreActividadMensualInst: item.NombreActividadMensualInst || item.nombreActividadMensualInst,
       codigoIndicador: item.CodigoIndicador || item.codigoIndicador,
-      idTipoActividadJerarquica: item.IdTipoActividadJerarquica || item.idTipoActividadJerarquica,
-      nombreTipoActividadJerarquica: item.NombreTipoActividadJerarquica || item.nombreTipoActividadJerarquica,
       
       // Planificación
       esPlanificada: item.EsPlanificada !== undefined ? item.EsPlanificada : (item.esPlanificada !== undefined ? item.esPlanificada : true),

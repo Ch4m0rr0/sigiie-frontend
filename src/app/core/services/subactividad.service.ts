@@ -75,7 +75,10 @@ export class SubactividadService {
   }
 
   // PUT /api/subactividades/{id}
-  update(id: number, data: SubactividadUpdate): Observable<Subactividad> {
+  // El backend puede devolver:
+  // - bool o null cuando la actualización es exitosa sin contenido
+  // - un objeto con la subactividad actualizada
+  update(id: number, data: SubactividadUpdate): Observable<Subactividad | null> {
     // Convertir a PascalCase para el backend
     const dto: any = {};
     
@@ -103,7 +106,21 @@ export class SubactividadService {
     console.log('🔄 PUT Subactividad - ID:', id, 'DTO:', dto);
 
     return this.http.put<any>(`${this.apiUrl}/${id}`, dto).pipe(
-      map(item => this.mapSubactividad(item)),
+      map(item => {
+        // Si el backend devuelve bool, null o undefined, consideramos la operación exitosa sin datos
+        if (item === null || item === undefined || typeof item === 'boolean') {
+          return null;
+        }
+
+        const data = item.data || item;
+        // Si tampoco hay data, devolvemos null
+        if (!data) {
+          return null;
+        }
+
+        // En caso de que venga un objeto subactividad, lo mapeamos normalmente
+        return this.mapSubactividad(data);
+      }),
       catchError(error => {
         console.error('❌ Error updating subactividad:', error);
         throw error;

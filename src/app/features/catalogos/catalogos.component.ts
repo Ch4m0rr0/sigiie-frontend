@@ -17,7 +17,6 @@ import type { TipoDocumento } from '../../core/models/tipo-documento';
 import type { TipoDocumentoDivulgado } from '../../core/models/tipo-documento-divulgado';
 import type { AreaConocimiento } from '../../core/models/area-conocimiento';
 import type { EstadoActividad } from '../../core/models/estado-actividad';
-import type { TipoActividadJerarquica } from '../../core/models/tipo-actividad-jerarquica';
 import type { NivelActividad, TipoSubactividad } from '../../core/models/catalogos-nuevos';
 import type { Indicador } from '../../core/models/indicador';
 
@@ -25,7 +24,7 @@ import type { Indicador } from '../../core/models/indicador';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
-type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'areasconocimiento' | 'estadosactividad' | 'tiposactividadjerarquica' | 'nivelesactividad' | 'tipossubactividad' | 'indicadores' | 'capacidadesinstaladas';
+type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'tipossubactividad' | 'indicadores' | 'capacidadesinstaladas';
 
 interface CatalogoItem {
   id: number;
@@ -94,7 +93,6 @@ export class ListCatalogosComponent implements OnInit {
   tiposdocumentosdivulgados = signal<TipoDocumentoDivulgado[]>([]);
   areasconocimiento = signal<AreaConocimiento[]>([]);
   estadosactividad = signal<EstadoActividad[]>([]);
-  tiposactividadjerarquica = signal<TipoActividadJerarquica[]>([]);
   nivelesactividad = signal<NivelActividad[]>([]);
   tipossubactividad = signal<TipoSubactividad[]>([]);
   indicadores = signal<Indicador[]>([]);
@@ -146,7 +144,6 @@ export class ListCatalogosComponent implements OnInit {
       tiposdocumentosdivulgados: 'Tipo Documento Divulgado',
       areasconocimiento: 'Área Conocimiento',
       estadosactividad: 'Estado Actividad',
-      tiposactividadjerarquica: 'Tipo Actividad Jerárquica',
       nivelesactividad: 'Nivel Actividad',
       tipossubactividad: 'Tipo Subactividad',
       indicadores: 'Indicadores',
@@ -170,7 +167,6 @@ export class ListCatalogosComponent implements OnInit {
       { value: 'tiposdocumentosdivulgados', label: 'Tipo Documento Divulgado' },
       { value: 'areasconocimiento', label: 'Área Conocimiento' },
       { value: 'estadosactividad', label: 'Estado Actividad' },
-      { value: 'tiposactividadjerarquica', label: 'Tipo Actividad Jerárquica' },
       { value: 'nivelesactividad', label: 'Nivel Actividad' },
       { value: 'tipossubactividad', label: 'Tipo Subactividad' },
       { value: 'indicadores', label: 'Indicadores' },
@@ -211,7 +207,6 @@ export class ListCatalogosComponent implements OnInit {
         nombre: item.nombre || (item as any).NombreEstado || '',
         descripcion: item.descripcion || ''
       }));
-      case 'tiposactividadjerarquica': return this.tiposactividadjerarquica().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion}) => ({id: idNivel, nombre, descripcion}));
       case 'tipossubactividad': return this.tipossubactividad().map(({idTipoSubactividad, nombre, descripcion}) => ({id: idTipoSubactividad, nombre, descripcion}));
       case 'indicadores': return this.indicadores().map(({idIndicador, codigo, nombre, descripcion}) => ({id: idIndicador, codigo, nombre, descripcion}));
@@ -349,14 +344,6 @@ export class ListCatalogosComponent implements OnInit {
       }
     });
     
-    this.catalogosService.getTiposActividadJerarquica().subscribe({
-      next: data => {
-        this.tiposactividadjerarquica.set(data);
-      },
-      error: error => {
-        console.error('Error loading tipos actividad jerarquica:', error);
-      }
-    });
     
     this.catalogosService.getNivelesActividad().subscribe({
       next: data => {
@@ -469,7 +456,6 @@ export class ListCatalogosComponent implements OnInit {
       case 'tiposdocumentosdivulgados': obs = this.catalogosService.deleteTipoDocumentoDivulgado(id); break;
       case 'areasconocimiento': obs = this.catalogosService.deleteAreaConocimiento(id); break;
       case 'estadosactividad': obs = this.catalogosService.deleteEstadoActividad(id); break;
-      case 'tiposactividadjerarquica': obs = this.catalogosService.deleteTipoActividadJerarquica(id); break;
       case 'nivelesactividad': obs = this.catalogosService.deleteNivelActividad(id); break;
       case 'tipossubactividad': obs = this.catalogosService.deleteTipoSubactividad(id); break;
       case 'indicadores': obs = this.indicadorService.delete(id); break;
@@ -662,13 +648,6 @@ export class ListCatalogosComponent implements OnInit {
         obs = this.catalogosService.createEstadoActividad({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
         break;
         
-      case 'tiposactividadjerarquica': 
-        if (!data.nombre) {
-          console.error('Invalid data for tipo actividad jerarquica:', data);
-          return;
-        }
-        obs = this.catalogosService.createTipoActividadJerarquica({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
-        break;
         
       case 'nivelesactividad': 
         if (!data.nombre) {
@@ -856,13 +835,6 @@ export class ListCatalogosComponent implements OnInit {
         obs = this.catalogosService.updateEstadoActividad(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
         break;
         
-      case 'tiposactividadjerarquica': 
-        if (!data.nombre) {
-          console.error('Invalid data for tipo actividad jerarquica:', data);
-          return;
-        }
-        obs = this.catalogosService.updateTipoActividadJerarquica(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
-        break;
         
       case 'nivelesactividad': 
         if (!data.nombre) {

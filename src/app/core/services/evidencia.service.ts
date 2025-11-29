@@ -33,13 +33,45 @@ export class EvidenciaService {
   }
 
   create(data: EvidenciaCreate): Observable<Evidencia> {
+    // Crear evidencia SIN archivo no está soportado por el backend (CreateAsync lanza error)
+    // Este método se deja para compatibilidad pero siempre debe usarse junto con upload()
     return this.http.post<any>(this.apiUrl, data).pipe(
       map(item => this.mapEvidencia(item))
     );
   }
 
   update(id: number, data: Partial<EvidenciaCreate>): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}`, data);
+    // El backend de actualización espera datos como formulario (multipart/form-data),
+    // aunque no se envíe un archivo nuevo.
+    const formData = new FormData();
+
+    if (data.idProyecto !== undefined && data.idProyecto !== null) {
+      formData.append('IdProyecto', String(data.idProyecto));
+    }
+    if (data.idActividad !== undefined && data.idActividad !== null) {
+      formData.append('IdActividad', String(data.idActividad));
+    }
+    if (data.idSubactividad !== undefined && data.idSubactividad !== null) {
+      formData.append('IdSubactividad', String(data.idSubactividad));
+    }
+    if (data.descripcion) {
+      formData.append('Descripcion', data.descripcion);
+    }
+    if (data.idTipoEvidencia !== undefined && data.idTipoEvidencia !== null) {
+      formData.append('IdTipoEvidencia', String(data.idTipoEvidencia));
+    }
+    if (data.fechaEvidencia) {
+      const fecha =
+        typeof data.fechaEvidencia === 'string'
+          ? data.fechaEvidencia
+          : new Date(data.fechaEvidencia).toISOString().split('T')[0];
+      formData.append('FechaEvidencia', fecha);
+    }
+    if (data.seleccionadaParaReporte !== undefined) {
+      formData.append('SeleccionadaParaReporte', String(data.seleccionadaParaReporte));
+    }
+
+    return this.http.put<void>(`${this.apiUrl}/${id}`, formData);
   }
 
   delete(id: number): Observable<void> {
@@ -83,19 +115,42 @@ export class EvidenciaService {
 
   upload(file: File, data: EvidenciaCreate): Observable<Evidencia> {
     const formData = new FormData();
-    formData.append('file', file);
-    Object.keys(data).forEach(key => {
-      if (data[key as keyof EvidenciaCreate] !== null && data[key as keyof EvidenciaCreate] !== undefined) {
-        formData.append(key, String(data[key as keyof EvidenciaCreate]));
-      }
-    });
-    return this.http.post<any>(`${this.apiUrl}/upload`, formData).pipe(
+
+    // El backend espera "Archivo" (y/o "Archivos") en EvidenciaCreateDto
+    formData.append('Archivo', file);
+
+    // Mapear campos al DTO del backend (case-insensitive, pero usamos PascalCase por claridad)
+    if (data.idProyecto !== undefined && data.idProyecto !== null) {
+      formData.append('IdProyecto', String(data.idProyecto));
+    }
+    if (data.idActividad !== undefined && data.idActividad !== null) {
+      formData.append('IdActividad', String(data.idActividad));
+    }
+    if (data.idSubactividad !== undefined && data.idSubactividad !== null) {
+      formData.append('IdSubactividad', String(data.idSubactividad));
+    }
+    if (data.descripcion) {
+      formData.append('Descripcion', data.descripcion);
+    }
+    if (data.idTipoEvidencia !== undefined && data.idTipoEvidencia !== null) {
+      formData.append('IdTipoEvidencia', String(data.idTipoEvidencia));
+    }
+    if (data.fechaEvidencia) {
+      const fecha =
+        typeof data.fechaEvidencia === 'string'
+          ? data.fechaEvidencia
+          : new Date(data.fechaEvidencia).toISOString().split('T')[0];
+      formData.append('FechaEvidencia', fecha);
+    }
+    formData.append(
+      'SeleccionadaParaReporte',
+      String(data.seleccionadaParaReporte ?? false)
+    );
+
+    // El backend expone [HttpPost] en /api/evidencias (no /upload)
+    return this.http.post<any>(this.apiUrl, formData).pipe(
       map(item => this.mapEvidencia(item))
     );
-  }
-
-  download(id: number): Observable<Blob> {
-    return this.http.get(`${this.apiUrl}/${id}/descargar`, { responseType: 'blob' });
   }
 
   private mapEvidencia(item: any): Evidencia {

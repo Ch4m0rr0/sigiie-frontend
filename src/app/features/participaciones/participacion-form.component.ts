@@ -6,10 +6,17 @@ import { ParticipacionService } from '../../core/services/participacion.service'
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ActividadesService } from '../../core/services/actividades.service';
+import { PersonasService } from '../../core/services/personas.service';
+import { EdicionService } from '../../core/services/edicion.service';
 import type { ParticipacionCreate } from '../../core/models/participacion';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { RolEquipo } from '../../core/models/catalogos-nuevos';
 import type { Edicion } from '../../core/models/edicion';
+import type { Estudiante } from '../../core/models/estudiante';
+import type { Docente } from '../../core/models/docente';
+import type { Administrativo } from '../../core/models/administrativo';
+import type { CategoriaParticipacion } from '../../core/models/categoria-participacion';
+import type { EstadoParticipacion } from '../../core/models/estado-participacion';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
@@ -33,6 +40,8 @@ export class ParticipacionFormComponent implements OnInit {
   private subactividadService = inject(SubactividadService);
   private catalogosService = inject(CatalogosService);
   private actividadesService = inject(ActividadesService);
+  private personasService = inject(PersonasService);
+  private edicionService = inject(EdicionService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -40,6 +49,11 @@ export class ParticipacionFormComponent implements OnInit {
   subactividades = signal<Subactividad[]>([]);
   rolesEquipo = signal<RolEquipo[]>([]);
   ediciones = signal<Edicion[]>([]);
+  estudiantesList = signal<Estudiante[]>([]);
+  docentesList = signal<Docente[]>([]);
+  administrativosList = signal<Administrativo[]>([]);
+  categoriasParticipacion = signal<CategoriaParticipacion[]>([]);
+  estadosParticipacion = signal<EstadoParticipacion[]>([]);
   isEditMode = signal(false);
   participacionId = signal<number | null>(null);
   loading = signal(false);
@@ -49,6 +63,12 @@ export class ParticipacionFormComponent implements OnInit {
     this.initializeForm();
     this.loadSubactividades();
     this.loadRolesEquipo();
+    this.loadEdiciones();
+    this.loadEstudiantes();
+    this.loadDocentes();
+    this.loadAdministrativos();
+    this.loadCategoriasParticipacion();
+    this.loadEstadosParticipacion();
 
     const id = this.route.snapshot.paramMap.get('id');
     const subactividadId = this.route.snapshot.queryParamMap.get('subactividadId');
@@ -69,7 +89,7 @@ export class ParticipacionFormComponent implements OnInit {
 
   initializeForm(): void {
     this.form = this.fb.group({
-      edicionId: ['', Validators.required],
+      edicionId: [null, Validators.required],
       idSubactividad: [null],
       grupoNumero: [null],
       idRolEquipo: [null],
@@ -77,8 +97,8 @@ export class ParticipacionFormComponent implements OnInit {
       estudiantes: this.fb.array([]),
       docentes: this.fb.array([]),
       administrativos: this.fb.array([]),
-      categoriaParticipacionId: ['', Validators.required],
-      estadoParticipacionId: ['', Validators.required],
+      categoriaParticipacionId: [null, Validators.required],
+      estadoParticipacionId: [null, Validators.required],
       fechaParticipacion: [new Date().toISOString().split('T')[0], Validators.required]
     });
   }
@@ -139,6 +159,48 @@ export class ParticipacionFormComponent implements OnInit {
     this.catalogosService.getRolesEquipo().subscribe({
       next: (data) => this.rolesEquipo.set(data),
       error: (err) => console.error('Error loading roles equipo:', err)
+    });
+  }
+
+  loadEdiciones(): void {
+    this.edicionService.getAll().subscribe({
+      next: (data) => this.ediciones.set(data),
+      error: (err) => console.error('Error loading ediciones:', err)
+    });
+  }
+
+  loadEstudiantes(): void {
+    this.personasService.listEstudiantes().subscribe({
+      next: (data) => this.estudiantesList.set(data),
+      error: (err) => console.error('Error loading estudiantes:', err)
+    });
+  }
+
+  loadDocentes(): void {
+    this.personasService.listDocentes().subscribe({
+      next: (data) => this.docentesList.set(data),
+      error: (err) => console.error('Error loading docentes:', err)
+    });
+  }
+
+  loadAdministrativos(): void {
+    this.personasService.listAdministrativos().subscribe({
+      next: (data) => this.administrativosList.set(data),
+      error: (err) => console.error('Error loading administrativos:', err)
+    });
+  }
+
+  loadCategoriasParticipacion(): void {
+    this.catalogosService.getCategoriasParticipacion().subscribe({
+      next: (data) => this.categoriasParticipacion.set(data),
+      error: (err) => console.error('Error loading categorias participacion:', err)
+    });
+  }
+
+  loadEstadosParticipacion(): void {
+    this.catalogosService.getEstadosParticipacion().subscribe({
+      next: (data) => this.estadosParticipacion.set(data),
+      error: (err) => console.error('Error loading estados participacion:', err)
     });
   }
 
@@ -214,12 +276,22 @@ export class ParticipacionFormComponent implements OnInit {
 
       // Crear una participación por cada participante
       const participaciones: ParticipacionCreate[] = [];
+      
+      // Helper para convertir valores a número o undefined (maneja correctamente '0')
+      const toNumberOrUndefined = (value: any): number | undefined => {
+        if (value === null || value === undefined || value === '') {
+          return undefined;
+        }
+        const num = typeof value === 'string' ? Number(value) : Number(value);
+        return isNaN(num) ? undefined : num;
+      };
+      
       const baseData = {
         edicionId: this.form.value.edicionId,
-        idSubactividad: this.form.value.idSubactividad || undefined,
-        grupoNumero: this.form.value.grupoNumero || undefined,
-        idRolEquipo: this.form.value.idRolEquipo || undefined,
-        idTutor: this.form.value.idTutor || undefined,
+        idSubactividad: toNumberOrUndefined(this.form.value.idSubactividad),
+        grupoNumero: toNumberOrUndefined(this.form.value.grupoNumero),
+        idRolEquipo: toNumberOrUndefined(this.form.value.idRolEquipo),
+        idTutor: toNumberOrUndefined(this.form.value.idTutor),
         categoriaParticipacionId: this.form.value.categoriaParticipacionId,
         estadoParticipacionId: this.form.value.estadoParticipacionId,
         fechaParticipacion: new Date(this.form.value.fechaParticipacion)
@@ -261,43 +333,64 @@ export class ParticipacionFormComponent implements OnInit {
         }
       });
 
-      // Si estamos editando, solo actualizar la primera participación
-      if (this.isEditMode() && participaciones.length > 0) {
-        this.participacionService.update(this.participacionId()!, participaciones[0]).subscribe({
-          next: () => {
+      // Si estamos editando, solo actualizar los campos permitidos (sin cambiar participantes ni edición)
+      if (this.isEditMode()) {
+        // Helper para convertir valores a número o undefined (maneja correctamente '0')
+        const toNumberOrUndefined = (value: any): number | undefined => {
+          if (value === null || value === undefined || value === '') {
+            return undefined;
+          }
+          const num = typeof value === 'string' ? Number(value) : Number(value);
+          return isNaN(num) ? undefined : num;
+        };
+        
+        // En modo edición, solo actualizamos los campos que el backend permite cambiar
+        const updateData: Partial<ParticipacionCreate> = {
+          idSubactividad: toNumberOrUndefined(this.form.value.idSubactividad),
+          grupoNumero: toNumberOrUndefined(this.form.value.grupoNumero),
+          idRolEquipo: toNumberOrUndefined(this.form.value.idRolEquipo),
+          idTutor: toNumberOrUndefined(this.form.value.idTutor),
+          categoriaParticipacionId: this.form.value.categoriaParticipacionId,
+          estadoParticipacionId: this.form.value.estadoParticipacionId
+          // NO incluimos: edicionId, estudianteId, docenteId, administrativoId, fechaParticipacion
+        };
+        
+        this.participacionService.update(this.participacionId()!, updateData).subscribe({
+          next: (result) => {
+            // El backend puede devolver null o bool, pero la actualización fue exitosa
+            // Navegamos de todas formas
             this.router.navigate(['/participaciones']);
           },
           error: (err: any) => {
             console.error('Error saving participacion:', err);
-            this.error.set('Error al guardar la participación');
+            const errorMessage = err.error?.message || err.error?.error || err.message || 'Error al guardar la participación';
+            this.error.set(errorMessage);
             this.loading.set(false);
           }
         });
       } else {
-        // Crear todas las participaciones
-        let completed = 0;
-        const total = participaciones.length;
-        
-        if (total === 0) {
+        // Crear todas las participaciones usando el formato unificado
+        if (participaciones.length === 0) {
           this.error.set('Debe agregar al menos un participante');
           this.loading.set(false);
           return;
         }
 
-        participaciones.forEach((data, index) => {
-          this.participacionService.create(data).subscribe({
-            next: () => {
-              completed++;
-              if (completed === total) {
-                this.router.navigate(['/participaciones']);
-              }
-            },
-            error: (err: any) => {
-              console.error(`Error saving participacion ${index + 1}:`, err);
-              this.error.set(`Error al guardar la participación ${index + 1}`);
-              this.loading.set(false);
+        this.participacionService.createUnificada(participaciones).subscribe({
+          next: (result) => {
+            this.router.navigate(['/participaciones']);
+          },
+          error: (err: any) => {
+            console.error('Error saving participaciones:', err);
+            const errorMessage = err.error?.message || err.error?.error || err.message || 'Error al guardar las participaciones';
+            // Si hay mensajes de error específicos, mostrarlos
+            if (err.error?.mensajesError && Array.isArray(err.error.mensajesError)) {
+              this.error.set(err.error.mensajesError.join('\n'));
+            } else {
+              this.error.set(errorMessage);
             }
-          });
+            this.loading.set(false);
+          }
         });
       }
     } else {

@@ -4,10 +4,8 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router, RouterModule } from '@angular/router';
 import { Observable } from 'rxjs';
 import { ReportesService, ReporteConfig } from '../../core/services/reportes.service';
-import { PlanificacionService } from '../../core/services/planificacion.service';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
-import type { Planificacion } from '../../core/models/planificacion';
 import type { Actividad } from '../../core/models/actividad';
 import type { Subactividad } from '../../core/models/subactividad';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
@@ -28,13 +26,11 @@ import { BrnLabelImports } from '@spartan-ng/brain/label';
 export class ReporteGenerarComponent implements OnInit {
   private fb = inject(FormBuilder);
   private reportesService = inject(ReportesService);
-  private planificacionService = inject(PlanificacionService);
   private actividadesService = inject(ActividadesService);
   private subactividadService = inject(SubactividadService);
   private router = inject(Router);
 
   form!: FormGroup;
-  planificaciones = signal<Planificacion[]>([]);
   actividades = signal<Actividad[]>([]);
   subactividades = signal<Subactividad[]>([]);
   loading = signal(false);
@@ -42,7 +38,6 @@ export class ReporteGenerarComponent implements OnInit {
   generando = signal(false);
 
   tiposReporte = [
-    { value: 'planificacion', label: 'Reporte de Planificación' },
     { value: 'actividad', label: 'Reporte de Actividad' },
     { value: 'subactividad', label: 'Reporte de Subactividad' },
     { value: 'participaciones', label: 'Reporte de Participaciones' },
@@ -57,7 +52,6 @@ export class ReporteGenerarComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
-    this.loadPlanificaciones();
     this.loadActividades();
     this.loadSubactividades();
 
@@ -75,11 +69,8 @@ export class ReporteGenerarComponent implements OnInit {
   initializeForm(): void {
     this.form = this.fb.group({
       tipoReporte: ['', Validators.required],
-      planificacionId: [null],
       actividadId: [null],
       subactividadId: [null],
-      fechaInicio: [''],
-      fechaFin: [''],
       formato: ['excel', Validators.required],
       incluirEvidencias: [true],
       incluirParticipaciones: [true],
@@ -91,20 +82,15 @@ export class ReporteGenerarComponent implements OnInit {
   }
 
   updateFormFields(tipoReporte: string): void {
-    const planificacionControl = this.form.get('planificacionId');
     const actividadControl = this.form.get('actividadId');
     const subactividadControl = this.form.get('subactividadId');
 
     // Limpiar validadores
-    planificacionControl?.clearValidators();
     actividadControl?.clearValidators();
     subactividadControl?.clearValidators();
 
     // Aplicar validadores según el tipo
     switch (tipoReporte) {
-      case 'planificacion':
-        planificacionControl?.setValidators(Validators.required);
-        break;
       case 'actividad':
         actividadControl?.setValidators(Validators.required);
         break;
@@ -113,7 +99,6 @@ export class ReporteGenerarComponent implements OnInit {
         break;
     }
 
-    planificacionControl?.updateValueAndValidity();
     actividadControl?.updateValueAndValidity();
     subactividadControl?.updateValueAndValidity();
   }
@@ -146,13 +131,6 @@ export class ReporteGenerarComponent implements OnInit {
     }
   }
 
-  loadPlanificaciones(): void {
-    this.planificacionService.getAll().subscribe({
-      next: (data) => this.planificaciones.set(data),
-      error: (err) => console.error('Error loading planificaciones:', err)
-    });
-  }
-
   loadActividades(): void {
     this.actividadesService.list().subscribe({
       next: (data) => this.actividades.set(data),
@@ -174,11 +152,8 @@ export class ReporteGenerarComponent implements OnInit {
 
       const config: ReporteConfig = {
         tipoReporte: this.form.value.tipoReporte,
-        planificacionId: this.form.value.planificacionId || undefined,
         actividadId: this.form.value.actividadId || undefined,
         subactividadId: this.form.value.subactividadId || undefined,
-        fechaInicio: this.form.value.fechaInicio || undefined,
-        fechaFin: this.form.value.fechaFin || undefined,
         formato: this.form.value.formato,
         incluirEvidencias: this.form.value.incluirEvidencias,
         incluirParticipaciones: this.form.value.incluirParticipaciones,
@@ -188,53 +163,66 @@ export class ReporteGenerarComponent implements OnInit {
         tipoArchivo: this.form.value.tipoArchivo || 'excel'
       };
 
-      // Determinar qué método de exportación usar basado en el tipo de reporte
-      const tipoReporte = (config.tipoReporte || '').toLowerCase();
-      let exportObservable: Observable<Blob>;
-      
-      if (tipoReporte.includes('participacion') || tipoReporte.includes('participaciones')) {
-        exportObservable = this.reportesService.exportarExcelParticipaciones(config);
-      } else if (tipoReporte.includes('todo') || tipoReporte === 'completo') {
-        exportObservable = this.reportesService.exportarExcelTodo(config);
-      } else {
-        // Por defecto, exportar actividades
-        exportObservable = this.reportesService.exportarExcelActividades(config);
-      }
-      
-      exportObservable.subscribe({
+      // Usar el endpoint POST /api/Reportes/generar/excel que genera el Excel Y lo guarda en la BD
+      this.reportesService.generarExcel(config).subscribe({
         next: (blob) => {
-          console.log('✅ ReporteGenerarComponent - Reporte generado exitosamente, tamaño:', blob.size);
-          this.generando.set(false);
+          console.log('✅ ReporteGenerarComponent - Reporte generado y guardado exitosamente, tamaño:', blob.size);
           
           // Verificar que el blob sea válido
           if (!blob || blob.size === 0) {
             this.error.set('El archivo generado está vacío o es inválido.');
+            this.generando.set(false);
             return;
           }
           
-          // Crear un nuevo Blob con el tipo MIME correcto para Excel
-          const excelBlob = new Blob([blob], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          // Validar que el blob sea un archivo Excel válido
+          // Los archivos .xlsx son archivos ZIP, deben empezar con "PK" (50 4B en hex)
+          blob.slice(0, 4).arrayBuffer().then((buffer: ArrayBuffer) => {
+            const bytes = new Uint8Array(buffer);
+            const isValidExcel = bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK" (ZIP signature)
+            
+            if (!isValidExcel) {
+              console.error('❌ ReporteGenerarComponent - El archivo no es un Excel válido. Primeros bytes:', Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+              this.error.set('El archivo generado no es un Excel válido. Por favor, intenta nuevamente.');
+              this.generando.set(false);
+              return;
+            }
+            
+            // Usar el blob directamente si ya tiene el tipo MIME correcto, o crear uno nuevo
+            const excelBlob = blob.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+              ? blob 
+              : new Blob([blob], {
+                  type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                });
+            
+            console.log('✅ ReporteGenerarComponent - Archivo Excel válido, descargando...');
+            
+            // Descargar el archivo Excel generado
+            const url = window.URL.createObjectURL(excelBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            const fecha = new Date().toISOString().split('T')[0];
+            const nombreArchivo = config.nombre 
+              ? `${config.nombre}.xlsx` 
+              : `reporte-${config.tipoReporte || 'exportacion'}-${fecha}.xlsx`;
+            a.download = nombreArchivo;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Limpiar después de un breve delay
+            setTimeout(() => {
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            }, 100);
+            
+            this.generando.set(false);
+            // Navegar a la lista de reportes (el reporte ya está guardado en la BD por el endpoint)
+            this.router.navigate(['/reportes']);
+          }).catch((error) => {
+            console.error('❌ ReporteGenerarComponent - Error al validar el archivo:', error);
+            this.error.set('Error al validar el archivo generado. Por favor, intenta nuevamente.');
+            this.generando.set(false);
           });
-          
-          // Descargar el archivo Excel generado
-          const url = window.URL.createObjectURL(excelBlob);
-          const a = document.createElement('a');
-          a.href = url;
-          const fecha = new Date().toISOString().split('T')[0];
-          const nombreArchivo = `reporte-${config.tipoReporte || 'exportacion'}-${fecha}.xlsx`;
-          a.download = nombreArchivo;
-          document.body.appendChild(a);
-          a.click();
-          
-          // Limpiar después de un breve delay
-          setTimeout(() => {
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          }, 100);
-          
-          // Navegar a la lista de reportes
-          this.router.navigate(['/reportes']);
         },
         error: (err: any) => {
           console.error('❌ ReporteGenerarComponent - Error generating reporte:', err);
@@ -251,7 +239,13 @@ export class ReporteGenerarComponent implements OnInit {
           }
 
           if (err.status === 404) {
-            errorMessage = 'El endpoint de generación de reportes no está disponible. Por favor, verifica que el backend tenga implementado el endpoint POST /api/reportes/generar/excel';
+            // Verificar si el error es sobre el endpoint de descarga o el de generación
+            if (err.backendMessage && (err.backendMessage.includes('descargar') || err.backendMessage.includes('GET /api/Reportes/descargar'))) {
+              // El reporte se generó pero no se puede descargar porque falta el endpoint
+              errorMessage = err.message || 'El reporte se generó exitosamente y está guardado en la base de datos, pero el endpoint de descarga (GET /api/Reportes/descargar/{id}) no está disponible en el backend. Por favor, contacta al administrador del sistema.';
+            } else {
+              errorMessage = 'El endpoint de generación de reportes no está disponible. Por favor, verifica que el backend tenga implementado el endpoint POST /api/reportes/generar/excel';
+            }
           } else if (err.status === 400) {
             const validationErrors = err.validationErrors || err.error?.errors;
             if (validationErrors && typeof validationErrors === 'object') {
@@ -266,7 +260,12 @@ export class ReporteGenerarComponent implements OnInit {
               errorMessage = err.error?.message || err.error?.title || err.backendMessage || 'Los datos proporcionados no son válidos. Por favor, revisa el formulario.';
             }
           } else if (err.status === 500) {
-            errorMessage = 'Error interno del servidor al generar el reporte. Por favor, intenta nuevamente más tarde.';
+            // Verificar si el error es específico sobre el endpoint de descarga
+            if (err.backendMessage && err.backendMessage.includes('endpoint de descarga')) {
+              errorMessage = err.backendMessage;
+            } else {
+              errorMessage = 'Error interno del servidor al generar el reporte. Por favor, intenta nuevamente más tarde.';
+            }
           } else if (err.message) {
             errorMessage = err.message;
           }
@@ -280,7 +279,6 @@ export class ReporteGenerarComponent implements OnInit {
   }
 
   get tipoReporte() { return this.form.get('tipoReporte'); }
-  get planificacionId() { return this.form.get('planificacionId'); }
   get actividadId() { return this.form.get('actividadId'); }
   get subactividadId() { return this.form.get('subactividadId'); }
   get formato() { return this.form.get('formato'); }
