@@ -365,8 +365,17 @@ export class ActividadResponsableService {
       nombreActividad: item.NombreActividad || item.nombreActividad
     };
 
-    console.log('🔍 Mapeo de responsable - Item original:', item);
-    console.log('🔍 Mapeo de responsable - Resultado:', mapped);
+    console.log('🔍 [ActividadResponsableService] Mapeo de responsable - Item original del backend:', JSON.stringify(item, null, 2));
+    console.log('🔍 [ActividadResponsableService] Mapeo de responsable - Resultado mapeado:', JSON.stringify(mapped, null, 2));
+    console.log('🔍 [ActividadResponsableService] IDs extraídos:', {
+      idActividadResponsable: mapped.idActividadResponsable,
+      idActividad: mapped.idActividad,
+      idUsuario: mapped.idUsuario,
+      idDocente: mapped.idDocente,
+      idAdmin: mapped.idAdmin,
+      nombrePersona: mapped.nombrePersona,
+      nombreUsuario: mapped.nombreUsuario
+    });
 
     return mapped;
   }

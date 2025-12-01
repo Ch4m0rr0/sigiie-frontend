@@ -829,7 +829,25 @@
                     <app-icon icon="checklist" size="xs" class="text-emerald-600"></app-icon>
                     Tipos de Responsables <span class="text-red-500">*</span>
                   </label>
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <!-- Usuarios -->
+                    <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
+                      [class.border-indigo-500]="isTipoResponsableSeleccionado('usuario')"
+                      [class.bg-indigo-50]="isTipoResponsableSeleccionado('usuario')"
+                      [class.border-slate-300]="!isTipoResponsableSeleccionado('usuario')"
+                      [class.hover:border-indigo-300]="!isTipoResponsableSeleccionado('usuario')">
+                      <input 
+                        type="checkbox"
+                        value="usuario"
+                        (change)="toggleTipoResponsable('usuario', $event)"
+                        [checked]="isTipoResponsableSeleccionado('usuario')"
+                        class="w-5 h-5 text-indigo-600 border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 transition-all">
+                      <app-icon icon="person" size="sm" class="text-slate-400 group-hover:text-indigo-600 transition-colors"
+                        [class.text-indigo-600]="isTipoResponsableSeleccionado('usuario')"></app-icon>
+                      <span class="text-sm font-medium text-slate-700 flex-1 group-hover:text-indigo-900 transition-colors"
+                        [class.text-indigo-900]="isTipoResponsableSeleccionado('usuario')">Usuarios</span>
+                    </label>
+
                     <!-- Docentes -->
                     <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
                       [class.border-emerald-500]="isTipoResponsableSeleccionado('docente')"
@@ -909,6 +927,95 @@
                     </div>
                   }
                 </div>
+                
+                <!-- Sección de Usuarios -->
+                @if (isTipoResponsableSeleccionado('usuario')) {
+                <div class="border-2 border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <app-icon icon="person" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h4 class="text-sm font-bold text-slate-900">Usuarios</h4>
+                        <p class="text-xs text-slate-500">Asignar usuarios responsables</p>
+                      </div>
+                    </div>
+                    <button 
+                      type="button"
+                      (click)="agregarPersona('usuario')"
+                      class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                      <app-icon icon="add" size="xs" color="white"></app-icon>
+                      <span>Agregar Usuario</span>
+                    </button>
+                  </div>
+                  
+                  <div formArrayName="usuarios" class="space-y-3">
+                    @if (usuariosArray.length === 0) {
+                      <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mb-3">
+                          <app-icon icon="person_add" size="sm" class="text-indigo-600"></app-icon>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">No hay usuarios agregados</p>
+                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Usuario" para comenzar</p>
+                      </div>
+                    } @else {
+                      @for (usuarioControl of usuariosArray.controls; track $index) {
+                        <div class="bg-white border-2 border-indigo-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                          <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                            <div class="flex items-center gap-2">
+                              <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                {{ $index + 1 }}
+                              </div>
+                              <h5 class="text-sm font-semibold text-slate-900">Usuario {{ $index + 1 }}</h5>
+                            </div>
+                            <button 
+                              type="button"
+                              (click)="eliminarPersona('usuario', $index)"
+                              class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                              title="Eliminar usuario">
+                              <app-icon icon="delete" size="xs"></app-icon>
+                            </button>
+                          </div>
+                          <div class="space-y-4">
+                            <div>
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="person" size="xs" class="text-indigo-600"></app-icon>
+                                Usuario <span class="text-red-500">*</span>
+                              </label>
+                              <div class="relative">
+                                <select 
+                                  formControlName="idUsuario"
+                                  class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer bg-white">
+                                  <option value="">Seleccione un usuario...</option>
+                                  @for (usuario of getPersonasDisponiblesPorTipo('usuario'); track usuario.id || usuario.idUsuario || $index) {
+                                    <option [value]="usuario.id || usuario.idUsuario">{{ usuario.nombreCompleto || usuario.nombre || 'Sin nombre' }}</option>
+                                  }
+                                </select>
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                  <app-icon icon="expand_more" size="xs"></app-icon>
+                                </span>
+                              </div>
+                              @if (usuarioControl.get('idUsuario')?.invalid && usuarioControl.get('idUsuario')?.touched) {
+                                <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                  <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                  <p class="text-xs text-red-800">Este campo es requerido</p>
+                                </div>
+                              }
+                            </div>
+                            <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                              <div class="flex items-start gap-2">
+                                <app-icon icon="info" size="xs" class="text-indigo-600 mt-0.5 flex-shrink-0"></app-icon>
+                                <p class="text-xs text-indigo-800">Para usuarios, el sistema usará automáticamente el rol del usuario. No se requiere seleccionar un rol responsable.</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+                }
                 
                 <!-- Sección de Docentes -->
                 @if (isTipoResponsableSeleccionado('docente')) {

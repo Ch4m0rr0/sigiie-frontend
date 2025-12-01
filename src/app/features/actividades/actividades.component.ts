@@ -12,6 +12,7 @@ import { ActividadAnualService } from '../../core/services/actividad-anual.servi
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
 import { ActividadResponsableService, type ActividadResponsableCreate } from '../../core/services/actividad-responsable.service';
 import { PersonasService } from '../../core/services/personas.service';
+import { UsuariosService } from '../../core/services/usuarios.service';
 import type { Actividad } from '../../core/models/actividad';
 import type { Indicador } from '../../core/models/indicador';
 import type { ActividadAnual } from '../../core/models/actividad-anual';
@@ -19,6 +20,7 @@ import type { ActividadMensualInst } from '../../core/models/actividad-mensual-i
 import type { Docente } from '../../core/models/docente';
 import type { Estudiante } from '../../core/models/estudiante';
 import type { Administrativo } from '../../core/models/administrativo';
+import type { Usuario } from '../../core/models/usuario';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { CalendarModule, CalendarUtils, CalendarDateFormatter, CalendarA11y, CalendarEventTitleFormatter, DateAdapter } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
@@ -87,6 +89,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   private actividadMensualInstService = inject(ActividadMensualInstService);
   private responsableService = inject(ActividadResponsableService);
   private personasService = inject(PersonasService);
+  private usuariosService = inject(UsuariosService);
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private elementRef = inject(ElementRef);
@@ -173,11 +176,12 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   docentes = signal<Docente[]>([]);
   estudiantes = signal<Estudiante[]>([]);
   administrativos = signal<Administrativo[]>([]);
+  usuarios = signal<Usuario[]>([]);
   rolesResponsable = signal<any[]>([]); // Roles de responsable (Coordinador, Logística, Organizador, etc.)
   loadingResponsables = signal(false);
   
   // Tipos de responsables seleccionados
-  tiposResponsableSeleccionados = signal<string[]>([]); // ['docente', 'estudiante', 'administrativo', 'externo']
+  tiposResponsableSeleccionados = signal<string[]>([]); // ['usuario', 'docente', 'estudiante', 'administrativo', 'externo']
 
   ngOnInit(): void {
     this.initializeFormIndicador();
@@ -760,6 +764,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   
   initializeFormResponsable(): void {
     this.formResponsable = this.fb.group({
+      usuarios: this.fb.array([]), // Array para usuarios
       docentes: this.fb.array([]),
       estudiantes: this.fb.array([]),
       administrativos: this.fb.array([]),
@@ -768,6 +773,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     
     // Cargar todas las personas al inicializar
     this.loadTodasLasPersonas();
+  }
+  
+  get usuariosArray(): FormArray {
+    return this.formResponsable.get('usuarios') as FormArray;
   }
   
   get docentesArray(): FormArray {
@@ -786,6 +795,12 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     return this.formResponsable.get('responsablesExternos') as FormArray;
   }
   
+  crearUsuarioFormGroup(): FormGroup {
+    return this.fb.group({
+      idUsuario: [null, Validators.required] // Para usuarios NO se envía idRolResponsable según los ejemplos
+    });
+  }
+
   crearPersonaFormGroup(tipo: 'docente' | 'estudiante' | 'administrativo'): FormGroup {
     // Para estudiantes, idRolResponsable es obligatorio según los ejemplos del backend
     const idRolResponsableValidators = tipo === 'estudiante' ? [Validators.required] : [];
@@ -808,18 +823,26 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
   
-  agregarPersona(tipo: 'docente' | 'estudiante' | 'administrativo'): void {
-    const array = tipo === 'docente' ? this.docentesArray : 
-                  tipo === 'estudiante' ? this.estudiantesArray : 
-                  this.administrativosArray;
-    array.push(this.crearPersonaFormGroup(tipo));
+  agregarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): void {
+    if (tipo === 'usuario') {
+      this.usuariosArray.push(this.crearUsuarioFormGroup());
+    } else {
+      const array = tipo === 'docente' ? this.docentesArray : 
+                    tipo === 'estudiante' ? this.estudiantesArray : 
+                    this.administrativosArray;
+      array.push(this.crearPersonaFormGroup(tipo));
+    }
   }
   
-  eliminarPersona(tipo: 'docente' | 'estudiante' | 'administrativo', index: number): void {
-    const array = tipo === 'docente' ? this.docentesArray : 
-                  tipo === 'estudiante' ? this.estudiantesArray : 
-                  this.administrativosArray;
-    array.removeAt(index);
+  eliminarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo', index: number): void {
+    if (tipo === 'usuario') {
+      this.usuariosArray.removeAt(index);
+    } else {
+      const array = tipo === 'docente' ? this.docentesArray : 
+                    tipo === 'estudiante' ? this.estudiantesArray : 
+                    this.administrativosArray;
+      array.removeAt(index);
+    }
   }
   
   agregarResponsableExterno(): void {
@@ -830,8 +853,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.responsablesExternosArray.removeAt(index);
   }
   
-  getPersonasDisponiblesPorTipo(tipo: 'docente' | 'estudiante' | 'administrativo'): any[] {
-    if (tipo === 'docente') {
+  getPersonasDisponiblesPorTipo(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): any[] {
+    if (tipo === 'usuario') {
+      return this.usuarios();
+    } else if (tipo === 'docente') {
       return this.docentes();
     } else if (tipo === 'estudiante') {
       return this.estudiantes();
@@ -845,6 +870,15 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
   
   loadTodasLasPersonas(): void {
+    // Cargar usuarios
+    this.usuariosService.getAll().subscribe({
+      next: (data) => this.usuarios.set(data),
+      error: (err) => {
+        console.error('Error loading usuarios:', err);
+        this.usuarios.set([]);
+      }
+    });
+    
     this.personasService.listDocentes().subscribe({
       next: (data) => this.docentes.set(data),
       error: (err) => {
@@ -880,6 +914,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
   
   resetFormResponsable(): void {
+    while (this.usuariosArray.length > 0) {
+      this.usuariosArray.removeAt(0);
+    }
     while (this.docentesArray.length > 0) {
       this.docentesArray.removeAt(0);
     }
@@ -897,6 +934,76 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.formResponsable.reset();
   }
   
+  crearResponsablesParaActividadNueva(idActividad: number, responsables: any[]): void {
+    // Crear responsables usando el endpoint /api/actividad-responsable
+    // después de que la actividad ha sido creada exitosamente
+    const fechaAsignacion = new Date().toISOString().split('T')[0];
+    const responsablesACrear: ActividadResponsableCreate[] = [];
+    
+    responsables.forEach((r) => {
+      // Para usuarios: usar idUsuario
+      if (r.idUsuario !== undefined && r.idUsuario !== null && Number(r.idUsuario) > 0) {
+        responsablesACrear.push({
+          idActividad: idActividad,
+          idTipoResponsable: 1, // Valor por defecto, ajustar según necesidad
+          idUsuario: Number(r.idUsuario),
+          fechaAsignacion: fechaAsignacion
+        });
+      }
+      // Para docentes: usar idDocente
+      else if (r.idDocente !== undefined && r.idDocente !== null && Number(r.idDocente) > 0) {
+        responsablesACrear.push({
+          idActividad: idActividad,
+          idTipoResponsable: 1,
+          idDocente: Number(r.idDocente),
+          fechaAsignacion: fechaAsignacion
+        });
+      }
+      // Para estudiantes: usar idEstudiante (convertir a idUsuario ya que el servicio no acepta idEstudiante)
+      else if (r.idEstudiante !== undefined && r.idEstudiante !== null && Number(r.idEstudiante) > 0) {
+        responsablesACrear.push({
+          idActividad: idActividad,
+          idTipoResponsable: 1,
+          idUsuario: Number(r.idEstudiante), // El servicio convierte idDocente/idAdmin a idUsuario, usar idUsuario para estudiantes también
+          fechaAsignacion: fechaAsignacion
+        });
+      }
+      // Para administrativos: usar idAdmin
+      else if (r.idAdmin !== undefined && r.idAdmin !== null && Number(r.idAdmin) > 0) {
+        responsablesACrear.push({
+          idActividad: idActividad,
+          idTipoResponsable: 1,
+          idAdmin: Number(r.idAdmin),
+          fechaAsignacion: fechaAsignacion
+        });
+      }
+      // Para responsables externos: el servicio actual no los soporta directamente
+      // Se necesitaría un endpoint diferente o actualizar el servicio
+      else if (r.responsableExterno) {
+        console.warn('⚠️ Responsables externos no se pueden crear con el servicio actual. Se necesita un endpoint específico.');
+      }
+    });
+    
+    // Crear responsables en paralelo
+    if (responsablesACrear.length > 0) {
+      console.log(`📋 Creando ${responsablesACrear.length} responsables para actividad ${idActividad}...`);
+      const requests = responsablesACrear.map(data => this.responsableService.create(data));
+      
+      forkJoin(requests).subscribe({
+        next: (responsablesCreados) => {
+          console.log(`✅ ${responsablesCreados.length} responsables creados exitosamente para actividad ${idActividad}`);
+        },
+        error: (err) => {
+          console.error(`❌ Error creando responsables para actividad ${idActividad}:`, err);
+          // No mostrar error al usuario ya que la actividad ya fue creada
+          // Los responsables se pueden agregar manualmente después
+        }
+      });
+    } else {
+      console.warn(`⚠️ No hay responsables válidos para crear para actividad ${idActividad}`);
+    }
+  }
+
   crearResponsablesParaActividad(idActividad: number): void {
     const formValue = this.formResponsable.value;
     const fechaAsignacion = formValue.fechaAsignacion || new Date().toISOString().split('T')[0];
@@ -1248,6 +1355,17 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // - NO se envía fechaAsignacion en el POST
         const responsables: any[] = [];
 
+        // Procesar usuarios - NO se envía idRolResponsable según los ejemplos
+        this.usuariosArray.controls.forEach((control) => {
+          const usuarioData = control.value;
+          const idUsuario = usuarioData.idUsuario ? Number(usuarioData.idUsuario) : null;
+          if (idUsuario) {
+            responsables.push({
+              idUsuario: idUsuario
+            });
+          }
+        });
+
         // Procesar docentes
         this.docentesArray.controls.forEach((control) => {
           const docenteData = control.value;
@@ -1423,6 +1541,16 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
         this.actividadesService.create(actividadData).subscribe({
           next: (actividad) => {
+            const idActividadCreada = actividad.id || actividad.idActividad;
+            console.log(`✅ Actividad creada con ID: ${idActividadCreada}`);
+            
+            // Crear responsables manualmente después de crear la actividad
+            // El backend no crea los responsables automáticamente, debemos crearlos usando el endpoint /api/actividad-responsable
+            if (responsables.length > 0 && idActividadCreada) {
+              console.log(`📋 Creando ${responsables.length} responsables para la actividad ${idActividadCreada}...`);
+              this.crearResponsablesParaActividadNueva(idActividadCreada, responsables);
+            }
+            
             this.loadingNuevaActividad.set(false);
             this.cerrarFormNuevaActividad();
             this.loadActividades(); // Recargar la lista
@@ -1430,7 +1558,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
             
             // Mostrar mensaje de éxito con el ID de la actividad creada
             this.successNuevaActividad.set({
-              id: actividad.id || actividad.idActividad,
+              id: idActividadCreada,
               nombre: actividad.nombreActividad || actividad.nombre || 'Actividad'
             });
             
@@ -2244,6 +2372,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   limpiarResponsablesPorTipo(tipo: string): void {
     switch (tipo) {
+      case 'usuario':
+        while (this.usuariosArray.length > 0) {
+          this.usuariosArray.removeAt(0);
+        }
+        break;
       case 'docente':
         while (this.docentesArray.length > 0) {
           this.docentesArray.removeAt(0);
@@ -2277,6 +2410,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
     for (const tipo of tipos) {
       switch (tipo) {
+        case 'usuario':
+          if (this.usuariosArray.length === 0) return false;
+          for (let i = 0; i < this.usuariosArray.length; i++) {
+            const control = this.usuariosArray.at(i);
+            if (!control.get('idUsuario')?.value) return false;
+          }
+          break;
         case 'docente':
           if (this.docentesArray.length === 0) return false;
           for (let i = 0; i < this.docentesArray.length; i++) {

@@ -297,132 +297,176 @@ export class ActividadDetailComponent implements OnInit {
   loadResponsables(id: number): void {
     // Siempre usar el endpoint dedicado /api/actividad-responsable/actividad/{id}
     // para obtener los responsables desde la tabla actividad-responsable
-    console.log(`📋 Cargando responsables desde /api/actividad-responsable/actividad/${id}`);
+    console.log(`📋 [ActividadDetail] Cargando responsables para actividad ID: ${id}`);
+    console.log(`📋 [ActividadDetail] Endpoint: /api/actividad-responsable/actividad/${id}`);
+    
+    // Verificar que el ID de la actividad actual coincide
+    const actividadActual = this.actividad();
+    if (actividadActual) {
+      console.log(`📋 [ActividadDetail] Actividad actual ID: ${actividadActual.id || actividadActual.idActividad}`);
+      console.log(`📋 [ActividadDetail] Actividad actual nombre: ${actividadActual.nombreActividad || actividadActual.nombre}`);
+    }
+    
     this.responsableService.getByActividad(id).subscribe({
       next: (data) => {
+        console.log(`📥 [ActividadDetail] Datos RAW del backend para actividad ${id}:`, JSON.stringify(data, null, 2));
+        
         // Enriquecer los responsables con nombres de personas si no vienen del backend
         const responsablesEnriquecidos = data.map(resp => {
-          // Siempre intentar enriquecer, incluso si ya hay algún nombre
-          // porque el backend puede devolver "Administrador Sistema" que queremos reemplazar
+          console.log(`🔍 [ActividadDetail] Procesando responsable ${resp.idActividadResponsable}:`, {
+            idActividad: resp.idActividad,
+            idUsuario: resp.idUsuario,
+            idDocente: resp.idDocente,
+            idAdmin: resp.idAdmin,
+            nombrePersona: resp.nombrePersona,
+            nombreUsuario: resp.nombreUsuario,
+            nombreDocente: resp.nombreDocente,
+            nombreAdmin: resp.nombreAdmin
+          });
+          
+          // Verificar que el responsable pertenezca a la actividad correcta
+          if (resp.idActividad !== id) {
+            console.error(`❌ [ActividadDetail] ERROR: Responsable ${resp.idActividadResponsable} pertenece a actividad ${resp.idActividad}, no a ${id}`);
+          }
+          
+          // PRIMERO: Usar el nombre que viene del backend si está disponible y es válido
+          // Solo enriquecer si el nombre del backend no está disponible o es inválido
           let nombreEncontrado = false;
           let tipoPersonaEncontrado: 'docente' | 'estudiante' | 'administrativo' | null = null;
           
-          // Primero intentar con idDocente si existe
-          if (resp.idDocente && resp.idDocente > 0) {
-            const docente = this.docentes().find(d => d.id === resp.idDocente);
-            if (docente && docente.nombreCompleto) {
-              resp.nombrePersona = docente.nombreCompleto;
-              resp.nombreDocente = docente.nombreCompleto;
-              resp.idDocente = resp.idDocente; // Preservar el ID
-              nombreEncontrado = true;
-              tipoPersonaEncontrado = 'docente';
-              console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de docente: ${docente.nombreCompleto}`);
-            }
+          // Verificar si el backend ya proporcionó un nombre válido
+          const nombreDelBackend = resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin;
+          const esNombreValido = nombreDelBackend && 
+                                 !nombreDelBackend.toLowerCase().includes('administrador sistema') &&
+                                 !nombreDelBackend.toLowerCase().includes('admin sistema') &&
+                                 nombreDelBackend.toLowerCase() !== 'administrador';
+          
+          if (esNombreValido) {
+            // El backend ya proporcionó un nombre válido, usarlo
+            resp.nombrePersona = nombreDelBackend;
+            nombreEncontrado = true;
+            console.log(`✅ [ActividadDetail] Usando nombre del backend para responsable ${resp.idActividadResponsable}: ${nombreDelBackend}`);
           }
           
-          // Si no se encontró, intentar con idAdmin
-          if (!nombreEncontrado && resp.idAdmin && resp.idAdmin > 0) {
-            const admin = this.administrativos().find(a => a.id === resp.idAdmin);
-            if (admin && admin.nombreCompleto) {
-              resp.nombrePersona = admin.nombreCompleto;
-              resp.nombreAdmin = admin.nombreCompleto;
-              resp.idAdmin = resp.idAdmin; // Preservar el ID
-              nombreEncontrado = true;
-              tipoPersonaEncontrado = 'administrativo';
-              console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin: ${admin.nombreCompleto}`);
-            }
-          }
-          
-          // Si no se encontró y hay idUsuario, buscar en todas las listas
-          // porque el backend usa IdUsuario para todos los tipos de personas
-          // IMPORTANTE: El backend devuelve idUsuario pero no idDocente/idAdmin, así que debemos inferirlos
-          if (!nombreEncontrado && resp.idUsuario && resp.idUsuario > 0) {
-            const idUsuarioOriginal = resp.idUsuario; // Guardar el valor original para logs
-            
-            // Verificar si tenemos el tipo de persona guardado cuando se creó este responsable
-            const tipoPersonaOriginal = this.tipoPersonaPorResponsable.get(resp.idActividadResponsable);
-            
-            console.log(`🔍 Buscando persona con idUsuario=${idUsuarioOriginal} en las listas cargadas...`);
-            console.log(`  - Tipo de persona original (guardado): ${tipoPersonaOriginal || 'desconocido'}`);
-            console.log(`  - Docentes cargados: ${this.docentes().length}`);
-            console.log(`  - Administrativos cargados: ${this.administrativos().length}`);
-            console.log(`  - Estudiantes cargados: ${this.estudiantes().length}`);
-            
-            // Estrategia de búsqueda:
-            // 1. Si tenemos el tipo original guardado, buscar primero en esa lista
-            // 2. Si no, buscar en todas las listas con prioridad: docentes > administrativos > estudiantes
-            // 3. Si el ID existe en múltiples listas, dar prioridad a docentes sobre estudiantes
-            
-            // Buscar en todas las listas para ver en cuáles existe el ID
-            const docenteEncontrado = this.docentes().find(d => d.id === idUsuarioOriginal);
-            const adminEncontrado = this.administrativos().find(a => a.id === idUsuarioOriginal);
-            const estudianteEncontrado = this.estudiantes().find(e => e.id === idUsuarioOriginal);
-            
-            console.log(`🔍 Resultados de búsqueda para idUsuario=${idUsuarioOriginal}:`, {
-              encontradoEnDocentes: !!docenteEncontrado,
-              encontradoEnAdministrativos: !!adminEncontrado,
-              encontradoEnEstudiantes: !!estudianteEncontrado
-            });
-            
-            // Si tenemos el tipo original guardado, usarlo con prioridad
-            if (tipoPersonaOriginal === 'docente' && docenteEncontrado && docenteEncontrado.nombreCompleto) {
-              resp.nombrePersona = docenteEncontrado.nombreCompleto;
-              resp.nombreDocente = docenteEncontrado.nombreCompleto;
-              resp.idDocente = idUsuarioOriginal;
-              resp.idUsuario = undefined;
-              nombreEncontrado = true;
-              tipoPersonaEncontrado = 'docente';
-              console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de docente (tipo guardado, idUsuario=${idUsuarioOriginal} -> idDocente=${resp.idDocente}): ${docenteEncontrado.nombreCompleto}`);
-            } else if (tipoPersonaOriginal === 'administrativo' && adminEncontrado && adminEncontrado.nombreCompleto) {
-              resp.nombrePersona = adminEncontrado.nombreCompleto;
-              resp.nombreAdmin = adminEncontrado.nombreCompleto;
-              resp.idAdmin = idUsuarioOriginal;
-              resp.idUsuario = undefined;
-              nombreEncontrado = true;
-              tipoPersonaEncontrado = 'administrativo';
-              console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin (tipo guardado, idUsuario=${idUsuarioOriginal} -> idAdmin=${resp.idAdmin}): ${adminEncontrado.nombreCompleto}`);
-            } else if (tipoPersonaOriginal === 'estudiante' && estudianteEncontrado && estudianteEncontrado.nombreCompleto) {
-              resp.nombrePersona = estudianteEncontrado.nombreCompleto;
-              resp.nombreUsuario = estudianteEncontrado.nombreCompleto;
-              nombreEncontrado = true;
-              tipoPersonaEncontrado = 'estudiante';
-              console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de estudiante (tipo guardado, idUsuario=${idUsuarioOriginal}): ${estudianteEncontrado.nombreCompleto}`);
+          // SOLO enriquecer si no encontramos un nombre válido del backend
+          if (!nombreEncontrado) {
+            // Primero intentar con idDocente si existe
+            if (resp.idDocente && resp.idDocente > 0) {
+              const docente = this.docentes().find(d => d.id === resp.idDocente);
+              if (docente && docente.nombreCompleto) {
+                resp.nombrePersona = docente.nombreCompleto;
+                resp.nombreDocente = docente.nombreCompleto;
+                resp.idDocente = resp.idDocente; // Preservar el ID
+                nombreEncontrado = true;
+                tipoPersonaEncontrado = 'docente';
+                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de docente: ${docente.nombreCompleto}`);
+              }
             }
             
-            // Si no encontramos usando el tipo guardado, buscar en todas las listas con prioridad
-            if (!nombreEncontrado) {
-              // Prioridad: docentes > administrativos > estudiantes
-              // Si el ID existe en docentes, asumir que es docente (incluso si también existe en estudiantes)
-              if (docenteEncontrado && docenteEncontrado.nombreCompleto) {
+            // Si no se encontró, intentar con idAdmin
+            if (!nombreEncontrado && resp.idAdmin && resp.idAdmin > 0) {
+              const admin = this.administrativos().find(a => a.id === resp.idAdmin);
+              if (admin && admin.nombreCompleto) {
+                resp.nombrePersona = admin.nombreCompleto;
+                resp.nombreAdmin = admin.nombreCompleto;
+                resp.idAdmin = resp.idAdmin; // Preservar el ID
+                nombreEncontrado = true;
+                tipoPersonaEncontrado = 'administrativo';
+                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin: ${admin.nombreCompleto}`);
+              }
+            }
+            
+            // Si no se encontró y hay idUsuario, buscar en todas las listas
+            // porque el backend usa IdUsuario para todos los tipos de personas
+            // IMPORTANTE: El backend devuelve idUsuario pero no idDocente/idAdmin, así que debemos inferirlos
+            if (!nombreEncontrado && resp.idUsuario && resp.idUsuario > 0) {
+              const idUsuarioOriginal = resp.idUsuario; // Guardar el valor original para logs
+              
+              // Verificar si tenemos el tipo de persona guardado cuando se creó este responsable
+              const tipoPersonaOriginal = this.tipoPersonaPorResponsable.get(resp.idActividadResponsable);
+              
+              console.log(`🔍 Buscando persona con idUsuario=${idUsuarioOriginal} en las listas cargadas...`);
+              console.log(`  - Tipo de persona original (guardado): ${tipoPersonaOriginal || 'desconocido'}`);
+              console.log(`  - Docentes cargados: ${this.docentes().length}`);
+              console.log(`  - Administrativos cargados: ${this.administrativos().length}`);
+              console.log(`  - Estudiantes cargados: ${this.estudiantes().length}`);
+              
+              // Estrategia de búsqueda:
+              // 1. Si tenemos el tipo original guardado, buscar primero en esa lista
+              // 2. Si no, buscar en todas las listas con prioridad: docentes > administrativos > estudiantes
+              // 3. Si el ID existe en múltiples listas, dar prioridad a docentes sobre estudiantes
+              
+              // Buscar en todas las listas para ver en cuáles existe el ID
+              const docenteEncontrado = this.docentes().find(d => d.id === idUsuarioOriginal);
+              const adminEncontrado = this.administrativos().find(a => a.id === idUsuarioOriginal);
+              const estudianteEncontrado = this.estudiantes().find(e => e.id === idUsuarioOriginal);
+              
+              console.log(`🔍 Resultados de búsqueda para idUsuario=${idUsuarioOriginal}:`, {
+                encontradoEnDocentes: !!docenteEncontrado,
+                encontradoEnAdministrativos: !!adminEncontrado,
+                encontradoEnEstudiantes: !!estudianteEncontrado
+              });
+              
+              // Si tenemos el tipo original guardado, usarlo con prioridad
+              if (tipoPersonaOriginal === 'docente' && docenteEncontrado && docenteEncontrado.nombreCompleto) {
                 resp.nombrePersona = docenteEncontrado.nombreCompleto;
                 resp.nombreDocente = docenteEncontrado.nombreCompleto;
                 resp.idDocente = idUsuarioOriginal;
                 resp.idUsuario = undefined;
                 nombreEncontrado = true;
                 tipoPersonaEncontrado = 'docente';
-                // Guardar el tipo inferido para futuras recargas
-                this.tipoPersonaPorResponsable.set(resp.idActividadResponsable, 'docente');
-                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de docente (inferido, idUsuario=${idUsuarioOriginal} -> idDocente=${resp.idDocente}): ${docenteEncontrado.nombreCompleto}`);
-              } else if (adminEncontrado && adminEncontrado.nombreCompleto) {
+                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de docente (tipo guardado, idUsuario=${idUsuarioOriginal} -> idDocente=${resp.idDocente}): ${docenteEncontrado.nombreCompleto}`);
+              } else if (tipoPersonaOriginal === 'administrativo' && adminEncontrado && adminEncontrado.nombreCompleto) {
                 resp.nombrePersona = adminEncontrado.nombreCompleto;
                 resp.nombreAdmin = adminEncontrado.nombreCompleto;
                 resp.idAdmin = idUsuarioOriginal;
                 resp.idUsuario = undefined;
                 nombreEncontrado = true;
                 tipoPersonaEncontrado = 'administrativo';
-                // Guardar el tipo inferido para futuras recargas
-                this.tipoPersonaPorResponsable.set(resp.idActividadResponsable, 'administrativo');
-                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin (inferido, idUsuario=${idUsuarioOriginal} -> idAdmin=${resp.idAdmin}): ${adminEncontrado.nombreCompleto}`);
-              } else if (estudianteEncontrado && estudianteEncontrado.nombreCompleto) {
+                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin (tipo guardado, idUsuario=${idUsuarioOriginal} -> idAdmin=${resp.idAdmin}): ${adminEncontrado.nombreCompleto}`);
+              } else if (tipoPersonaOriginal === 'estudiante' && estudianteEncontrado && estudianteEncontrado.nombreCompleto) {
                 resp.nombrePersona = estudianteEncontrado.nombreCompleto;
                 resp.nombreUsuario = estudianteEncontrado.nombreCompleto;
                 nombreEncontrado = true;
                 tipoPersonaEncontrado = 'estudiante';
-                // Guardar el tipo inferido para futuras recargas
-                this.tipoPersonaPorResponsable.set(resp.idActividadResponsable, 'estudiante');
-                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de estudiante (inferido, idUsuario=${idUsuarioOriginal}): ${estudianteEncontrado.nombreCompleto}`);
-              } else {
-                console.warn(`⚠️ No se encontró persona con idUsuario=${idUsuarioOriginal} en ninguna lista (docentes, administrativos, estudiantes)`);
+                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de estudiante (tipo guardado, idUsuario=${idUsuarioOriginal}): ${estudianteEncontrado.nombreCompleto}`);
+              }
+              
+              // Si no encontramos usando el tipo guardado, buscar en todas las listas con prioridad
+              if (!nombreEncontrado) {
+                // Prioridad: docentes > administrativos > estudiantes
+                // Si el ID existe en docentes, asumir que es docente (incluso si también existe en estudiantes)
+                if (docenteEncontrado && docenteEncontrado.nombreCompleto) {
+                  resp.nombrePersona = docenteEncontrado.nombreCompleto;
+                  resp.nombreDocente = docenteEncontrado.nombreCompleto;
+                  resp.idDocente = idUsuarioOriginal;
+                  resp.idUsuario = undefined;
+                  nombreEncontrado = true;
+                  tipoPersonaEncontrado = 'docente';
+                  // Guardar el tipo inferido para futuras recargas
+                  this.tipoPersonaPorResponsable.set(resp.idActividadResponsable, 'docente');
+                  console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de docente (inferido, idUsuario=${idUsuarioOriginal} -> idDocente=${resp.idDocente}): ${docenteEncontrado.nombreCompleto}`);
+                } else if (adminEncontrado && adminEncontrado.nombreCompleto) {
+                  resp.nombrePersona = adminEncontrado.nombreCompleto;
+                  resp.nombreAdmin = adminEncontrado.nombreCompleto;
+                  resp.idAdmin = idUsuarioOriginal;
+                  resp.idUsuario = undefined;
+                  nombreEncontrado = true;
+                  tipoPersonaEncontrado = 'administrativo';
+                  // Guardar el tipo inferido para futuras recargas
+                  this.tipoPersonaPorResponsable.set(resp.idActividadResponsable, 'administrativo');
+                  console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin (inferido, idUsuario=${idUsuarioOriginal} -> idAdmin=${resp.idAdmin}): ${adminEncontrado.nombreCompleto}`);
+                } else if (estudianteEncontrado && estudianteEncontrado.nombreCompleto) {
+                  resp.nombrePersona = estudianteEncontrado.nombreCompleto;
+                  resp.nombreUsuario = estudianteEncontrado.nombreCompleto;
+                  nombreEncontrado = true;
+                  tipoPersonaEncontrado = 'estudiante';
+                  // Guardar el tipo inferido para futuras recargas
+                  this.tipoPersonaPorResponsable.set(resp.idActividadResponsable, 'estudiante');
+                  console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de estudiante (inferido, idUsuario=${idUsuarioOriginal}): ${estudianteEncontrado.nombreCompleto}`);
+                } else {
+                  console.warn(`⚠️ No se encontró persona con idUsuario=${idUsuarioOriginal} en ninguna lista (docentes, administrativos, estudiantes)`);
+                }
               }
             }
           }
@@ -447,15 +491,22 @@ export class ActividadDetailComponent implements OnInit {
           
           // Si aún no se encontró, registrar para debugging
           if (!nombreEncontrado) {
-            console.warn(`⚠️ Responsable ${resp.idActividadResponsable} no se pudo enriquecer. IDs:`, {
+            console.warn(`⚠️ [ActividadDetail] Responsable ${resp.idActividadResponsable} no se pudo enriquecer. IDs:`, {
+              idActividad: resp.idActividad,
               idDocente: resp.idDocente,
               idAdmin: resp.idAdmin,
               idUsuario: resp.idUsuario,
+              nombrePersona: resp.nombrePersona,
+              nombreUsuario: resp.nombreUsuario,
+              nombreDocente: resp.nombreDocente,
+              nombreAdmin: resp.nombreAdmin,
               nombreDepartamento: resp.nombreDepartamento,
               docentesCargados: this.docentes().length,
               administrativosCargados: this.administrativos().length,
               estudiantesCargados: this.estudiantes().length
             });
+          } else {
+            console.log(`✅ [ActividadDetail] Responsable ${resp.idActividadResponsable} procesado exitosamente. Nombre final: ${resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin}`);
           }
           
           return resp;
@@ -463,7 +514,8 @@ export class ActividadDetailComponent implements OnInit {
         
         // Filtrar responsables: solo mostrar aquellos que tienen personas reales asignadas
         // Excluir "Administrador Sistema" y otros usuarios del sistema
-        const responsablesFiltrados = responsablesEnriquecidos.filter(resp => {
+        const responsablesFiltrados = responsablesEnriquecidos.filter((resp): resp is ActividadResponsable => {
+          if (!resp) return false;
           const nombre = resp.nombrePersona || resp.nombreDocente || resp.nombreAdmin || resp.nombreUsuario || '';
           // Excluir si el nombre es "Administrador Sistema" o similar
           const esUsuarioSistema = nombre.toLowerCase().includes('administrador sistema') || 
@@ -475,9 +527,11 @@ export class ActividadDetailComponent implements OnInit {
           // 2. Tiene un departamento asignado (sin persona)
           // 3. Tiene un ID de persona válido (idDocente, idAdmin, o idUsuario > 0) aunque no tenga nombre aún
           //    (esto permite mostrar responsables recién creados mientras se enriquecen)
-          const tieneIdPersonaValido = (resp.idDocente && resp.idDocente > 0) || 
-                                       (resp.idAdmin && resp.idAdmin > 0) || 
-                                       (resp.idUsuario && resp.idUsuario > 0);
+          const tieneIdPersonaValido = Boolean(
+            (resp.idDocente && resp.idDocente > 0) || 
+            (resp.idAdmin && resp.idAdmin > 0) || 
+            (resp.idUsuario && resp.idUsuario > 0)
+          );
           
           return !esUsuarioSistema && (
             nombre.trim() !== '' || 
@@ -487,7 +541,7 @@ export class ActividadDetailComponent implements OnInit {
         });
         
         console.log(`📊 Responsables filtrados: ${responsablesFiltrados.length} de ${responsablesEnriquecidos.length}`);
-        console.log('📋 Responsables antes del filtro:', responsablesEnriquecidos.map(r => ({
+        console.log('📋 Responsables antes del filtro:', responsablesEnriquecidos.map(r => r ? {
           id: r.idActividadResponsable,
           idDocente: r.idDocente,
           idAdmin: r.idAdmin,
@@ -497,7 +551,7 @@ export class ActividadDetailComponent implements OnInit {
           nombreAdmin: r.nombreAdmin,
           nombreUsuario: r.nombreUsuario,
           rolResponsable: r.rolResponsable
-        })));
+        } : null).filter(r => r !== null));
         console.log('📋 Responsables después del filtro:', responsablesFiltrados.map(r => ({
           id: r.idActividadResponsable,
           idDocente: r.idDocente,
@@ -510,10 +564,18 @@ export class ActividadDetailComponent implements OnInit {
           rolResponsable: r.rolResponsable
         })));
         this.responsables.set(responsablesFiltrados);
-        console.log(`✅ Responsables cargados desde /api/actividad-responsable: ${data.length} responsables`);
+        console.log(`✅ [ActividadDetail] Responsables cargados desde /api/actividad-responsable/actividad/${id}: ${data.length} responsables`);
+        console.log(`✅ [ActividadDetail] Responsables filtrados: ${responsablesFiltrados.length} responsables`);
         if (data.length > 0) {
-          console.log('📋 Datos de responsables originales:', data);
-          console.log('📋 Datos de responsables enriquecidos:', responsablesEnriquecidos);
+          console.log('📋 [ActividadDetail] Datos de responsables originales:', data);
+          console.log('📋 [ActividadDetail] IDs de actividad de los responsables:', data.map(r => r.idActividad));
+          console.log('📋 [ActividadDetail] Verificando que todos los responsables pertenezcan a la actividad:', id);
+          const responsablesIncorrectos = data.filter(r => r.idActividad !== id);
+          if (responsablesIncorrectos.length > 0) {
+            console.error(`❌ [ActividadDetail] ADVERTENCIA: Se encontraron ${responsablesIncorrectos.length} responsables que NO pertenecen a la actividad ${id}:`, responsablesIncorrectos);
+          }
+        } else {
+          console.warn(`⚠️ [ActividadDetail] No se encontraron responsables para la actividad ${id}`);
         }
       },
       error: (err) => {

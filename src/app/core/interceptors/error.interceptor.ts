@@ -28,7 +28,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           '/api/capacidad-instalaciones',
           '/api/actividades-anuales',
           '/api/actividades-mensuales-institucionales',
-          '/api/indicadores'
+          '/api/actividades',
+          '/api/indicadores',
+          '/api/tipo-evidencia'
         ];
         
         const shouldSilence = silentEndpoints.some(endpoint => url.includes(endpoint));
