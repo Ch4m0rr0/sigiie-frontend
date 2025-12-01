@@ -4,7 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { HttpParams } from '@angular/common/http';
-import type { Actividad, ActividadCreate } from '../models/actividad';
+import type { Actividad, ActividadCreate, ResponsableCreate } from '../models/actividad';
 import type { Edicion } from '../models/edicion';
 import type { Participacion } from '../models/participacion';
 import type { ActividadResponsable } from '../models/actividad-responsable';
@@ -14,15 +14,47 @@ import type { EvidenciaCreate } from '../models/evidencia';
 
 export interface ActividadFilterDto {
   IdActividadMensualInst?: number;
+  IdActividadAnual?: number;
+  IdIndicador?: number;
   IdEstadoActividad?: number;
-  IdTipoActividad?: number;
-  DepartamentoId?: number;
   DepartamentoResponsableId?: number;
+  EsPlanificada?: boolean;
+  Anio?: number;
+  IdTipoProtagonista?: number;
+  Mes?: number; // 1-12
   BusquedaTexto?: string;
-  FechaInicioDesde?: string;
-  FechaInicioHasta?: string;
-  FechaFinDesde?: string;
-  FechaFinHasta?: string;
+  FechaInicioDesde?: string; // YYYY-MM-DD
+  FechaInicioHasta?: string; // YYYY-MM-DD
+  FechaFinDesde?: string; // YYYY-MM-DD
+  FechaFinHasta?: string; // YYYY-MM-DD
+  FechaEventoDesde?: string; // YYYY-MM-DD
+  FechaEventoHasta?: string; // YYYY-MM-DD
+}
+
+export interface ResponsableCreateDto {
+  IdUsuario?: number;
+  IdDocente?: number;
+  IdEstudiante?: number;
+  IdAdmin?: number;
+  ResponsableExterno?: {
+    Nombre: string;
+    Institucion: string;
+    Cargo?: string;
+    Telefono?: string;
+    Correo?: string;
+  };
+  IdRolResponsable?: number;
+  RolResponsable?: string;
+  FechaAsignacion?: string; // YYYY-MM-DD
+}
+
+export interface ActividadConParticipantesFilterDto {
+  IdActividad?: number;
+  Anio?: number;
+  EsPlanificada?: boolean;
+  DepartamentoResponsableId?: number;
+  IdIndicador?: number;
+  TipoProtagonistaReal?: string; // "Estudiantes", "Docentes", "Administrativos"
 }
 
 @Injectable({ providedIn: 'root' })
@@ -31,8 +63,63 @@ export class ActividadesService {
   private apiUrl = `${environment.apiUrl}/actividades`;
 
   // Actividades - Alineado con IActividadesService.GetAllAsync()
-  getAll(): Observable<Actividad[]> {
-    return this.http.get<any>(this.apiUrl).pipe(
+  // GET /api/actividades?filter=...
+  getAll(filter?: ActividadFilterDto): Observable<Actividad[]> {
+    let params = new HttpParams();
+    
+    // Agregar filtros como query params si se proporcionan
+    if (filter) {
+      if (filter.IdActividadMensualInst !== undefined) {
+        params = params.set('IdActividadMensualInst', filter.IdActividadMensualInst.toString());
+      }
+      if (filter.IdActividadAnual !== undefined) {
+        params = params.set('IdActividadAnual', filter.IdActividadAnual.toString());
+      }
+      if (filter.IdIndicador !== undefined) {
+        params = params.set('IdIndicador', filter.IdIndicador.toString());
+      }
+      if (filter.IdEstadoActividad !== undefined) {
+        params = params.set('IdEstadoActividad', filter.IdEstadoActividad.toString());
+      }
+      if (filter.DepartamentoResponsableId !== undefined) {
+        params = params.set('DepartamentoResponsableId', filter.DepartamentoResponsableId.toString());
+      }
+      if (filter.EsPlanificada !== undefined) {
+        params = params.set('EsPlanificada', filter.EsPlanificada.toString());
+      }
+      if (filter.Anio !== undefined) {
+        params = params.set('Anio', filter.Anio.toString());
+      }
+      if (filter.IdTipoProtagonista !== undefined) {
+        params = params.set('IdTipoProtagonista', filter.IdTipoProtagonista.toString());
+      }
+      if (filter.Mes !== undefined) {
+        params = params.set('Mes', filter.Mes.toString());
+      }
+      if (filter.BusquedaTexto) {
+        params = params.set('BusquedaTexto', filter.BusquedaTexto);
+      }
+      if (filter.FechaInicioDesde) {
+        params = params.set('FechaInicioDesde', filter.FechaInicioDesde);
+      }
+      if (filter.FechaInicioHasta) {
+        params = params.set('FechaInicioHasta', filter.FechaInicioHasta);
+      }
+      if (filter.FechaFinDesde) {
+        params = params.set('FechaFinDesde', filter.FechaFinDesde);
+      }
+      if (filter.FechaFinHasta) {
+        params = params.set('FechaFinHasta', filter.FechaFinHasta);
+      }
+      if (filter.FechaEventoDesde) {
+        params = params.set('FechaEventoDesde', filter.FechaEventoDesde);
+      }
+      if (filter.FechaEventoHasta) {
+        params = params.set('FechaEventoHasta', filter.FechaEventoHasta);
+      }
+    }
+    
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => this.mapActividad(item)) : [];
@@ -75,6 +162,7 @@ export class ActividadesService {
    * POST /api/actividades/filtrar
    * Filtra actividades según los criterios proporcionados
    * El backend espera ActividadFilterDto con PascalCase
+   * NOTA: Este método es legacy. Se recomienda usar getAll() con filtros como query params
    */
   filtrar(filtros: ActividadFilterDto): Observable<Actividad[]> {
     // Convertir a PascalCase para el backend
@@ -82,17 +170,29 @@ export class ActividadesService {
     if (filtros.IdActividadMensualInst !== undefined) {
       dto.IdActividadMensualInst = filtros.IdActividadMensualInst;
     }
+    if (filtros.IdActividadAnual !== undefined) {
+      dto.IdActividadAnual = filtros.IdActividadAnual;
+    }
+    if (filtros.IdIndicador !== undefined) {
+      dto.IdIndicador = filtros.IdIndicador;
+    }
     if (filtros.IdEstadoActividad !== undefined) {
       dto.IdEstadoActividad = filtros.IdEstadoActividad;
     }
-    if (filtros.IdTipoActividad !== undefined) {
-      dto.IdTipoActividad = filtros.IdTipoActividad;
-    }
-    if (filtros.DepartamentoId !== undefined) {
-      dto.DepartamentoId = filtros.DepartamentoId;
-    }
     if (filtros.DepartamentoResponsableId !== undefined) {
       dto.DepartamentoResponsableId = filtros.DepartamentoResponsableId;
+    }
+    if (filtros.EsPlanificada !== undefined) {
+      dto.EsPlanificada = filtros.EsPlanificada;
+    }
+    if (filtros.Anio !== undefined) {
+      dto.Anio = filtros.Anio;
+    }
+    if (filtros.IdTipoProtagonista !== undefined) {
+      dto.IdTipoProtagonista = filtros.IdTipoProtagonista;
+    }
+    if (filtros.Mes !== undefined) {
+      dto.Mes = filtros.Mes;
     }
     if (filtros.BusquedaTexto) {
       dto.BusquedaTexto = filtros.BusquedaTexto;
@@ -108,6 +208,12 @@ export class ActividadesService {
     }
     if (filtros.FechaFinHasta) {
       dto.FechaFinHasta = filtros.FechaFinHasta;
+    }
+    if (filtros.FechaEventoDesde) {
+      dto.FechaEventoDesde = filtros.FechaEventoDesde;
+    }
+    if (filtros.FechaEventoHasta) {
+      dto.FechaEventoHasta = filtros.FechaEventoHasta;
     }
     
     return this.http.post<any>(`${this.apiUrl}/filtrar`, dto).pipe(
@@ -223,8 +329,30 @@ export class ActividadesService {
       HoraRealizacion: actividad.horaRealizacion,
       CantidadParticipantesProyectados: actividad.cantidadParticipantesProyectados,
       CantidadParticipantesEstudiantesProyectados: actividad.cantidadParticipantesEstudiantesProyectados,
+      CantidadTotalParticipantesProtagonistas: actividad.cantidadTotalParticipantesProtagonistas,
       IdTipoProtagonista: getIdTipoProtagonista(actividad.idTipoProtagonista),
       ResponsableActividad: actividad.responsableActividad,
+      IdTipoEvidencias: actividad.idTipoEvidencias, // Lista de IDs de tipos de evidencias
+      Responsables: actividad.responsables ? actividad.responsables.map(r => {
+        const responsableDto: any = {};
+        if (r.idUsuario !== undefined) responsableDto.IdUsuario = r.idUsuario;
+        if (r.idDocente !== undefined) responsableDto.IdDocente = r.idDocente;
+        if (r.idEstudiante !== undefined) responsableDto.IdEstudiante = r.idEstudiante;
+        if (r.idAdmin !== undefined) responsableDto.IdAdmin = r.idAdmin;
+        if (r.responsableExterno) {
+          responsableDto.ResponsableExterno = {
+            Nombre: r.responsableExterno.nombre,
+            Institucion: r.responsableExterno.institucion,
+            Cargo: r.responsableExterno.cargo,
+            Telefono: r.responsableExterno.telefono,
+            Correo: r.responsableExterno.correo
+          };
+        }
+        if (r.idRolResponsable !== undefined) responsableDto.IdRolResponsable = r.idRolResponsable;
+        if (r.rolResponsable) responsableDto.RolResponsable = r.rolResponsable;
+        if (r.fechaAsignacion) responsableDto.FechaAsignacion = r.fechaAsignacion;
+        return responsableDto;
+      }) : undefined,
     };
     
     // Remover campos undefined, null, o arrays vacíos
@@ -419,6 +547,31 @@ export class ActividadesService {
     }
     if (actividad.responsableActividad !== undefined) {
       dto.ResponsableActividad = actividad.responsableActividad;
+    }
+    if (actividad.idTipoEvidencias !== undefined) {
+      dto.IdTipoEvidencias = actividad.idTipoEvidencias;
+    }
+    if (actividad.responsables !== undefined) {
+      dto.Responsables = actividad.responsables.map(r => {
+        const responsableDto: any = {};
+        if (r.idUsuario !== undefined) responsableDto.IdUsuario = r.idUsuario;
+        if (r.idDocente !== undefined) responsableDto.IdDocente = r.idDocente;
+        if (r.idEstudiante !== undefined) responsableDto.IdEstudiante = r.idEstudiante;
+        if (r.idAdmin !== undefined) responsableDto.IdAdmin = r.idAdmin;
+        if (r.responsableExterno) {
+          responsableDto.ResponsableExterno = {
+            Nombre: r.responsableExterno.nombre,
+            Institucion: r.responsableExterno.institucion,
+            Cargo: r.responsableExterno.cargo,
+            Telefono: r.responsableExterno.telefono,
+            Correo: r.responsableExterno.correo
+          };
+        }
+        if (r.idRolResponsable !== undefined) responsableDto.IdRolResponsable = r.idRolResponsable;
+        if (r.rolResponsable) responsableDto.RolResponsable = r.rolResponsable;
+        if (r.fechaAsignacion) responsableDto.FechaAsignacion = r.fechaAsignacion;
+        return responsableDto;
+      });
     }
     
     // Remover campos undefined, null, o arrays vacíos
@@ -701,6 +854,79 @@ export class ActividadesService {
     }
     
     return this.http.post<any>(`${this.apiUrl}/${idActividad}/evidencias/multiple`, formData);
+  }
+
+  /**
+   * GET /api/actividades/con-participantes
+   * Obtiene actividades agrupadas por tipo de protagonista real (basado en participaciones)
+   * Útil para informes donde una actividad puede aparecer múltiples veces (una por cada tipo de protagonista)
+   */
+  getActividadesConParticipantes(filter?: ActividadConParticipantesFilterDto): Observable<any[]> {
+    let params = new HttpParams();
+    
+    if (filter) {
+      if (filter.IdActividad !== undefined) {
+        params = params.set('IdActividad', filter.IdActividad.toString());
+      }
+      if (filter.Anio !== undefined) {
+        params = params.set('Anio', filter.Anio.toString());
+      }
+      if (filter.EsPlanificada !== undefined) {
+        params = params.set('EsPlanificada', filter.EsPlanificada.toString());
+      }
+      if (filter.DepartamentoResponsableId !== undefined) {
+        params = params.set('DepartamentoResponsableId', filter.DepartamentoResponsableId.toString());
+      }
+      if (filter.IdIndicador !== undefined) {
+        params = params.set('IdIndicador', filter.IdIndicador.toString());
+      }
+      if (filter.TipoProtagonistaReal) {
+        params = params.set('TipoProtagonistaReal', filter.TipoProtagonistaReal);
+      }
+    }
+    
+    return this.http.get<any>(`${this.apiUrl}/con-participantes`, { params }).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items : [];
+      }),
+      catchError(error => {
+        console.error('Error fetching actividades con participantes:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * GET /api/actividades/{idActividad}/estadisticas-participantes
+   * Obtiene estadísticas de participantes de una actividad (totales por género sin duplicar)
+   */
+  getEstadisticasParticipantes(idActividad: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${idActividad}/estadisticas-participantes`).pipe(
+      map(response => {
+        return response.data || response;
+      }),
+      catchError(error => {
+        console.error(`Error fetching estadísticas de participantes para actividad ${idActividad}:`, error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * GET /api/actividades/{idActividad}/participantes-con-nombres
+   * Obtiene lista de participantes de una actividad con nombres, separados por género
+   */
+  getParticipantesConNombres(idActividad: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${idActividad}/participantes-con-nombres`).pipe(
+      map(response => {
+        return response.data || response;
+      }),
+      catchError(error => {
+        console.error(`Error fetching participantes con nombres para actividad ${idActividad}:`, error);
+        return of(null);
+      })
+    );
   }
 
   private mapActividad(item: any): Actividad {

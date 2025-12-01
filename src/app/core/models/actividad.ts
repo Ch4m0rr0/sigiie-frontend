@@ -114,6 +114,25 @@ export interface Actividad {
   activo?: boolean; // No existe en backend, usar estado
 }
 
+export interface ResponsableExternoCreate {
+  nombre: string;
+  institucion: string;
+  cargo?: string;
+  telefono?: string;
+  correo?: string;
+}
+
+export interface ResponsableCreate {
+  idUsuario?: number;
+  idDocente?: number;
+  idEstudiante?: number;
+  idAdmin?: number;
+  responsableExterno?: ResponsableExternoCreate;
+  idRolResponsable?: number;
+  rolResponsable?: string;
+  fechaAsignacion?: string; // YYYY-MM-DD
+}
+
 export interface ActividadCreate {
   nombreActividad: string;
   descripcion?: string;
@@ -141,6 +160,7 @@ export interface ActividadCreate {
   idActividadAnual?: number | number[]; // Puede ser un número o un array de números
   objetivo?: string;
   cantidadMaximaParticipantesEstudiantes?: number;
+  cantidadTotalParticipantesProtagonistas?: number;
   tipoResumenAccion?: string;
   metaAlcanzada?: number;
   metaCumplimiento?: number;
@@ -152,6 +172,8 @@ export interface ActividadCreate {
   cantidadParticipantesEstudiantesProyectados?: number;
   idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
   responsableActividad?: string;
+  idTipoEvidencias?: number[]; // Lista de IDs de tipos de evidencias requeridas
+  responsables?: ResponsableCreate[]; // Lista de responsables de la actividad
   
   // Campos legacy para compatibilidad
   nombre?: string; // Alias para nombreActividad

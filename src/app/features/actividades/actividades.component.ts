@@ -1,9 +1,10 @@
-import { Component, inject, OnInit, signal, HostListener, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, AfterViewInit, signal, HostListener, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { CalendarEvent, CalendarView } from 'angular-calendar';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { IndicadorService } from '../../core/services/indicador.service';
@@ -19,15 +20,66 @@ import type { Docente } from '../../core/models/docente';
 import type { Estudiante } from '../../core/models/estudiante';
 import type { Administrativo } from '../../core/models/administrativo';
 import { IconComponent } from '../../shared/icon/icon.component';
-import { BrnButtonImports } from '@spartan-ng/brain/button';
+import { CalendarModule, CalendarUtils, CalendarDateFormatter, CalendarA11y, CalendarEventTitleFormatter, DateAdapter } from 'angular-calendar';
+import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
+import { es } from 'date-fns/locale';
+import { format, startOfWeek, addDays } from 'date-fns';
+
+// Formateador personalizado para usar locale español
+class CustomCalendarDateFormatter extends CalendarDateFormatter {
+  override monthViewColumnHeader({ date, locale }: { date: Date; locale: string }): string {
+    // Formatear los días de la semana en español
+    return format(date, 'EEE', { locale: es });
+  }
+
+  override monthViewTitle({ date, locale }: { date: Date; locale: string }): string {
+    // Formatear el título del mes en español
+    return format(date, 'MMMM yyyy', { locale: es });
+  }
+
+  override weekViewColumnHeader({ date, locale }: { date: Date; locale: string }): string {
+    return format(date, 'EEE', { locale: es });
+  }
+
+  override dayViewHour({ date, locale }: { date: Date; locale: string }): string {
+    return format(date, 'HH:mm', { locale: es });
+  }
+
+  override dayViewTitle({ date, locale }: { date: Date; locale: string }): string {
+    return format(date, 'EEEE, d \'de\' MMMM \'de\' yyyy', { locale: es });
+  }
+
+  override weekViewTitle({ date, locale }: { date: Date; locale: string }): string {
+    return format(date, 'Semana del d \'de\' MMMM', { locale: es });
+  }
+}
 
 @Component({
   standalone: true,
   selector: 'app-list-actividades',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, IconComponent, ...BrnButtonImports],
+  imports: [
+    CommonModule, 
+    RouterModule, 
+    ReactiveFormsModule, 
+    IconComponent, 
+    CalendarModule
+  ],
+  providers: [
+    CalendarUtils,
+    {
+      provide: CalendarDateFormatter,
+      useClass: CustomCalendarDateFormatter,
+    },
+    CalendarA11y,
+    CalendarEventTitleFormatter,
+    {
+      provide: DateAdapter,
+      useFactory: adapterFactory,
+    },
+  ],
   templateUrl: './actividades.component.html',
 })
-export class ListActividadesComponent implements OnInit {
+export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestroy {
   private actividadesService = inject(ActividadesService);
   private catalogosService = inject(CatalogosService);
   private indicadorService = inject(IndicadorService);
@@ -49,6 +101,17 @@ export class ListActividadesComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   showRetryButton = false;
+  
+  // Modo de vista: 'cards' | 'lista' | 'calendario'
+  modoVista = signal<'cards' | 'lista' | 'calendario'>('lista');
+  
+  // Calendario
+  viewDate: Date = new Date();
+  view: CalendarView = CalendarView.Month;
+  CalendarView = CalendarView;
+  locale: string = 'es';
+  
+  eventosCalendario = signal<CalendarEvent[]>([]);
 
   // Catálogos para el formulario de actividad
   departamentos = signal<any[]>([]);
@@ -99,6 +162,7 @@ export class ListActividadesComponent implements OnInit {
   mostrarDropdownProtagonista = signal(true); // Controla si se muestra el dropdown de protagonistas
   loadingNuevaActividad = signal(false);
   errorNuevaActividad = signal<string | null>(null);
+  successNuevaActividad = signal<{ id: number; nombre: string } | null>(null);
   private cargandoRelaciones = false; // Flag para evitar loops infinitos
 
   // Formulario de responsables
@@ -190,7 +254,7 @@ export class ListActividadesComponent implements OnInit {
         this.indicadores.set(results.datos.indicadores);
         
         // Ahora cargar actividades (puede ser más lento, así que lo hacemos después)
-        this.loadActividades();
+    this.loadActividades();
       },
       error: (err) => {
         console.error('Error crítico en carga paralela:', err);
@@ -198,7 +262,7 @@ export class ListActividadesComponent implements OnInit {
         // Intentar cargar datos individualmente como fallback
         this.loadActividadesAnuales();
         this.loadActividadesMensualesInst();
-        this.loadIndicadores();
+    this.loadIndicadores();
         this.loadCatalogosParaActividad();
         this.loadActividades();
       }
@@ -309,6 +373,10 @@ export class ListActividadesComponent implements OnInit {
       // Participantes
       cantidadParticipantesProyectados: [null, Validators.required], // Obligatorio
       cantidadParticipantesEstudiantesProyectados: [null], // Campo local, no obligatorio
+      cantidadTotalParticipantesProtagonistas: [null], // Total de participantes protagonistas
+      
+      // Tipos de evidencia
+      idTipoEvidencias: [[]], // Array de IDs de tipos de evidencias requeridas
       
     });
     
@@ -354,8 +422,8 @@ export class ListActividadesComponent implements OnInit {
             this.actividadesMensualesFiltradas.set([...actuales, ...nuevas]);
           }).catch(err => {
             console.error('Error loading actividades mensuales:', err);
-          });
-        }
+    });
+  }
       }
       // No limpiar el indicador si se deseleccionan las actividades anuales
     });
@@ -424,6 +492,7 @@ export class ListActividadesComponent implements OnInit {
         
         console.log('✅ Actividades cargadas:', filtered.length);
         this.actividades.set(filtered);
+        this.actualizarEventosCalendario(filtered);
         this.loading.set(false);
       },
       error: (err) => {
@@ -455,7 +524,7 @@ export class ListActividadesComponent implements OnInit {
                           '**Nota**: El problema está en el backend, no en el frontend.';
             showRetryButton = true;
           } else {
-            errorMessage = 'Error interno del servidor. Por favor, contacta al administrador o intenta más tarde.';
+          errorMessage = 'Error interno del servidor. Por favor, contacta al administrador o intenta más tarde.';
             if (err.error && typeof err.error === 'string' && err.error.length < 200) {
               errorMessage += `\n\nDetalles: ${err.error.substring(0, 200)}`;
             }
@@ -504,7 +573,19 @@ export class ListActividadesComponent implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (!this.elementRef.nativeElement.contains(event.target)) {
+    const target = event.target as HTMLElement;
+    
+    // Verificar si el clic fue dentro de algún dropdown
+    const isInsideDropdown = target.closest('.dropdown-indicador') || 
+                            target.closest('.dropdown-actividad') ||
+                            target.closest('[class*="dropdown"]');
+    
+    // Verificar si el clic fue en el botón que abre el dropdown
+    const isDropdownButton = target.closest('button[type="button"]')?.getAttribute('title')?.includes('indicador') ||
+                            target.closest('button[type="button"]')?.textContent?.includes('Nueva Actividad');
+    
+    // Solo cerrar si el clic fue fuera del componente y fuera de los dropdowns
+    if (!this.elementRef.nativeElement.contains(target) && !isInsideDropdown && !isDropdownButton) {
       this.mostrarDropdownActividad.set(false);
       this.mostrarDropdownIndicadorForm.set(false);
       this.mostrarDropdownIndicadorSeleccionado.set(false);
@@ -526,6 +607,38 @@ export class ListActividadesComponent implements OnInit {
 
   toggleDropdownIndicadorSeleccionado(): void {
     this.mostrarDropdownIndicadorSeleccionado.set(!this.mostrarDropdownIndicadorSeleccionado());
+  }
+
+  getDropdownRightPosition(): number {
+    if (typeof window === 'undefined') return 0;
+    const button = this.elementRef.nativeElement.querySelector('.dropdown-indicador button');
+    if (!button) return 0;
+    const rect = button.getBoundingClientRect();
+    return window.innerWidth - rect.right;
+  }
+
+  getDropdownTopPosition(): number {
+    if (typeof window === 'undefined') return 0;
+    const button = this.elementRef.nativeElement.querySelector('.dropdown-indicador button');
+    if (!button) return 0;
+    const rect = button.getBoundingClientRect();
+    return rect.bottom + window.scrollY + 4; // 4px de margen
+  }
+
+  getDropdownActividadRightPosition(): number {
+    if (typeof window === 'undefined') return 0;
+    const button = this.elementRef.nativeElement.querySelector('.dropdown-actividad button');
+    if (!button) return 0;
+    const rect = button.getBoundingClientRect();
+    return window.innerWidth - rect.right;
+  }
+
+  getDropdownActividadTopPosition(): number {
+    if (typeof window === 'undefined') return 0;
+    const button = this.elementRef.nativeElement.querySelector('.dropdown-actividad button');
+    if (!button) return 0;
+    const rect = button.getBoundingClientRect();
+    return rect.bottom + window.scrollY + 4; // 4px de margen
   }
 
   seleccionarIndicadorGlobal(idIndicador: number | null): void {
@@ -562,7 +675,7 @@ export class ListActividadesComponent implements OnInit {
       this.errorNuevaActividad.set('Por favor, seleccione un indicador antes de crear una nueva actividad.');
       this.mostrarDropdownTipoActividad.set(false);
       return;
-    }
+  }
 
     this.tipoActividadSeleccionado.set(tipo);
     this.mostrarDropdownTipoActividad.set(false);
@@ -601,6 +714,26 @@ export class ListActividadesComponent implements OnInit {
     this.mostrarDropdownIndicadorForm.set(false);
     // Limpiar formulario de responsables
     this.resetFormResponsable();
+  }
+
+  verActividadCreada(): void {
+    const actividad = this.successNuevaActividad();
+    if (actividad) {
+      this.router.navigate(['/actividades', actividad.id]);
+      this.successNuevaActividad.set(null);
+    }
+  }
+
+  editarActividadCreada(): void {
+    const actividad = this.successNuevaActividad();
+    if (actividad) {
+      this.router.navigate(['/actividades', actividad.id, 'editar']);
+      this.successNuevaActividad.set(null);
+    }
+  }
+
+  cerrarNotificacionExito(): void {
+    this.successNuevaActividad.set(null);
   }
   
   // ========== MÉTODOS PARA FORMULARIO DE RESPONSABLES ==========
@@ -877,7 +1010,7 @@ export class ListActividadesComponent implements OnInit {
                 console.error('Error cargando actividades anuales:', err);
                 this.cargandoRelaciones = false;
               }
-            });
+      });
           } else {
             this.cargandoRelaciones = false;
           }
@@ -1034,6 +1167,50 @@ export class ListActividadesComponent implements OnInit {
       // Para actividad planificada o no planificada: crear la actividad directamente
       // Las actividades anuales y mensuales son opcionales
       if (indicadorId) {
+        // Construir responsables desde formResponsable
+        const responsables: any[] = [];
+        const responsableFormValue = this.formResponsable.value;
+        const fechaAsignacion = responsableFormValue.fechaAsignacion || new Date().toISOString().split('T')[0];
+
+        // Procesar docentes
+        this.docentesArray.controls.forEach((control) => {
+          const docenteData = control.value;
+          const idPersona = docenteData.idPersona ? Number(docenteData.idPersona) : null;
+          if (idPersona) {
+            responsables.push({
+              idDocente: idPersona, // El id del docente
+              idRolResponsable: null, // No hay campo en el formulario, se puede agregar después
+              fechaAsignacion: fechaAsignacion
+            });
+          }
+        });
+
+        // Procesar estudiantes
+        this.estudiantesArray.controls.forEach((control) => {
+          const estudianteData = control.value;
+          const idPersona = estudianteData.idPersona ? Number(estudianteData.idPersona) : null;
+          if (idPersona) {
+            responsables.push({
+              idEstudiante: idPersona,
+              idRolResponsable: null, // Requerido por backend, pero no hay campo en formulario
+              fechaAsignacion: fechaAsignacion
+            });
+          }
+        });
+
+        // Procesar administrativos
+        this.administrativosArray.controls.forEach((control) => {
+          const adminData = control.value;
+          const idPersona = adminData.idPersona ? Number(adminData.idPersona) : null;
+          if (idPersona) {
+            responsables.push({
+              idAdmin: idPersona, // El id del administrativo
+              idRolResponsable: null, // No hay campo en el formulario, se puede agregar después
+              fechaAsignacion: fechaAsignacion
+            });
+          }
+        });
+
         const actividadData: any = {
           nombreActividad: formValue.nombreActividad || '',
           descripcion: formValue.descripcion || null,
@@ -1050,7 +1227,6 @@ export class ListActividadesComponent implements OnInit {
             }
             return hora.includes(':') ? hora : null;
           })() : null,
-          anio: formValue.anio ? String(formValue.anio) : String(new Date().getFullYear()),
           modalidad: formValue.modalidad || null,
           idCapacidadInstalada: formValue.idCapacidadInstalada || null,
           idEstadoActividad: formValue.idEstadoActividad || null,
@@ -1058,34 +1234,49 @@ export class ListActividadesComponent implements OnInit {
           idTipoProtagonista: Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0 ? formValue.idTipoProtagonista[0] : (formValue.idTipoProtagonista || null),
           cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados ? Number(formValue.cantidadParticipantesProyectados) : null,
           cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados ? Number(formValue.cantidadParticipantesEstudiantesProyectados) : null,
+          cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas ? Number(formValue.cantidadTotalParticipantesProtagonistas) : (formValue.cantidadParticipantesProyectados ? Number(formValue.cantidadParticipantesProyectados) : null),
           esPlanificada: tipo === 'anual', // true para actividad planificada, false para no planificada
           idIndicador: indicadorId,
           idActividadAnual: Array.isArray(actividadAnualId) && actividadAnualId.length > 0 ? actividadAnualId[0] : (actividadAnualId || null),
-          idActividadMensualInst: Array.isArray(actividadMensualId) && actividadMensualId.length > 0 ? actividadMensualId[0] : (actividadMensualId || null)
+          idActividadMensualInst: Array.isArray(actividadMensualId) && actividadMensualId.length > 0 ? actividadMensualId[0] : (actividadMensualId || null),
+          idTipoEvidencias: Array.isArray(formValue.idTipoEvidencias) && formValue.idTipoEvidencias.length > 0 ? formValue.idTipoEvidencias : (formValue.idTipoEvidencias || []),
+          responsables: responsables.length > 0 ? responsables : undefined
         };
 
-        // Limpiar campos null/undefined/empty
+        // Limpiar campos null/undefined/empty (excepto arrays vacíos y objetos)
         Object.keys(actividadData).forEach(key => {
           if (actividadData[key] === '' || actividadData[key] === undefined) {
-            actividadData[key] = null;
+            // No eliminar arrays vacíos ni objetos
+            if (!Array.isArray(actividadData[key]) && typeof actividadData[key] !== 'object') {
+              actividadData[key] = null;
+            } else if (Array.isArray(actividadData[key]) && actividadData[key].length === 0) {
+              // Eliminar arrays vacíos solo si no son requeridos
+              delete actividadData[key];
+            }
           }
         });
 
         this.actividadesService.create(actividadData).subscribe({
           next: (actividad) => {
-            // Crear responsables si hay alguno en el formulario
-            if (actividad.id) {
-              this.crearResponsablesParaActividad(actividad.id);
-            }
-            
             this.loadingNuevaActividad.set(false);
             this.cerrarFormNuevaActividad();
             this.loadActividades(); // Recargar la lista
             this.errorNuevaActividad.set(null);
+            
+            // Mostrar mensaje de éxito con el ID de la actividad creada
+            this.successNuevaActividad.set({
+              id: actividad.id || actividad.idActividad,
+              nombre: actividad.nombreActividad || actividad.nombre || 'Actividad'
+            });
+            
+            // Auto-cerrar la notificación después de 8 segundos
+            setTimeout(() => {
+              this.successNuevaActividad.set(null);
+            }, 8000);
           },
           error: (err) => {
             this.loadingNuevaActividad.set(false);
-            let errorMessage = 'Error al crear la actividad.';
+            let errorMessage = 'No se pudo crear la actividad.';
             if (err.error?.message) {
               errorMessage = err.error.message;
             } else if (err.error?.errors) {
@@ -1095,6 +1286,7 @@ export class ListActividadesComponent implements OnInit {
               errorMessage = err.message;
             }
             this.errorNuevaActividad.set(errorMessage);
+            this.successNuevaActividad.set(null);
             console.error('Error creating actividad:', err);
           }
         });
@@ -1140,6 +1332,211 @@ export class ListActividadesComponent implements OnInit {
     this.error.set(null);
     this.showRetryButton = false;
     this.loadActividades();
+  }
+
+  cambiarModoVista(modo: 'cards' | 'lista' | 'calendario'): void {
+    this.modoVista.set(modo);
+  }
+
+  getActividadesAgrupadasPorFecha(): Array<{ fecha: string; actividades: Actividad[] }> {
+    const agrupadas = new Map<string, Actividad[]>();
+    
+    this.actividades().forEach(actividad => {
+      // Usar fechaInicio si está disponible, sino fechaCreacion
+      const fecha = actividad.fechaInicio 
+        ? new Date(actividad.fechaInicio).toISOString().split('T')[0]
+        : actividad.fechaCreacion 
+          ? new Date(actividad.fechaCreacion).toISOString().split('T')[0]
+          : 'sin-fecha';
+      
+      if (!agrupadas.has(fecha)) {
+        agrupadas.set(fecha, []);
+      }
+      agrupadas.get(fecha)!.push(actividad);
+    });
+    
+    // Convertir a array y ordenar por fecha (más reciente primero)
+    return Array.from(agrupadas.entries())
+      .map(([fecha, actividades]) => ({ fecha, actividades }))
+      .sort((a, b) => {
+        if (a.fecha === 'sin-fecha') return 1;
+        if (b.fecha === 'sin-fecha') return -1;
+        return b.fecha.localeCompare(a.fecha);
+      });
+  }
+
+  formatearFecha(fecha: string): string {
+    if (fecha === 'sin-fecha') return 'Sin fecha';
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-ES', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  }
+
+  actualizarEventosCalendario(actividades: Actividad[]): void {
+    const eventos: CalendarEvent[] = actividades
+      .filter(actividad => actividad.fechaInicio || actividad.fechaCreacion)
+      .map(actividad => {
+        const fecha = actividad.fechaInicio 
+          ? new Date(actividad.fechaInicio)
+          : new Date(actividad.fechaCreacion);
+        
+        // Color según el estado
+        const color = actividad.activo 
+          ? { primary: '#10b981', secondary: '#d1fae5' } // emerald
+          : { primary: '#64748b', secondary: '#f1f5f9' }; // slate
+        
+        // Crear tooltip con información detallada
+        let tooltip = actividad.nombre;
+        if (actividad.descripcion) {
+          tooltip += `\n\n${actividad.descripcion.substring(0, 150)}${actividad.descripcion.length > 150 ? '...' : ''}`;
+        }
+        if (actividad.nombreDepartamentoResponsable) {
+          tooltip += `\n\nDepartamento: ${actividad.nombreDepartamentoResponsable}`;
+        }
+        if (actividad.horaRealizacion) {
+          tooltip += `\nHora: ${actividad.horaRealizacion}`;
+        }
+        
+        return {
+          id: actividad.id,
+          start: fecha,
+          title: actividad.nombre,
+          color: color,
+          meta: {
+            actividad: actividad,
+            tooltip: tooltip
+          }
+        } as CalendarEvent;
+      });
+    
+    this.eventosCalendario.set(eventos);
+    
+    // Re-attach listeners después de actualizar eventos
+    setTimeout(() => {
+      this.attachEventListeners();
+    }, 100);
+  }
+
+  ngOnDestroy(): void {
+    if (this.hoverTimeout) {
+      clearTimeout(this.hoverTimeout);
+    }
+  }
+
+  eventoClicked({ event }: { event: CalendarEvent }): void {
+    if (event.meta && event.meta.actividad) {
+      this.navigateToDetail(event.meta.actividad.id);
+    }
+  }
+
+  eventoHovered: CalendarEvent | null = null;
+  hoverPosition = signal<{ x: number; y: number } | null>(null);
+  hoverTimeout: any = null;
+
+  ngAfterViewInit(): void {
+    // Agregar listeners a los eventos del calendario después de que se rendericen
+    setTimeout(() => {
+      this.attachEventListeners();
+    }, 500);
+  }
+
+  attachEventListeners(): void {
+    const eventos = document.querySelectorAll('.cal-month-view .cal-event');
+    eventos.forEach((eventoEl) => {
+      // Remover listeners anteriores si existen
+      const nuevoEventoEl = eventoEl.cloneNode(true);
+      eventoEl.parentNode?.replaceChild(nuevoEventoEl, eventoEl);
+      
+      nuevoEventoEl.addEventListener('mouseenter', (e: Event) => {
+        const mouseEvent = e as MouseEvent;
+        const target = e.target as HTMLElement;
+        
+        // Buscar el evento por el título del elemento
+        const titulo = target.textContent?.trim();
+        if (titulo) {
+          const evento = this.eventosCalendario().find(ev => ev.title === titulo);
+          if (evento) {
+            this.hoverTimeout = setTimeout(() => {
+              this.eventoHovered = evento;
+              this.hoverPosition.set({
+                x: mouseEvent.clientX,
+                y: mouseEvent.clientY
+              });
+            }, 150); // Delay corto para mejor UX
+          }
+        }
+      });
+      
+      nuevoEventoEl.addEventListener('mouseleave', () => {
+        if (this.hoverTimeout) {
+          clearTimeout(this.hoverTimeout);
+        }
+        this.eventoHovered = null;
+        this.hoverPosition.set(null);
+      });
+      
+      nuevoEventoEl.addEventListener('mousemove', (e: Event) => {
+        if (this.eventoHovered) {
+          const mouseEvent = e as MouseEvent;
+          this.hoverPosition.set({
+            x: mouseEvent.clientX,
+            y: mouseEvent.clientY
+          });
+        }
+      });
+    });
+  }
+
+  onEventMouseLeave(): void {
+    if (this.hoverTimeout) {
+      clearTimeout(this.hoverTimeout);
+    }
+    this.eventoHovered = null;
+    this.hoverPosition.set(null);
+  }
+
+  getTooltipLeft(): number {
+    if (!this.hoverPosition()) return 0;
+    const tooltipWidth = 320; // Ancho aproximado del tooltip
+    const margin = 20;
+    const x = this.hoverPosition()!.x;
+    
+    // Si el tooltip se saldría por la derecha, posicionarlo a la izquierda del cursor
+    if (x + tooltipWidth + margin > window.innerWidth) {
+      return x - tooltipWidth - margin;
+    }
+    return x + margin;
+  }
+
+  getTooltipTop(): number {
+    if (!this.hoverPosition()) return 0;
+    const tooltipHeight = 200; // Altura aproximada del tooltip
+    const margin = 20;
+    const y = this.hoverPosition()!.y;
+    
+    // Si el tooltip se saldría por abajo, posicionarlo arriba del cursor
+    if (y + tooltipHeight + margin > window.innerHeight) {
+      return y - tooltipHeight - margin;
+    }
+    return y + margin;
+  }
+
+  cambiarMes(direccion: 'anterior' | 'siguiente'): void {
+    const nuevaFecha = new Date(this.viewDate);
+    if (direccion === 'anterior') {
+      nuevaFecha.setMonth(nuevaFecha.getMonth() - 1);
+    } else {
+      nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
+    }
+    this.viewDate = nuevaFecha;
+  }
+
+  irAHoy(): void {
+    this.viewDate = new Date();
   }
 
   toggleFormIndicador(): void {
@@ -1312,18 +1709,18 @@ export class ListActividadesComponent implements OnInit {
       };
 
       this.indicadorService.create(indicadorData).subscribe({
-      next: (nuevoIndicador) => {
-        console.log('✅ Indicador creado:', nuevoIndicador);
-        // Recargar la lista de indicadores
-        this.loadIndicadores();
+        next: (nuevoIndicador) => {
+          console.log('✅ Indicador creado:', nuevoIndicador);
+          // Recargar la lista de indicadores
+          this.loadIndicadores();
         // Auto-seleccionar el indicador recién creado
         if (nuevoIndicador && nuevoIndicador.idIndicador) {
           this.indicadorSeleccionado.set(nuevoIndicador.idIndicador);
         }
-        // Cerrar el formulario
-        this.toggleFormIndicador();
-        this.loadingIndicador.set(false);
-      },
+          // Cerrar el formulario
+          this.toggleFormIndicador();
+          this.loadingIndicador.set(false);
+        },
         error: (err) => {
           console.error('❌ Error creando indicador:', err);
           let errorMessage = 'Error al crear el indicador';

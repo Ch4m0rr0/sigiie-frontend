@@ -1,31 +1,138 @@
 <div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
   
-  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+  <!-- Notificación flotante de éxito (fuera del formulario) -->
+  @if (successNuevaActividad()) {
+    <div class="fixed top-4 right-4 z-[10001] max-w-md animate-fade-in">
+      <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5 shadow-2xl">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 shadow-md">
+            <app-icon icon="check_circle" size="md" class="text-emerald-600"></app-icon>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-base font-bold text-emerald-800 mb-1">¡La actividad se realizó con éxito!</h4>
+            <p class="text-sm text-emerald-700 mb-4">
+              La actividad <span class="font-semibold">"{{ successNuevaActividad()?.nombre }}"</span> ha sido creada correctamente.
+            </p>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                (click)="verActividadCreada()"
+                class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                <app-icon icon="visibility" size="xs" color="white"></app-icon>
+                <span>Ver Actividad</span>
+              </button>
+              <button
+                type="button"
+                (click)="editarActividadCreada()"
+                class="px-4 py-2 bg-white border-2 border-emerald-600 text-emerald-700 rounded-lg font-medium text-sm hover:bg-emerald-50 transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                <app-icon icon="edit" size="xs"></app-icon>
+                <span>Editar Actividad</span>
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            (click)="cerrarNotificacionExito()"
+            class="p-1 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all duration-200 active:scale-95 flex-shrink-0"
+            title="Cerrar">
+            <app-icon icon="close" size="xs"></app-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Notificación flotante de error (fuera del formulario) -->
+  @if (errorNuevaActividad() && !mostrarFormNuevaActividad()) {
+    <div class="fixed top-4 right-4 z-[10001] max-w-md animate-fade-in">
+      <div class="bg-red-50 border-2 border-red-200 rounded-xl p-5 shadow-2xl">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 shadow-md">
+            <app-icon icon="error_outline" size="md" class="text-red-600"></app-icon>
+          </div>
+          <div class="flex-1">
+            <h4 class="text-base font-bold text-red-800 mb-1">No se pudo crear la actividad</h4>
+            <p class="text-sm text-red-700 whitespace-pre-line leading-relaxed">{{ errorNuevaActividad() }}</p>
+          </div>
+          <button
+            type="button"
+            (click)="errorNuevaActividad.set(null)"
+            class="p-1 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 active:scale-95 flex-shrink-0"
+            title="Cerrar">
+            <app-icon icon="close" size="xs"></app-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in relative" style="z-index: 1000; position: relative;">
     <div>
       <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
         Actividades
       </h1>
     </div>
     
-    <div class="flex gap-3 flex-wrap">
+    <div class="flex gap-3 flex-wrap items-center">
+      <!-- Selector de modo de vista -->
+      <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+        <button
+          type="button"
+          (click)="cambiarModoVista('lista')"
+          [class.bg-emerald-600]="modoVista() === 'lista'"
+          [class.text-white]="modoVista() === 'lista'"
+          [class.text-slate-600]="modoVista() !== 'lista'"
+          [class.shadow-sm]="modoVista() === 'lista'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de lista">
+          <app-icon icon="list" size="xs"></app-icon>
+          <span>Lista</span>
+        </button>
+        <button
+          type="button"
+          (click)="cambiarModoVista('calendario')"
+          [class.bg-emerald-600]="modoVista() === 'calendario'"
+          [class.text-white]="modoVista() === 'calendario'"
+          [class.text-slate-600]="modoVista() !== 'calendario'"
+          [class.shadow-sm]="modoVista() === 'calendario'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de calendario">
+          <app-icon icon="calendar_month" size="xs"></app-icon>
+          <span>Calendario</span>
+        </button>
+        <button
+          type="button"
+          (click)="cambiarModoVista('cards')"
+          [class.bg-emerald-600]="modoVista() === 'cards'"
+          [class.text-white]="modoVista() === 'cards'"
+          [class.text-slate-600]="modoVista() !== 'cards'"
+          [class.shadow-sm]="modoVista() === 'cards'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de tarjetas">
+          <app-icon icon="grid_view" size="xs"></app-icon>
+          <span>Cards</span>
+        </button>
+      </div>
       <!-- Dropdown Indicador Seleccionado -->
-      <div class="relative">
+      <div class="relative dropdown-indicador" style="z-index: 1000;">
         <button 
           type="button"
-          (click)="toggleDropdownIndicadorSeleccionado()"
-          class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
+          (click)="toggleDropdownIndicadorSeleccionado(); $event.stopPropagation()"
+          class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+          title="Seleccionar indicador para filtrar actividades">
           <span>{{ getIndicadorSeleccionadoNombre() }}</span>
-          <app-icon icon="expand_more" size="sm" color="white" [class.rotate-180]="mostrarDropdownIndicadorSeleccionado()"></app-icon>
+          <app-icon icon="expand_more" size="sm" color="white" [class.rotate-180]="mostrarDropdownIndicadorSeleccionado()" class="transition-transform duration-200"></app-icon>
         </button>
         
         <!-- Dropdown de indicadores -->
         @if (mostrarDropdownIndicadorSeleccionado() && indicadores().length > 0) {
-          <div class="absolute z-50 mt-1 right-0 bg-white border border-slate-300 rounded-lg shadow-lg min-w-[280px] max-h-60 overflow-y-auto">
+          <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl max-h-60 overflow-y-auto" 
+               (click)="$event.stopPropagation()">
             <div class="py-1">
               <button
                 type="button"
-                (click)="seleccionarIndicadorGlobal(null)"
-                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
+                (click)="seleccionarIndicadorGlobal(null); $event.stopPropagation()"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
                 [class.bg-blue-50]="indicadorSeleccionado() === null">
                 <app-icon icon="close" size="xs" class="text-blue-600"></app-icon>
                 Ninguno
@@ -33,17 +140,18 @@
               @for (indicador of indicadores(); track indicador.idIndicador) {
                 <button
                   type="button"
-                  (click)="seleccionarIndicadorGlobal(indicador.idIndicador)"
-                  class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
+                  (click)="seleccionarIndicadorGlobal(indicador.idIndicador); $event.stopPropagation()"
+                  class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
                   [class.bg-blue-50]="indicadorSeleccionado() === indicador.idIndicador">
-                  <app-icon icon="check_circle" size="xs" class="text-blue-600" [class.opacity-0]="indicadorSeleccionado() !== indicador.idIndicador"></app-icon>
-                  {{ indicador.codigo }} - {{ indicador.nombre }}
+                  <app-icon icon="check_circle" size="xs" class="text-blue-600 transition-opacity" [class.opacity-0]="indicadorSeleccionado() !== indicador.idIndicador"></app-icon>
+                  <span class="truncate">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
                 </button>
               }
             </div>
           </div>
         } @else if (mostrarDropdownIndicadorSeleccionado() && indicadores().length === 0) {
-          <div class="absolute z-50 mt-1 right-0 bg-white border border-slate-300 rounded-lg shadow-lg min-w-[280px]">
+          <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl"
+               (click)="$event.stopPropagation()">
             <div class="py-4 px-4 text-center text-sm text-slate-500">
               No hay indicadores disponibles. Cree uno primero.
             </div>
@@ -52,32 +160,33 @@
       </div>
 
       <!-- Botón Nueva Actividad con dropdown condicional -->
-      <div class="relative">
+      <div class="relative dropdown-actividad" style="z-index: 1000;">
         <button 
           type="button"
-          (click)="toggleDropdownActividad()"
-          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95"
-          [class.opacity-50]="!indicadorSeleccionado()"
-          [class.cursor-not-allowed]="!indicadorSeleccionado()">
+          (click)="toggleDropdownActividad(); $event.stopPropagation()"
+          [disabled]="!indicadorSeleccionado()"
+          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
+          [title]="!indicadorSeleccionado() ? 'Primero selecciona un indicador' : 'Crear nueva actividad planificada'">
           <span>Nueva Actividad planificada</span>
-          <app-icon icon="add" size="sm" color="white" [class.rotate-180]="mostrarDropdownTipoActividad()"></app-icon>
+          <app-icon icon="add" size="sm" color="white" [class.rotate-180]="mostrarDropdownTipoActividad()" class="transition-transform duration-200"></app-icon>
         </button>
         
         <!-- Dropdown de opciones de actividad (solo si hay indicador seleccionado) -->
         @if (mostrarDropdownTipoActividad() && indicadorSeleccionado()) {
-          <div class="absolute z-50 mt-1 right-0 bg-white border border-slate-300 rounded-lg shadow-lg min-w-[220px]">
+          <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl"
+               (click)="$event.stopPropagation()">
             <div class="py-1">
               <button
                 type="button"
-                (click)="seleccionarTipoActividad('anual')"
-                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2">
+                (click)="seleccionarTipoActividad('anual'); $event.stopPropagation()"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
                 <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
                 Actividad planificada
               </button>
               <button
                 type="button"
-                (click)="seleccionarTipoActividad('no-planificada')"
-                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2">
+                (click)="seleccionarTipoActividad('no-planificada'); $event.stopPropagation()"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
                 <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
                 Actividad no planificada
               </button>
@@ -90,15 +199,24 @@
 
   <!-- Formulario para nueva actividad -->
   @if (mostrarFormNuevaActividad()) {
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-slate-900">
-          {{ tipoActividadSeleccionado() === 'anual' ? 'Nueva Actividad planificada' : 'Nueva Actividad no Planificada' }}
-        </h2>
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-8 animate-fade-in">
+      <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+            <app-icon icon="add_task" size="sm"></app-icon>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-slate-900">
+              {{ tipoActividadSeleccionado() === 'anual' ? 'Nueva Actividad planificada' : 'Nueva Actividad no Planificada' }}
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Complete el formulario para crear una nueva actividad</p>
+          </div>
+        </div>
         <button 
           type="button"
           (click)="cerrarFormNuevaActividad()"
-          class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
+          class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+          title="Cerrar formulario">
           <app-icon icon="close" size="sm"></app-icon>
         </button>
       </div>
@@ -107,8 +225,10 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Indicador (solo lectura, viene del indicador seleccionado) -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">
-              Indicador <span class="text-xs text-slate-500">(Puedes cambiar el indicador regresando al boton de indicador seleccionado si lo deseas)</span>
+            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+              <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
+              Indicador
+              <span class="text-xs font-normal text-slate-500">(Puedes cambiar el indicador regresando al botón de indicador seleccionado si lo deseas)</span>
             </label>
             <div class="relative">
               <input 
@@ -116,29 +236,34 @@
                 [value]="getIndicadorFormNombre()"
                 readonly
                 disabled
-                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm text-slate-600 cursor-not-allowed">
+                class="w-full px-4 py-2.5 bg-gradient-to-r from-slate-50 to-slate-100 border-2 border-slate-200 rounded-lg text-sm text-slate-600 cursor-not-allowed transition-all">
               <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                 <app-icon icon="lock" size="xs"></app-icon>
               </span>
             </div>
             @if (!indicadorSeleccionado()) {
-              <p class="mt-1 text-xs text-amber-600">
-                ⚠️ Debe seleccionar un indicador en el botón "Indicador Seleccionado" antes de crear una actividad.
-              </p>
+              <div class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                <app-icon icon="warning" size="xs" class="text-amber-600 mt-0.5 flex-shrink-0"></app-icon>
+                <p class="text-xs text-amber-800 leading-relaxed">
+                  Debe seleccionar un indicador en el botón "Indicador Seleccionado" antes de crear una actividad.
+                </p>
+              </div>
             }
           </div>
 
           <!-- Seleccionar Actividades Anuales -->
           <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <label class="block text-sm font-medium text-slate-700">
-                Actividades anuales (Opcional)
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-slate-700 flex items-center gap-2">
+                <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                Actividades anuales
               </label>
               @if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
                 <button
                   type="button"
                   (click)="crearNuevaActividadAnual()"
-                  class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors">
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all duration-200 active:scale-95 shadow-sm hover:shadow"
+                  title="Crear nueva actividad anual">
                   <app-icon icon="add" size="xs"></app-icon>
                   <span>Nueva</span>
                 </button>
@@ -147,14 +272,16 @@
             
             <!-- Actividades Anuales Seleccionadas (Chips) -->
             @if (getActividadesAnualesSeleccionadas().length > 0) {
-              <div class="flex flex-wrap gap-2 mb-2">
+              <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
                 @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
-                  <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
-                    <span>{{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}</span>
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                    <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                    <span class="max-w-xs truncate">{{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}</span>
                     <button
                       type="button"
                       (click)="eliminarActividadAnual(anual.idActividadAnual)"
-                      class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-colors">
+                      class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                      title="Eliminar actividad anual">
                       <app-icon icon="close" size="xs"></app-icon>
                     </button>
                   </div>
@@ -164,25 +291,40 @@
             
             <!-- Dropdown de Actividades Anuales -->
             @if (mostrarDropdownActividadAnual()) {
-              <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+              <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                 @if (actividadesAnualesFiltradas().length > 0) {
-                  @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
-                    <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
-                      <input 
-                        type="checkbox"
-                        [value]="anual.idActividadAnual"
-                        (change)="toggleActividadAnual(anual.idActividadAnual, $event)"
-                        [checked]="isActividadAnualSelected(anual.idActividadAnual)"
-                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
-                      <span class="text-sm text-slate-700">
-                        {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
-                      </span>
-                    </label>
-                  }
+                  <div class="space-y-1">
+                    @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
+                      <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                        <input 
+                          type="checkbox"
+                          [value]="anual.idActividadAnual"
+                          (change)="toggleActividadAnual(anual.idActividadAnual, $event)"
+                          [checked]="isActividadAnualSelected(anual.idActividadAnual)"
+                          class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                        <app-icon icon="calendar_today" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                        <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">
+                          {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                        </span>
+                      </label>
+                    }
+                  </div>
                 } @else if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
-                  <p class="text-sm text-slate-500 text-center py-4">No hay actividades anuales para este indicador</p>
+                  <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                      <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">No hay actividades anuales</p>
+                    <p class="text-xs text-slate-500 mt-1">No se encontraron actividades anuales para este indicador</p>
+                  </div>
                 } @else {
-                  <p class="text-sm text-slate-500 text-center py-4">Seleccione un indicador primero</p>
+                  <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                      <app-icon icon="info" size="sm" class="text-amber-600"></app-icon>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Seleccione un indicador primero</p>
+                    <p class="text-xs text-slate-500 mt-1">Debe seleccionar un indicador para ver las actividades anuales</p>
+                  </div>
                 }
               </div>
             } @else if (getActividadesAnualesSeleccionadas().length > 0) {
@@ -190,29 +332,40 @@
               <button
                 type="button"
                 (click)="mostrarDropdownAnual()"
-                class="w-full px-3 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
                 <app-icon icon="add" size="xs"></app-icon>
                 <span>Agregar otra actividad anual</span>
+              </button>
+            } @else {
+              <button
+                type="button"
+                (click)="mostrarDropdownAnual()"
+                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                <span>Seleccionar actividades anuales</span>
               </button>
             }
           </div>
 
           <!-- Seleccionar Actividades Mensuales (múltiples) -->
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">
-              Actividades Mensuales Institucionales (Opcional)
+            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+              <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
+              Actividades Mensuales Institucionales
             </label>
             
             <!-- Actividades Mensuales Seleccionadas (Chips) -->
             @if (getActividadesMensualesSeleccionadas().length > 0) {
-              <div class="flex flex-wrap gap-2 mb-2">
+              <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
                 @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
-                  <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
-                    <span>{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}</span>
+                  <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                    <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                    <span class="max-w-xs truncate">{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}</span>
                     <button
                       type="button"
                       (click)="eliminarActividadMensual(mensual.idActividadMensualInst)"
-                      class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-colors">
+                      class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                      title="Eliminar actividad mensual">
                       <app-icon icon="close" size="xs"></app-icon>
                     </button>
                   </div>
@@ -222,25 +375,40 @@
             
             <!-- Dropdown de Actividades Mensuales -->
             @if (mostrarDropdownActividadMensual()) {
-              <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+              <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                 @if (actividadesMensualesFiltradas().length > 0) {
-                  @for (mensual of actividadesMensualesFiltradas(); track mensual.idActividadMensualInst) {
-                    <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
-                      <input 
-                        type="checkbox"
-                        [value]="mensual.idActividadMensualInst"
-                        (change)="toggleActividadMensual(mensual.idActividadMensualInst, $event)"
-                        [checked]="isActividadMensualSelected(mensual.idActividadMensualInst)"
-                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
-                      <span class="text-sm text-slate-700">
-                        {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
-                      </span>
-                    </label>
-                  }
+                  <div class="space-y-1">
+                    @for (mensual of actividadesMensualesFiltradas(); track mensual.idActividadMensualInst) {
+                      <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                        <input 
+                          type="checkbox"
+                          [value]="mensual.idActividadMensualInst"
+                          (change)="toggleActividadMensual(mensual.idActividadMensualInst, $event)"
+                          [checked]="isActividadMensualSelected(mensual.idActividadMensualInst)"
+                          class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                        <app-icon icon="calendar_month" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                        <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">
+                          {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
+                        </span>
+                      </label>
+                    }
+                  </div>
                 } @else if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
-                  <p class="text-sm text-slate-500 text-center py-4">No hay actividades mensuales disponibles para este indicador</p>
+                  <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                      <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">No hay actividades mensuales</p>
+                    <p class="text-xs text-slate-500 mt-1">No se encontraron actividades mensuales para este indicador</p>
+                  </div>
                 } @else {
-                  <p class="text-sm text-slate-500 text-center py-4">Seleccione un indicador primero</p>
+                  <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                      <app-icon icon="info" size="sm" class="text-amber-600"></app-icon>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Seleccione un indicador primero</p>
+                    <p class="text-xs text-slate-500 mt-1">Debe seleccionar un indicador para ver las actividades mensuales</p>
+                  </div>
                 }
               </div>
             } @else if (getActividadesMensualesSeleccionadas().length > 0) {
@@ -248,9 +416,17 @@
               <button
                 type="button"
                 (click)="mostrarDropdownMensual()"
-                class="w-full px-3 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
                 <app-icon icon="add" size="xs"></app-icon>
                 <span>Agregar otra actividad mensual</span>
+              </button>
+            } @else {
+              <button
+                type="button"
+                (click)="mostrarDropdownMensual()"
+                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                <span>Seleccionar actividades mensuales</span>
               </button>
             }
           </div>
@@ -258,105 +434,143 @@
 
         <!-- Campos adicionales que aparecen cuando se selecciona un indicador (para actividad no planificada) o actividades anuales/mensuales (para actividad planificada) -->
         @if (shouldShowCamposAdicionales()) {
-          <div class="border-t border-slate-200 pt-6 mt-6 space-y-6">
-            <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-              <app-icon icon="edit_note" size="sm"></app-icon>
-              <h3 class="text-sm font-bold uppercase tracking-wide">Información de la Actividad</h3>
+          <div class="border-t-2 border-emerald-200 pt-6 mt-6 space-y-6 animate-fade-in">
+            <div class="flex items-center gap-3 pb-4 border-b border-slate-200">
+              <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <app-icon icon="edit_note" size="sm"></app-icon>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Información de la Actividad</h3>
+                <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad</p>
+              </div>
             </div>
 
             <!-- Nombre de la actividad -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <app-icon icon="title" size="xs" class="text-emerald-600"></app-icon>
                 Nombre de la Actividad <span class="text-red-500">*</span>
               </label>
-              <input 
-                type="text"
-                formControlName="nombreActividad"
-                placeholder="Ej: Taller de investigación"
-                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                [class.border-red-500]="formNuevaActividad.get('nombreActividad')?.invalid && formNuevaActividad.get('nombreActividad')?.touched">
+              <div class="relative">
+                <input 
+                  type="text"
+                  formControlName="nombreActividad"
+                  placeholder="Ej: Taller de investigación"
+                  class="w-full px-4 py-2.5 bg-white border-2 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                  [class.border-red-500]="formNuevaActividad.get('nombreActividad')?.invalid && formNuevaActividad.get('nombreActividad')?.touched"
+                  [class.border-slate-300]="!(formNuevaActividad.get('nombreActividad')?.invalid && formNuevaActividad.get('nombreActividad')?.touched)">
+                @if (formNuevaActividad.get('nombreActividad')?.valid && formNuevaActividad.get('nombreActividad')?.touched) {
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
+                    <app-icon icon="check_circle" size="xs"></app-icon>
+                  </span>
+                }
+              </div>
               @if (formNuevaActividad.get('nombreActividad')?.invalid && formNuevaActividad.get('nombreActividad')?.touched) {
-                <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
+                <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                  <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                  <p class="text-xs text-red-800">El nombre es obligatorio (mínimo 3 caracteres)</p>
+                </div>
               }
             </div>
 
             <!-- Descripción y Objetivo -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
                   Descripción
                 </label>
                 <textarea 
                   formControlName="descripcion"
                   rows="3"
                   placeholder="Descripción detallada de la actividad..."
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                  class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none transition-all"></textarea>
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="flag" size="xs" class="text-emerald-600"></app-icon>
                   Objetivo
                 </label>
                 <textarea 
                   formControlName="objetivo"
                   rows="3"
                   placeholder="Objetivo principal de la actividad..."
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                  class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none transition-all"></textarea>
               </div>
             </div>
 
             <!-- Fechas y Horas -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                  Fecha de realización de la actividad
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+                  Fecha de inicio
                 </label>
-                <input 
-                  type="date"
-                  formControlName="fechaInicio"
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                <div class="relative">
+                  <input 
+                    type="date"
+                    formControlName="fechaInicio"
+                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="calendar_today" size="xs"></app-icon>
+                  </span>
+                </div>
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                  Hora de realización de la actividad
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
+                  Hora de realización
                 </label>
-                <input 
-                  type="time"
-                  formControlName="horaRealizacion"
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                <div class="relative">
+                  <input 
+                    type="time"
+                    formControlName="horaRealizacion"
+                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="access_time" size="xs"></app-icon>
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                  Fecha de Fin
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
+                  Fecha de fin
                 </label>
-                <input 
-                  type="date"
-                  formControlName="fechaFin"
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                <div class="relative">
+                  <input 
+                    type="date"
+                    formControlName="fechaFin"
+                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="calendar_today" size="xs"></app-icon>
+                  </span>
+                </div>
               </div>
             </div>
 
             <!-- Departamentos y Estado -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
                   Departamentos Responsables
                 </label>
                 
                 <!-- Departamentos Seleccionados (Chips) -->
                 @if (getDepartamentosResponsablesSeleccionados().length > 0) {
-                  <div class="flex flex-wrap gap-2 mb-2">
+                  <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
                     @for (dept of getDepartamentosResponsablesSeleccionados(); track dept.id) {
-                      <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
-                        <span>{{ dept.nombre }}</span>
+                      <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                        <span class="max-w-xs truncate">{{ dept.nombre }}</span>
                         <button
                           type="button"
                           (click)="eliminarDepartamentoResponsable(dept.id)"
-                          class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-colors">
+                          class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                          title="Eliminar departamento">
                           <app-icon icon="close" size="xs"></app-icon>
                         </button>
                       </div>
@@ -366,20 +580,30 @@
                 
                 <!-- Dropdown de Departamentos Responsables -->
                 @if (mostrarDropdownDepartamentoResponsable()) {
-                  <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
-                    @for (dept of departamentos(); track dept.id) {
-                      <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
-                        <input 
-                          type="checkbox"
-                          [value]="dept.id"
-                          (change)="toggleDepartamentoResponsable(dept.id, $event)"
-                          [checked]="isDepartamentoResponsableSelected(dept.id)"
-                          class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
-                        <span class="text-sm text-slate-700">{{ dept.nombre }}</span>
-                      </label>
-                    }
-                    @if (departamentos().length === 0) {
-                      <p class="text-sm text-slate-500 text-center py-4">No hay departamentos disponibles</p>
+                  <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                    @if (departamentos().length > 0) {
+                      <div class="space-y-1">
+                        @for (dept of departamentos(); track dept.id) {
+                          <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                            <input 
+                              type="checkbox"
+                              [value]="dept.id"
+                              (change)="toggleDepartamentoResponsable(dept.id, $event)"
+                              [checked]="isDepartamentoResponsableSelected(dept.id)"
+                              class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                            <app-icon icon="business" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                            <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ dept.nombre }}</span>
+                          </label>
+                        }
+                      </div>
+                    } @else {
+                      <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                          <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">No hay departamentos disponibles</p>
+                        <p class="text-xs text-slate-500 mt-1">No se encontraron departamentos en el sistema</p>
+                      </div>
                     }
                   </div>
                 } @else if (getDepartamentosResponsablesSeleccionados().length > 0) {
@@ -387,24 +611,33 @@
                   <button
                     type="button"
                     (click)="mostrarDropdownDepartamentoResponsableSelect()"
-                    class="w-full px-3 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
                     <app-icon icon="add" size="xs"></app-icon>
                     <span>Agregar otro departamento</span>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="mostrarDropdownDepartamentoResponsableSelect()"
+                    class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                    <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                    <span>Seleccionar departamentos</span>
                   </button>
                 }
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
                   Estado de Actividad
                 </label>
                 <div class="relative">
                   <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                    <app-icon icon="toggle_on" size="xs"></app-icon>
+                    <app-icon icon="info" size="xs"></app-icon>
                   </span>
                   <select 
                     formControlName="idEstadoActividad"
-                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer transition-all">
                     <option [ngValue]="null">Seleccione estado...</option>
                     @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
                       <option [ngValue]="estado.idEstadoActividad || estado.id">
@@ -421,20 +654,23 @@
 
             <!-- Tipo de Actividad -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <app-icon icon="category" size="xs" class="text-emerald-600"></app-icon>
                 Tipo de Actividad
               </label>
               
               <!-- Tipos de Actividad Seleccionados (Chips) -->
               @if (getTiposActividadSeleccionados().length > 0) {
-                <div class="flex flex-wrap gap-2 mb-2">
+                <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
                   @for (tipo of getTiposActividadSeleccionados(); track tipo.idCategoriaActividad || tipo.id) {
-                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
-                      <span>{{ tipo.nombre || tipo.Nombre }}</span>
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                      <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                      <span class="max-w-xs truncate">{{ tipo.nombre || tipo.Nombre }}</span>
                       <button
                         type="button"
                         (click)="eliminarTipoActividad(tipo.idCategoriaActividad || tipo.id)"
-                        class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-colors">
+                        class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                        title="Eliminar tipo de actividad">
                         <app-icon icon="close" size="xs"></app-icon>
                       </button>
                     </div>
@@ -444,21 +680,30 @@
               
               <!-- Dropdown de Tipos de Actividad -->
               @if (mostrarDropdownTipoActividadSelect()) {
-                <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+                <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                   @if (tiposActividad().length > 0) {
-                    @for (tipo of tiposActividad(); track tipo.idCategoriaActividad || tipo.id) {
-                      <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
-                        <input 
-                          type="checkbox"
-                          [value]="tipo.idCategoriaActividad || tipo.id"
-                          (change)="toggleTipoActividad(tipo.idCategoriaActividad || tipo.id, $event)"
-                          [checked]="isTipoActividadSelected(tipo.idCategoriaActividad || tipo.id)"
-                          class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
-                        <span class="text-sm text-slate-700">{{ tipo.nombre || tipo.Nombre }}</span>
-                      </label>
-                    }
+                    <div class="space-y-1">
+                      @for (tipo of tiposActividad(); track tipo.idCategoriaActividad || tipo.id) {
+                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                          <input 
+                            type="checkbox"
+                            [value]="tipo.idCategoriaActividad || tipo.id"
+                            (change)="toggleTipoActividad(tipo.idCategoriaActividad || tipo.id, $event)"
+                            [checked]="isTipoActividadSelected(tipo.idCategoriaActividad || tipo.id)"
+                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                          <app-icon icon="category" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                          <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ tipo.nombre || tipo.Nombre }}</span>
+                        </label>
+                      }
+                    </div>
                   } @else {
-                    <p class="text-sm text-slate-500 text-center py-4">No hay tipos de actividad disponibles</p>
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                      <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                        <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                      </div>
+                      <p class="text-sm font-medium text-slate-600">No hay tipos de actividad disponibles</p>
+                      <p class="text-xs text-slate-500 mt-1">No se encontraron tipos de actividad en el sistema</p>
+                    </div>
                   }
                 </div>
               } @else if (getTiposActividadSeleccionados().length > 0) {
@@ -466,9 +711,17 @@
                 <button
                   type="button"
                   (click)="abrirDropdownTipoActividadSelect()"
-                  class="w-full px-3 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                  class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
                   <app-icon icon="add" size="xs"></app-icon>
                   <span>Agregar otro tipo de actividad</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="abrirDropdownTipoActividadSelect()"
+                  class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                  <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                  <span>Seleccionar tipos de actividad</span>
                 </button>
               }
             </div>
@@ -476,30 +729,37 @@
             <!-- Modalidad y Capacidad Instalada -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="video_call" size="xs" class="text-emerald-600"></app-icon>
                   Modalidad
                 </label>
-                <select 
-                  formControlName="modalidad"
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                  <option value="">Seleccione modalidad...</option>
-                  <option value="Presencial">Presencial</option>
-                  <option value="Virtual">Virtual</option>
-                  <option value="Híbrida">Híbrida</option>
-                </select>
+                <div class="relative">
+                  <select 
+                    formControlName="modalidad"
+                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer transition-all">
+                    <option value="">Seleccione modalidad...</option>
+                    <option value="Presencial">Presencial</option>
+                    <option value="Virtual">Virtual</option>
+                    <option value="Híbrida">Híbrida</option>
+                  </select>
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="expand_more" size="xs"></app-icon>
+                  </span>
+                </div>
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="location_on" size="xs" class="text-emerald-600"></app-icon>
                   Local principal
                 </label>
                 <div class="relative">
-                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 z-10">
                     <app-icon icon="location_on" size="xs"></app-icon>
                   </span>
                   <select 
                     formControlName="idCapacidadInstalada"
-                    class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                    class="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer transition-all">
                     <option [ngValue]="null">Seleccione local...</option>
                     @for (capacidad of capacidadesInstaladas(); track capacidad.id) {
                       <option [ngValue]="capacidad.id">
@@ -516,20 +776,23 @@
 
             <!-- Protagonista principal -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1.5">
+              <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
                 Protagonista principal
               </label>
               
               <!-- Protagonistas Seleccionados (Chips) -->
               @if (getProtagonistasSeleccionados().length > 0) {
-                <div class="flex flex-wrap gap-2 mb-2">
+                <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
                   @for (tipo of getProtagonistasSeleccionados(); track tipo.id) {
-                    <div class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
-                      <span>{{ tipo.nombre }}</span>
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                      <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                      <span class="max-w-xs truncate">{{ tipo.nombre }}</span>
                       <button
                         type="button"
                         (click)="eliminarProtagonista(tipo.id)"
-                        class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-colors">
+                        class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                        title="Eliminar protagonista">
                         <app-icon icon="close" size="xs"></app-icon>
                       </button>
                     </div>
@@ -539,20 +802,30 @@
               
               <!-- Dropdown de Protagonistas -->
               @if (mostrarDropdownProtagonista()) {
-                <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
-                  @for (tipo of tiposProtagonista(); track tipo.id) {
-                    <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
-                      <input 
-                        type="checkbox"
-                        [value]="tipo.id"
-                        (change)="toggleProtagonista(tipo.id, $event)"
-                        [checked]="isProtagonistaSelected(tipo.id)"
-                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
-                      <span class="text-sm text-slate-700">{{ tipo.nombre }}</span>
-                    </label>
-                  }
-                  @if (tiposProtagonista().length === 0) {
-                    <p class="text-sm text-slate-500 text-center py-4">No hay tipos de protagonista disponibles</p>
+                <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                  @if (tiposProtagonista().length > 0) {
+                    <div class="space-y-1">
+                      @for (tipo of tiposProtagonista(); track tipo.id) {
+                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                          <input 
+                            type="checkbox"
+                            [value]="tipo.id"
+                            (change)="toggleProtagonista(tipo.id, $event)"
+                            [checked]="isProtagonistaSelected(tipo.id)"
+                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                          <app-icon icon="groups" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                          <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ tipo.nombre }}</span>
+                        </label>
+                      }
+                    </div>
+                  } @else {
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                      <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                        <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                      </div>
+                      <p class="text-sm font-medium text-slate-600">No hay tipos de protagonista disponibles</p>
+                      <p class="text-xs text-slate-500 mt-1">No se encontraron tipos de protagonista en el sistema</p>
+                    </div>
                   }
                 </div>
               } @else if (getProtagonistasSeleccionados().length > 0) {
@@ -560,131 +833,187 @@
                 <button
                   type="button"
                   (click)="mostrarDropdownProtagonistaSelect()"
-                  class="w-full px-3 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-colors flex items-center justify-center gap-2">
+                  class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
                   <app-icon icon="add" size="xs"></app-icon>
                   <span>Agregar otro protagonista</span>
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  (click)="mostrarDropdownProtagonistaSelect()"
+                  class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                  <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                  <span>Seleccionar protagonistas</span>
                 </button>
               }
             </div>
 
 
-            <!-- Participantes -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Participantes y Edición -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                  Cantidad total de participantes proyectados <span class="text-red-500">*</span>
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="people" size="xs" class="text-emerald-600"></app-icon>
+                  Cantidad total de participantes <span class="text-red-500">*</span>
                 </label>
-                <input 
-                  type="number"
-                  formControlName="cantidadParticipantesProyectados"
-                  min="0"
-                  placeholder="Ej: 30"
-                  required
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  [class.border-red-500]="formNuevaActividad.get('cantidadParticipantesProyectados')?.invalid && formNuevaActividad.get('cantidadParticipantesProyectados')?.touched"
-                  style="-moz-appearance: textfield;">
+                <div class="relative">
+                  <input 
+                    type="number"
+                    formControlName="cantidadParticipantesProyectados"
+                    min="0"
+                    placeholder="0"
+                    required
+                    class="w-full px-4 py-2.5 bg-white border-2 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    [class.border-red-500]="formNuevaActividad.get('cantidadParticipantesProyectados')?.invalid && formNuevaActividad.get('cantidadParticipantesProyectados')?.touched"
+                    [class.border-slate-300]="!(formNuevaActividad.get('cantidadParticipantesProyectados')?.invalid && formNuevaActividad.get('cantidadParticipantesProyectados')?.touched)"
+                    style="appearance: textfield; -moz-appearance: textfield;">
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="numbers" size="xs"></app-icon>
+                  </span>
+                </div>
                 @if (formNuevaActividad.get('cantidadParticipantesProyectados')?.invalid && formNuevaActividad.get('cantidadParticipantesProyectados')?.touched) {
-                  <p class="mt-1 text-xs text-red-600">Este campo es obligatorio</p>
+                  <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                    <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                    <p class="text-xs text-red-800">Este campo es obligatorio</p>
+                  </div>
                 }
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                  Cantidad de participantes estudiantes proyectados
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="school" size="xs" class="text-emerald-600"></app-icon>
+                  Participantes estudiantes
                 </label>
-                <input 
-                  type="number"
-                  formControlName="cantidadParticipantesEstudiantesProyectados"
-                  min="0"
-                  placeholder="Ej: 25"
-                  class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  style="-moz-appearance: textfield;">
+                <div class="relative">
+                  <input 
+                    type="number"
+                    formControlName="cantidadParticipantesEstudiantesProyectados"
+                    min="0"
+                    placeholder="0"
+                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    style="appearance: textfield; -moz-appearance: textfield;">
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="numbers" size="xs"></app-icon>
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                    Edición
-                  </label>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                  Edición
+                </label>
+                <div class="relative">
                   <input 
                     type="text"
                     formControlName="anio"
-                    placeholder="Ej: 2024"
-                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    placeholder=""
+                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                    <app-icon icon="edit" size="xs"></app-icon>
+                  </span>
                 </div>
+              </div>
             </div>
 
             <!-- Asignación de Responsables -->
-            <div class="border-t border-slate-200 pt-6 mt-6">
-              <h3 class="text-lg font-semibold text-slate-900 mb-4">Asignar Responsables</h3>
+            <div class="border-t-2 border-emerald-200 pt-6 mt-6 animate-fade-in">
+              <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-200">
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <app-icon icon="people" size="sm"></app-icon>
+                </div>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">Asignar Responsables</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Asigne docentes, estudiantes o administrativos como responsables de la actividad</p>
+                </div>
+              </div>
               
               <form [formGroup]="formResponsable" class="space-y-6">
-                <!-- Fecha de Asignación (común para todos) -->
-                <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-2">
-                    Fecha de Asignación
-                  </label>
-                  <input 
-                    type="date"
-                    formControlName="fechaAsignacion"
-                    class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none">
-                </div>
                 
                 <!-- Sección de Docentes -->
-                <div class="border border-slate-200 rounded-lg p-4">
+                <div class="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-br from-blue-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                   <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-sm font-semibold text-slate-900">Docentes</h4>
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <app-icon icon="school" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h4 class="text-sm font-bold text-slate-900">Docentes</h4>
+                        <p class="text-xs text-slate-500">Asignar docentes responsables</p>
+                      </div>
+                    </div>
                     <button 
                       type="button"
                       (click)="agregarPersona('docente')"
-                      class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium flex items-center gap-1">
-                      <app-icon icon="add" size="xs"></app-icon>
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                      <app-icon icon="add" size="xs" color="white"></app-icon>
                       <span>Agregar Docente</span>
                     </button>
                   </div>
                   
-                  <div formArrayName="docentes" class="space-y-4">
+                  <div formArrayName="docentes" class="space-y-3">
                     @if (docentesArray.length === 0) {
-                      <p class="text-sm text-slate-500 italic">No hay docentes agregados</p>
+                      <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3">
+                          <app-icon icon="person_add" size="sm" class="text-blue-600"></app-icon>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">No hay docentes agregados</p>
+                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Docente" para comenzar</p>
+                      </div>
                     } @else {
                       @for (docenteControl of docentesArray.controls; track $index) {
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4" [formGroupName]="$index">
-                          <div class="flex items-start justify-between mb-3">
-                            <h5 class="text-xs font-medium text-slate-700">Docente {{ $index + 1 }}</h5>
+                        <div class="bg-white border-2 border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                          <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                            <div class="flex items-center gap-2">
+                              <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                                {{ $index + 1 }}
+                              </div>
+                              <h5 class="text-sm font-semibold text-slate-900">Docente {{ $index + 1 }}</h5>
+                            </div>
                             <button 
                               type="button"
                               (click)="eliminarPersona('docente', $index)"
-                              class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors">
+                              class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                              title="Eliminar docente">
                               <app-icon icon="delete" size="xs"></app-icon>
                             </button>
                           </div>
-                          <div class="space-y-3">
+                          <div class="space-y-4">
                             <div>
-                              <label class="block text-xs font-medium text-slate-700 mb-1">
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="person" size="xs" class="text-blue-600"></app-icon>
                                 Docente <span class="text-red-500">*</span>
                               </label>
-                              <select 
-                                formControlName="idPersona"
-                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="">Seleccione un docente...</option>
-                                @for (docente of getPersonasDisponiblesPorTipo('docente'); track docente.id || $index) {
-                                  <option [value]="docente.id">{{ getNombrePersona(docente) }}</option>
-                                }
-                              </select>
+                              <div class="relative">
+                                <select 
+                                  formControlName="idPersona"
+                                  class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer bg-white">
+                                  <option value="">Seleccione un docente...</option>
+                                  @for (docente of getPersonasDisponiblesPorTipo('docente'); track docente.id || $index) {
+                                    <option [value]="docente.id">{{ getNombrePersona(docente) }}</option>
+                                  }
+                                </select>
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                  <app-icon icon="expand_more" size="xs"></app-icon>
+                                </span>
+                              </div>
                               @if (docenteControl.get('idPersona')?.invalid && docenteControl.get('idPersona')?.touched) {
-                                <p class="text-red-500 text-xs mt-1">Este campo es requerido</p>
+                                <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                  <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                  <p class="text-xs text-red-800">Este campo es requerido</p>
+                                </div>
                               }
                             </div>
                             <div>
-                              <label class="block text-xs font-medium text-slate-700 mb-1">
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="badge" size="xs" class="text-blue-600"></app-icon>
                                 Rol Responsable
                               </label>
                               <input 
                                 type="text"
                                 formControlName="rolResponsable"
                                 placeholder="Ej: Coordinador, Organizador, etc."
-                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
                             </div>
                           </div>
                         </div>
@@ -694,59 +1023,89 @@
                 </div>
                 
                 <!-- Sección de Estudiantes -->
-                <div class="border border-slate-200 rounded-lg p-4">
+                <div class="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                   <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-sm font-semibold text-slate-900">Estudiantes</h4>
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                        <app-icon icon="groups" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h4 class="text-sm font-bold text-slate-900">Estudiantes</h4>
+                        <p class="text-xs text-slate-500">Asignar estudiantes responsables</p>
+                      </div>
+                    </div>
                     <button 
                       type="button"
                       (click)="agregarPersona('estudiante')"
-                      class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium flex items-center gap-1">
-                      <app-icon icon="add" size="xs"></app-icon>
+                      class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                      <app-icon icon="add" size="xs" color="white"></app-icon>
                       <span>Agregar Estudiante</span>
                     </button>
                   </div>
                   
-                  <div formArrayName="estudiantes" class="space-y-4">
+                  <div formArrayName="estudiantes" class="space-y-3">
                     @if (estudiantesArray.length === 0) {
-                      <p class="text-sm text-slate-500 italic">No hay estudiantes agregados</p>
+                      <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-3">
+                          <app-icon icon="person_add" size="sm" class="text-purple-600"></app-icon>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">No hay estudiantes agregados</p>
+                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Estudiante" para comenzar</p>
+                      </div>
                     } @else {
                       @for (estudianteControl of estudiantesArray.controls; track $index) {
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4" [formGroupName]="$index">
-                          <div class="flex items-start justify-between mb-3">
-                            <h5 class="text-xs font-medium text-slate-700">Estudiante {{ $index + 1 }}</h5>
+                        <div class="bg-white border-2 border-purple-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                          <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                            <div class="flex items-center gap-2">
+                              <div class="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
+                                {{ $index + 1 }}
+                              </div>
+                              <h5 class="text-sm font-semibold text-slate-900">Estudiante {{ $index + 1 }}</h5>
+                            </div>
                             <button 
                               type="button"
                               (click)="eliminarPersona('estudiante', $index)"
-                              class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors">
+                              class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                              title="Eliminar estudiante">
                               <app-icon icon="delete" size="xs"></app-icon>
                             </button>
                           </div>
-                          <div class="space-y-3">
+                          <div class="space-y-4">
                             <div>
-                              <label class="block text-xs font-medium text-slate-700 mb-1">
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="person" size="xs" class="text-purple-600"></app-icon>
                                 Estudiante <span class="text-red-500">*</span>
                               </label>
-                              <select 
-                                formControlName="idPersona"
-                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="">Seleccione un estudiante...</option>
-                                @for (estudiante of getPersonasDisponiblesPorTipo('estudiante'); track estudiante.id || $index) {
-                                  <option [value]="estudiante.id">{{ getNombrePersona(estudiante) }}</option>
-                                }
-                              </select>
+                              <div class="relative">
+                                <select 
+                                  formControlName="idPersona"
+                                  class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none cursor-pointer bg-white">
+                                  <option value="">Seleccione un estudiante...</option>
+                                  @for (estudiante of getPersonasDisponiblesPorTipo('estudiante'); track estudiante.id || $index) {
+                                    <option [value]="estudiante.id">{{ getNombrePersona(estudiante) }}</option>
+                                  }
+                                </select>
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                  <app-icon icon="expand_more" size="xs"></app-icon>
+                                </span>
+                              </div>
                               @if (estudianteControl.get('idPersona')?.invalid && estudianteControl.get('idPersona')?.touched) {
-                                <p class="text-red-500 text-xs mt-1">Este campo es requerido</p>
+                                <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                  <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                  <p class="text-xs text-red-800">Este campo es requerido</p>
+                                </div>
                               }
                             </div>
                             <div>
-                              <label class="block text-xs font-medium text-slate-700 mb-1">
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="badge" size="xs" class="text-purple-600"></app-icon>
                                 Rol Responsable
                               </label>
                               <input 
                                 type="text"
                                 formControlName="rolResponsable"
                                 placeholder="Ej: Coordinador, Organizador, etc."
-                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all">
                             </div>
                           </div>
                         </div>
@@ -756,59 +1115,89 @@
                 </div>
                 
                 <!-- Sección de Administrativos -->
-                <div class="border border-slate-200 rounded-lg p-4">
+                <div class="border-2 border-amber-200 rounded-xl p-5 bg-gradient-to-br from-amber-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                   <div class="flex items-center justify-between mb-4">
-                    <h4 class="text-sm font-semibold text-slate-900">Administrativos</h4>
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                        <app-icon icon="business_center" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h4 class="text-sm font-bold text-slate-900">Administrativos</h4>
+                        <p class="text-xs text-slate-500">Asignar administrativos responsables</p>
+                      </div>
+                    </div>
                     <button 
                       type="button"
                       (click)="agregarPersona('administrativo')"
-                      class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs font-medium flex items-center gap-1">
-                      <app-icon icon="add" size="xs"></app-icon>
+                      class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                      <app-icon icon="add" size="xs" color="white"></app-icon>
                       <span>Agregar Administrativo</span>
                     </button>
                   </div>
                   
-                  <div formArrayName="administrativos" class="space-y-4">
+                  <div formArrayName="administrativos" class="space-y-3">
                     @if (administrativosArray.length === 0) {
-                      <p class="text-sm text-slate-500 italic">No hay administrativos agregados</p>
+                      <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                          <app-icon icon="person_add" size="sm" class="text-amber-600"></app-icon>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600">No hay administrativos agregados</p>
+                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Administrativo" para comenzar</p>
+                      </div>
                     } @else {
                       @for (adminControl of administrativosArray.controls; track $index) {
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4" [formGroupName]="$index">
-                          <div class="flex items-start justify-between mb-3">
-                            <h5 class="text-xs font-medium text-slate-700">Administrativo {{ $index + 1 }}</h5>
+                        <div class="bg-white border-2 border-amber-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                          <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                            <div class="flex items-center gap-2">
+                              <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">
+                                {{ $index + 1 }}
+                              </div>
+                              <h5 class="text-sm font-semibold text-slate-900">Administrativo {{ $index + 1 }}</h5>
+                            </div>
                             <button 
                               type="button"
                               (click)="eliminarPersona('administrativo', $index)"
-                              class="p-1 text-red-600 hover:bg-red-50 rounded transition-colors">
+                              class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                              title="Eliminar administrativo">
                               <app-icon icon="delete" size="xs"></app-icon>
                             </button>
                           </div>
-                          <div class="space-y-3">
+                          <div class="space-y-4">
                             <div>
-                              <label class="block text-xs font-medium text-slate-700 mb-1">
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="person" size="xs" class="text-amber-600"></app-icon>
                                 Administrativo <span class="text-red-500">*</span>
                               </label>
-                              <select 
-                                formControlName="idPersona"
-                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                <option value="">Seleccione un administrativo...</option>
-                                @for (admin of getPersonasDisponiblesPorTipo('administrativo'); track admin.id || $index) {
-                                  <option [value]="admin.id">{{ getNombrePersona(admin) }}</option>
-                                }
-                              </select>
+                              <div class="relative">
+                                <select 
+                                  formControlName="idPersona"
+                                  class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none cursor-pointer bg-white">
+                                  <option value="">Seleccione un administrativo...</option>
+                                  @for (admin of getPersonasDisponiblesPorTipo('administrativo'); track admin.id || $index) {
+                                    <option [value]="admin.id">{{ getNombrePersona(admin) }}</option>
+                                  }
+                                </select>
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                  <app-icon icon="expand_more" size="xs"></app-icon>
+                                </span>
+                              </div>
                               @if (adminControl.get('idPersona')?.invalid && adminControl.get('idPersona')?.touched) {
-                                <p class="text-red-500 text-xs mt-1">Este campo es requerido</p>
+                                <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                  <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                  <p class="text-xs text-red-800">Este campo es requerido</p>
+                                </div>
                               }
                             </div>
                             <div>
-                              <label class="block text-xs font-medium text-slate-700 mb-1">
+                              <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="badge" size="xs" class="text-amber-600"></app-icon>
                                 Rol Responsable
                               </label>
                               <input 
                                 type="text"
                                 formControlName="rolResponsable"
                                 placeholder="Ej: Coordinador, Organizador, etc."
-                                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
                             </div>
                           </div>
                         </div>
@@ -823,27 +1212,82 @@
         }
 
         @if (errorNuevaActividad()) {
-          <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p class="text-sm text-red-600 whitespace-pre-line">{{ errorNuevaActividad() }}</p>
+          <div class="bg-red-50 border-2 border-red-200 rounded-lg p-4 animate-fade-in">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <app-icon icon="error_outline" size="sm" class="text-red-600"></app-icon>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-sm font-semibold text-red-800 mb-1">Error al crear la actividad</h4>
+                <p class="text-sm text-red-700 whitespace-pre-line leading-relaxed">{{ errorNuevaActividad() }}</p>
+              </div>
+              <button
+                type="button"
+                (click)="errorNuevaActividad.set(null)"
+                class="p-1 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 active:scale-95"
+                title="Cerrar">
+                <app-icon icon="close" size="xs"></app-icon>
+              </button>
+            </div>
           </div>
         }
 
-        <div class="flex justify-end gap-3 pt-2">
+        @if (successNuevaActividad()) {
+          <div class="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-5 shadow-lg animate-fade-in">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <app-icon icon="check_circle" size="md" class="text-emerald-600"></app-icon>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-base font-bold text-emerald-800 mb-1">¡La actividad se realizó con éxito!</h4>
+                <p class="text-sm text-emerald-700 mb-4">
+                  La actividad <span class="font-semibold">"{{ successNuevaActividad()?.nombre }}"</span> ha sido creada correctamente.
+                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="verActividadCreada()"
+                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                    <app-icon icon="visibility" size="xs" color="white"></app-icon>
+                    <span>Ver Actividad</span>
+                  </button>
+                  <button
+                    type="button"
+                    (click)="editarActividadCreada()"
+                    class="px-4 py-2 bg-white border-2 border-emerald-600 text-emerald-700 rounded-lg font-medium text-sm hover:bg-emerald-50 transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                    <app-icon icon="edit" size="xs"></app-icon>
+                    <span>Editar Actividad</span>
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                (click)="cerrarNotificacionExito()"
+                class="p-1 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-100 rounded-lg transition-all duration-200 active:scale-95 flex-shrink-0"
+                title="Cerrar">
+                <app-icon icon="close" size="xs"></app-icon>
+              </button>
+            </div>
+          </div>
+        }
+
+        <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-200">
           <button
             type="button"
             (click)="cerrarFormNuevaActividad()"
-            class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 transition">
-            Cancelar
+            class="px-5 py-2.5 border-2 border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 active:scale-95 flex items-center gap-2">
+            <app-icon icon="close" size="xs"></app-icon>
+            <span>Cancelar</span>
           </button>
           <button
             type="submit"
             [disabled]="formNuevaActividad.invalid || loadingNuevaActividad()"
-            class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2">
+            class="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg font-semibold text-sm hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-emerald-600 disabled:hover:to-emerald-700 transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95">
             @if (loadingNuevaActividad()) {
               <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              <span>Creando...</span>
+              <span>Creando actividad...</span>
             } @else {
-              <app-icon icon="check" size="xs" color="white"></app-icon>
+              <app-icon icon="check_circle" size="xs" color="white"></app-icon>
               <span>Crear Actividad</span>
             }
           </button>
@@ -1143,7 +1587,7 @@
     </div>
   }
 
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8 relative" style="z-index: 1;">
     <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
       
       <div class="md:col-span-3">
@@ -1224,9 +1668,28 @@
   </div>
 
   @if (loading()) {
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @for (i of [1,2,3,4,5,6]; track i) {
-            <div class="bg-slate-200 rounded-xl h-64"></div>
+            <div class="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
+                <div class="flex items-start gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
+                    <div class="flex-1 space-y-2">
+                        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+                        <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                </div>
+                <div class="space-y-2 mb-4">
+                    <div class="h-3 bg-slate-200 rounded"></div>
+                    <div class="h-3 bg-slate-200 rounded w-5/6"></div>
+                </div>
+                <div class="flex items-center gap-2 pt-4 border-t border-slate-200">
+                    <div class="w-8 h-8 rounded bg-slate-200"></div>
+                    <div class="flex-1">
+                        <div class="h-3 bg-slate-200 rounded w-2/3 mb-1"></div>
+                        <div class="h-2 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                </div>
+            </div>
         }
     </div>
   }
@@ -1263,109 +1726,348 @@
   }
 
   @if (!loading() && !error() && actividades().length > 0) {
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      @for (actividad of actividades(); track actividad.id) {
-        
-        <div 
-          (click)="navigateToDetail(actividad.id)"
-          class="bg-white rounded-xl border border-slate-200 p-5 hover:border-emerald-400 hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col h-full">
-          
-          <div class="flex justify-between items-start mb-3">
-            <div class="flex items-start gap-3 overflow-hidden">
-                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <app-icon icon="assignment" size="sm"></app-icon>
-                </div>
-                
-                <div class="min-w-0">
-                   <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                       {{ actividad.nombre }}
-                   </h3>
-                </div>
-            </div>
-            
-            @if (actividad.activo) {
-                <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50" title="Activa"></span>
-            } @else {
-                <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-slate-300 ring-4 ring-slate-50" title="Inactiva"></span>
-            }
-          </div>
-
-          @if (actividad.nombreNivel) {
-             <div class="mb-3">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                    <app-icon icon="layers" size="xs" class="mr-1 text-slate-400"></app-icon>
-                    {{ actividad.nombreNivel }}
-                </span>
-             </div>
-           }
-
-          <div class="mb-4">
-             <p class="text-sm text-slate-500 line-clamp-2">
-                 {{ actividad.descripcion || 'Sin descripción detallada.' }}
-             </p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 py-3 border-t border-slate-100 mt-auto bg-slate-50/50 rounded-lg p-2">
-             
-             <div class="col-span-2 flex items-center gap-2">
-                <div class="bg-white p-1 rounded text-slate-400 border border-slate-200">
-                    <app-icon icon="business" size="xs"></app-icon>
-                </div>
-                <span class="text-xs text-slate-600 font-medium truncate">
-                    {{ actividad.nombreDepartamentoResponsable || 'Sin asignar' }}
-                </span>
-             </div>
-
-             <div class="flex items-center gap-2" title="Departamentos Involucrados">
-                <div class="bg-white p-1 rounded text-blue-500 border border-slate-200">
-                    <app-icon icon="group" size="xs"></app-icon>
-                </div>
-                <div class="flex flex-col leading-none">
-                    <span class="text-xs font-bold text-slate-700">-</span>
-                    <span class="text-[9px] text-slate-400">Depts</span>
-                </div>
-             </div>
-
-             <div class="flex items-center gap-2" title="Indicadores">
-                <div class="bg-white p-1 rounded text-purple-500 border border-slate-200">
-                    <app-icon icon="assessment" size="xs"></app-icon>
-                </div>
-                <div class="flex flex-col leading-none">
-                    <span class="text-xs font-bold text-slate-700">-</span>
-                    <span class="text-[9px] text-slate-400">KPIs</span>
-                </div>
-             </div>
-             
-             </div>
-
-          <div class="flex items-center justify-between pt-3 mt-1">
-            <span class="text-[10px] text-slate-400">
-                Creado: {{ actividad.fechaCreacion | date:'dd/MM/yy' }}
-            </span>
-            <span class="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                Detalles <app-icon icon="arrow_forward" size="xs"></app-icon>
-            </span>
-          </div>
-
-        </div>
+    <!-- Contador de resultados -->
+    <div class="mb-4 flex items-center justify-between">
+      <p class="text-sm text-slate-600">
+        <span class="font-semibold text-slate-900">{{ actividades().length }}</span>
+        {{ actividades().length === 1 ? 'actividad encontrada' : 'actividades encontradas' }}
+      </p>
+      @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+        <button 
+          (click)="clearFilters()"
+          class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-colors">
+          <app-icon icon="close" size="xs"></app-icon>
+          Limpiar filtros
+        </button>
       }
     </div>
+
+    <!-- Vista de Cards -->
+    @if (modoVista() === 'cards') {
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @for (actividad of actividades(); track actividad.id; let i = $index) {
+          
+          <div 
+            (click)="navigateToDetail(actividad.id)"
+            [style.animation-delay.ms]="i * 50"
+            class="bg-white rounded-xl border border-slate-200 p-5 hover:border-emerald-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col h-full animate-fade-in">
+            
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex items-start gap-3 overflow-hidden">
+                  <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                      <app-icon icon="assignment" size="sm"></app-icon>
+                  </div>
+                  
+                  <div class="min-w-0">
+                     <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                         {{ actividad.nombre }}
+                     </h3>
+                  </div>
+              </div>
+              
+              @if (actividad.activo) {
+                  <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 animate-pulse" title="Actividad activa" aria-label="Actividad activa"></span>
+              } @else {
+                  <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-slate-300 ring-4 ring-slate-50" title="Actividad inactiva" aria-label="Actividad inactiva"></span>
+              }
+            </div>
+
+            @if (actividad.nombreNivel) {
+               <div class="mb-3">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                      <app-icon icon="layers" size="xs" class="mr-1 text-slate-400"></app-icon>
+                      {{ actividad.nombreNivel }}
+                  </span>
+               </div>
+             }
+
+            <div class="mb-4">
+               <p class="text-sm text-slate-500 line-clamp-2">
+                   {{ actividad.descripcion || 'Sin descripción detallada.' }}
+               </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 py-3 border-t border-slate-100 mt-auto bg-slate-50/50 rounded-lg p-2">
+               
+               <div class="col-span-2 flex items-center gap-2">
+                  <div class="bg-white p-1 rounded text-slate-400 border border-slate-200">
+                      <app-icon icon="business" size="xs"></app-icon>
+                  </div>
+                  <span class="text-xs text-slate-600 font-medium truncate">
+                      {{ actividad.nombreDepartamentoResponsable || 'Sin asignar' }}
+                  </span>
+               </div>
+
+               <div class="flex items-center gap-2" title="Departamentos Involucrados">
+                  <div class="bg-white p-1 rounded text-blue-500 border border-slate-200">
+                      <app-icon icon="group" size="xs"></app-icon>
+                  </div>
+                  <div class="flex flex-col leading-none">
+                      <span class="text-xs font-bold text-slate-700">-</span>
+                      <span class="text-[9px] text-slate-400">Depts</span>
+                  </div>
+               </div>
+
+               <div class="flex items-center gap-2" title="Indicadores">
+                  <div class="bg-white p-1 rounded text-purple-500 border border-slate-200">
+                      <app-icon icon="assessment" size="xs"></app-icon>
+                  </div>
+                  <div class="flex flex-col leading-none">
+                      <span class="text-xs font-bold text-slate-700">-</span>
+                      <span class="text-[9px] text-slate-400">KPIs</span>
+                  </div>
+               </div>
+               
+               </div>
+
+            <div class="flex items-center justify-between pt-3 mt-1">
+              <span class="text-[10px] text-slate-400">
+                  Creado: {{ actividad.fechaCreacion | date:'dd/MM/yy' }}
+              </span>
+              <span class="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                  Detalles <app-icon icon="arrow_forward" size="xs"></app-icon>
+              </span>
+            </div>
+
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Vista de Lista -->
+    @if (modoVista() === 'lista') {
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-slate-50 border-b border-slate-200 sticky top-0">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actividad</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Departamento</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fecha</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              @for (actividad of actividades(); track actividad.id; let i = $index) {
+                <tr 
+                  (click)="navigateToDetail(actividad.id)"
+                  [style.animation-delay.ms]="i * 30"
+                  class="hover:bg-emerald-50 cursor-pointer transition-all duration-200 animate-fade-in">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <app-icon icon="assignment" size="xs"></app-icon>
+                      </div>
+                      <div>
+                        <div class="text-sm font-semibold text-slate-900">{{ actividad.nombre }}</div>
+                        <div class="text-xs text-slate-500 line-clamp-1">{{ actividad.descripcion || 'Sin descripción' }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm text-slate-700">{{ actividad.nombreDepartamentoResponsable || 'Sin asignar' }}</span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm text-slate-600">
+                      @if (actividad.fechaInicio) {
+                        {{ actividad.fechaInicio | date:'dd/MM/yyyy' }}
+                      } @else {
+                        {{ actividad.fechaCreacion | date:'dd/MM/yyyy' }}
+                      }
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    @if (actividad.activo) {
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                        Activa
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
+                        Inactiva
+                      </span>
+                    }
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <span class="text-emerald-600 hover:text-emerald-700 flex items-center justify-end gap-1 text-sm font-medium">
+                      Ver detalles <app-icon icon="arrow_forward" size="xs"></app-icon>
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- Vista de Calendario -->
+    @if (modoVista() === 'calendario') {
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <!-- Controles del calendario -->
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-4">
+            <button
+              type="button"
+              (click)="cambiarMes('anterior')"
+              class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+              title="Mes anterior"
+              aria-label="Mes anterior">
+              <app-icon icon="chevron_left" size="sm"></app-icon>
+            </button>
+            <h2 class="text-xl font-bold text-slate-900 capitalize">
+              {{ viewDate | date:'MMMM yyyy':'es-ES' }}
+            </h2>
+            <button
+              type="button"
+              (click)="cambiarMes('siguiente')"
+              class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+              title="Mes siguiente"
+              aria-label="Mes siguiente">
+              <app-icon icon="chevron_right" size="sm"></app-icon>
+            </button>
+          </div>
+          <button
+            type="button"
+            (click)="irAHoy()"
+            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 hover:shadow-md transition-all duration-200 active:scale-95 text-sm font-medium flex items-center gap-2"
+            title="Ir al mes actual">
+            <app-icon icon="today" size="xs" color="white"></app-icon>
+            Hoy
+          </button>
+        </div>
+
+        <!-- Calendario -->
+        <div class="calendar-container relative" (mouseleave)="onEventMouseLeave()">
+          <mwl-calendar-month-view
+            [viewDate]="viewDate"
+            [events]="eventosCalendario()"
+            [locale]="locale"
+            (eventClicked)="eventoClicked($event)"
+            [activeDayIsOpen]="false"
+            class="calendar-month-view">
+          </mwl-calendar-month-view>
+          
+          <!-- Tooltip para eventos -->
+          @if (eventoHovered && hoverPosition()) {
+            <div 
+              class="calendar-event-tooltip fixed z-[9999] pointer-events-none"
+              [style.left.px]="getTooltipLeft()"
+              [style.top.px]="getTooltipTop()">
+              <div class="bg-white rounded-xl shadow-2xl border border-slate-200/80 p-5 max-w-sm backdrop-blur-sm">
+                <!-- Header con color -->
+                <div class="flex items-start gap-4 mb-4">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white"
+                       [style.backgroundColor]="eventoHovered.color?.secondary || '#d1fae5'"
+                       [style.color]="eventoHovered.color?.primary || '#10b981'">
+                    <app-icon icon="assignment" size="sm"></app-icon>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
+                      {{ eventoHovered.title }}
+                    </h4>
+                    @if (eventoHovered.meta?.actividad?.descripcion) {
+                      <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                        {{ eventoHovered.meta.actividad.descripcion }}
+                      </p>
+                    }
+                  </div>
+                </div>
+                
+                <!-- Información detallada -->
+                @if (eventoHovered.meta?.actividad) {
+                  <div class="space-y-2.5 mb-4">
+                    @if (eventoHovered.meta.actividad.nombreDepartamentoResponsable) {
+                      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                        <div class="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <app-icon icon="business" size="xs"></app-icon>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-500 mb-0.5 font-medium">Departamento</p>
+                          <p class="text-sm font-semibold text-slate-900 truncate">{{ eventoHovered.meta.actividad.nombreDepartamentoResponsable }}</p>
+                        </div>
+                      </div>
+                    }
+                    @if (eventoHovered.meta.actividad.horaRealizacion) {
+                      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                        <div class="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <app-icon icon="schedule" size="xs"></app-icon>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-500 mb-0.5 font-medium">Hora</p>
+                          <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.meta.actividad.horaRealizacion }}</p>
+                        </div>
+                      </div>
+                    }
+                    @if (eventoHovered.start) {
+                      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <app-icon icon="calendar_today" size="xs"></app-icon>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-500 mb-0.5 font-medium">Fecha</p>
+                          <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.start | date:'dd \'de\' MMMM \'de\' yyyy':'es-ES' }}</p>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+                
+                <!-- Footer -->
+                <div class="pt-4 border-t border-slate-200">
+                  <div class="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50/50 px-3 py-2 rounded-lg">
+                    <app-icon icon="info" size="xs"></app-icon>
+                    <span>Haz clic para ver más detalles</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Leyenda -->
+        <div class="mt-6 flex items-center gap-6 text-sm">
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-emerald-500"></div>
+            <span class="text-slate-600">Actividades activas</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-slate-400"></div>
+            <span class="text-slate-600">Actividades inactivas</span>
+          </div>
+        </div>
+      </div>
+    }
   }
 
   @if (!loading() && !error() && actividades().length === 0) {
-    <div class="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-xl border border-slate-200 border-dashed">
-        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-            <app-icon icon="assignment_late" size="lg" class="text-slate-400"></app-icon>
+    <div class="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-xl border border-slate-200 border-dashed animate-fade-in">
+        <div class="w-20 h-20 bg-gradient-to-br from-slate-50 to-slate-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+            <app-icon icon="assignment_late" size="xl" class="text-slate-400"></app-icon>
         </div>
-        <h3 class="text-lg font-bold text-slate-900">No se encontraron actividades</h3>
-        <p class="text-slate-500 text-sm max-w-sm text-center mt-1 mb-6">
-            No hay actividades con estos filtros.
+        <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
+        <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
+            @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+                No hay actividades que coincidan con los filtros seleccionados. Intenta ajustar los filtros o crear una nueva actividad.
+            } @else {
+                Aún no hay actividades registradas. Comienza creando tu primera actividad.
+            }
         </p>
-        <div class="flex gap-3">
-             <button (click)="clearFilters()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50">
-                Limpiar
-            </button>
-            <button (click)="navigateToCreate()" class="px-4 py-2 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 shadow-sm">
+        <div class="flex gap-3 flex-wrap justify-center">
+            @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+                <button 
+                    (click)="clearFilters()" 
+                    class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">
+                    <app-icon icon="filter_alt_off" size="xs"></app-icon>
+                    Limpiar Filtros
+                </button>
+            }
+            <button 
+                (click)="navigateToCreate()" 
+                class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2">
+                <app-icon icon="add" size="xs" color="white"></app-icon>
                 Crear Actividad
             </button>
         </div>
