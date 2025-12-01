@@ -128,7 +128,11 @@
             </div>
             @if (previewUrl()) {
               <div class="mt-4">
-                <img [src]="previewUrl()!" alt="Preview" class="max-w-full h-auto rounded-lg border border-gray-300">
+                <img 
+                  [src]="getPreviewUrl()!" 
+                  alt="Preview" 
+                  class="max-w-full h-auto rounded-lg border border-gray-300"
+                  (error)="previewUrl.set(null)">
               </div>
             }
           </div>

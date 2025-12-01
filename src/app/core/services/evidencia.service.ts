@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -9,6 +9,10 @@ import type { Evidencia, EvidenciaCreate } from '../models/evidencia';
 export class EvidenciaService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/evidencias`;
+
+  getBaseUrl(): string {
+    return environment.apiUrl;
+  }
 
   getAll(): Observable<Evidencia[]> {
     return this.http.get<any>(this.apiUrl).pipe(
@@ -123,11 +127,23 @@ export class EvidenciaService {
 
   /**
    * Obtiene la URL para descargar/ver el archivo de una evidencia
-   * Usa el endpoint del API: GET /api/evidencias/{id}/imagen
-   * Este endpoint es más eficiente y no depende de la configuración del proxy
+   * Intenta varios endpoints posibles
    */
   getFileUrl(id: number): string {
     return `${this.apiUrl}/${id}/imagen`;
+  }
+
+  /**
+   * Obtiene el archivo de una evidencia como blob
+   * NOTA: Este método está deshabilitado porque el backend no tiene estos endpoints implementados.
+   * Se usa directamente rutaArchivo para construir la URL de la imagen.
+   */
+  getFileAsBlob(id: number): Observable<Blob> {
+    // Este método ya no se usa, pero se mantiene por compatibilidad
+    // El backend no tiene endpoints para obtener archivos, se usa rutaArchivo directamente
+    return new Observable(observer => {
+      observer.error(new Error('Endpoint no disponible. Usar rutaArchivo directamente.'));
+    });
   }
 
   upload(file: File, data: EvidenciaCreate): Observable<Evidencia> {
@@ -171,6 +187,16 @@ export class EvidenciaService {
   }
 
   private mapEvidencia(item: any): Evidencia {
+    // Mapear seleccionadaParaReporte asegurándonos de que siempre sea un booleano
+    let seleccionadaParaReporte = false;
+    if (item.seleccionadaParaReporte !== undefined) {
+      seleccionadaParaReporte = Boolean(item.seleccionadaParaReporte);
+    } else if (item.SeleccionadaParaReporte !== undefined) {
+      seleccionadaParaReporte = Boolean(item.SeleccionadaParaReporte);
+    } else if (item.seleccionadaParaReporte === null || item.SeleccionadaParaReporte === null) {
+      seleccionadaParaReporte = false;
+    }
+
     return {
       idEvidencia: item.idEvidencia || item.IdEvidencia || item.id,
       id: item.idEvidencia || item.IdEvidencia || item.id,
@@ -181,9 +207,7 @@ export class EvidenciaService {
       idTipoEvidencia: item.idTipoEvidencia || item.IdTipoEvidencia,
       nombreTipoEvidencia: item.nombreTipoEvidencia || item.NombreTipoEvidencia,
       fechaEvidencia: item.fechaEvidencia || item.FechaEvidencia,
-      seleccionadaParaReporte: item.seleccionadaParaReporte !== undefined 
-        ? item.seleccionadaParaReporte 
-        : (item.SeleccionadaParaReporte !== undefined ? item.SeleccionadaParaReporte : false),
+      seleccionadaParaReporte: seleccionadaParaReporte,
       tipo: item.tipo || item.Tipo,
       rutaArchivo: item.rutaArchivo || item.RutaArchivo,
       descripcion: item.descripcion || item.Descripcion,

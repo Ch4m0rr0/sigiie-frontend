@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -28,7 +28,7 @@ import { BrnLabelImports } from '@spartan-ng/brain/label';
   ],
   templateUrl: './evidencia-form.component.html',
 })
-export class EvidenciaFormComponent implements OnInit {
+export class EvidenciaFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private evidenciaService = inject(EvidenciaService);
   private subactividadService = inject(SubactividadService);
@@ -48,6 +48,7 @@ export class EvidenciaFormComponent implements OnInit {
   error = signal<string | null>(null);
   selectedFile = signal<File | null>(null);
   previewUrl = signal<string | SafeUrl | null>(null);
+  private objectUrl: string | null = null;
 
   ngOnInit(): void {
     this.initializeForm();
@@ -107,6 +108,13 @@ export class EvidenciaFormComponent implements OnInit {
   loadEvidencia(id: number): void {
     this.loading.set(true);
     this.error.set(null);
+    
+    // Limpiar URL anterior si existe
+    if (this.objectUrl) {
+      URL.revokeObjectURL(this.objectUrl);
+      this.objectUrl = null;
+    }
+
     this.evidenciaService.getById(id).subscribe({
       next: (data) => {
         this.form.patchValue({
@@ -119,14 +127,13 @@ export class EvidenciaFormComponent implements OnInit {
           descripcion: data.descripcion || '',
           tipo: data.tipo || ''
         });
-        if (data.rutaArchivo) {
-          // Usar el endpoint del API para obtener la imagen
-          const url = this.evidenciaService.getFileUrl(data.idEvidencia);
-          this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
+        if (data.rutaArchivo && this.isImage(data.rutaArchivo)) {
+          // Construir URL de la imagen basándose en rutaArchivo
+          this.buildImageUrl(data.rutaArchivo, data.idEvidencia);
         } else {
           this.previewUrl.set(null);
+          this.loading.set(false);
         }
-        this.loading.set(false);
       },
       error: (err) => {
         console.error('Error loading evidencia:', err);
@@ -134,6 +141,63 @@ export class EvidenciaFormComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  buildImageUrl(rutaArchivo: string, idEvidencia: number): void {
+    // Verificar si rutaArchivo es una URL completa
+    if (this.isValidUrl(rutaArchivo)) {
+      // Si es una URL completa, usarla directamente
+      this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(rutaArchivo));
+      this.loading.set(false);
+      return;
+    }
+
+    // Si no es una URL completa, construir URLs posibles
+    const baseUrl = this.evidenciaService.getBaseUrl();
+    let imageUrl: string;
+
+    // Opción 1: Si rutaArchivo comienza con /, usar directamente con baseUrl
+    if (rutaArchivo.startsWith('/')) {
+      imageUrl = `${baseUrl}${rutaArchivo}`;
+    }
+    // Opción 2: Si rutaArchivo parece ser una ruta relativa, construir URL completa
+    else if (rutaArchivo.includes('/') || rutaArchivo.includes('\\')) {
+      // Es una ruta con directorios
+      const normalizedPath = rutaArchivo.replace(/\\/g, '/');
+      imageUrl = `${baseUrl}/${normalizedPath.startsWith('/') ? normalizedPath.slice(1) : normalizedPath}`;
+    }
+    // Opción 3: Si solo es el nombre del archivo, intentar con diferentes rutas comunes
+    else {
+      // Solo el nombre del archivo, intentar rutas comunes
+      imageUrl = `${baseUrl}/uploads/evidencias/${rutaArchivo}`;
+    }
+
+    // Establecer la URL construida
+    this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(imageUrl));
+    this.loading.set(false);
+  }
+
+  isValidUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Limpiar object URL cuando el componente se destruya
+    if (this.objectUrl) {
+      URL.revokeObjectURL(this.objectUrl);
+      this.objectUrl = null;
+    }
+  }
+
+  isImage(rutaArchivo?: string): boolean {
+    if (!rutaArchivo) return false;
+    const extension = rutaArchivo.toLowerCase().split('.').pop();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '');
   }
 
   onFileSelected(event: Event): void {
@@ -146,10 +210,28 @@ export class EvidenciaFormComponent implements OnInit {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
-          this.previewUrl.set(e.target?.result as string);
+          const result = e.target?.result as string;
+          if (result) {
+            // Usar string directamente para la vista previa de archivos seleccionados
+            // Esto sobrescribe cualquier previewUrl anterior (incluyendo SafeUrl de evidencias existentes)
+            this.previewUrl.set(result);
+          }
+        };
+        reader.onerror = () => {
+          console.error('Error al leer el archivo');
+          this.previewUrl.set(null);
         };
         reader.readAsDataURL(file);
       } else {
+        // Si no es imagen, limpiar la vista previa pero mantener el archivo seleccionado
+        this.previewUrl.set(null);
+      }
+    } else {
+      // Si no hay archivo seleccionado, limpiar el archivo seleccionado
+      this.selectedFile.set(null);
+      // Si estamos en modo edición, mantener la vista previa de la imagen existente
+      // Si no, limpiar la vista previa
+      if (!this.isEditMode() || !this.evidenciaId()) {
         this.previewUrl.set(null);
       }
     }
@@ -227,5 +309,9 @@ export class EvidenciaFormComponent implements OnInit {
   }
 
   get idTipoEvidencia() { return this.form.get('idTipoEvidencia'); }
+
+  getPreviewUrl(): string | SafeUrl | null {
+    return this.previewUrl();
+  }
 }
 

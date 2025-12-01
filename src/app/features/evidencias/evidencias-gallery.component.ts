@@ -94,6 +94,7 @@ export class EvidenciasGalleryComponent implements OnInit {
       if (evidencia.rutaArchivo && this.isImage(evidencia.rutaArchivo)) {
         // Usar el endpoint del API para obtener la imagen
         // IMPORTANTE: Usar idEvidencia (15, 16, 18, etc.) y NO idTipoEvidencia (0, 1, 2, etc.)
+        // Para la galería, usamos la URL directa ya que cargar muchos blobs puede ser pesado
         const url = this.evidenciaService.getFileUrl(evidencia.idEvidencia);
         const safeUrl = this.sanitizer.bypassSecurityTrustUrl(url);
         newUrls.set(evidencia.idEvidencia, safeUrl);

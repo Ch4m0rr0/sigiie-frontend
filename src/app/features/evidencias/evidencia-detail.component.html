@@ -88,30 +88,21 @@
               </div>
             }
 
-            <div>
-              <dt class="text-sm font-medium text-slate-500 mb-1">Seleccionada para Reporte</dt>
-              <dd class="text-sm text-slate-900">
-                <label class="flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    [checked]="evidencia()!.seleccionadaParaReporte"
-                    (change)="toggleSeleccionada()"
-                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                  <span class="ml-2">{{ evidencia()!.seleccionadaParaReporte ? 'Sí' : 'No' }}</span>
-                </label>
-              </dd>
-            </div>
           </dl>
 
-          @if (evidencia()!.rutaArchivo && downloadUrl()) {
+          @if (evidencia()!.rutaArchivo) {
             <div class="mt-6">
-              <a 
-                [href]="downloadUrl()!"
-                [download]="evidencia()!.rutaArchivo"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button 
+                (click)="downloadFile()"
+                [disabled]="loading()"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
                 <app-icon icon="download" size="sm" color="white"></app-icon>
-                Descargar Archivo
-              </a>
+                @if (loading()) {
+                  Descargando...
+                } @else {
+                  Descargar Archivo
+                }
+              </button>
             </div>
           }
         </div>
