@@ -46,6 +46,8 @@ export class CatalogosService {
       catchError(error => {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/departamentos no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener departamentos:', error);
         } else {
           console.error('❌ Error fetching departamentos:', error);
         }
@@ -443,7 +445,11 @@ export class CatalogosService {
       }),
       catchError(error => {
         // Silenciar errores 404 si el endpoint no existe aún
-        if (error.status !== 404) {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/categorias-actividad no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener categorías actividad:', error);
+        } else {
           console.error('Error fetching categorias actividad:', error);
         }
         return of([]);
@@ -615,7 +621,13 @@ export class CatalogosService {
         })) : [];
       }),
       catchError(error => {
-        console.error('Error fetching tipos iniciativa:', error);
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/tipo-iniciativa no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener tipos iniciativa:', error);
+        } else {
+          console.error('Error fetching tipos iniciativa:', error);
+        }
         return of([]);
       })
     );
@@ -747,7 +759,13 @@ export class CatalogosService {
         })) : [];
       }),
       catchError(error => {
-        console.error('Error fetching tipos documento:', error);
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/tipo-documento no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener tipos documento:', error);
+        } else {
+          console.error('Error fetching tipos documento:', error);
+        }
         return of([]);
       })
     );
@@ -1317,6 +1335,8 @@ export class CatalogosService {
       catchError(error => {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/estado-actividad no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener estados actividad:', error);
         } else {
           console.error('❌ Error fetching estados actividad:', error);
         }
@@ -1431,6 +1451,8 @@ export class CatalogosService {
       catchError(error => {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/tipo-protagonista no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener tipos protagonista:', error);
         } else {
           console.error('❌ Error fetching tipos protagonista:', error);
         }
@@ -1503,6 +1525,8 @@ export class CatalogosService {
       catchError(error => {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/capacidad-instalaciones no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener capacidades instaladas:', error);
         } else {
           console.error('❌ Error fetching capacidades instaladas:', error);
         }

@@ -47,15 +47,21 @@ export class PersonasService {
         return mapped;
       }),
       catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/estudiantes no encontrado (404)');
+          return of([]);
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener estudiantes:', error);
+          console.error('❌ Error status:', error.status);
+          console.error('❌ Error message:', error.message);
+          console.error('❌ Error body:', error.error);
+          return of([]);
+        }
         console.error('❌ Error fetching estudiantes:', error);
         console.error('❌ Error status:', error.status);
         console.error('❌ Error message:', error.message);
         console.error('❌ Error body:', error.error);
-        if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/estudiantes no encontrado (404)');
-          return of([]);
-        }
-        throw error;
+        return of([]);
       })
     );
   }
@@ -358,9 +364,12 @@ export class PersonasService {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/docentes no encontrado (404)');
           return of([]);
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener docentes:', error);
+          return of([]);
         }
         console.error('Error fetching docentes:', error);
-        throw error;
+        return of([]);
       })
     );
   }
@@ -572,9 +581,12 @@ export class PersonasService {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/administrativos no encontrado (404)');
           return of([]);
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener administrativos:', error);
+          return of([]);
         }
         console.error('Error fetching administrativos:', error);
-        throw error;
+        return of([]);
       })
     );
   }

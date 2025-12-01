@@ -101,6 +101,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   loading = signal(false);
   error = signal<string | null>(null);
   showRetryButton = false;
+  private cargandoActividades = false; // Flag para evitar llamadas múltiples simultáneas
   
   // Modo de vista: 'cards' | 'lista' | 'calendario'
   modoVista = signal<'cards' | 'lista' | 'calendario'>('lista');
@@ -120,6 +121,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   tiposActividad = signal<any[]>([]);
   tiposDocumento = signal<any[]>([]);
   tiposProtagonista = signal<any[]>([]);
+  tiposEvidencia = signal<any[]>([]); // Tipos de evidencia
   capacidadesInstaladas = signal<any[]>([]);
 
   // Filtros
@@ -160,6 +162,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   mostrarDropdownDepartamentoResponsable = signal(true); // Controla si se muestra el dropdown de departamentos responsables
   mostrarDropdownTipoActividadSelect = signal(true); // Controla si se muestra el dropdown de tipos de actividad
   mostrarDropdownProtagonista = signal(true); // Controla si se muestra el dropdown de protagonistas
+  mostrarDropdownTipoEvidencia = signal(true); // Controla si se muestra el dropdown de tipos de evidencia
   loadingNuevaActividad = signal(false);
   errorNuevaActividad = signal<string | null>(null);
   successNuevaActividad = signal<{ id: number; nombre: string } | null>(null);
@@ -170,7 +173,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   docentes = signal<Docente[]>([]);
   estudiantes = signal<Estudiante[]>([]);
   administrativos = signal<Administrativo[]>([]);
+  rolesResponsable = signal<any[]>([]); // Roles de responsable (Coordinador, Logística, Organizador, etc.)
   loadingResponsables = signal(false);
+  
+  // Tipos de responsables seleccionados
+  tiposResponsableSeleccionados = signal<string[]>([]); // ['docente', 'estudiante', 'administrativo', 'externo']
 
   ngOnInit(): void {
     this.initializeFormIndicador();
@@ -215,6 +222,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       tiposProtagonista: this.catalogosService.getTiposProtagonista().pipe(
         catchError(err => handleError(err, []))
       ),
+      tiposEvidencia: this.catalogosService.getTiposEvidencia().pipe(
+        catchError(err => handleError(err, []))
+      ),
       capacidadesInstaladas: this.catalogosService.getCapacidadesInstaladas().pipe(
         catchError(err => handleError(err, []))
       )
@@ -246,6 +256,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.tiposActividad.set(results.catalogos.tiposActividad);
         this.tiposDocumento.set(results.catalogos.tiposDocumento);
         this.tiposProtagonista.set(results.catalogos.tiposProtagonista);
+        this.tiposEvidencia.set(results.catalogos.tiposEvidencia);
         this.capacidadesInstaladas.set(results.catalogos.capacidadesInstaladas);
         
         // Asignar datos principales
@@ -362,9 +373,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       
       // Tipos y categorías
       idEstadoActividad: [null],
-      idTipoActividad: [[]], // Array para múltiples selecciones
-      idTipoProtagonista: [[]], // Array para múltiples selecciones
-      departamentoResponsableId: [[]], // Array para múltiples selecciones
+      idTipoActividad: [[]], // Array para múltiples selecciones (no se envía según ejemplos)
+      idTipoProtagonista: [null], // Único según el JSON del backend
+      departamentoResponsableId: [null], // Único según el JSON del backend
       
       // Ubicación y modalidad
       modalidad: [''],
@@ -459,6 +470,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   loadActividades(): void {
+    // Evitar llamadas múltiples simultáneas
+    if (this.cargandoActividades) {
+      console.warn('⚠️ loadActividades ya está en ejecución, ignorando llamada duplicada');
+      return;
+    }
+    
+    this.cargandoActividades = true;
     this.loading.set(true);
     this.error.set(null);
 
@@ -494,6 +512,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.actividades.set(filtered);
         this.actualizarEventosCalendario(filtered);
         this.loading.set(false);
+        this.cargandoActividades = false;
       },
       error: (err) => {
         console.error('❌ Error loading actividades:', err);
@@ -547,6 +566,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.error.set(errorMessage);
         this.showRetryButton = showRetryButton;
         this.loading.set(false);
+        this.cargandoActividades = false;
       }
     });
   }
@@ -743,7 +763,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       docentes: this.fb.array([]),
       estudiantes: this.fb.array([]),
       administrativos: this.fb.array([]),
-      fechaAsignacion: [new Date().toISOString().split('T')[0]]
+      responsablesExternos: this.fb.array([]) // Array para responsables externos
     });
     
     // Cargar todas las personas al inicializar
@@ -762,10 +782,29 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     return this.formResponsable.get('administrativos') as FormArray;
   }
   
+  get responsablesExternosArray(): FormArray {
+    return this.formResponsable.get('responsablesExternos') as FormArray;
+  }
+  
   crearPersonaFormGroup(tipo: 'docente' | 'estudiante' | 'administrativo'): FormGroup {
+    // Para estudiantes, idRolResponsable es obligatorio según los ejemplos del backend
+    const idRolResponsableValidators = tipo === 'estudiante' ? [Validators.required] : [];
+    
     return this.fb.group({
       idPersona: [null, Validators.required],
-      rolResponsable: ['']
+      idRolResponsable: [null, idRolResponsableValidators] // ID del rol responsable (obligatorio para estudiantes)
+    });
+  }
+  
+  // Crear FormGroup para responsable externo
+  crearResponsableExternoFormGroup(): FormGroup {
+    return this.fb.group({
+      nombre: ['', [Validators.required]],
+      institucion: ['', [Validators.required]],
+      cargo: [''],
+      telefono: [''],
+      correo: [''],
+      idRolResponsable: [null, Validators.required] // Obligatorio para responsables externos
     });
   }
   
@@ -781,6 +820,14 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
                   tipo === 'estudiante' ? this.estudiantesArray : 
                   this.administrativosArray;
     array.removeAt(index);
+  }
+  
+  agregarResponsableExterno(): void {
+    this.responsablesExternosArray.push(this.crearResponsableExternoFormGroup());
+  }
+  
+  eliminarResponsableExterno(index: number): void {
+    this.responsablesExternosArray.removeAt(index);
   }
   
   getPersonasDisponiblesPorTipo(tipo: 'docente' | 'estudiante' | 'administrativo'): any[] {
@@ -821,6 +868,15 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.administrativos.set([]);
       }
     });
+    
+    // Cargar roles de responsable para el formulario
+    this.catalogosService.getRolesResponsable().subscribe({
+      next: (data) => this.rolesResponsable.set(data || []),
+      error: (err) => {
+        console.warn('⚠️ No se pudo cargar roles de responsable:', err);
+        this.rolesResponsable.set([]);
+      }
+    });
   }
   
   resetFormResponsable(): void {
@@ -833,9 +889,12 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     while (this.administrativosArray.length > 0) {
       this.administrativosArray.removeAt(0);
     }
-    this.formResponsable.reset({
-      fechaAsignacion: new Date().toISOString().split('T')[0]
-    });
+    while (this.responsablesExternosArray.length > 0) {
+      this.responsablesExternosArray.removeAt(0);
+    }
+    // Limpiar tipos seleccionados
+    this.tiposResponsableSeleccionados.set([]);
+    this.formResponsable.reset();
   }
   
   crearResponsablesParaActividad(idActividad: number): void {
@@ -1150,6 +1209,20 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   onSubmitNuevaActividad(): void {
+    // Validar que al menos un tipo de responsable esté seleccionado
+    if (!this.tieneAlMenosUnResponsable()) {
+      this.errorNuevaActividad.set('Debe seleccionar al menos un tipo de responsable.');
+      this.formNuevaActividad.markAllAsTouched();
+      return;
+    }
+    
+    // Validar que los responsables seleccionados estén completos
+    if (!this.tieneResponsablesCompletos()) {
+      this.errorNuevaActividad.set('Debe completar la información de todos los responsables seleccionados.');
+      this.formNuevaActividad.markAllAsTouched();
+      return;
+    }
+    
     if (this.formNuevaActividad.valid) {
       this.loadingNuevaActividad.set(true);
       this.errorNuevaActividad.set(null);
@@ -1168,20 +1241,26 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       // Las actividades anuales y mensuales son opcionales
       if (indicadorId) {
         // Construir responsables desde formResponsable
+        // Según los ejemplos del backend:
+        // - Para usuarios: NO se envía idRolResponsable (el sistema usa el rol del usuario)
+        // - Para estudiantes: idRolResponsable es OBLIGATORIO
+        // - Para docentes y administrativos: idRolResponsable es opcional pero recomendado
+        // - NO se envía fechaAsignacion en el POST
         const responsables: any[] = [];
-        const responsableFormValue = this.formResponsable.value;
-        const fechaAsignacion = responsableFormValue.fechaAsignacion || new Date().toISOString().split('T')[0];
 
         // Procesar docentes
         this.docentesArray.controls.forEach((control) => {
           const docenteData = control.value;
           const idPersona = docenteData.idPersona ? Number(docenteData.idPersona) : null;
           if (idPersona) {
-            responsables.push({
-              idDocente: idPersona, // El id del docente
-              idRolResponsable: null, // No hay campo en el formulario, se puede agregar después
-              fechaAsignacion: fechaAsignacion
-            });
+            const responsable: any = {
+              idDocente: idPersona
+            };
+            // idRolResponsable es opcional para docentes, pero se envía si está presente
+            if (docenteData.idRolResponsable) {
+              responsable.idRolResponsable = Number(docenteData.idRolResponsable);
+            }
+            responsables.push(responsable);
           }
         });
 
@@ -1190,11 +1269,15 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           const estudianteData = control.value;
           const idPersona = estudianteData.idPersona ? Number(estudianteData.idPersona) : null;
           if (idPersona) {
-            responsables.push({
-              idEstudiante: idPersona,
-              idRolResponsable: null, // Requerido por backend, pero no hay campo en formulario
-              fechaAsignacion: fechaAsignacion
-            });
+            const responsable: any = {
+              idEstudiante: idPersona
+            };
+            // idRolResponsable es OBLIGATORIO para estudiantes según los ejemplos
+            if (estudianteData.idRolResponsable) {
+              responsable.idRolResponsable = Number(estudianteData.idRolResponsable);
+            }
+            // Nota: Si idRolResponsable no está presente, el backend debería rechazar la petición
+            responsables.push(responsable);
           }
         });
 
@@ -1203,58 +1286,140 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           const adminData = control.value;
           const idPersona = adminData.idPersona ? Number(adminData.idPersona) : null;
           if (idPersona) {
-            responsables.push({
-              idAdmin: idPersona, // El id del administrativo
-              idRolResponsable: null, // No hay campo en el formulario, se puede agregar después
-              fechaAsignacion: fechaAsignacion
-            });
+            const responsable: any = {
+              idAdmin: idPersona
+            };
+            // idRolResponsable es opcional para administrativos, pero se envía si está presente
+            if (adminData.idRolResponsable) {
+              responsable.idRolResponsable = Number(adminData.idRolResponsable);
+            }
+            responsables.push(responsable);
+          }
+        });
+        
+        // Procesar responsables externos
+        this.responsablesExternosArray.controls.forEach((control) => {
+          const externoData = control.value;
+          // Validar que tenga nombre e institución (obligatorios según ejemplos)
+          if (externoData.nombre && externoData.institucion && externoData.idRolResponsable) {
+            const responsable: any = {
+              responsableExterno: {
+                nombre: externoData.nombre.trim(),
+                institucion: externoData.institucion.trim()
+              },
+              idRolResponsable: Number(externoData.idRolResponsable)
+            };
+            // Campos opcionales del responsable externo
+            if (externoData.cargo && externoData.cargo.trim()) {
+              responsable.responsableExterno.cargo = externoData.cargo.trim();
+            }
+            if (externoData.telefono && externoData.telefono.trim()) {
+              responsable.responsableExterno.telefono = externoData.telefono.trim();
+            }
+            if (externoData.correo && externoData.correo.trim()) {
+              responsable.responsableExterno.correo = externoData.correo.trim();
+            }
+            responsables.push(responsable);
           }
         });
 
+        // Construir actividadData según los ejemplos del backend
+        // No enviar campos con valor 0 cuando deberían ser null o no enviarse
         const actividadData: any = {
           nombreActividad: formValue.nombreActividad || '',
-          descripcion: formValue.descripcion || null,
-          objetivo: formValue.objetivo || null,
-          departamentoResponsableId: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId[0] : (formValue.departamentoResponsableId || null),
-          fechaInicio: formValue.fechaInicio || null,
-          fechaFin: formValue.fechaFin || null,
-          horaRealizacion: formValue.horaRealizacion ? (() => {
-            // El input type="time" ya devuelve formato 24h (HH:mm)
-            // Solo necesitamos agregar los segundos si no los tiene
-            const hora = formValue.horaRealizacion.trim();
-            if (hora.includes(':') && hora.split(':').length === 2) {
-              return `${hora}:00`; // Agregar segundos para formato HH:mm:ss
-            }
-            return hora.includes(':') ? hora : null;
-          })() : null,
-          modalidad: formValue.modalidad || null,
-          idCapacidadInstalada: formValue.idCapacidadInstalada || null,
-          idEstadoActividad: formValue.idEstadoActividad || null,
-          idTipoActividad: Array.isArray(formValue.idTipoActividad) && formValue.idTipoActividad.length > 0 ? formValue.idTipoActividad : (formValue.idTipoActividad || null),
-          idTipoProtagonista: Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0 ? formValue.idTipoProtagonista[0] : (formValue.idTipoProtagonista || null),
-          cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados ? Number(formValue.cantidadParticipantesProyectados) : null,
-          cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados ? Number(formValue.cantidadParticipantesEstudiantesProyectados) : null,
-          cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas ? Number(formValue.cantidadTotalParticipantesProtagonistas) : (formValue.cantidadParticipantesProyectados ? Number(formValue.cantidadParticipantesProyectados) : null),
-          esPlanificada: tipo === 'anual', // true para actividad planificada, false para no planificada
-          idIndicador: indicadorId,
-          idActividadAnual: Array.isArray(actividadAnualId) && actividadAnualId.length > 0 ? actividadAnualId[0] : (actividadAnualId || null),
-          idActividadMensualInst: Array.isArray(actividadMensualId) && actividadMensualId.length > 0 ? actividadMensualId[0] : (actividadMensualId || null),
-          idTipoEvidencias: Array.isArray(formValue.idTipoEvidencias) && formValue.idTipoEvidencias.length > 0 ? formValue.idTipoEvidencias : (formValue.idTipoEvidencias || []),
-          responsables: responsables.length > 0 ? responsables : undefined
+          esPlanificada: tipo === 'anual' // true para actividad planificada, false para no planificada
         };
 
-        // Limpiar campos null/undefined/empty (excepto arrays vacíos y objetos)
-        Object.keys(actividadData).forEach(key => {
-          if (actividadData[key] === '' || actividadData[key] === undefined) {
-            // No eliminar arrays vacíos ni objetos
-            if (!Array.isArray(actividadData[key]) && typeof actividadData[key] !== 'object') {
-              actividadData[key] = null;
-            } else if (Array.isArray(actividadData[key]) && actividadData[key].length === 0) {
-              // Eliminar arrays vacíos solo si no son requeridos
-              delete actividadData[key];
-            }
+        // Campos opcionales - solo agregar si tienen valor
+        if (formValue.descripcion) actividadData.descripcion = formValue.descripcion;
+        if (formValue.objetivo) actividadData.objetivo = formValue.objetivo;
+        
+        // departamentoResponsableId - único según el JSON del backend
+        if (formValue.departamentoResponsableId && Number(formValue.departamentoResponsableId) > 0) {
+          actividadData.departamentoResponsableId = Number(formValue.departamentoResponsableId);
+        }
+        
+        if (formValue.fechaInicio) actividadData.fechaInicio = formValue.fechaInicio;
+        if (formValue.fechaFin) actividadData.fechaFin = formValue.fechaFin;
+        
+        // horaRealizacion - formatear a HH:mm:ss
+        if (formValue.horaRealizacion) {
+          const hora = formValue.horaRealizacion.trim();
+          if (hora.includes(':') && hora.split(':').length === 2) {
+            actividadData.horaRealizacion = `${hora}:00`; // Agregar segundos para formato HH:mm:ss
+          } else if (hora.includes(':')) {
+            actividadData.horaRealizacion = hora;
           }
-        });
+        }
+        
+        if (formValue.modalidad) actividadData.modalidad = formValue.modalidad;
+        
+        // idCapacidadInstalada - solo si es mayor a 0
+        if (formValue.idCapacidadInstalada && Number(formValue.idCapacidadInstalada) > 0) {
+          actividadData.idCapacidadInstalada = Number(formValue.idCapacidadInstalada);
+        }
+        
+        // idEstadoActividad - solo si es mayor a 0
+        if (formValue.idEstadoActividad && Number(formValue.idEstadoActividad) > 0) {
+          actividadData.idEstadoActividad = Number(formValue.idEstadoActividad);
+        }
+        
+        // idTipoActividad - NO se envía según los ejemplos del backend
+        // Este campo no está presente en los ejemplos de POST proporcionados
+        
+        // idTipoProtagonista - único según el JSON del backend
+        if (formValue.idTipoProtagonista && Number(formValue.idTipoProtagonista) > 0) {
+          actividadData.idTipoProtagonista = Number(formValue.idTipoProtagonista);
+        }
+        
+        // cantidadParticipantesProyectados - solo si es mayor a 0
+        if (formValue.cantidadParticipantesProyectados && Number(formValue.cantidadParticipantesProyectados) > 0) {
+          actividadData.cantidadParticipantesProyectados = Number(formValue.cantidadParticipantesProyectados);
+        }
+        
+        // cantidadParticipantesEstudiantesProyectados - solo si es mayor a 0
+        if (formValue.cantidadParticipantesEstudiantesProyectados && Number(formValue.cantidadParticipantesEstudiantesProyectados) > 0) {
+          actividadData.cantidadParticipantesEstudiantesProyectados = Number(formValue.cantidadParticipantesEstudiantesProyectados);
+        }
+        
+        // cantidadTotalParticipantesProtagonistas - solo si es mayor a 0
+        if (formValue.cantidadTotalParticipantesProtagonistas && Number(formValue.cantidadTotalParticipantesProtagonistas) > 0) {
+          actividadData.cantidadTotalParticipantesProtagonistas = Number(formValue.cantidadTotalParticipantesProtagonistas);
+        }
+        
+        // idIndicador - solo si es mayor a 0
+        if (indicadorId && Number(indicadorId) > 0) {
+          actividadData.idIndicador = Number(indicadorId);
+        }
+        
+        // idActividadAnual - solo el primero si es array, solo si es mayor a 0
+        const actividadAnual = Array.isArray(actividadAnualId) && actividadAnualId.length > 0 
+          ? actividadAnualId[0] 
+          : (actividadAnualId || null);
+        if (actividadAnual && Number(actividadAnual) > 0) {
+          actividadData.idActividadAnual = Number(actividadAnual);
+        }
+        
+        // idActividadMensualInst - solo el primero si es array, solo si es mayor a 0
+        const actividadMensual = Array.isArray(actividadMensualId) && actividadMensualId.length > 0 
+          ? actividadMensualId[0] 
+          : (actividadMensualId || null);
+        if (actividadMensual && Number(actividadMensual) > 0) {
+          actividadData.idActividadMensualInst = Number(actividadMensual);
+        }
+        
+        // idTipoEvidencias - array, solo si tiene elementos
+        const tiposEvidencias = Array.isArray(formValue.idTipoEvidencias) && formValue.idTipoEvidencias.length > 0 
+          ? formValue.idTipoEvidencias 
+          : (formValue.idTipoEvidencias || []);
+        if (tiposEvidencias && Array.isArray(tiposEvidencias) && tiposEvidencias.length > 0) {
+          actividadData.idTipoEvidencias = tiposEvidencias.map(id => Number(id)).filter(id => id > 0);
+        }
+        
+        // responsables - solo si hay responsables
+        if (responsables.length > 0) {
+          actividadData.responsables = responsables;
+        }
 
         this.actividadesService.create(actividadData).subscribe({
           next: (actividad) => {
@@ -2012,6 +2177,137 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   isTipoActividadSelected(id: number): boolean {
     const currentValue = this.formNuevaActividad.get('idTipoActividad')?.value || [];
     return Array.isArray(currentValue) && currentValue.includes(id);
+  }
+
+  // Métodos para manejar tipos de evidencia
+  toggleTipoEvidencia(id: number, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const checked = target.checked;
+    const currentValue = this.formNuevaActividad.get('idTipoEvidencias')?.value || [];
+    let newValue: number[];
+    
+    if (checked) {
+      newValue = [...currentValue, id];
+      this.mostrarDropdownTipoEvidencia.set(false);
+    } else {
+      newValue = currentValue.filter((item: number) => item !== id);
+      if (newValue.length === 0) {
+        this.mostrarDropdownTipoEvidencia.set(true);
+      }
+    }
+    
+    this.formNuevaActividad.patchValue({ idTipoEvidencias: newValue });
+  }
+
+  eliminarTipoEvidencia(id: number): void {
+    const currentValue = this.formNuevaActividad.get('idTipoEvidencias')?.value || [];
+    const newValue = currentValue.filter((item: number) => item !== id);
+    this.formNuevaActividad.patchValue({ idTipoEvidencias: newValue });
+    
+    if (newValue.length === 0) {
+      this.mostrarDropdownTipoEvidencia.set(true);
+    }
+  }
+
+  getTiposEvidenciaSeleccionados(): any[] {
+    const idsSeleccionados = this.formNuevaActividad.get('idTipoEvidencias')?.value || [];
+    return this.tiposEvidencia().filter(tipo => idsSeleccionados.includes(tipo.idTipoEvidencia || tipo.id));
+  }
+
+  abrirDropdownTipoEvidencia(): void {
+    this.mostrarDropdownTipoEvidencia.set(true);
+  }
+
+  isTipoEvidenciaSelected(id: number): boolean {
+    const currentValue = this.formNuevaActividad.get('idTipoEvidencias')?.value || [];
+    return Array.isArray(currentValue) && currentValue.includes(id);
+  }
+
+  // Métodos para manejar tipos de responsables
+  toggleTipoResponsable(tipo: string, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const checked = target.checked;
+    const current = this.tiposResponsableSeleccionados();
+    
+    if (checked) {
+      this.tiposResponsableSeleccionados.set([...current, tipo]);
+    } else {
+      // Si se deselecciona un tipo, limpiar los responsables de ese tipo
+      this.tiposResponsableSeleccionados.set(current.filter(t => t !== tipo));
+      this.limpiarResponsablesPorTipo(tipo);
+    }
+  }
+
+  isTipoResponsableSeleccionado(tipo: string): boolean {
+    return this.tiposResponsableSeleccionados().includes(tipo);
+  }
+
+  limpiarResponsablesPorTipo(tipo: string): void {
+    switch (tipo) {
+      case 'docente':
+        while (this.docentesArray.length > 0) {
+          this.docentesArray.removeAt(0);
+        }
+        break;
+      case 'estudiante':
+        while (this.estudiantesArray.length > 0) {
+          this.estudiantesArray.removeAt(0);
+        }
+        break;
+      case 'administrativo':
+        while (this.administrativosArray.length > 0) {
+          this.administrativosArray.removeAt(0);
+        }
+        break;
+      case 'externo':
+        while (this.responsablesExternosArray.length > 0) {
+          this.responsablesExternosArray.removeAt(0);
+        }
+        break;
+    }
+  }
+
+  tieneAlMenosUnResponsable(): boolean {
+    return this.tiposResponsableSeleccionados().length > 0;
+  }
+
+  tieneResponsablesCompletos(): boolean {
+    const tipos = this.tiposResponsableSeleccionados();
+    if (tipos.length === 0) return false;
+
+    for (const tipo of tipos) {
+      switch (tipo) {
+        case 'docente':
+          if (this.docentesArray.length === 0) return false;
+          for (let i = 0; i < this.docentesArray.length; i++) {
+            const control = this.docentesArray.at(i);
+            if (!control.get('idPersona')?.value) return false;
+          }
+          break;
+        case 'estudiante':
+          if (this.estudiantesArray.length === 0) return false;
+          for (let i = 0; i < this.estudiantesArray.length; i++) {
+            const control = this.estudiantesArray.at(i);
+            if (!control.get('idPersona')?.value || !control.get('idRolResponsable')?.value) return false;
+          }
+          break;
+        case 'administrativo':
+          if (this.administrativosArray.length === 0) return false;
+          for (let i = 0; i < this.administrativosArray.length; i++) {
+            const control = this.administrativosArray.at(i);
+            if (!control.get('idPersona')?.value) return false;
+          }
+          break;
+        case 'externo':
+          if (this.responsablesExternosArray.length === 0) return false;
+          for (let i = 0; i < this.responsablesExternosArray.length; i++) {
+            const control = this.responsablesExternosArray.at(i);
+            if (!control.get('nombre')?.value || !control.get('institucion')?.value || !control.get('idRolResponsable')?.value) return false;
+          }
+          break;
+      }
+    }
+    return true;
   }
 
   hasActividadesSeleccionadas(): boolean {

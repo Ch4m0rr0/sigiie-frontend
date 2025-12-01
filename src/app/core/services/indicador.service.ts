@@ -20,6 +20,8 @@ export class IndicadorService {
       catchError(error => {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/indicadores no encontrado (404)');
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener indicadores:', error);
         } else {
           console.error('❌ Error fetching indicadores:', error);
         }

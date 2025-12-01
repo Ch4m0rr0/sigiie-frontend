@@ -5,12 +5,13 @@ import { provideHttpClient, withInterceptors, withFetch } from '@angular/common/
 import { routes } from './app.routes';
 import { jwtInterceptor } from './interceptors/jwt.interceptor';
 import { sslInterceptor } from './interceptors/ssl.interceptor';
+import { errorInterceptor } from './interceptors/error.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
     provideHttpClient(
-      withInterceptors([sslInterceptor, jwtInterceptor]), 
+      withInterceptors([sslInterceptor, jwtInterceptor, errorInterceptor]), 
       withFetch()
     ),
     { provide: LOCALE_ID, useValue: 'es-ES' }

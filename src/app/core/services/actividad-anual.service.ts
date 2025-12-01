@@ -34,6 +34,9 @@ export class ActividadAnualService {
         if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/actividades-anuales no encontrado (404)');
           return of([]);
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener actividades anuales:', error);
+          return of([]);
         } else {
           console.error('❌ Error fetching actividades anuales:', error);
           return of([]);

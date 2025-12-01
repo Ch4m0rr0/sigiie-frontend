@@ -294,66 +294,119 @@ export class ActividadesService {
       throw new Error('El nombre de la actividad es requerido');
     }
 
+    // Construir DTO según los ejemplos del backend
+    // No enviar campos con valor 0, null o undefined
     const dto: any = {
       NombreActividad: nombreActividad.trim(),
-      Descripcion: actividad.descripcion,
-      DepartamentoId: actividad.departamentoId,
-      DepartamentoResponsableId: getDepartamentoResponsableId(actividad.departamentoResponsableId),
-      IdTipoIniciativa: actividad.idTipoIniciativa,
-      FechaInicio: actividad.fechaInicio,
-      FechaFin: actividad.fechaFin,
-      FechaEvento: actividad.fechaEvento,
-      IdEstadoActividad: actividad.idEstadoActividad,
-      IdTipoActividad: getIdTipoActividad(actividad.idTipoActividad) || actividad.categoriaActividadId,
-      IdArea: actividad.idArea || actividad.areaConocimientoId,
-      IdTipoDocumento: actividad.idTipoDocumento,
-      Organizador: actividad.organizador,
-      Modalidad: actividad.modalidad,
-      IdCapacidadInstalada: actividad.idCapacidadInstalada,
-      IdNivel: actividad.idNivel,
-      NivelActividad: actividad.nivelActividad ?? 1,
-      SemanaMes: actividad.semanaMes,
-      CodigoActividad: actividad.codigoActividad,
-      IdActividadMensualInst: actividad.idActividadMensualInst,
-      EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true,
-      IdIndicador: actividad.idIndicador,
-      IdActividadAnual: getIdActividadAnual(actividad.idActividadAnual),
-      Objetivo: actividad.objetivo,
-      CantidadMaximaParticipantesEstudiantes: actividad.cantidadMaximaParticipantesEstudiantes,
-      TipoResumenAccion: actividad.tipoResumenAccion,
-      MetaAlcanzada: actividad.metaAlcanzada,
-      MetaCumplimiento: actividad.metaCumplimiento,
-      ValoracionIndicadorEstrategico: actividad.valoracionIndicadorEstrategico,
-      BrechaEstrategica: actividad.brechaEstrategica,
-      Anio: actividad.anio,
-      HoraRealizacion: actividad.horaRealizacion,
-      CantidadParticipantesProyectados: actividad.cantidadParticipantesProyectados,
-      CantidadParticipantesEstudiantesProyectados: actividad.cantidadParticipantesEstudiantesProyectados,
-      CantidadTotalParticipantesProtagonistas: actividad.cantidadTotalParticipantesProtagonistas,
-      IdTipoProtagonista: getIdTipoProtagonista(actividad.idTipoProtagonista),
-      ResponsableActividad: actividad.responsableActividad,
-      IdTipoEvidencias: actividad.idTipoEvidencias, // Lista de IDs de tipos de evidencias
-      Responsables: actividad.responsables ? actividad.responsables.map(r => {
+      EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true
+    };
+    
+    // Campos opcionales - solo agregar si tienen valor válido
+    if (actividad.descripcion) dto.Descripcion = actividad.descripcion;
+    if (actividad.objetivo) dto.Objetivo = actividad.objetivo;
+    
+    const deptResponsableId = getDepartamentoResponsableId(actividad.departamentoResponsableId);
+    if (deptResponsableId !== undefined && deptResponsableId !== null && Number(deptResponsableId) > 0) {
+      dto.DepartamentoResponsableId = Number(deptResponsableId);
+    }
+    
+    if (actividad.fechaInicio) dto.FechaInicio = actividad.fechaInicio;
+    if (actividad.fechaFin) dto.FechaFin = actividad.fechaFin;
+    if (actividad.horaRealizacion) dto.HoraRealizacion = actividad.horaRealizacion;
+    if (actividad.modalidad) dto.Modalidad = actividad.modalidad;
+    
+    if (actividad.idCapacidadInstalada !== undefined && actividad.idCapacidadInstalada !== null && Number(actividad.idCapacidadInstalada) > 0) {
+      dto.IdCapacidadInstalada = Number(actividad.idCapacidadInstalada);
+    }
+    
+    if (actividad.idIndicador !== undefined && actividad.idIndicador !== null && Number(actividad.idIndicador) > 0) {
+      dto.IdIndicador = Number(actividad.idIndicador);
+    }
+    
+    const actividadAnualId = getIdActividadAnual(actividad.idActividadAnual);
+    if (actividadAnualId !== undefined && actividadAnualId !== null && Number(actividadAnualId) > 0) {
+      dto.IdActividadAnual = Number(actividadAnualId);
+    }
+    
+    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null && Number(actividad.idActividadMensualInst) > 0) {
+      dto.IdActividadMensualInst = Number(actividad.idActividadMensualInst);
+    }
+    
+    if (actividad.cantidadParticipantesProyectados !== undefined && actividad.cantidadParticipantesProyectados !== null && Number(actividad.cantidadParticipantesProyectados) > 0) {
+      dto.CantidadParticipantesProyectados = Number(actividad.cantidadParticipantesProyectados);
+    }
+    
+    if (actividad.cantidadTotalParticipantesProtagonistas !== undefined && actividad.cantidadTotalParticipantesProtagonistas !== null && Number(actividad.cantidadTotalParticipantesProtagonistas) > 0) {
+      dto.CantidadTotalParticipantesProtagonistas = Number(actividad.cantidadTotalParticipantesProtagonistas);
+    }
+    
+    const tipoProtagonista = getIdTipoProtagonista(actividad.idTipoProtagonista);
+    if (tipoProtagonista !== undefined && tipoProtagonista !== null && Number(tipoProtagonista) > 0) {
+      dto.IdTipoProtagonista = Number(tipoProtagonista);
+    }
+    
+    // idTipoEvidencias - array, solo si tiene elementos
+    if (actividad.idTipoEvidencias && Array.isArray(actividad.idTipoEvidencias) && actividad.idTipoEvidencias.length > 0) {
+      dto.IdTipoEvidencias = actividad.idTipoEvidencias.map(id => Number(id)).filter(id => id > 0);
+    }
+    
+    // Responsables - solo si hay responsables
+    if (actividad.responsables && Array.isArray(actividad.responsables) && actividad.responsables.length > 0) {
+      dto.Responsables = actividad.responsables.map(r => {
         const responsableDto: any = {};
-        if (r.idUsuario !== undefined) responsableDto.IdUsuario = r.idUsuario;
-        if (r.idDocente !== undefined) responsableDto.IdDocente = r.idDocente;
-        if (r.idEstudiante !== undefined) responsableDto.IdEstudiante = r.idEstudiante;
-        if (r.idAdmin !== undefined) responsableDto.IdAdmin = r.idAdmin;
+        
+        // Según los ejemplos del backend:
+        // - Para usuarios: solo IdUsuario, NO se envía IdRolResponsable
+        // - Para estudiantes: IdEstudiante + IdRolResponsable (obligatorio)
+        // - Para docentes: IdDocente + IdRolResponsable (opcional)
+        // - Para administrativos: IdAdmin + IdRolResponsable (opcional)
+        // - Para responsables externos: ResponsableExterno + IdRolResponsable (obligatorio)
+        // - NO se envía FechaAsignacion en el POST
+        // - NO se envía RolResponsable (texto), solo IdRolResponsable
+        
+        if (r.idUsuario !== undefined && r.idUsuario !== null && Number(r.idUsuario) > 0) {
+          responsableDto.IdUsuario = Number(r.idUsuario);
+          // Para usuarios, NO se envía IdRolResponsable (el sistema usa el rol del usuario)
+        }
+        if (r.idDocente !== undefined && r.idDocente !== null && Number(r.idDocente) > 0) {
+          responsableDto.IdDocente = Number(r.idDocente);
+          // Para docentes, IdRolResponsable es opcional
+          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          }
+        }
+        if (r.idEstudiante !== undefined && r.idEstudiante !== null && Number(r.idEstudiante) > 0) {
+          responsableDto.IdEstudiante = Number(r.idEstudiante);
+          // Para estudiantes, IdRolResponsable es OBLIGATORIO
+          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          }
+        }
+        if (r.idAdmin !== undefined && r.idAdmin !== null && Number(r.idAdmin) > 0) {
+          responsableDto.IdAdmin = Number(r.idAdmin);
+          // Para administrativos, IdRolResponsable es opcional
+          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          }
+        }
         if (r.responsableExterno) {
           responsableDto.ResponsableExterno = {
             Nombre: r.responsableExterno.nombre,
-            Institucion: r.responsableExterno.institucion,
-            Cargo: r.responsableExterno.cargo,
-            Telefono: r.responsableExterno.telefono,
-            Correo: r.responsableExterno.correo
+            Institucion: r.responsableExterno.institucion
           };
+          // Campos opcionales del responsable externo
+          if (r.responsableExterno.cargo) responsableDto.ResponsableExterno.Cargo = r.responsableExterno.cargo;
+          if (r.responsableExterno.telefono) responsableDto.ResponsableExterno.Telefono = r.responsableExterno.telefono;
+          if (r.responsableExterno.correo) responsableDto.ResponsableExterno.Correo = r.responsableExterno.correo;
+          // Para responsables externos, IdRolResponsable es OBLIGATORIO
+          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          }
         }
-        if (r.idRolResponsable !== undefined) responsableDto.IdRolResponsable = r.idRolResponsable;
-        if (r.rolResponsable) responsableDto.RolResponsable = r.rolResponsable;
-        if (r.fechaAsignacion) responsableDto.FechaAsignacion = r.fechaAsignacion;
+        
         return responsableDto;
-      }) : undefined,
-    };
+      });
+    }
     
     // Remover campos undefined, null, o arrays vacíos
     Object.keys(dto).forEach(key => {
@@ -903,10 +956,10 @@ export class ActividadesService {
    */
   getEstadisticasParticipantes(idActividad: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${idActividad}/estadisticas-participantes`).pipe(
-      map(response => {
+      map((response: any) => {
         return response.data || response;
       }),
-      catchError(error => {
+      catchError((error: any) => {
         console.error(`Error fetching estadísticas de participantes para actividad ${idActividad}:`, error);
         return of(null);
       })
@@ -919,10 +972,10 @@ export class ActividadesService {
    */
   getParticipantesConNombres(idActividad: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/${idActividad}/participantes-con-nombres`).pipe(
-      map(response => {
+      map((response: any) => {
         return response.data || response;
       }),
-      catchError(error => {
+      catchError((error: any) => {
         console.error(`Error fetching participantes con nombres para actividad ${idActividad}:`, error);
         return of(null);
       })
