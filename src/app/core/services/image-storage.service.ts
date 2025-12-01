@@ -8,7 +8,7 @@ import { Injectable } from '@angular/core';
 export class ImageStorageService {
   private readonly DB_NAME = 'evidencias_images_db';
   private readonly STORE_NAME = 'images';
-  private readonly DB_VERSION = 1;
+  private readonly DB_VERSION = 2;
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 
@@ -39,8 +39,18 @@ export class ImageStorageService {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const oldVersion = event.oldVersion || 0;
+        
+        if (oldVersion < 2) {
+          // Migrar de versión 1 a 2: eliminar el store antiguo y crear uno nuevo con clave compuesta
+          if (db.objectStoreNames.contains(this.STORE_NAME)) {
+            db.deleteObjectStore(this.STORE_NAME);
+          }
+        }
+        
         if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-          db.createObjectStore(this.STORE_NAME, { keyPath: 'evidenciaId' });
+          const store = db.createObjectStore(this.STORE_NAME, { keyPath: ['evidenciaId', 'imageIndex'] });
+          store.createIndex('evidenciaId', 'evidenciaId', { unique: false });
         }
       };
     });
@@ -63,9 +73,10 @@ export class ImageStorageService {
    * Guarda una imagen en IndexedDB como Blob
    * @param evidenciaId ID de la evidencia
    * @param file Archivo de imagen
+   * @param imageIndex Índice de la imagen (0 para la primera, 1 para la segunda, etc.)
    * @returns Promise que resuelve con la URL base64 de la imagen (para preview)
    */
-  saveImage(evidenciaId: number, file: File): Promise<string> {
+  saveImage(evidenciaId: number, file: File, imageIndex: number = 0): Promise<string> {
     return new Promise(async (resolve, reject) => {
       if (!file.type.startsWith('image/')) {
         reject(new Error('El archivo no es una imagen'));
@@ -98,6 +109,7 @@ export class ImageStorageService {
                 const store = db.transaction([this.STORE_NAME], 'readwrite').objectStore(this.STORE_NAME);
                 const data = {
                   evidenciaId: evidenciaId,
+                  imageIndex: imageIndex,
                   arrayBuffer: arrayBuffer, // Guardar como ArrayBuffer
                   mimeType: file.type,
                   fileName: file.name,
@@ -137,15 +149,16 @@ export class ImageStorageService {
   /**
    * Obtiene una imagen desde IndexedDB
    * @param evidenciaId ID de la evidencia
+   * @param imageIndex Índice de la imagen (0 para la primera, por defecto)
    * @returns Promise que resuelve con la URL base64 de la imagen o null si no existe
    */
-  async getImage(evidenciaId: number): Promise<string | null> {
+  async getImage(evidenciaId: number, imageIndex: number = 0): Promise<string | null> {
     try {
       const db = await this.ensureDB();
       const store = db.transaction([this.STORE_NAME], 'readonly').objectStore(this.STORE_NAME);
       
       return new Promise((resolve) => {
-        const request = store.get(evidenciaId);
+        const request = store.get([evidenciaId, imageIndex]);
         request.onsuccess = () => {
           const result = request.result;
           if (result && result.base64) {
@@ -165,17 +178,76 @@ export class ImageStorageService {
   }
 
   /**
+   * Obtiene todas las imágenes de una evidencia
+   * @param evidenciaId ID de la evidencia
+   * @returns Promise que resuelve con un array de URLs base64 de las imágenes
+   */
+  async getAllImages(evidenciaId: number): Promise<string[]> {
+    try {
+      const db = await this.ensureDB();
+      const store = db.transaction([this.STORE_NAME], 'readonly').objectStore(this.STORE_NAME);
+      const index = store.index('evidenciaId');
+      
+      return new Promise((resolve) => {
+        const request = index.getAll(evidenciaId);
+        request.onsuccess = () => {
+          const results = request.result || [];
+          // Ordenar por imageIndex y extraer base64
+          const images = results
+            .sort((a, b) => (a.imageIndex || 0) - (b.imageIndex || 0))
+            .map(item => item.base64)
+            .filter(base64 => base64 != null);
+          resolve(images);
+        };
+        request.onerror = () => {
+          resolve([]);
+        };
+      });
+    } catch (error) {
+      console.error('Error al obtener todas las imágenes:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene el número de imágenes almacenadas para una evidencia
+   * @param evidenciaId ID de la evidencia
+   * @returns Promise que resuelve con el número de imágenes
+   */
+  async getImageCount(evidenciaId: number): Promise<number> {
+    try {
+      const db = await this.ensureDB();
+      const store = db.transaction([this.STORE_NAME], 'readonly').objectStore(this.STORE_NAME);
+      const index = store.index('evidenciaId');
+      
+      return new Promise((resolve) => {
+        const request = index.count(evidenciaId);
+        request.onsuccess = () => {
+          resolve(request.result || 0);
+        };
+        request.onerror = () => {
+          resolve(0);
+        };
+      });
+    } catch (error) {
+      console.error('Error al contar imágenes:', error);
+      return 0;
+    }
+  }
+
+  /**
    * Obtiene el Blob de una imagen desde IndexedDB
    * @param evidenciaId ID de la evidencia
+   * @param imageIndex Índice de la imagen (0 para la primera, por defecto)
    * @returns Promise que resuelve con el Blob o null si no existe
    */
-  async getImageBlob(evidenciaId: number): Promise<Blob | null> {
+  async getImageBlob(evidenciaId: number, imageIndex: number = 0): Promise<Blob | null> {
     try {
       const db = await this.ensureDB();
       const store = db.transaction([this.STORE_NAME], 'readonly').objectStore(this.STORE_NAME);
       
       return new Promise((resolve) => {
-        const request = store.get(evidenciaId);
+        const request = store.get([evidenciaId, imageIndex]);
         request.onsuccess = () => {
           const result = request.result;
           if (result && result.arrayBuffer) {
@@ -203,12 +275,28 @@ export class ImageStorageService {
   /**
    * Elimina una imagen de IndexedDB
    * @param evidenciaId ID de la evidencia
+   * @param imageIndex Índice de la imagen a eliminar (opcional, si no se especifica elimina todas)
    */
-  async deleteImage(evidenciaId: number): Promise<void> {
+  async deleteImage(evidenciaId: number, imageIndex?: number): Promise<void> {
     try {
       const db = await this.ensureDB();
       const store = db.transaction([this.STORE_NAME], 'readwrite').objectStore(this.STORE_NAME);
-      store.delete(evidenciaId);
+      
+      if (imageIndex !== undefined) {
+        // Eliminar una imagen específica
+        store.delete([evidenciaId, imageIndex]);
+      } else {
+        // Eliminar todas las imágenes de la evidencia
+        const index = store.index('evidenciaId');
+        const request = index.openKeyCursor(IDBKeyRange.only(evidenciaId));
+        request.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+          if (cursor) {
+            store.delete(cursor.primaryKey);
+            cursor.continue();
+          }
+        };
+      }
     } catch (error) {
       console.error('Error al eliminar imagen:', error);
     }
@@ -217,10 +305,11 @@ export class ImageStorageService {
   /**
    * Verifica si existe una imagen para una evidencia
    * @param evidenciaId ID de la evidencia
+   * @param imageIndex Índice de la imagen (0 para la primera, por defecto)
    * @returns Promise que resuelve con true si existe la imagen
    */
-  async hasImage(evidenciaId: number): Promise<boolean> {
-    const image = await this.getImage(evidenciaId);
+  async hasImage(evidenciaId: number, imageIndex: number = 0): Promise<boolean> {
+    const image = await this.getImage(evidenciaId, imageIndex);
     return image !== null;
   }
 
@@ -251,15 +340,16 @@ export class ImageStorageService {
    * Descarga una imagen desde IndexedDB
    * @param evidenciaId ID de la evidencia
    * @param fileName Nombre del archivo para descargar
+   * @param imageIndex Índice de la imagen a descargar (0 para la primera, por defecto)
    */
-  async downloadImage(evidenciaId: number, fileName: string): Promise<void> {
+  async downloadImage(evidenciaId: number, fileName: string, imageIndex: number = 0): Promise<void> {
     try {
       // Intentar obtener el Blob directamente (más eficiente)
-      let blob = await this.getImageBlob(evidenciaId);
+      let blob = await this.getImageBlob(evidenciaId, imageIndex);
       
       // Si no hay blob, intentar obtener base64 y convertir
       if (!blob) {
-        const base64 = await this.getImage(evidenciaId);
+        const base64 = await this.getImage(evidenciaId, imageIndex);
         if (!base64) {
           throw new Error('No se encontró la imagen');
         }

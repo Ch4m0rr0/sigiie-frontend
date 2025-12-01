@@ -10,11 +10,12 @@ import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown/multi-select-dropdown.component';
 
 @Component({
   standalone: true,
   selector: 'app-evidencias-gallery',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports, MultiSelectDropdownComponent],
   templateUrl: './evidencias-gallery.component.html',
 })
 export class EvidenciasGalleryComponent implements OnInit {
@@ -33,7 +34,7 @@ export class EvidenciasGalleryComponent implements OnInit {
 
   // Filtros
   filtroSubactividad = signal<number | null>(null);
-  filtroTipo = signal<number | null>(null);
+  filtroTipo = signal<number[]>([]);
   filtroSeleccionadas = signal<boolean | null>(null);
 
   ngOnInit(): void {
@@ -70,8 +71,8 @@ export class EvidenciasGalleryComponent implements OnInit {
     observable.subscribe({
       next: (data) => {
         let filtered = data;
-        if (this.filtroTipo()) {
-          filtered = filtered.filter(e => e.idTipoEvidencia === this.filtroTipo()!);
+        if (this.filtroTipo().length > 0) {
+          filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
         }
         if (this.filtroSeleccionadas() !== null) {
           filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
@@ -110,22 +111,6 @@ export class EvidenciasGalleryComponent implements OnInit {
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '');
   }
 
-  toggleSeleccionada(id: number, seleccionada: boolean): void {
-    this.evidenciaService.marcarParaReporte(id, seleccionada).subscribe({
-      next: () => {
-        const evidencias = this.evidencias();
-        const index = evidencias.findIndex(e => e.idEvidencia === id);
-        if (index > -1) {
-          evidencias[index].seleccionadaParaReporte = seleccionada;
-          this.evidencias.set([...evidencias]);
-        }
-      },
-      error: (err) => {
-        console.error('Error updating evidencia:', err);
-        this.error.set('Error al actualizar la evidencia');
-      }
-    });
-  }
 
   navigateToDetail(id: number): void {
     this.router.navigate(['/evidencias', id]);
@@ -137,9 +122,16 @@ export class EvidenciasGalleryComponent implements OnInit {
 
   clearFilters(): void {
     this.filtroSubactividad.set(null);
-    this.filtroTipo.set(null);
+    this.filtroTipo.set([]);
     this.filtroSeleccionadas.set(null);
     this.loadEvidencias();
+  }
+
+  getTiposEvidenciaOptions() {
+    return this.tiposEvidencia().map(tipo => ({
+      id: tipo.idTipoEvidencia,
+      label: tipo.nombre
+    }));
   }
 }
 

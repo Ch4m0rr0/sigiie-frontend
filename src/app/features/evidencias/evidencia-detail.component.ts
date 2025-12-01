@@ -24,9 +24,10 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   evidencia = signal<Evidencia | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
-  downloadUrl = signal<SafeUrl | null>(null);
+  imageUrls = signal<string[]>([]);
+  currentImageIndex = signal<number>(0);
   imageError = signal(false);
-  private objectUrl: string | null = null;
+  private objectUrls: string[] = [];
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -40,25 +41,29 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
     this.error.set(null);
     this.imageError.set(false);
     
-    // Limpiar URL anterior si existe
-    if (this.objectUrl) {
-      URL.revokeObjectURL(this.objectUrl);
-      this.objectUrl = null;
-    }
+    // Limpiar URLs anteriores
+    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.objectUrls = [];
 
     this.evidenciaService.getById(id).subscribe({
       next: async (data) => {
         this.evidencia.set(data);
         
-        // Cargar imagen desde almacenamiento local del frontend (IndexedDB)
-        const storedImage = await this.imageStorageService.getImage(data.idEvidencia);
-        if (storedImage) {
-          // La imagen está almacenada como base64, usarla directamente
-          this.downloadUrl.set(this.sanitizer.bypassSecurityTrustUrl(storedImage));
+        // Cargar todas las imágenes desde almacenamiento local del frontend (IndexedDB)
+        const storedImages = await this.imageStorageService.getAllImages(data.idEvidencia);
+        console.log(`📸 Cargadas ${storedImages.length} imagen(es) para evidencia ${data.idEvidencia}`);
+        
+        if (storedImages.length > 0) {
+          // Las imágenes están almacenadas como base64, guardarlas directamente
+          this.imageUrls.set(storedImages);
+          this.currentImageIndex.set(0);
           this.imageError.set(false);
+          console.log('✅ Imágenes cargadas correctamente, mostrando primera imagen');
         } else {
-          // No hay imagen almacenada localmente
-          this.downloadUrl.set(null);
+          // No hay imágenes almacenadas localmente
+          this.imageUrls.set([]);
+          this.currentImageIndex.set(0);
+          console.log('⚠️ No se encontraron imágenes almacenadas');
         }
         this.loading.set(false);
       },
@@ -72,11 +77,9 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
 
 
   ngOnDestroy(): void {
-    // Limpiar object URL cuando el componente se destruya
-    if (this.objectUrl) {
-      URL.revokeObjectURL(this.objectUrl);
-      this.objectUrl = null;
-    }
+    // Limpiar object URLs cuando el componente se destruya
+    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.objectUrls = [];
   }
 
   navigateToEdit(): void {
@@ -118,26 +121,75 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Verificar si existe la imagen
-    const hasImage = await this.imageStorageService.hasImage(evidencia.idEvidencia);
+    const currentIndex = this.currentImageIndex();
+    const hasImage = await this.imageStorageService.hasImage(evidencia.idEvidencia, currentIndex);
     if (!hasImage) {
       alert('No se puede descargar: No hay imagen almacenada');
       return;
     }
 
     // Obtener el nombre del archivo de rutaArchivo o usar un nombre por defecto
-    const fileName = evidencia.rutaArchivo 
+    const baseFileName = evidencia.rutaArchivo 
       ? (evidencia.rutaArchivo.split('/').pop() || evidencia.rutaArchivo.split('\\').pop() || 'evidencia')
-      : `evidencia_${evidencia.idEvidencia}.jpg`;
+      : `evidencia_${evidencia.idEvidencia}`;
+    
+    // Si hay múltiples imágenes, agregar el índice al nombre
+    const totalImages = this.imageUrls().length;
+    const fileName = totalImages > 1 
+      ? `${baseFileName}_${currentIndex + 1}.jpg`
+      : `${baseFileName}.jpg`;
 
     try {
       // Descargar usando el servicio de almacenamiento de imágenes (IndexedDB)
-      await this.imageStorageService.downloadImage(evidencia.idEvidencia, fileName);
+      await this.imageStorageService.downloadImage(evidencia.idEvidencia, fileName, currentIndex);
       console.log('✅ Descarga iniciada desde almacenamiento local');
     } catch (error) {
       console.error('Error al descargar:', error);
       alert('Error al descargar la imagen');
     }
+  }
+
+  previousImage(): void {
+    const currentIndex = this.currentImageIndex();
+    if (currentIndex > 0) {
+      this.currentImageIndex.set(currentIndex - 1);
+      this.imageError.set(false);
+    }
+  }
+
+  nextImage(): void {
+    const currentIndex = this.currentImageIndex();
+    const totalImages = this.imageUrls().length;
+    if (currentIndex < totalImages - 1) {
+      this.currentImageIndex.set(currentIndex + 1);
+      this.imageError.set(false);
+    }
+  }
+
+  getCurrentImageUrl(): SafeUrl | null {
+    const urls = this.imageUrls();
+    const index = this.currentImageIndex();
+    if (urls[index]) {
+      // Sanitizar la URL base64 antes de usarla
+      return this.sanitizer.bypassSecurityTrustUrl(urls[index]);
+    }
+    return null;
+  }
+
+  get totalImages(): number {
+    return this.imageUrls().length;
+  }
+
+  get currentImageNumber(): number {
+    return this.currentImageIndex() + 1;
+  }
+
+  canGoPrevious(): boolean {
+    return this.currentImageIndex() > 0;
+  }
+
+  canGoNext(): boolean {
+    return this.currentImageIndex() < this.imageUrls().length - 1;
   }
 }
 
