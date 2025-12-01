@@ -1,8 +1,9 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EvidenciaService } from '../../core/services/evidencia.service';
+import { ImageStorageService } from '../../core/services/image-storage.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
@@ -13,8 +14,9 @@ import { BrnButtonImports } from '@spartan-ng/brain/button';
   imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
   templateUrl: './evidencia-detail.component.html',
 })
-export class EvidenciaDetailComponent implements OnInit {
+export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   private evidenciaService = inject(EvidenciaService);
+  private imageStorageService = inject(ImageStorageService);
   private sanitizer = inject(DomSanitizer);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -22,8 +24,10 @@ export class EvidenciaDetailComponent implements OnInit {
   evidencia = signal<Evidencia | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
-  downloadUrl = signal<SafeUrl | null>(null);
+  imageUrls = signal<string[]>([]);
+  currentImageIndex = signal<number>(0);
   imageError = signal(false);
+  private objectUrls: string[] = [];
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -35,15 +39,31 @@ export class EvidenciaDetailComponent implements OnInit {
   loadEvidencia(id: number): void {
     this.loading.set(true);
     this.error.set(null);
+    this.imageError.set(false);
+    
+    // Limpiar URLs anteriores
+    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.objectUrls = [];
+
     this.evidenciaService.getById(id).subscribe({
-      next: (data) => {
+      next: async (data) => {
         this.evidencia.set(data);
-        if (data.rutaArchivo && this.isImage(data.rutaArchivo)) {
-          // Usar el endpoint del API para obtener la imagen
-          const url = this.evidenciaService.getFileUrl(data.idEvidencia);
-          this.downloadUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
+        
+        // Cargar todas las imágenes desde almacenamiento local del frontend (IndexedDB)
+        const storedImages = await this.imageStorageService.getAllImages(data.idEvidencia);
+        console.log(`📸 Cargadas ${storedImages.length} imagen(es) para evidencia ${data.idEvidencia}`);
+        
+        if (storedImages.length > 0) {
+          // Las imágenes están almacenadas como base64, guardarlas directamente
+          this.imageUrls.set(storedImages);
+          this.currentImageIndex.set(0);
+          this.imageError.set(false);
+          console.log('✅ Imágenes cargadas correctamente, mostrando primera imagen');
         } else {
-          this.downloadUrl.set(null);
+          // No hay imágenes almacenadas localmente
+          this.imageUrls.set([]);
+          this.currentImageIndex.set(0);
+          console.log('⚠️ No se encontraron imágenes almacenadas');
         }
         this.loading.set(false);
       },
@@ -53,6 +73,13 @@ export class EvidenciaDetailComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+
+  ngOnDestroy(): void {
+    // Limpiar object URLs cuando el componente se destruya
+    this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.objectUrls = [];
   }
 
   navigateToEdit(): void {
@@ -75,22 +102,6 @@ export class EvidenciaDetailComponent implements OnInit {
     }
   }
 
-  toggleSeleccionada(): void {
-    const evidencia = this.evidencia();
-    if (evidencia) {
-      const nuevoEstado = !evidencia.seleccionadaParaReporte;
-      this.evidenciaService.marcarParaReporte(evidencia.idEvidencia, nuevoEstado).subscribe({
-        next: () => {
-          evidencia.seleccionadaParaReporte = nuevoEstado;
-          this.evidencia.set({ ...evidencia });
-        },
-        error: (err) => {
-          console.error('Error updating evidencia:', err);
-          this.error.set('Error al actualizar la evidencia');
-        }
-      });
-    }
-  }
 
   isImage(rutaArchivo?: string): boolean {
     if (!rutaArchivo) return false;
@@ -99,8 +110,86 @@ export class EvidenciaDetailComponent implements OnInit {
   }
 
   onImageError(event: Event): void {
-    console.error('Error loading image:', event);
+    console.error('❌ Error cargando imagen:', event);
     this.imageError.set(true);
+  }
+
+  async downloadFile(): Promise<void> {
+    const evidencia = this.evidencia();
+    if (!evidencia) {
+      alert('No se puede descargar: Sin evidencia');
+      return;
+    }
+
+    const currentIndex = this.currentImageIndex();
+    const hasImage = await this.imageStorageService.hasImage(evidencia.idEvidencia, currentIndex);
+    if (!hasImage) {
+      alert('No se puede descargar: No hay imagen almacenada');
+      return;
+    }
+
+    // Obtener el nombre del archivo de rutaArchivo o usar un nombre por defecto
+    const baseFileName = evidencia.rutaArchivo 
+      ? (evidencia.rutaArchivo.split('/').pop() || evidencia.rutaArchivo.split('\\').pop() || 'evidencia')
+      : `evidencia_${evidencia.idEvidencia}`;
+    
+    // Si hay múltiples imágenes, agregar el índice al nombre
+    const totalImages = this.imageUrls().length;
+    const fileName = totalImages > 1 
+      ? `${baseFileName}_${currentIndex + 1}.jpg`
+      : `${baseFileName}.jpg`;
+
+    try {
+      // Descargar usando el servicio de almacenamiento de imágenes (IndexedDB)
+      await this.imageStorageService.downloadImage(evidencia.idEvidencia, fileName, currentIndex);
+      console.log('✅ Descarga iniciada desde almacenamiento local');
+    } catch (error) {
+      console.error('Error al descargar:', error);
+      alert('Error al descargar la imagen');
+    }
+  }
+
+  previousImage(): void {
+    const currentIndex = this.currentImageIndex();
+    if (currentIndex > 0) {
+      this.currentImageIndex.set(currentIndex - 1);
+      this.imageError.set(false);
+    }
+  }
+
+  nextImage(): void {
+    const currentIndex = this.currentImageIndex();
+    const totalImages = this.imageUrls().length;
+    if (currentIndex < totalImages - 1) {
+      this.currentImageIndex.set(currentIndex + 1);
+      this.imageError.set(false);
+    }
+  }
+
+  getCurrentImageUrl(): SafeUrl | null {
+    const urls = this.imageUrls();
+    const index = this.currentImageIndex();
+    if (urls[index]) {
+      // Sanitizar la URL base64 antes de usarla
+      return this.sanitizer.bypassSecurityTrustUrl(urls[index]);
+    }
+    return null;
+  }
+
+  get totalImages(): number {
+    return this.imageUrls().length;
+  }
+
+  get currentImageNumber(): number {
+    return this.currentImageIndex() + 1;
+  }
+
+  canGoPrevious(): boolean {
+    return this.currentImageIndex() > 0;
+  }
+
+  canGoNext(): boolean {
+    return this.currentImageIndex() < this.imageUrls().length - 1;
   }
 }
 

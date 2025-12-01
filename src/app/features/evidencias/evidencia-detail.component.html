@@ -88,55 +88,78 @@
               </div>
             }
 
-            <div>
-              <dt class="text-sm font-medium text-slate-500 mb-1">Seleccionada para Reporte</dt>
-              <dd class="text-sm text-slate-900">
-                <label class="flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    [checked]="evidencia()!.seleccionadaParaReporte"
-                    (change)="toggleSeleccionada()"
-                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                  <span class="ml-2">{{ evidencia()!.seleccionadaParaReporte ? 'Sí' : 'No' }}</span>
-                </label>
-              </dd>
-            </div>
           </dl>
 
-          @if (evidencia()!.rutaArchivo && downloadUrl()) {
+          @if (imageUrls().length > 0) {
             <div class="mt-6">
-              <a 
-                [href]="downloadUrl()!"
-                [download]="evidencia()!.rutaArchivo"
+              <button 
+                (click)="downloadFile()"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 <app-icon icon="download" size="sm" color="white"></app-icon>
                 Descargar Archivo
-              </a>
+              </button>
             </div>
           }
         </div>
 
         <!-- Preview -->
-        @if (evidencia()!.rutaArchivo && isImage(evidencia()!.rutaArchivo)) {
+        @if (imageUrls().length > 0) {
           <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
             <h2 class="text-xl font-semibold text-slate-900 mb-4">Vista Previa</h2>
-            @if (downloadUrl() && !imageError()) {
-              <img 
-                [src]="downloadUrl()!" 
-                alt="Preview" 
-                class="w-full h-auto rounded-lg border border-gray-300"
-                (error)="onImageError($event)">
-            } @else if (imageError()) {
-              <div class="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border border-gray-300">
-                <app-icon icon="image" size="xl" color="slate-400" class="mb-2"></app-icon>
-                <p class="text-gray-500 text-sm">No se pudo cargar la imagen</p>
-                <p class="text-gray-400 text-xs mt-1">El endpoint del backend aún no está disponible</p>
-              </div>
-            } @else {
-              <div class="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
-                <p class="text-gray-500">Cargando imagen...</p>
+            
+            <!-- Imagen Actual -->
+            <div class="relative mb-4">
+              @if (getCurrentImageUrl() && !imageError()) {
+                <img 
+                  [src]="getCurrentImageUrl()!" 
+                  alt="Preview" 
+                  class="w-full h-auto rounded-lg border border-gray-300 max-h-96 object-contain mx-auto"
+                  (error)="onImageError($event)"
+                  (load)="imageError.set(false)">
+              } @else if (imageError()) {
+                <div class="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border border-gray-300">
+                  <app-icon icon="image" size="xl" color="slate-400" class="mb-2"></app-icon>
+                  <p class="text-gray-500 text-sm">No se pudo cargar la imagen</p>
+                </div>
+              } @else {
+                <div class="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+                  <p class="text-gray-500">Cargando imagen...</p>
+                </div>
+              }
+            </div>
+            
+            <!-- Controles de Navegación -->
+            @if (totalImages > 1) {
+              <div class="flex items-center justify-center gap-4">
+                <button
+                  (click)="previousImage()"
+                  [disabled]="!canGoPrevious()"
+                  class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                  <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
+                  <span>Atrás</span>
+                </button>
+                
+                <span class="text-sm font-medium text-gray-700">
+                  {{ currentImageNumber }}/{{ totalImages }}
+                </span>
+                
+                <button
+                  (click)="nextImage()"
+                  [disabled]="!canGoNext()"
+                  class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                  <span>Adelante</span>
+                  <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
+                </button>
               </div>
             }
+          </div>
+        } @else {
+          <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+            <h2 class="text-xl font-semibold text-slate-900 mb-4">Vista Previa</h2>
+            <div class="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border border-gray-300">
+              <app-icon icon="image" size="xl" color="slate-400" class="mb-2"></app-icon>
+              <p class="text-gray-500 text-sm">No hay imágenes disponibles</p>
+            </div>
           </div>
         }
       </div>

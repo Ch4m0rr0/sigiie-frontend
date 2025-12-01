@@ -9,11 +9,12 @@ import type { Subactividad } from '../../core/models/subactividad';
 import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
+import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown/multi-select-dropdown.component';
 
 @Component({
   standalone: true,
   selector: 'app-evidencias-list',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports, MultiSelectDropdownComponent],
   templateUrl: './evidencias-list.component.html',
 })
 export class EvidenciasListComponent implements OnInit {
@@ -30,7 +31,7 @@ export class EvidenciasListComponent implements OnInit {
 
   // Filtros
   filtroSubactividad = signal<number | null>(null);
-  filtroTipo = signal<number | null>(null);
+  filtroTipo = signal<number[]>([]);
   filtroSeleccionadas = signal<boolean | null>(null);
 
   ngOnInit(): void {
@@ -62,8 +63,8 @@ export class EvidenciasListComponent implements OnInit {
       this.evidenciaService.getBySubactividad(this.filtroSubactividad()!).subscribe({
         next: (data) => {
           let filtered = data;
-          if (this.filtroTipo()) {
-            filtered = filtered.filter(e => e.idTipoEvidencia === this.filtroTipo()!);
+          if (this.filtroTipo().length > 0) {
+            filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
           }
           if (this.filtroSeleccionadas() !== null) {
             filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
@@ -81,8 +82,8 @@ export class EvidenciasListComponent implements OnInit {
       this.evidenciaService.getAll().subscribe({
         next: (data) => {
           let filtered = data;
-          if (this.filtroTipo()) {
-            filtered = filtered.filter(e => e.idTipoEvidencia === this.filtroTipo()!);
+          if (this.filtroTipo().length > 0) {
+            filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
           }
           if (this.filtroSeleccionadas() !== null) {
             filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
@@ -113,27 +114,17 @@ export class EvidenciasListComponent implements OnInit {
 
   clearFilters(): void {
     this.filtroSubactividad.set(null);
-    this.filtroTipo.set(null);
+    this.filtroTipo.set([]);
     this.filtroSeleccionadas.set(null);
     this.loadEvidencias();
   }
 
-  toggleSeleccionada(id: number, seleccionada: boolean): void {
-    this.evidenciaService.marcarParaReporte(id, seleccionada).subscribe({
-      next: () => {
-        // Actualizar el estado local
-        const evidencias = this.evidencias();
-        const index = evidencias.findIndex(e => e.idEvidencia === id);
-        if (index > -1) {
-          evidencias[index].seleccionadaParaReporte = seleccionada;
-          this.evidencias.set([...evidencias]);
-        }
-      },
-      error: (err) => {
-        console.error('Error updating evidencia:', err);
-        this.error.set('Error al actualizar la evidencia');
-      }
-    });
+  getTiposEvidenciaOptions() {
+    return this.tiposEvidencia().map(tipo => ({
+      id: tipo.idTipoEvidencia,
+      label: tipo.nombre
+    }));
   }
+
 }
 

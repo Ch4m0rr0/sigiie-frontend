@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -9,6 +9,10 @@ import type { Evidencia, EvidenciaCreate } from '../models/evidencia';
 export class EvidenciaService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/evidencias`;
+
+  getBaseUrl(): string {
+    return environment.apiUrl;
+  }
 
   getAll(): Observable<Evidencia[]> {
     return this.http.get<any>(this.apiUrl).pipe(
@@ -33,11 +37,67 @@ export class EvidenciaService {
   }
 
   create(data: EvidenciaCreate): Observable<Evidencia> {
-    // Crear evidencia SIN archivo no está soportado por el backend (CreateAsync lanza error)
-    // Este método se deja para compatibilidad pero siempre debe usarse junto con upload()
-    return this.http.post<any>(this.apiUrl, data).pipe(
+    // El backend espera multipart/form-data, incluso si no hay archivo
+    // Crear un FormData vacío o con un archivo dummy mínimo
+    const formData = new FormData();
+
+    // Crear un archivo dummy mínimo (1x1 pixel PNG transparente) si no se proporciona archivo
+    // Esto evita errores 415 (Unsupported Media Type) del backend
+    const dummyImageBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const dummyBlob = this.base64ToBlob(`data:image/png;base64,${dummyImageBase64}`, 'dummy.png');
+    formData.append('Archivo', dummyBlob, 'dummy.png');
+
+    // Agregar campos del DTO al FormData (PascalCase)
+    if (data.idProyecto !== undefined && data.idProyecto !== null) {
+      formData.append('IdProyecto', String(data.idProyecto));
+    }
+    if (data.idActividad !== undefined && data.idActividad !== null) {
+      formData.append('IdActividad', String(data.idActividad));
+    }
+    if (data.idSubactividad !== undefined && data.idSubactividad !== null) {
+      formData.append('IdSubactividad', String(data.idSubactividad));
+    }
+    if (data.descripcion) {
+      formData.append('Descripcion', data.descripcion);
+    }
+    if (data.idTipoEvidencia !== undefined && data.idTipoEvidencia !== null) {
+      formData.append('IdTipoEvidencia', String(data.idTipoEvidencia));
+    }
+    if (data.fechaEvidencia) {
+      const fecha =
+        typeof data.fechaEvidencia === 'string'
+          ? data.fechaEvidencia
+          : new Date(data.fechaEvidencia).toISOString().split('T')[0];
+      formData.append('FechaEvidencia', fecha);
+    }
+    if (data.seleccionadaParaReporte !== undefined) {
+      formData.append('SeleccionadaParaReporte', String(data.seleccionadaParaReporte));
+    }
+    if (data.tipo) {
+      formData.append('Tipo', data.tipo);
+    }
+
+    return this.http.post<any>(this.apiUrl, formData).pipe(
       map(item => this.mapEvidencia(item))
     );
+  }
+
+  /**
+   * Convierte base64 a Blob
+   */
+  private base64ToBlob(base64Url: string, fileName: string): Blob {
+    const parts = base64Url.split(',');
+    const mimeType = parts[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const base64Data = parts[1];
+    
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    
+    return new Blob([byteArray], { type: mimeType });
   }
 
   update(id: number, data: Partial<EvidenciaCreate>, file?: File): Observable<void> {
@@ -123,11 +183,33 @@ export class EvidenciaService {
 
   /**
    * Obtiene la URL para descargar/ver el archivo de una evidencia
-   * Usa el endpoint del API: GET /api/evidencias/{id}/imagen
-   * Este endpoint es más eficiente y no depende de la configuración del proxy
+   * Intenta varios endpoints posibles
    */
   getFileUrl(id: number): string {
     return `${this.apiUrl}/${id}/imagen`;
+  }
+
+  /**
+   * Obtiene el archivo de una evidencia como blob
+   * NOTA: Este método está deshabilitado porque el backend no tiene estos endpoints implementados.
+   * Se usa directamente rutaArchivo para construir la URL de la imagen.
+   */
+  getFileAsBlob(id: number): Observable<Blob> {
+    // Este método ya no se usa, pero se mantiene por compatibilidad
+    // El backend no tiene endpoints para obtener archivos, se usa rutaArchivo directamente
+    return new Observable(observer => {
+      observer.error(new Error('Endpoint no disponible. Usar rutaArchivo directamente.'));
+    });
+  }
+
+  /**
+   * Descarga un archivo desde una URL usando HttpClient (evita problemas de CORS)
+   */
+  downloadFile(url: string, fileName: string): Observable<Blob> {
+    return this.http.get(url, {
+      responseType: 'blob',
+      observe: 'body'
+    });
   }
 
   upload(file: File, data: EvidenciaCreate): Observable<Evidencia> {
@@ -171,6 +253,16 @@ export class EvidenciaService {
   }
 
   private mapEvidencia(item: any): Evidencia {
+    // Mapear seleccionadaParaReporte asegurándonos de que siempre sea un booleano
+    let seleccionadaParaReporte = false;
+    if (item.seleccionadaParaReporte !== undefined) {
+      seleccionadaParaReporte = Boolean(item.seleccionadaParaReporte);
+    } else if (item.SeleccionadaParaReporte !== undefined) {
+      seleccionadaParaReporte = Boolean(item.SeleccionadaParaReporte);
+    } else if (item.seleccionadaParaReporte === null || item.SeleccionadaParaReporte === null) {
+      seleccionadaParaReporte = false;
+    }
+
     return {
       idEvidencia: item.idEvidencia || item.IdEvidencia || item.id,
       id: item.idEvidencia || item.IdEvidencia || item.id,
@@ -181,9 +273,7 @@ export class EvidenciaService {
       idTipoEvidencia: item.idTipoEvidencia || item.IdTipoEvidencia,
       nombreTipoEvidencia: item.nombreTipoEvidencia || item.NombreTipoEvidencia,
       fechaEvidencia: item.fechaEvidencia || item.FechaEvidencia,
-      seleccionadaParaReporte: item.seleccionadaParaReporte !== undefined 
-        ? item.seleccionadaParaReporte 
-        : (item.SeleccionadaParaReporte !== undefined ? item.SeleccionadaParaReporte : false),
+      seleccionadaParaReporte: seleccionadaParaReporte,
       tipo: item.tipo || item.Tipo,
       rutaArchivo: item.rutaArchivo || item.RutaArchivo,
       descripcion: item.descripcion || item.Descripcion,

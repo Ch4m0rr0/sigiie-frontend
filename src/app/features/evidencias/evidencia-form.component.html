@@ -30,20 +30,15 @@
         <div class="space-y-6">
           <!-- Tipo de Evidencia -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de Evidencia <span class="text-red-500">*</span>
-            </label>
-            <select 
-              formControlName="idTipoEvidencia"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              [class.border-red-500]="idTipoEvidencia?.invalid && idTipoEvidencia?.touched">
-              <option value="">Seleccione...</option>
-              @for (tipo of tiposEvidencia(); track tipo.idTipoEvidencia) {
-                <option [value]="tipo.idTipoEvidencia">{{ tipo.nombre }}</option>
-              }
-            </select>
-            @if (idTipoEvidencia?.invalid && idTipoEvidencia?.touched) {
-              <p class="mt-1 text-sm text-red-600">El tipo de evidencia es requerido</p>
+            <app-multi-select-dropdown
+              [options]="getTiposEvidenciaOptions()"
+              [selectedIds]="selectedTiposEvidencia()"
+              [placeholder]="'Seleccione uno o más tipos...'"
+              [label]="'Tipo de Evidencia *'"
+              (selectionChange)="selectedTiposEvidencia.set($event)">
+            </app-multi-select-dropdown>
+            @if (selectedTiposEvidencia().length === 0 && form.touched) {
+              <p class="mt-1 text-sm text-red-600">Debe seleccionar al menos un tipo de evidencia</p>
             }
           </div>
 
@@ -103,46 +98,91 @@
           <!-- Upload de Archivo -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Archivo
+              Archivos (Imágenes)
             </label>
             <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition">
               <div class="space-y-1 text-center">
                 <app-icon icon="cloud_upload" size="lg" color="slate-400"></app-icon>
                 <div class="flex text-sm text-gray-600">
                   <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                    <span>Seleccione un archivo</span>
+                    <span>Seleccione una o más imágenes</span>
                     <input 
                       id="file-upload" 
                       name="file-upload" 
                       type="file" 
                       class="sr-only"
                       (change)="onFileSelected($event)"
-                      accept="image/*,.pdf,.doc,.docx">
+                      accept="image/*"
+                      multiple>
                   </label>
-                  <p class="pl-1">o arrástrelo aquí</p>
+                  <p class="pl-1">o arrástrelas aquí</p>
                 </div>
-                @if (selectedFile()) {
-                  <p class="text-xs text-gray-500">{{ selectedFile()!.name }}</p>
+                @if (selectedFiles().length > 0) {
+                  <p class="text-xs text-gray-500">{{ selectedFiles().length }} imagen(es) seleccionada(s)</p>
                 }
               </div>
             </div>
-            @if (previewUrl()) {
-              <div class="mt-4">
-                <img [src]="previewUrl()!" alt="Preview" class="max-w-full h-auto rounded-lg border border-gray-300">
+            
+            <!-- Vista Previa con Navegación -->
+            @if (previewUrls().length > 0) {
+              <div class="mt-4 bg-white rounded-lg border border-gray-300 p-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Vista Previa</h3>
+                
+                <!-- Imagen Actual -->
+                <div class="relative mb-4">
+                  <img 
+                    [src]="getCurrentPreviewUrl()!" 
+                    alt="Preview" 
+                    class="w-full h-auto rounded-lg border border-gray-300 max-h-96 object-contain mx-auto"
+                    (error)="previewUrls.set([])">
+                </div>
+                
+                <!-- Controles de Navegación -->
+                <div class="flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    (click)="previousImage()"
+                    [disabled]="!canGoPrevious()"
+                    class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                    <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
+                    <span>Atrás</span>
+                  </button>
+                  
+                  <span class="text-sm font-medium text-gray-700">
+                    {{ currentImageNumber }}/{{ totalImages }}
+                  </span>
+                  
+                  <button
+                    type="button"
+                    (click)="nextImage()"
+                    [disabled]="!canGoNext()"
+                    class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                    <span>Adelante</span>
+                    <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
+                  </button>
+                </div>
+                
+                <!-- Lista de imágenes seleccionadas -->
+                @if (selectedFiles().length > 0) {
+                  <div class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-xs text-gray-500 mb-2">Imágenes seleccionadas:</p>
+                    <div class="flex flex-wrap gap-2">
+                      @for (file of selectedFiles(); track $index) {
+                        <div class="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
+                          <span>{{ file.name }}</span>
+                          <button
+                            type="button"
+                            (click)="removeImage($index)"
+                            class="text-red-600 hover:text-red-800">
+                            <app-icon icon="close" size="xs" color="red-600"></app-icon>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             }
-          </div>
-
-          <!-- Seleccionada para Reporte -->
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              formControlName="seleccionadaParaReporte"
-              id="seleccionadaParaReporte"
-              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <label for="seleccionadaParaReporte" class="ml-2 text-sm font-medium text-gray-700">
-              Seleccionada para reporte
-            </label>
           </div>
         </div>
 
