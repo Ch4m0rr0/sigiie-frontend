@@ -4,8 +4,10 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
+import { IndicadorService } from '../../core/services/indicador.service';
 import type { ActividadMensualInstCreate } from '../../core/models/actividad-mensual-inst';
 import type { ActividadAnual } from '../../core/models/actividad-anual';
+import type { Indicador } from '../../core/models/indicador';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
@@ -27,10 +29,12 @@ export class ActividadMensualFormComponent implements OnInit {
   private fb = inject(FormBuilder);
   private actividadMensualInstService = inject(ActividadMensualInstService);
   private actividadAnualService = inject(ActividadAnualService);
+  private indicadorService = inject(IndicadorService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
   form!: FormGroup;
+  indicadores = signal<Indicador[]>([]);
   actividadesAnuales = signal<ActividadAnual[]>([]);
   isEditMode = signal(false);
   actividadMensualId = signal<number | null>(null);
@@ -54,6 +58,7 @@ export class ActividadMensualFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeForm();
+    this.loadIndicadores();
     
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -64,28 +69,64 @@ export class ActividadMensualFormComponent implements OnInit {
 
     // Leer idIndicador de query params (si viene desde el dropdown de actividades)
     const idIndicador = this.route.snapshot.queryParams['idIndicador'];
-    this.loadActividadesAnuales(idIndicador ? +idIndicador : undefined);
+    if (idIndicador) {
+      this.form.patchValue({ idIndicador: +idIndicador });
+      this.loadActividadesAnuales(+idIndicador);
+    }
   }
 
   initializeForm(): void {
     this.form = this.fb.group({
+      idIndicador: [null, Validators.required],
       idActividadAnual: [null, Validators.required],
       mes: [null, Validators.required],
       nombre: [''],
       descripcion: [''],
       activo: [true]
     });
+    
+    // Suscribirse a cambios en el indicador para filtrar actividades anuales
+    this.form.get('idIndicador')?.valueChanges.subscribe(idIndicador => {
+      if (idIndicador) {
+        // Limpiar la selección de actividad anual cuando cambia el indicador
+        this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
+        this.loadActividadesAnuales(idIndicador);
+      } else {
+        // Si no hay indicador, limpiar las actividades anuales
+        this.actividadesAnuales.set([]);
+        this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
+      }
+    });
+  }
+  
+  loadIndicadores(): void {
+    this.indicadorService.getAll().subscribe({
+      next: (data) => {
+        this.indicadores.set(data);
+      },
+      error: (err) => {
+        console.error('Error loading indicadores:', err);
+      }
+    });
   }
 
-  loadActividadesAnuales(idIndicador?: number): void {
-    const filters = idIndicador ? { idIndicador } : undefined;
-    this.actividadAnualService.getAll(filters).subscribe({
+  loadActividadesAnuales(idIndicador: number): void {
+    if (!idIndicador) {
+      this.actividadesAnuales.set([]);
+      return;
+    }
+    
+    // Usar getByIndicador para obtener solo las actividades anuales del indicador
+    this.actividadAnualService.getByIndicador(idIndicador).subscribe({
       next: (data) => {
-        this.actividadesAnuales.set(data);
+        // Filtrar para asegurar que solo sean del indicador seleccionado
+        const actividadesFiltradas = (data || []).filter(a => a.idIndicador === idIndicador);
+        this.actividadesAnuales.set(actividadesFiltradas);
       },
       error: (err) => {
         console.error('Error loading actividades anuales:', err);
         this.error.set('Error al cargar las actividades anuales');
+        this.actividadesAnuales.set([]);
       }
     });
   }
@@ -95,7 +136,16 @@ export class ActividadMensualFormComponent implements OnInit {
     this.actividadMensualInstService.getById(id).subscribe({
       next: (data) => {
         if (data) {
+          // Obtener el idIndicador desde la actividad anual relacionada
+          const idIndicador = data.actividadAnual?.idIndicador || null;
+          
+          // Si hay indicador, cargar las actividades anuales primero
+          if (idIndicador) {
+            this.loadActividadesAnuales(idIndicador);
+          }
+          
           this.form.patchValue({
+            idIndicador: idIndicador,
             idActividadAnual: data.idActividadAnual || null,
             mes: data.mes || null,
             nombre: data.nombre || '',
@@ -211,6 +261,7 @@ export class ActividadMensualFormComponent implements OnInit {
     }
   }
 
+  get idIndicador() { return this.form.get('idIndicador'); }
   get idActividadAnual() { return this.form.get('idActividadAnual'); }
   get mes() { return this.form.get('mes'); }
 }

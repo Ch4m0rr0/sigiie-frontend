@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { HttpParams } from '@angular/common/http';
@@ -43,6 +43,12 @@ export class ActividadesService {
           return of([]);
         } else if (error.status === 500) {
           console.error('❌ Error 500 del servidor al obtener actividades:', error);
+          if (error.error) {
+            console.error('❌ Error body:', JSON.stringify(error.error, null, 2));
+          }
+          if (error.message) {
+            console.error('❌ Error message:', error.message);
+          }
           // Re-lanzar el error para que el componente pueda manejarlo
           throw error;
         } else if (error.status === 401 || error.status === 403) {
@@ -51,6 +57,9 @@ export class ActividadesService {
           throw error;
         } else {
           console.error('❌ Error fetching actividades:', error);
+          if (error.error) {
+            console.error('❌ Error body:', error.error);
+          }
           return of([]);
         }
       })
@@ -128,17 +137,68 @@ export class ActividadesService {
   // Alineado con IActividadesService.CreateAsync()
   create(actividad: ActividadCreate): Observable<Actividad> {
     // El backend espera ActividadCreateDto con PascalCase
+    // Manejar arrays: si es un array con un solo elemento, usar ese elemento; si está vacío, no enviar
+    const getIdActividadAnual = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    const getDepartamentoResponsableId = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    const getIdTipoProtagonista = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    const getIdTipoActividad = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    // Validar que nombreActividad esté presente
+    const nombreActividad = actividad.nombreActividad || actividad.nombre;
+    if (!nombreActividad || nombreActividad.trim() === '') {
+      throw new Error('El nombre de la actividad es requerido');
+    }
+
     const dto: any = {
-      NombreActividad: actividad.nombreActividad || actividad.nombre,
+      NombreActividad: nombreActividad.trim(),
       Descripcion: actividad.descripcion,
       DepartamentoId: actividad.departamentoId,
-      DepartamentoResponsableId: actividad.departamentoResponsableId,
+      DepartamentoResponsableId: getDepartamentoResponsableId(actividad.departamentoResponsableId),
       IdTipoIniciativa: actividad.idTipoIniciativa,
       FechaInicio: actividad.fechaInicio,
       FechaFin: actividad.fechaFin,
       FechaEvento: actividad.fechaEvento,
       IdEstadoActividad: actividad.idEstadoActividad,
-      IdTipoActividad: actividad.idTipoActividad || actividad.categoriaActividadId,
+      IdTipoActividad: getIdTipoActividad(actividad.idTipoActividad) || actividad.categoriaActividadId,
       IdArea: actividad.idArea || actividad.areaConocimientoId,
       IdTipoDocumento: actividad.idTipoDocumento,
       Organizador: actividad.organizador,
@@ -151,7 +211,7 @@ export class ActividadesService {
       IdActividadMensualInst: actividad.idActividadMensualInst,
       EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true,
       IdIndicador: actividad.idIndicador,
-      IdActividadAnual: actividad.idActividadAnual,
+      IdActividadAnual: getIdActividadAnual(actividad.idActividadAnual),
       Objetivo: actividad.objetivo,
       CantidadMaximaParticipantesEstudiantes: actividad.cantidadMaximaParticipantesEstudiantes,
       TipoResumenAccion: actividad.tipoResumenAccion,
@@ -162,15 +222,23 @@ export class ActividadesService {
       Anio: actividad.anio,
       HoraRealizacion: actividad.horaRealizacion,
       CantidadParticipantesProyectados: actividad.cantidadParticipantesProyectados,
-      IdTipoProtagonista: actividad.idTipoProtagonista,
+      CantidadParticipantesEstudiantesProyectados: actividad.cantidadParticipantesEstudiantesProyectados,
+      IdTipoProtagonista: getIdTipoProtagonista(actividad.idTipoProtagonista),
+      ResponsableActividad: actividad.responsableActividad,
     };
     
-    // Remover campos undefined
+    // Remover campos undefined, null, o arrays vacíos
     Object.keys(dto).forEach(key => {
-      if (dto[key] === undefined || dto[key] === null) {
+      const value = dto[key];
+      if (value === undefined || value === null) {
+        delete dto[key];
+      } else if (Array.isArray(value) && value.length === 0) {
+        // Si es un array vacío, no enviar el campo
         delete dto[key];
       }
     });
+    
+    console.log('🔄 POST Actividad - DTO:', JSON.stringify(dto, null, 2));
     
     return this.http.post<any>(this.apiUrl, dto).pipe(
       map(item => this.mapActividad(item))
@@ -180,10 +248,58 @@ export class ActividadesService {
   // Alineado con IActividadesService.UpdateAsync()
   update(id: number, actividad: Partial<ActividadCreate>): Observable<boolean> {
     // El backend espera ActividadUpdateDto con PascalCase
+    // Manejar arrays: si es un array con un solo elemento, usar ese elemento; si está vacío, no enviar
+    const getIdActividadAnual = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    const getDepartamentoResponsableId = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    const getIdTipoProtagonista = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
+    const getIdTipoActividad = (value: number | number[] | undefined): number | number[] | undefined => {
+      if (value === undefined || value === null) return undefined;
+      if (Array.isArray(value)) {
+        if (value.length === 0) return undefined; // No enviar arrays vacíos
+        // Si el backend acepta arrays, enviar el array; si no, enviar solo el primer elemento
+        // Por ahora, si hay múltiples elementos, enviar solo el primero para evitar errores
+        return value.length === 1 ? value[0] : value[0];
+      }
+      return value;
+    };
+
     const dto: any = {};
     
     if (actividad.nombreActividad !== undefined || actividad.nombre !== undefined) {
-      dto.NombreActividad = actividad.nombreActividad || actividad.nombre;
+      const nombreActividad = actividad.nombreActividad || actividad.nombre;
+      if (nombreActividad && nombreActividad.trim() !== '') {
+        dto.NombreActividad = nombreActividad.trim();
+      }
     }
     if (actividad.descripcion !== undefined) {
       dto.Descripcion = actividad.descripcion;
@@ -192,7 +308,10 @@ export class ActividadesService {
       dto.DepartamentoId = actividad.departamentoId;
     }
     if (actividad.departamentoResponsableId !== undefined) {
-      dto.DepartamentoResponsableId = actividad.departamentoResponsableId;
+      const deptId = getDepartamentoResponsableId(actividad.departamentoResponsableId);
+      if (deptId !== undefined) {
+        dto.DepartamentoResponsableId = deptId;
+      }
     }
     if (actividad.idTipoIniciativa !== undefined) {
       dto.IdTipoIniciativa = actividad.idTipoIniciativa;
@@ -210,16 +329,18 @@ export class ActividadesService {
       dto.IdEstadoActividad = actividad.idEstadoActividad;
     }
     if (actividad.idTipoActividad !== undefined || actividad.categoriaActividadId !== undefined) {
-      dto.IdTipoActividad = actividad.idTipoActividad || actividad.categoriaActividadId;
+      const tipoActividadId = getIdTipoActividad(actividad.idTipoActividad);
+      if (tipoActividadId !== undefined) {
+        dto.IdTipoActividad = tipoActividadId;
+      } else if (actividad.categoriaActividadId !== undefined) {
+        dto.IdTipoActividad = actividad.categoriaActividadId;
+      }
     }
     if (actividad.idArea !== undefined || actividad.areaConocimientoId !== undefined) {
       dto.IdArea = actividad.idArea || actividad.areaConocimientoId;
     }
     if (actividad.idTipoDocumento !== undefined) {
       dto.IdTipoDocumento = actividad.idTipoDocumento;
-    }
-    if (actividad.organizador !== undefined) {
-      dto.Organizador = actividad.organizador;
     }
     if (actividad.modalidad !== undefined) {
       dto.Modalidad = actividad.modalidad;
@@ -252,7 +373,10 @@ export class ActividadesService {
       dto.IdIndicador = actividad.idIndicador;
     }
     if (actividad.idActividadAnual !== undefined) {
-      dto.IdActividadAnual = actividad.idActividadAnual;
+      const actividadAnualId = getIdActividadAnual(actividad.idActividadAnual);
+      if (actividadAnualId !== undefined) {
+        dto.IdActividadAnual = actividadAnualId;
+      }
     }
     if (actividad.objetivo !== undefined) {
       dto.Objetivo = actividad.objetivo;
@@ -284,14 +408,39 @@ export class ActividadesService {
     if (actividad.cantidadParticipantesProyectados !== undefined) {
       dto.CantidadParticipantesProyectados = actividad.cantidadParticipantesProyectados;
     }
-    if (actividad.idTipoProtagonista !== undefined) {
-      dto.IdTipoProtagonista = actividad.idTipoProtagonista;
+    if (actividad.cantidadParticipantesEstudiantesProyectados !== undefined) {
+      dto.CantidadParticipantesEstudiantesProyectados = actividad.cantidadParticipantesEstudiantesProyectados;
     }
+    if (actividad.idTipoProtagonista !== undefined) {
+      const tipoProtagonistaId = getIdTipoProtagonista(actividad.idTipoProtagonista);
+      if (tipoProtagonistaId !== undefined) {
+        dto.IdTipoProtagonista = tipoProtagonistaId;
+      }
+    }
+    if (actividad.responsableActividad !== undefined) {
+      dto.ResponsableActividad = actividad.responsableActividad;
+    }
+    
+    // Remover campos undefined, null, o arrays vacíos
+    Object.keys(dto).forEach(key => {
+      const value = dto[key];
+      if (value === undefined || value === null) {
+        delete dto[key];
+      } else if (Array.isArray(value) && value.length === 0) {
+        // Si es un array vacío, no enviar el campo
+        delete dto[key];
+      }
+    });
+    
+    console.log('🔄 PUT Actividad - DTO:', JSON.stringify(dto, null, 2));
     
     return this.http.put<any>(`${this.apiUrl}/${id}`, dto).pipe(
       map(() => true),
       catchError(error => {
         console.error('Error updating actividad:', error);
+        if (error.error) {
+          console.error('Error details:', JSON.stringify(error.error, null, 2));
+        }
         return of(false);
       })
     );
@@ -299,11 +448,21 @@ export class ActividadesService {
 
   // Alineado con IActividadesService.DeleteAsync()
   delete(id: number): Observable<boolean> {
+    console.log('🗑️ DELETE Actividad - ID:', id);
     return this.http.delete<any>(`${this.apiUrl}/${id}`).pipe(
-      map(() => true),
+      map(() => {
+        console.log('✅ Actividad eliminada exitosamente');
+        return true;
+      }),
       catchError(error => {
-        console.error('Error deleting actividad:', error);
-        return of(false);
+        console.error('❌ Error deleting actividad:', error);
+        if (error.error) {
+          console.error('Error details:', JSON.stringify(error.error, null, 2));
+        }
+        if (error.status === 500) {
+          console.error('Error 500: El servidor encontró un error interno. Esto puede deberse a restricciones de integridad referencial (la actividad puede tener relaciones con otros registros).');
+        }
+        return throwError(() => error); // Propagar el error para que el componente pueda manejarlo
       })
     );
   }

@@ -40,10 +40,15 @@ export class EvidenciaService {
     );
   }
 
-  update(id: number, data: Partial<EvidenciaCreate>): Observable<void> {
+  update(id: number, data: Partial<EvidenciaCreate>, file?: File): Observable<void> {
     // El backend de actualización espera datos como formulario (multipart/form-data),
     // aunque no se envíe un archivo nuevo.
     const formData = new FormData();
+
+    // Si hay un archivo nuevo, agregarlo
+    if (file) {
+      formData.append('Archivo', file);
+    }
 
     if (data.idProyecto !== undefined && data.idProyecto !== null) {
       formData.append('IdProyecto', String(data.idProyecto));
@@ -69,6 +74,9 @@ export class EvidenciaService {
     }
     if (data.seleccionadaParaReporte !== undefined) {
       formData.append('SeleccionadaParaReporte', String(data.seleccionadaParaReporte));
+    }
+    if (data.tipo) {
+      formData.append('Tipo', data.tipo);
     }
 
     return this.http.put<void>(`${this.apiUrl}/${id}`, formData);
@@ -111,6 +119,15 @@ export class EvidenciaService {
 
   marcarParaReporte(id: number, seleccionada: boolean): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/${id}/marcar-para-reporte`, { seleccionada });
+  }
+
+  /**
+   * Obtiene la URL para descargar/ver el archivo de una evidencia
+   * Usa el endpoint del API: GET /api/evidencias/{id}/imagen
+   * Este endpoint es más eficiente y no depende de la configuración del proxy
+   */
+  getFileUrl(id: number): string {
+    return `${this.apiUrl}/${id}/imagen`;
   }
 
   upload(file: File, data: EvidenciaCreate): Observable<Evidencia> {

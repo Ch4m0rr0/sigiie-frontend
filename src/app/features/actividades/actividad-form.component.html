@@ -7,7 +7,7 @@
             <app-icon icon="arrow_back" size="sm"></app-icon>
         </button>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-            {{ isEditMode() ? 'Editar Actividad' : 'Nueva Actividad' }}
+            {{ isEditMode() ? 'Editar Actividad planificada' : 'Nueva Actividad planificada' }}
         </h1>
       </div>
       <p class="text-slate-500 text-sm ml-10">
@@ -101,7 +101,7 @@
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-sm font-medium text-slate-700" for="idActividadAnual">
-                                Actividad Anual
+                                Actividades anuales
                             </label>
                             @if (form.get('idIndicador')?.value) {
                                 <button
@@ -113,25 +113,26 @@
                                 </button>
                             }
                         </div>
-                        <div class="relative">
-                            <select 
-                                formControlName="idActividadAnual"
-                                id="idActividadAnual"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer">
-                                <option [value]="null">Seleccione actividad anual...</option>
-                                @if (actividadesAnualesFiltradas().length > 0) {
-                                    @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
-                                        <option [value]="anual.idActividadAnual">
+                        <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+                            @if (actividadesAnualesFiltradas().length > 0) {
+                                @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
+                                    <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
+                                        <input 
+                                            type="checkbox"
+                                            [value]="anual.idActividadAnual"
+                                            (change)="toggleActividadAnual(anual.idActividadAnual, $event)"
+                                            [checked]="isActividadAnualSelected(anual.idActividadAnual)"
+                                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
+                                        <span class="text-sm text-slate-700">
                                             {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
-                                        </option>
-                                    }
-                                } @else if (form.get('idIndicador')?.value) {
-                                    <option disabled>No hay actividades anuales para este indicador</option>
-                                } @else {
-                                    <option disabled>Seleccione un indicador primero</option>
+                                        </span>
+                                    </label>
                                 }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                            } @else if (form.get('idIndicador')?.value) {
+                                <p class="text-sm text-slate-500 text-center py-4">No hay actividades planificadas para este indicador</p>
+                            } @else {
+                                <p class="text-sm text-slate-500 text-center py-4">Seleccione un indicador primero</p>
+                            }
                         </div>
                     </div>
                 </div>
@@ -210,80 +211,114 @@
                             class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
                     </div>
                 </div>
+
+                <!-- Fechas y Horas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Fecha de realización de la actividad
+                        </label>
+                        <input 
+                            type="date"
+                            formControlName="fechaInicio"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Hora de realización de la actividad
+                        </label>
+                        <input 
+                            type="text"
+                            formControlName="horaRealizacion"
+                            placeholder="Ej: 02:30 PM"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Fecha de Fin
+                        </label>
+                        <input 
+                            type="date"
+                            formControlName="fechaFin"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <!-- Departamentos y Estado -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Departamentos Responsables
+                        </label>
+                        <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+                            @for (dept of departamentos(); track dept.id) {
+                                <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
+                                    <input 
+                                        type="checkbox"
+                                        [value]="dept.id"
+                                        (change)="toggleDepartamentoResponsable(dept.id, $event)"
+                                        [checked]="isDepartamentoResponsableSelected(dept.id)"
+                                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
+                                    <span class="text-sm text-slate-700">{{ dept.nombre }}</span>
+                                </label>
+                            }
+                            @if (departamentos().length === 0) {
+                                <p class="text-sm text-slate-500 text-center py-4">No hay departamentos disponibles</p>
+                            }
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Estado de Actividad
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <app-icon icon="toggle_on" size="xs"></app-icon>
+                            </span>
+                            <select 
+                                formControlName="idEstadoActividad"
+                                class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
+                                <option [ngValue]="null">Seleccione estado...</option>
+                                @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                                    <option [ngValue]="estado.idEstadoActividad || estado.id">
+                                        {{ estado.nombre }}
+                                    </option>
+                                }
+                            </select>
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                <app-icon icon="expand_more" size="xs"></app-icon>
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Tipo de Actividad, Área y Tipo de Documento -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Tipo de Actividad
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="category" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idTipoActividad"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione tipo...</option>
-                            @for (tipo of categoriasActividad(); track tipo.idCategoriaActividad || tipo.id) {
-                                <option [ngValue]="tipo.idCategoriaActividad || tipo.id">
-                                    {{ tipo.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Área de Conocimiento
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="school" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idArea"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione área...</option>
-                            @for (area of areasConocimiento(); track area.id) {
-                                <option [ngValue]="area.id">
-                                    {{ area.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Tipo de Documento
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="description" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idTipoDocumento"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione tipo...</option>
-                            @for (tipo of tiposDocumento(); track tipo.id) {
-                                <option [ngValue]="tipo.id">
-                                    {{ tipo.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
+            <!-- Tipo de Actividad -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Tipo de Actividad
+                </label>
+                <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+                    @if (categoriasActividad().length > 0) {
+                        @for (tipo of categoriasActividad(); track tipo.idCategoriaActividad || tipo.id) {
+                            <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
+                                <input 
+                                    type="checkbox"
+                                    [value]="tipo.idCategoriaActividad || tipo.id"
+                                    (change)="toggleTipoActividad(tipo.idCategoriaActividad || tipo.id, $event)"
+                                    [checked]="isTipoActividadSelected(tipo.idCategoriaActividad || tipo.id)"
+                                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
+                                <span class="text-sm text-slate-700">{{ tipo.nombre }}</span>
+                            </label>
+                        }
+                    } @else {
+                        <p class="text-sm text-slate-500 text-center py-4">No hay tipos de actividad disponibles</p>
+                    }
                 </div>
             </div>
 
@@ -305,7 +340,7 @@
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Capacidad Instalada
+                        Local
                     </label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
@@ -314,7 +349,7 @@
                         <select 
                             formControlName="idCapacidadInstalada"
                             class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione capacidad...</option>
+                            <option [ngValue]="null">Seleccione local...</option>
                             @for (capacidad of capacidadesInstaladas(); track capacidad.id) {
                                 <option [ngValue]="capacidad.id">
                                     {{ capacidad.nombre }}
@@ -339,297 +374,87 @@
                 </div>
             </div>
 
-            <!-- Nivel y Tipo de Protagonista -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Nivel de Actividad
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="layers" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idNivel"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione nivel...</option>
-                            @for (nivel of nivelesActividad(); track nivel.idNivel) {
-                                <option [ngValue]="nivel.idNivel">
-                                    {{ nivel.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Tipo de Protagonista
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="people" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idTipoProtagonista"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione tipo...</option>
-                            @for (tipo of tiposProtagonista(); track tipo.id) {
-                                <option [ngValue]="tipo.id">
-                                    {{ tipo.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Participantes -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Cantidad Máxima Participantes Estudiantes
-                    </label>
-                    <input 
-                        type="number"
-                        formControlName="cantidadMaximaParticipantesEstudiantes"
-                        min="0"
-                        placeholder="Ej: 50"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Cantidad Participantes Proyectados
-                    </label>
-                    <input 
-                        type="number"
-                        formControlName="cantidadParticipantesProyectados"
-                        min="0"
-                        placeholder="Ej: 30"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Año
-                    </label>
-                    <input 
-                        type="number"
-                        formControlName="anio"
-                        min="2000"
-                        max="2100"
-                        placeholder="Ej: 2024"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-            </div>
-
-            <!-- Fechas -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Fecha de Inicio
-                    </label>
-                    <input 
-                        type="date"
-                        formControlName="fechaInicio"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Fecha de Fin
-                    </label>
-                    <input 
-                        type="date"
-                        formControlName="fechaFin"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Fecha del Evento
-                    </label>
-                    <input 
-                        type="date"
-                        formControlName="fechaEvento"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Hora de Realización
-                    </label>
-                    <input 
-                        type="time"
-                        formControlName="horaRealizacion"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-            </div>
-
-            <!-- Departamentos y Tipos -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Departamento Responsable
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="business" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="departamentoResponsableId"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione departamento...</option>
-                            @for (dept of departamentos(); track dept.id) {
-                                <option [ngValue]="dept.id">
-                                    {{ dept.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Tipo de Iniciativa
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="lightbulb" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idTipoIniciativa"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione tipo...</option>
-                            @for (tipo of tiposIniciativa(); track tipo.id) {
-                                <option [ngValue]="tipo.id">
-                                    {{ tipo.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Estado de Actividad
-                    </label>
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                            <app-icon icon="toggle_on" size="xs"></app-icon>
-                        </span>
-                        <select 
-                            formControlName="idEstadoActividad"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer">
-                            <option [ngValue]="null">Seleccione estado...</option>
-                            @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
-                                <option [ngValue]="estado.idEstadoActividad || estado.id">
-                                    {{ estado.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                            <app-icon icon="expand_more" size="xs"></app-icon>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Organizador -->
+            <!-- Protagonista principal -->
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                    Organizador
+                    Protagonista principal
+                </label>
+                <div class="bg-white border border-slate-300 rounded-lg p-4 max-h-48 overflow-y-auto">
+                    @for (tipo of tiposProtagonista(); track tipo.id) {
+                        <label class="flex items-center gap-2 py-2 cursor-pointer hover:bg-slate-50 rounded px-2">
+                            <input 
+                                type="checkbox"
+                                [value]="tipo.id"
+                                (change)="toggleProtagonista(tipo.id, $event)"
+                                [checked]="isProtagonistaSelected(tipo.id)"
+                                class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500">
+                            <span class="text-sm text-slate-700">{{ tipo.nombre }}</span>
+                        </label>
+                    }
+                    @if (tiposProtagonista().length === 0) {
+                        <p class="text-sm text-slate-500 text-center py-4">No hay tipos de protagonista disponibles</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Responsable de actividad -->
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                    Responsable de actividad
                 </label>
                 <input 
                     type="text"
-                    formControlName="organizador"
-                    placeholder="Ej: Departamento de Investigación"
+                    formControlName="responsableActividad"
+                    placeholder="Ej: Juan Pérez"
                     class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
             </div>
 
-
-            <!-- Metas y Valoraciones -->
-            <div class="border-t border-slate-200 pt-6 mt-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700 mb-4">
-                    <app-icon icon="assessment" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Metas y Valoraciones</h3>
-                </div>
-
+                <!-- Participantes -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                            Meta Alcanzada
+                            Cantidad total de participantes proyectados <span class="text-red-500">*</span>
                         </label>
                         <input 
                             type="number"
-                            formControlName="metaAlcanzada"
-                            step="0.01"
+                            formControlName="cantidadParticipantesProyectados"
                             min="0"
-                            placeholder="Ej: 100"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                            placeholder="Ej: 30"
+                            required
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                            [class.border-red-500]="form.get('cantidadParticipantesProyectados')?.invalid && form.get('cantidadParticipantesProyectados')?.touched">
+                        @if (form.get('cantidadParticipantesProyectados')?.invalid && form.get('cantidadParticipantesProyectados')?.touched) {
+                            <p class="mt-1 text-xs text-red-600">Este campo es obligatorio</p>
+                        }
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                            Meta Cumplimiento (%)
+                            Cantidad de participantes estudiantes proyectados
                         </label>
                         <input 
                             type="number"
-                            formControlName="metaCumplimiento"
-                            step="0.01"
+                            formControlName="cantidadParticipantesEstudiantesProyectados"
                             min="0"
-                            max="100"
-                            placeholder="Ej: 85.5"
+                            placeholder="Ej: 25"
                             class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                     </div>
                 </div>
 
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Tipo/Resumen de Acción
-                    </label>
-                    <input 
-                        type="text"
-                        formControlName="tipoResumenAccion"
-                        placeholder="Ej: Taller de investigación, Conferencia, etc."
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1.5">
+                            Edición
+                        </label>
+                        <input 
+                            type="number"
+                            formControlName="anio"
+                            min="2000"
+                            max="2100"
+                            placeholder="Ej: 2024"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    </div>
                 </div>
-
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Valoración Indicador Estratégico
-                    </label>
-                    <textarea 
-                        formControlName="valoracionIndicadorEstrategico"
-                        rows="3"
-                        placeholder="Valoración cualitativa del indicador estratégico..."
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
-                </div>
-
-                <div class="mt-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">
-                        Brecha Estratégica
-                    </label>
-                    <textarea 
-                        formControlName="brechaEstrategica"
-                        rows="3"
-                        placeholder="Brecha estratégica identificada..."
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
-                </div>
-            </div>
 
             <!-- Estado -->
             <div class="space-y-6">
@@ -640,7 +465,10 @@
 
                 <div class="pt-2">
                     <label class="inline-flex items-center cursor-pointer group">
-                        <input type="checkbox" formControlName="activo" class="sr-only peer">
+                        <input 
+                            type="checkbox" 
+                            formControlName="activo"
+                            class="sr-only peer">
                         <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                         <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
                     </label>

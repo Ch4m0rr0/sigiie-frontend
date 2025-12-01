@@ -13,7 +13,7 @@ export interface Actividad {
   // Departamentos
   departamentoId?: number;
   nombreDepartamento?: string;
-  departamentoResponsableId?: number;
+  departamentoResponsableId?: number | number[]; // Puede ser un número o un array de números
   nombreDepartamentoResponsable?: string;
   
   // Tipos e Iniciativas
@@ -35,7 +35,7 @@ export interface Actividad {
   nombreEstadoActividad?: string;
   
   // Tipo de Actividad
-  idTipoActividad?: number;
+  idTipoActividad?: number | number[]; // Puede ser un número o un array de números
   nombreTipoActividad?: string;
   
   // Área de Conocimiento
@@ -67,7 +67,7 @@ export interface Actividad {
   codigoIndicadorAsociado?: string;
   nombreIndicadorAsociado?: string;
   metaIndicador?: number;
-  idActividadAnual?: number;
+  idActividadAnual?: number | number[]; // Puede ser un número o un array de números
   nombreActividadAnual?: string;
   
   // Objetivos y Metas
@@ -81,7 +81,9 @@ export interface Actividad {
   anio?: number;
   horaRealizacion?: string; // TimeOnly del backend
   cantidadParticipantesProyectados?: number;
-  idTipoProtagonista?: number;
+  cantidadParticipantesEstudiantesProyectados?: number;
+  idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
+  responsableActividad?: string;
   
   // Usuario creador
   creadoPor: number;
@@ -116,13 +118,13 @@ export interface ActividadCreate {
   nombreActividad: string;
   descripcion?: string;
   departamentoId?: number;
-  departamentoResponsableId?: number;
+  departamentoResponsableId?: number | number[]; // Puede ser un número o un array de números
   idTipoIniciativa?: number;
   fechaInicio?: string; // DateOnly en formato string
   fechaFin?: string; // DateOnly en formato string
   fechaEvento?: string; // DateOnly en formato string
   idEstadoActividad?: number;
-  idTipoActividad?: number;
+  idTipoActividad?: number | number[]; // Puede ser un número o un array de números
   idArea?: number;
   idTipoDocumento?: number;
   organizador?: string;
@@ -136,7 +138,7 @@ export interface ActividadCreate {
   idActividadMensualInst?: number;
   esPlanificada?: boolean;
   idIndicador?: number;
-  idActividadAnual?: number;
+  idActividadAnual?: number | number[]; // Puede ser un número o un array de números
   objetivo?: string;
   cantidadMaximaParticipantesEstudiantes?: number;
   tipoResumenAccion?: string;
@@ -147,7 +149,9 @@ export interface ActividadCreate {
   anio?: number;
   horaRealizacion?: string; // TimeOnly en formato string (HH:mm:ss)
   cantidadParticipantesProyectados?: number;
-  idTipoProtagonista?: number;
+  cantidadParticipantesEstudiantesProyectados?: number;
+  idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
+  responsableActividad?: string;
   
   // Campos legacy para compatibilidad
   nombre?: string; // Alias para nombreActividad

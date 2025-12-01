@@ -1439,6 +1439,30 @@ export class CatalogosService {
     );
   }
 
+  // Tipos Responsable - Endpoint: /api/tipo-responsable
+  getTiposResponsable(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/tipo-responsable`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idTipoResponsable || item.IdTipoResponsable || item.id || item.Id || 0,
+          idTipoResponsable: item.idTipoResponsable || item.IdTipoResponsable || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/tipo-responsable no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching tipos responsable:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
   // Capacidades Instaladas - Endpoint: /api/capacidad-instalaciones
   getCapacidadesInstaladas(): Observable<any[]> {
     return this.http.get<any>(`${this.apiUrl}/capacidad-instalaciones`).pipe(

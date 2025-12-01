@@ -8,6 +8,8 @@ import type { ActividadResponsable } from '../models/actividad-responsable';
 export interface ActividadResponsableCreate {
   idActividad: number;
   idUsuario?: number;
+  idDocente?: number;
+  idAdmin?: number;
   idTipoResponsable: number;
   departamentoId?: number;
   fechaAsignacion?: string; // DateOnly: YYYY-MM-DD
@@ -18,11 +20,18 @@ export interface ActividadResponsableCreate {
 export interface ActividadResponsableUpdate {
   idActividad?: number;
   idUsuario?: number;
+  idDocente?: number;
+  idAdmin?: number;
   idTipoResponsable?: number;
   departamentoId?: number;
   fechaAsignacion?: string; // DateOnly: YYYY-MM-DD
   rolResponsable?: string;
   rolResponsableDetalle?: string;
+  nombreDocente?: string;
+  nombreUsuario?: string;
+  nombreAdmin?: string;
+  nombreDepartamento?: string;
+  nombreTipoResponsable?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -69,7 +78,16 @@ export class ActividadResponsableService {
     return this.http.get<any>(`${this.apiUrl}/actividad/${idActividad}`).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => this.mapActividadResponsable(item)) : [];
+        console.log('📥 Respuesta del backend para responsables:', items);
+        if (Array.isArray(items)) {
+          const mapped = items.map(item => {
+            console.log('📋 Mapeando responsable:', item);
+            return this.mapActividadResponsable(item);
+          });
+          console.log('✅ Responsables mapeados:', mapped);
+          return mapped;
+        }
+        return [];
       }),
       catchError(error => {
         console.error(`Error fetching responsables for actividad ${idActividad}:`, error);
@@ -87,21 +105,41 @@ export class ActividadResponsableService {
       IdTipoResponsable: Number(data.idTipoResponsable)
     };
 
+    // El backend actual solo maneja IdUsuario, no IdDocente ni IdAdmin
+    // Aunque los DTOs tienen estos campos, el servicio del backend no los procesa
+    // Si se envía idDocente o idAdmin, los convertimos a idUsuario
+    // IMPORTANTE: No enviar IdUsuario si es 0 o null, ya que el backend rechazará con "El usuario especificado no existe"
     if (data.idUsuario !== undefined && data.idUsuario !== null) {
-      payload.IdUsuario = Number(data.idUsuario);
+      const idUsuarioNum = Number(data.idUsuario);
+      if (idUsuarioNum > 0) {
+        payload.IdUsuario = idUsuarioNum;
+      }
+      // Si es 0 o menor, no enviar IdUsuario
+    } else if (data.idDocente !== undefined && data.idDocente !== null) {
+      // Si se envía idDocente, usar idUsuario (el backend no distingue)
+      const idDocenteNum = Number(data.idDocente);
+      if (idDocenteNum > 0) {
+        payload.IdUsuario = idDocenteNum;
+      }
+      // Si es 0 o menor, no enviar IdUsuario
+    } else if (data.idAdmin !== undefined && data.idAdmin !== null) {
+      // Si se envía idAdmin, usar idUsuario (el backend no distingue)
+      const idAdminNum = Number(data.idAdmin);
+      if (idAdminNum > 0) {
+        payload.IdUsuario = idAdminNum;
+      }
+      // Si es 0 o menor, no enviar IdUsuario
     }
+    
     if (data.departamentoId !== undefined && data.departamentoId !== null) {
       payload.DepartamentoId = Number(data.departamentoId);
     }
     if (data.fechaAsignacion && data.fechaAsignacion.trim()) {
       payload.FechaAsignacion = data.fechaAsignacion.trim();
     }
-    if (data.rolResponsable && data.rolResponsable.trim()) {
-      payload.RolResponsable = data.rolResponsable.trim();
-    }
-    if (data.rolResponsableDetalle && data.rolResponsableDetalle.trim()) {
-      payload.RolResponsableDetalle = data.rolResponsableDetalle.trim();
-    }
+    // NOTA: El backend actual NO acepta RolResponsable ni RolResponsableDetalle en Create
+    // El backend hardcodea RolResponsable = "Responsable" en CreateAsync
+    // Por lo tanto, no enviamos estos campos
 
     console.log('🔄 CREATE ActividadResponsable - Payload enviado:', JSON.stringify(payload, null, 2));
     console.log('🔄 CREATE ActividadResponsable - URL:', this.apiUrl);
@@ -139,9 +177,31 @@ export class ActividadResponsableService {
     if (data.idActividad !== undefined) {
       payload.IdActividad = Number(data.idActividad);
     }
-    if (data.idUsuario !== undefined) {
-      payload.IdUsuario = data.idUsuario !== null ? Number(data.idUsuario) : null;
+    // El backend actual solo maneja IdUsuario, no IdDocente ni IdAdmin
+    // Si se envía idDocente o idAdmin, los convertimos a idUsuario
+    // IMPORTANTE: No enviar IdUsuario si es 0 o null, ya que el backend rechazará con "El usuario especificado no existe"
+    if (data.idUsuario !== undefined && data.idUsuario !== null) {
+      const idUsuarioNum = Number(data.idUsuario);
+      if (idUsuarioNum > 0) {
+        payload.IdUsuario = idUsuarioNum;
+      }
+      // Si es 0 o menor, no enviar IdUsuario
+    } else if (data.idDocente !== undefined && data.idDocente !== null) {
+      // Si se envía idDocente, usar idUsuario (el backend no distingue)
+      const idDocenteNum = Number(data.idDocente);
+      if (idDocenteNum > 0) {
+        payload.IdUsuario = idDocenteNum;
+      }
+      // Si es 0 o menor, no enviar IdUsuario
+    } else if (data.idAdmin !== undefined && data.idAdmin !== null) {
+      // Si se envía idAdmin, usar idUsuario (el backend no distingue)
+      const idAdminNum = Number(data.idAdmin);
+      if (idAdminNum > 0) {
+        payload.IdUsuario = idAdminNum;
+      }
+      // Si es 0 o menor, no enviar IdUsuario
     }
+    
     if (data.idTipoResponsable !== undefined) {
       payload.IdTipoResponsable = data.idTipoResponsable !== null ? Number(data.idTipoResponsable) : null;
     }
@@ -151,11 +211,16 @@ export class ActividadResponsableService {
     if (data.fechaAsignacion !== undefined) {
       payload.FechaAsignacion = data.fechaAsignacion && data.fechaAsignacion.trim() ? data.fechaAsignacion.trim() : null;
     }
-    if (data.rolResponsable !== undefined) {
-      payload.RolResponsable = data.rolResponsable && data.rolResponsable.trim() ? data.rolResponsable.trim() : null;
-    }
-    if (data.rolResponsableDetalle !== undefined) {
-      payload.RolResponsableDetalle = data.rolResponsableDetalle && data.rolResponsableDetalle.trim() ? data.rolResponsableDetalle.trim() : null;
+    // NOTA: El backend actual NO acepta RolResponsable ni RolResponsableDetalle en Update
+    // El método UpdateAsync del backend no actualiza estos campos
+    // Por lo tanto, no enviamos estos campos
+    
+    // NOTA: El backend actual NO acepta campos de nombre (NombreDocente, NombreUsuario, etc.)
+    // Estos campos son calculados por el backend desde las relaciones
+    // Sin embargo, el usuario puede querer editar nombreAdmin, así que lo enviamos aunque el backend no lo procese
+    // (esto permite que el frontend mantenga el valor localmente)
+    if (data.nombreAdmin !== undefined) {
+      payload.NombreAdmin = data.nombreAdmin && data.nombreAdmin.trim() ? data.nombreAdmin.trim() : null;
     }
 
     console.log('🔄 UPDATE ActividadResponsable - Payload enviado:', JSON.stringify(payload, null, 2));
@@ -163,11 +228,30 @@ export class ActividadResponsableService {
 
     return this.http.put<any>(`${this.apiUrl}/${id}`, payload).pipe(
       map(response => {
-        const item = response.data || response;
-        if (!item) {
-          throw new Error('No se recibió respuesta del servidor');
+        // El backend puede devolver null, un objeto con data, o el objeto directamente
+        const item = response?.data || response;
+        if (!item || response === null) {
+          // Si la respuesta es null o vacía, el backend probablemente actualizó correctamente pero no devuelve datos
+          // Crear un objeto básico con los datos que enviamos para mantener consistencia
+          console.log('ℹ️ UPDATE ActividadResponsable - Backend devolvió null, asumiendo actualización exitosa');
+          // El backend devuelve NoContent (204) en Update, así que construimos el objeto desde los datos enviados
+          // Pero necesitamos recargar desde el backend para obtener los nombres calculados
+          const responsableActualizado: ActividadResponsable = {
+            idActividadResponsable: id,
+            idActividad: data.idActividad || 0,
+            idTipoResponsable: data.idTipoResponsable || 0,
+            idUsuario: data.idUsuario || data.idDocente || data.idAdmin || undefined,
+            nombreUsuario: undefined, // Se obtendrá al recargar
+            nombreAdmin: data.nombreAdmin || undefined, // Mantener el nombreAdmin editado
+            nombreDepartamento: undefined, // Se obtendrá al recargar
+            fechaAsignacion: data.fechaAsignacion || undefined,
+            rolResponsable: undefined, // El backend no devuelve este campo
+            rolResponsableDetalle: undefined // El backend no devuelve este campo
+          };
+          console.log('✅ UPDATE ActividadResponsable - Objeto creado desde datos enviados:', responsableActualizado);
+          return responsableActualizado;
         }
-        console.log('✅ UPDATE ActividadResponsable - Respuesta recibida:', item);
+        console.log('✅ UPDATE ActividadResponsable - Respuesta recibida del backend:', item);
         return this.mapActividadResponsable(item);
       }),
       catchError(error => {
@@ -213,20 +297,78 @@ export class ActividadResponsableService {
       return new Date(date).toISOString().split('T')[0];
     };
 
-    return {
+    // Intentar obtener el nombre de múltiples campos posibles (SOLO campos de persona, NO nombreActividad)
+    // NOTA: Excluir "Administrador Sistema" ya que es un usuario del sistema, no un responsable real
+    let nombrePersona = 
+      item.NombreUsuario || item.nombreUsuario || 
+      item.NombreDocente || item.nombreDocente || 
+      item.NombreAdmin || item.nombreAdmin ||
+      item.Nombre || item.nombre ||
+      item.NombrePersona || item.nombrePersona ||
+      item.NombreCompleto || item.nombreCompleto ||
+      item.Usuario || item.usuario ||
+      item.Docente || item.docente ||
+      item.Admin || item.admin ||
+      item.NombreCompletoDocente || item.nombreCompletoDocente ||
+      item.NombreCompletoEstudiante || item.nombreCompletoEstudiante ||
+      item.NombreCompletoAdmin || item.nombreCompletoAdmin ||
+      undefined;
+    
+    // Si el nombre es "Administrador Sistema" o similar, no usarlo
+    if (nombrePersona && (
+      nombrePersona.toLowerCase().includes('administrador sistema') ||
+      nombrePersona.toLowerCase().includes('admin sistema') ||
+      nombrePersona.toLowerCase() === 'administrador'
+    )) {
+      nombrePersona = undefined;
+    }
+
+    // NOTA: El backend actual NO devuelve RolResponsable ni RolResponsableDetalle en el DTO
+    // Estos campos están en el modelo pero no se incluyen en ActividadResponsableDto
+    // Por lo tanto, siempre serán undefined
+    const rolResponsable = undefined;
+    
+    // NO usar nombreActividad como fallback para nombrePersona
+    // El nombrePersona debe venir de los campos reales de persona
+    const nombrePersonaFinal = nombrePersona || undefined;
+    
+    const mapped = {
       idActividadResponsable: item.IdActividadResponsable || item.idActividadResponsable || item.id || 0,
       idActividad: item.IdActividad || item.idActividad || 0,
       idUsuario: item.IdUsuario !== undefined ? item.IdUsuario : (item.idUsuario !== undefined ? item.idUsuario : undefined),
       idDocente: item.IdDocente !== undefined ? item.IdDocente : (item.idDocente !== undefined ? item.idDocente : undefined),
       idAdmin: item.IdAdmin !== undefined ? item.IdAdmin : (item.idAdmin !== undefined ? item.idAdmin : undefined),
-      nombrePersona: item.NombreUsuario || item.nombreUsuario || item.NombreDocente || item.nombreDocente || item.NombreAdmin || item.nombreAdmin,
+      nombrePersona: nombrePersonaFinal,
       idTipoResponsable: item.IdTipoResponsable || item.idTipoResponsable || 0,
-      nombreTipoResponsable: item.NombreTipoResponsable || item.nombreTipoResponsable,
+      nombreTipoResponsable: item.NombreTipoResponsable || item.nombreTipoResponsable || item.TipoResponsable || item.tipoResponsable,
       departamentoId: item.DepartamentoId !== undefined ? item.DepartamentoId : (item.departamentoId !== undefined ? item.departamentoId : undefined),
+      nombreDepartamento: item.NombreDepartamento || item.nombreDepartamento,
       fechaAsignacion: formatDate(item.FechaAsignacion || item.fechaAsignacion),
-      rolResponsable: item.RolResponsable || item.rolResponsable,
-      rolResponsableDetalle: item.RolResponsableDetalle || item.rolResponsableDetalle
+      // NOTA: El backend actual NO devuelve RolResponsable ni RolResponsableDetalle en el DTO
+      rolResponsable: rolResponsable, // Siempre undefined porque el backend no lo devuelve
+      rolResponsableDetalle: undefined, // Siempre undefined porque el backend no lo devuelve
+      // El backend solo devuelve NombreUsuario, no NombreDocente ni NombreAdmin
+      nombreDocente: undefined, // El backend no devuelve este campo
+      nombreUsuario: (() => {
+        const nombre = item.NombreUsuario || item.nombreUsuario;
+        // Excluir "Administrador Sistema" ya que es un usuario del sistema
+        if (nombre && (
+          nombre.toLowerCase().includes('administrador sistema') ||
+          nombre.toLowerCase().includes('admin sistema') ||
+          nombre.toLowerCase() === 'administrador'
+        )) {
+          return undefined;
+        }
+        return nombre;
+      })(),
+      nombreAdmin: undefined, // El backend no devuelve este campo
+      nombreActividad: item.NombreActividad || item.nombreActividad
     };
+
+    console.log('🔍 Mapeo de responsable - Item original:', item);
+    console.log('🔍 Mapeo de responsable - Resultado:', mapped);
+
+    return mapped;
   }
 }
 

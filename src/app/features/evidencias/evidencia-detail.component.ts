@@ -6,7 +6,6 @@ import { EvidenciaService } from '../../core/services/evidencia.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
-import { environment } from '../../../environments/environment';
 
 @Component({
   standalone: true,
@@ -24,6 +23,7 @@ export class EvidenciaDetailComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   downloadUrl = signal<SafeUrl | null>(null);
+  imageError = signal(false);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -38,11 +38,9 @@ export class EvidenciaDetailComponent implements OnInit {
     this.evidenciaService.getById(id).subscribe({
       next: (data) => {
         this.evidencia.set(data);
-        if (data.rutaArchivo) {
-          // El backend devuelve una ruta relativa como "/storage/evidencias/archivo.ext"
-          // Necesitamos usar la URL completa del backend porque el proxy solo maneja /api
-          const backendBase = this.getBackendBaseUrl();
-          const url = `${backendBase}${data.rutaArchivo}`;
+        if (data.rutaArchivo && this.isImage(data.rutaArchivo)) {
+          // Usar el endpoint del API para obtener la imagen
+          const url = this.evidenciaService.getFileUrl(data.idEvidencia);
           this.downloadUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
         } else {
           this.downloadUrl.set(null);
@@ -100,25 +98,9 @@ export class EvidenciaDetailComponent implements OnInit {
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension || '');
   }
 
-  /**
-   * Obtiene la URL base del backend desde environment.apiUrl
-   * Si apiUrl es absoluta (https://...), extrae la base URL
-   * Si apiUrl es relativa (/api), usa window.location.origin
-   */
-  private getBackendBaseUrl(): string {
-    const apiUrl = environment.apiUrl;
-    // Si apiUrl es absoluta (contiene http:// o https://), extraer la base URL
-    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
-      try {
-        const url = new URL(apiUrl);
-        return `${url.protocol}//${url.host}`;
-      } catch {
-        // Si falla el parsing, usar window.location.origin como fallback
-        return window.location.origin;
-      }
-    }
-    // Si apiUrl es relativa, usar window.location.origin
-    return window.location.origin;
+  onImageError(event: Event): void {
+    console.error('Error loading image:', event);
+    this.imageError.set(true);
   }
 }
 

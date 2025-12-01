@@ -14,7 +14,6 @@ import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
-import { environment } from '../../../environments/environment';
 
 @Component({
   standalone: true,
@@ -121,10 +120,8 @@ export class EvidenciaFormComponent implements OnInit {
           tipo: data.tipo || ''
         });
         if (data.rutaArchivo) {
-          // El backend devuelve una ruta relativa como "/storage/evidencias/archivo.ext"
-          // Necesitamos usar la URL completa del backend porque el proxy solo maneja /api
-          const backendBase = this.getBackendBaseUrl();
-          const url = `${backendBase}${data.rutaArchivo}`;
+          // Usar el endpoint del API para obtener la imagen
+          const url = this.evidenciaService.getFileUrl(data.idEvidencia);
           this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(url));
         } else {
           this.previewUrl.set(null);
@@ -190,51 +187,39 @@ export class EvidenciaFormComponent implements OnInit {
 
       const file = this.selectedFile();
       
-      if (file) {
-        // Upload con archivo
-        this.evidenciaService.upload(file, data).subscribe({
+      if (this.isEditMode()) {
+        // Modo edición: usar update (PUT) con o sin archivo
+        this.evidenciaService.update(this.evidenciaId()!, data, file || undefined).subscribe({
           next: () => {
             this.router.navigate(['/evidencias']);
           },
-          error: (err) => {
+          error: (err: any) => {
             console.error('Error saving evidencia:', err);
-            this.error.set('Error al guardar la evidencia');
+            const errorMessage = err.error?.message || 'Error al guardar la evidencia';
+            this.error.set(errorMessage);
             this.loading.set(false);
           }
         });
       } else {
-        // Sin archivo
-        if (!this.isEditMode()) {
-          // El backend requiere al menos un archivo para crear evidencia nueva
+        // Modo creación: requiere archivo
+        if (!file) {
           this.error.set('Debe seleccionar un archivo para guardar la evidencia');
           this.loading.set(false);
           return;
         }
-
-        // Sin archivo en modo edición: solo actualizar metadatos
-        if (this.isEditMode()) {
-          this.evidenciaService.update(this.evidenciaId()!, data).subscribe({
-            next: () => {
-              this.router.navigate(['/evidencias']);
-            },
-            error: (err: any) => {
-              console.error('Error saving evidencia:', err);
-              this.error.set('Error al guardar la evidencia');
-              this.loading.set(false);
-            }
-          });
-        } else {
-          this.evidenciaService.create(data).subscribe({
-            next: () => {
-              this.router.navigate(['/evidencias']);
-            },
-            error: (err: any) => {
-              console.error('Error saving evidencia:', err);
-              this.error.set('Error al guardar la evidencia');
-              this.loading.set(false);
-            }
-          });
-        }
+        
+        // Crear nueva evidencia con archivo
+        this.evidenciaService.upload(file, data).subscribe({
+          next: () => {
+            this.router.navigate(['/evidencias']);
+          },
+          error: (err: any) => {
+            console.error('Error saving evidencia:', err);
+            const errorMessage = err.error?.message || 'Error al guardar la evidencia';
+            this.error.set(errorMessage);
+            this.loading.set(false);
+          }
+        });
       }
     } else {
       this.form.markAllAsTouched();
@@ -242,26 +227,5 @@ export class EvidenciaFormComponent implements OnInit {
   }
 
   get idTipoEvidencia() { return this.form.get('idTipoEvidencia'); }
-
-  /**
-   * Obtiene la URL base del backend desde environment.apiUrl
-   * Si apiUrl es absoluta (https://...), extrae la base URL
-   * Si apiUrl es relativa (/api), usa window.location.origin
-   */
-  private getBackendBaseUrl(): string {
-    const apiUrl = environment.apiUrl;
-    // Si apiUrl es absoluta (contiene http:// o https://), extraer la base URL
-    if (apiUrl.startsWith('http://') || apiUrl.startsWith('https://')) {
-      try {
-        const url = new URL(apiUrl);
-        return `${url.protocol}//${url.host}`;
-      } catch {
-        // Si falla el parsing, usar window.location.origin como fallback
-        return window.location.origin;
-      }
-    }
-    // Si apiUrl es relativa, usar window.location.origin
-    return window.location.origin;
-  }
 }
 
