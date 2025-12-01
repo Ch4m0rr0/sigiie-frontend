@@ -7,6 +7,7 @@ import { EvidenciaService } from '../../core/services/evidencia.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { ActividadesService } from '../../core/services/actividades.service';
+import { ImageStorageService } from '../../core/services/image-storage.service';
 import type { EvidenciaCreate } from '../../core/models/evidencia';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
@@ -34,6 +35,7 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   private subactividadService = inject(SubactividadService);
   private catalogosService = inject(CatalogosService);
   private actividadesService = inject(ActividadesService);
+  private imageStorageService = inject(ImageStorageService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private sanitizer = inject(DomSanitizer);
@@ -116,7 +118,7 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
     }
 
     this.evidenciaService.getById(id).subscribe({
-      next: (data) => {
+      next: async (data) => {
         this.form.patchValue({
           idProyecto: data.idProyecto || null,
           idActividad: data.idActividad || null,
@@ -127,13 +129,15 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
           descripcion: data.descripcion || '',
           tipo: data.tipo || ''
         });
-        if (data.rutaArchivo && this.isImage(data.rutaArchivo)) {
-          // Construir URL de la imagen basándose en rutaArchivo
-          this.buildImageUrl(data.rutaArchivo, data.idEvidencia);
+        
+        // Cargar imagen desde almacenamiento local del frontend (IndexedDB)
+        const storedImage = await this.imageStorageService.getImage(data.idEvidencia);
+        if (storedImage) {
+          this.previewUrl.set(storedImage);
         } else {
           this.previewUrl.set(null);
-          this.loading.set(false);
         }
+        this.loading.set(false);
       },
       error: (err) => {
         console.error('Error loading evidencia:', err);
@@ -141,49 +145,6 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
         this.loading.set(false);
       }
     });
-  }
-
-  buildImageUrl(rutaArchivo: string, idEvidencia: number): void {
-    // Verificar si rutaArchivo es una URL completa
-    if (this.isValidUrl(rutaArchivo)) {
-      // Si es una URL completa, usarla directamente
-      this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(rutaArchivo));
-      this.loading.set(false);
-      return;
-    }
-
-    // Si no es una URL completa, construir URLs posibles
-    const baseUrl = this.evidenciaService.getBaseUrl();
-    let imageUrl: string;
-
-    // Opción 1: Si rutaArchivo comienza con /, usar directamente con baseUrl
-    if (rutaArchivo.startsWith('/')) {
-      imageUrl = `${baseUrl}${rutaArchivo}`;
-    }
-    // Opción 2: Si rutaArchivo parece ser una ruta relativa, construir URL completa
-    else if (rutaArchivo.includes('/') || rutaArchivo.includes('\\')) {
-      // Es una ruta con directorios
-      const normalizedPath = rutaArchivo.replace(/\\/g, '/');
-      imageUrl = `${baseUrl}/${normalizedPath.startsWith('/') ? normalizedPath.slice(1) : normalizedPath}`;
-    }
-    // Opción 3: Si solo es el nombre del archivo, intentar con diferentes rutas comunes
-    else {
-      // Solo el nombre del archivo, intentar rutas comunes
-      imageUrl = `${baseUrl}/uploads/evidencias/${rutaArchivo}`;
-    }
-
-    // Establecer la URL construida
-    this.previewUrl.set(this.sanitizer.bypassSecurityTrustUrl(imageUrl));
-    this.loading.set(false);
-  }
-
-  isValidUrl(url: string): boolean {
-    try {
-      const parsed = new URL(url);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-      return false;
-    }
   }
 
   ngOnDestroy(): void {
@@ -206,15 +167,25 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
       const file = input.files[0];
       this.selectedFile.set(file);
 
-      // Crear preview si es imagen
+      // Crear preview si es imagen y guardar en almacenamiento local
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
           if (result) {
-            // Usar string directamente para la vista previa de archivos seleccionados
-            // Esto sobrescribe cualquier previewUrl anterior (incluyendo SafeUrl de evidencias existentes)
+            // Mostrar preview inmediatamente
             this.previewUrl.set(result);
+            
+            // Si estamos en modo edición, guardar la imagen en localStorage
+            if (this.isEditMode() && this.evidenciaId()) {
+              this.imageStorageService.saveImage(this.evidenciaId()!, file)
+                .then(() => {
+                  console.log('✅ Imagen guardada en almacenamiento local');
+                })
+                .catch((error) => {
+                  console.error('❌ Error al guardar imagen:', error);
+                });
+            }
           }
         };
         reader.onerror = () => {
@@ -229,11 +200,21 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
     } else {
       // Si no hay archivo seleccionado, limpiar el archivo seleccionado
       this.selectedFile.set(null);
-      // Si estamos en modo edición, mantener la vista previa de la imagen existente
-      // Si no, limpiar la vista previa
-      if (!this.isEditMode() || !this.evidenciaId()) {
+      // Si estamos en modo edición, cargar imagen desde almacenamiento local
+      if (this.isEditMode() && this.evidenciaId()) {
+        this.loadStoredImage(this.evidenciaId()!);
+      } else {
         this.previewUrl.set(null);
       }
+    }
+  }
+
+  private async loadStoredImage(evidenciaId: number): Promise<void> {
+    const storedImage = await this.imageStorageService.getImage(evidenciaId);
+    if (storedImage) {
+      this.previewUrl.set(storedImage);
+    } else {
+      this.previewUrl.set(null);
     }
   }
 
@@ -270,10 +251,26 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
       const file = this.selectedFile();
       
       if (this.isEditMode()) {
-        // Modo edición: usar update (PUT) con o sin archivo
+        // Modo edición: enviar el archivo al backend si existe (para cumplir validación)
+        // pero la imagen real se gestiona en IndexedDB del frontend
+        // Si no hay archivo nuevo, no enviar archivo (el backend puede mantener el anterior)
         this.evidenciaService.update(this.evidenciaId()!, data, file || undefined).subscribe({
           next: () => {
-            this.router.navigate(['/evidencias']);
+            // Si hay un archivo nuevo, guardarlo en localStorage
+            if (file && file.type.startsWith('image/')) {
+              this.imageStorageService.saveImage(this.evidenciaId()!, file)
+                .then(() => {
+                  console.log('✅ Imagen guardada en almacenamiento local');
+                  this.router.navigate(['/evidencias']);
+                })
+                .catch((error) => {
+                  console.error('❌ Error al guardar imagen:', error);
+                  // Navegar de todas formas, la imagen ya se mostró en preview
+                  this.router.navigate(['/evidencias']);
+                });
+            } else {
+              this.router.navigate(['/evidencias']);
+            }
           },
           error: (err: any) => {
             console.error('Error saving evidencia:', err);
@@ -284,16 +281,29 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
         });
       } else {
         // Modo creación: requiere archivo
-        if (!file) {
-          this.error.set('Debe seleccionar un archivo para guardar la evidencia');
+        if (!file || !file.type.startsWith('image/')) {
+          this.error.set('Debe seleccionar una imagen para guardar la evidencia');
           this.loading.set(false);
           return;
         }
         
-        // Crear nueva evidencia con archivo
+        // Crear nueva evidencia enviando el archivo al backend (para cumplir validación)
+        // pero la imagen real se gestiona en IndexedDB del frontend
+        // El método create ahora envía FormData con un archivo dummy si no hay archivo
+        // Como tenemos archivo, lo enviamos directamente usando upload
         this.evidenciaService.upload(file, data).subscribe({
-          next: () => {
-            this.router.navigate(['/evidencias']);
+          next: (evidenciaCreada) => {
+            // Guardar la imagen en localStorage con el ID de la evidencia creada
+            this.imageStorageService.saveImage(evidenciaCreada.idEvidencia, file)
+              .then(() => {
+                console.log('✅ Evidencia creada e imagen guardada en almacenamiento local');
+                this.router.navigate(['/evidencias']);
+              })
+              .catch((error) => {
+                console.error('❌ Error al guardar imagen:', error);
+                // Navegar de todas formas
+                this.router.navigate(['/evidencias']);
+              });
           },
           error: (err: any) => {
             console.error('Error saving evidencia:', err);
