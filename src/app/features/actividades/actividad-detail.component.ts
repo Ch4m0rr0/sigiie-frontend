@@ -12,6 +12,9 @@ import { ActividadResponsableService, type ActividadResponsableCreate, type Acti
 import { EdicionService } from '../../core/services/edicion.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { PersonasService } from '../../core/services/personas.service';
+import { EvidenciaService } from '../../core/services/evidencia.service';
+import { ImageStorageService } from '../../core/services/image-storage.service';
+import type { Evidencia } from '../../core/models/evidencia';
 import type { Actividad } from '../../core/models/actividad';
 import type { ActividadResponsable } from '../../core/models/actividad-responsable';
 import type { ActividadIndicador } from '../../core/models/indicador';
@@ -41,6 +44,8 @@ export class ActividadDetailComponent implements OnInit {
   private edicionService = inject(EdicionService);
   private catalogosService = inject(CatalogosService);
   private personasService = inject(PersonasService);
+  private evidenciaService = inject(EvidenciaService);
+  private imageStorageService = inject(ImageStorageService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
@@ -54,6 +59,10 @@ export class ActividadDetailComponent implements OnInit {
   actividadesMensuales = signal<ActividadMensualInst[]>([]);
   indicadoresList = signal<Indicador[]>([]);
   ediciones = signal<Edicion[]>([]);
+  evidencias = signal<Evidencia[]>([]);
+  evidenciasLoading = signal(false);
+  evidenciasError = signal<string | null>(null);
+  evidenciasImageUrls = signal<Map<number, string[]>>(new Map());
   todosLosDepartamentos = signal<any[]>([]);
   categoriasActividad = signal<any[]>([]);
   tiposProtagonista = signal<any[]>([]);
@@ -64,7 +73,7 @@ export class ActividadDetailComponent implements OnInit {
   guardandoEstado = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
-  activeTab = signal<'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales'>('info');
+  activeTab = signal<'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales' | 'evidencias'>('info');
   
   // Formulario para crear indicador
   formIndicador!: FormGroup;
@@ -113,10 +122,11 @@ export class ActividadDetailComponent implements OnInit {
       this.loadCategoriasActividad();
     this.loadTiposProtagonista();
     this.loadTiposResponsable();
-    this.loadCapacidadesInstaladas();
-    this.loadEstadosActividad();
-    // Cargar todas las personas para poder enriquecer los responsables
-    this.loadTodasLasPersonas();
+      this.loadCapacidadesInstaladas();
+      this.loadEstadosActividad();
+      // Cargar todas las personas para poder enriquecer los responsables
+      this.loadTodasLasPersonas();
+      // Las evidencias se cargan automáticamente en loadActividad
     }
   }
 
@@ -353,6 +363,69 @@ export class ActividadDetailComponent implements OnInit {
     });
   }
 
+  async loadEvidencias(actividadId: number): Promise<void> {
+    this.evidenciasLoading.set(true);
+    this.evidenciasError.set(null);
+    
+    // Obtener todas las evidencias y filtrar por actividad
+    this.evidenciaService.getAll().subscribe({
+      next: async (data) => {
+        // Filtrar evidencias por idActividad
+        const evidenciasFiltradas = data.filter(e => e.idActividad === actividadId);
+        this.evidencias.set(evidenciasFiltradas);
+        
+        // Cargar imágenes desde IndexedDB para cada evidencia
+        const imageUrlsMap = new Map<number, string[]>();
+        for (const evidencia of evidenciasFiltradas) {
+          const evidenciaId = evidencia.idEvidencia || evidencia.id;
+          if (evidenciaId) {
+            const images = await this.imageStorageService.getAllImages(evidenciaId);
+            if (images.length > 0) {
+              imageUrlsMap.set(evidenciaId, images);
+            }
+          }
+        }
+        this.evidenciasImageUrls.set(imageUrlsMap);
+        
+        this.evidenciasLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading evidencias:', err);
+        this.evidenciasError.set('Error al cargar las evidencias');
+        this.evidenciasLoading.set(false);
+      }
+    });
+  }
+
+  getEvidenciaImageUrl(evidenciaId: number): string | null {
+    const urls = this.evidenciasImageUrls().get(evidenciaId);
+    return urls && urls.length > 0 ? urls[0] : null;
+  }
+
+  navigateToCrearEvidencia(): void {
+    const actividad = this.actividad();
+    if (!actividad || !actividad.id) return;
+    
+    // Obtener los tipos de evidencia de la actividad
+    const tiposEvidencia = actividad.idTipoEvidencias || [];
+    
+    // Construir query params
+    const queryParams: any = {
+      actividadId: actividad.id
+    };
+    
+    // Si hay tipos de evidencia, pasarlos como query param
+    if (tiposEvidencia.length > 0) {
+      queryParams.tiposEvidencia = tiposEvidencia.join(',');
+    }
+    
+    this.router.navigate(['/evidencias/nueva'], { queryParams });
+  }
+
+  navigateToEvidenciaDetail(evidenciaId: number): void {
+    this.router.navigate(['/evidencias', evidenciaId]);
+  }
+
   loadActividad(id: number): void {
     this.loading.set(true);
     this.error.set(null);
@@ -363,6 +436,9 @@ export class ActividadDetailComponent implements OnInit {
         // Siempre cargar responsables desde el endpoint dedicado /api/actividad-responsable
         // para asegurar que se obtengan todos los datos de la tabla actividad-responsable
         this.loadResponsables(id);
+        
+        // Cargar evidencias de la actividad
+        this.loadEvidencias(id);
         
         // Subactividades
         if (data.subactividades && Array.isArray(data.subactividades)) {
@@ -1038,7 +1114,7 @@ export class ActividadDetailComponent implements OnInit {
     }
   }
 
-  setTab(tab: 'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales'): void {
+  setTab(tab: 'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales' | 'evidencias'): void {
     this.activeTab.set(tab);
   }
 

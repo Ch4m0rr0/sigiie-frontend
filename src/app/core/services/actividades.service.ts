@@ -1174,6 +1174,7 @@ export class ActividadesService {
       horaRealizacion: item.HoraRealizacion || item.horaRealizacion,
       cantidadParticipantesProyectados: item.CantidadParticipantesProyectados || item.cantidadParticipantesProyectados,
       idTipoProtagonista: item.IdTipoProtagonista || item.idTipoProtagonista,
+      idTipoEvidencias: item.IdTipoEvidencias || item.idTipoEvidencias || (Array.isArray(item.IdTipoEvidencias) ? item.IdTipoEvidencias : undefined),
       
       // Usuario creador
       creadoPor: item.CreadoPor || item.creadoPor || 0,

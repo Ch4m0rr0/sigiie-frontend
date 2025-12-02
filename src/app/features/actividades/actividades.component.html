@@ -113,6 +113,15 @@
           <span>Tarjetas</span>
         </button>
       </div>
+      
+      <!-- Botón de Evidencias -->
+      <button
+        type="button"
+        (click)="navigateToEvidencias()"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 active:scale-95">
+        <app-icon icon="perm_media" size="sm" color="white"></app-icon>
+        <span>Evidencias</span>
+      </button>
 
       <!-- Botón Nueva Actividad con dropdown -->
       <div class="relative dropdown-actividad" style="z-index: 1000;">
@@ -2102,9 +2111,21 @@
               <span class="text-[10px] text-slate-400">
                   Creado: {{ actividad.fechaCreacion | date:'dd/MM/yy' }}
               </span>
-              <span class="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                  Detalles <app-icon icon="arrow_forward" size="xs"></app-icon>
-              </span>
+              <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  (click)="navigateToCrearEvidencia(actividad); $event.stopPropagation()"
+                  class="px-2.5 py-1 bg-white text-blue-600 rounded-lg text-[10px] font-medium flex items-center gap-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-blue-700"
+                  [title]="actividad.idTipoEvidencias && actividad.idTipoEvidencias.length > 0 ? 'Agregar evidencias (tipos permitidos: ' + actividad.idTipoEvidencias.length + ')' : 'Agregar evidencias'">
+                  <app-icon icon="perm_media" size="xs"></app-icon>
+                  Evidencias
+                </button>
+                <button
+                  (click)="navigateToDetail(actividad.id); $event.stopPropagation()"
+                  class="px-2.5 py-1 bg-white text-emerald-600 rounded-lg text-[10px] font-medium flex items-center gap-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
+                  Detalles
+                  <app-icon icon="arrow_forward" size="xs"></app-icon>
+                </button>
+              </div>
             </div>
 
           </div>
@@ -2178,12 +2199,21 @@
                     }
                   </td>
                   <td class="px-4 py-2.5 whitespace-nowrap text-right">
-                    <button
-                      (click)="navigateToDetail(actividad.id); $event.stopPropagation()"
-                      class="px-3 py-1.5 bg-white text-emerald-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
-                      Detalles
-                      <app-icon icon="arrow_forward" size="xs"></app-icon>
-                    </button>
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        (click)="navigateToCrearEvidencia(actividad); $event.stopPropagation()"
+                        class="px-3 py-1.5 bg-white text-blue-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-blue-700"
+                        [title]="actividad.idTipoEvidencias && actividad.idTipoEvidencias.length > 0 ? 'Agregar evidencias (tipos permitidos: ' + actividad.idTipoEvidencias.length + ')' : 'Agregar evidencias'">
+                        <app-icon icon="perm_media" size="xs"></app-icon>
+                        Evidencias
+                      </button>
+                      <button
+                        (click)="navigateToDetail(actividad.id); $event.stopPropagation()"
+                        class="px-3 py-1.5 bg-white text-emerald-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
+                        Detalles
+                        <app-icon icon="arrow_forward" size="xs"></app-icon>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }

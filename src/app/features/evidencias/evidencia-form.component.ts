@@ -64,15 +64,20 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
     const id = this.route.snapshot.paramMap.get('id');
     const subactividadId = this.route.snapshot.queryParamMap.get('subactividadId');
     const actividadId = this.route.snapshot.queryParamMap.get('actividadId');
+    const tiposEvidenciaParam = this.route.snapshot.queryParamMap.get('tiposEvidencia');
     
     if (id) {
       this.isEditMode.set(true);
       this.evidenciaId.set(+id);
       this.loadEvidencia(+id);
-    } else if (subactividadId) {
-      this.form.patchValue({ idSubactividad: +subactividadId });
-    } else if (actividadId) {
-      this.form.patchValue({ idActividad: +actividadId });
+    } else {
+      if (subactividadId) {
+        this.form.patchValue({ idSubactividad: +subactividadId });
+      }
+      if (actividadId) {
+        this.form.patchValue({ idActividad: +actividadId });
+      }
+      // Los tipos de evidencia se procesan en loadTiposEvidencia después de cargar los datos
     }
   }
 
@@ -98,10 +103,37 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
     });
   }
 
+  tiposEvidenciaPermitidos = signal<number[] | null>(null);
+
   loadTiposEvidencia(): void {
     this.catalogosService.getTiposEvidencia().subscribe({
-      next: (data) => this.tiposEvidencia.set(data),
+      next: (data) => {
+        this.tiposEvidencia.set(data);
+        
+        // Si hay tipos permitidos en query params, filtrar
+        const tiposPermitidosParam = this.route.snapshot.queryParamMap.get('tiposEvidencia');
+        if (tiposPermitidosParam) {
+          const tiposPermitidos = tiposPermitidosParam.split(',').map(id => Number(id)).filter(id => !isNaN(id));
+          this.tiposEvidenciaPermitidos.set(tiposPermitidos);
+          console.log('📋 Tipos de evidencia permitidos desde query params:', tiposPermitidos);
+        }
+      },
       error: (err) => console.error('Error loading tipos evidencia:', err)
+    });
+  }
+
+  getTiposEvidenciaFiltrados(): TipoEvidencia[] {
+    const todos = this.tiposEvidencia();
+    const permitidos = this.tiposEvidenciaPermitidos();
+    
+    if (permitidos === null || permitidos.length === 0) {
+      return todos; // Si no hay filtro, mostrar todos
+    }
+    
+    // Filtrar solo los tipos permitidos
+    return todos.filter(tipo => {
+      const tipoId = tipo.idTipoEvidencia || (tipo as any).id;
+      return permitidos.includes(tipoId);
     });
   }
 
@@ -359,7 +391,9 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   get idTipoEvidencia() { return this.form.get('idTipoEvidencia'); }
 
   getTiposEvidenciaOptions() {
-    return this.tiposEvidencia().map(tipo => ({
+    // Usar los tipos filtrados si hay filtro activo
+    const tipos = this.getTiposEvidenciaFiltrados();
+    return tipos.map(tipo => ({
       id: tipo.idTipoEvidencia,
       label: tipo.nombre
     }));

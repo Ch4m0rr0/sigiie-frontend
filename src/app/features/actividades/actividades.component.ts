@@ -1770,6 +1770,27 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.router.navigate(['/actividades/nueva']);
   }
 
+  navigateToEvidencias(): void {
+    this.router.navigate(['/evidencias']);
+  }
+
+  navigateToCrearEvidencia(actividad: Actividad): void {
+    // Obtener los tipos de evidencia de la actividad
+    const tiposEvidencia = actividad.idTipoEvidencias || [];
+    
+    // Construir query params
+    const queryParams: any = {
+      actividadId: actividad.id
+    };
+    
+    // Si hay tipos de evidencia, pasarlos como query param
+    if (tiposEvidencia.length > 0) {
+      queryParams.tiposEvidencia = tiposEvidencia.join(',');
+    }
+    
+    this.router.navigate(['/evidencias/nueva'], { queryParams });
+  }
+
   crearNuevaActividadAnual(): void {
     const indicadorId = this.formNuevaActividad.get('idIndicador')?.value || this.indicadorSeleccionado();
     

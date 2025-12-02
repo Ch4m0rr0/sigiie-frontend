@@ -37,6 +37,12 @@
               [label]="'Tipo de Evidencia *'"
               (selectionChange)="selectedTiposEvidencia.set($event)">
             </app-multi-select-dropdown>
+            @if (tiposEvidenciaPermitidos() && tiposEvidenciaPermitidos()!.length > 0) {
+              <p class="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                <app-icon icon="info" size="xs"></app-icon>
+                <span>Mostrando solo los tipos de evidencia permitidos para esta actividad ({{ tiposEvidenciaPermitidos()!.length }} tipo(s))</span>
+              </p>
+            }
             @if (selectedTiposEvidencia().length === 0 && form.touched) {
               <p class="mt-1 text-sm text-red-600">Debe seleccionar al menos un tipo de evidencia</p>
             }

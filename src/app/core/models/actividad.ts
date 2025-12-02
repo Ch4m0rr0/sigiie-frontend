@@ -84,6 +84,7 @@ export interface Actividad {
   cantidadParticipantesEstudiantesProyectados?: number;
   idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
   responsableActividad?: string;
+  idTipoEvidencias?: number[]; // Lista de IDs de tipos de evidencias requeridas
   
   // Usuario creador
   creadoPor: number;
