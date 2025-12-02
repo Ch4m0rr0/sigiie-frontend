@@ -58,10 +58,9 @@ export class ActividadAnualFormComponent implements OnInit {
   }
 
   initializeForm(): void {
-    const currentYear = new Date().getFullYear();
     this.form = this.fb.group({
       idIndicador: [null, Validators.required],
-      anio: [currentYear, [Validators.required, Validators.min(2000), Validators.max(2100)]],
+      anio: [null, [Validators.required, Validators.min(2000), Validators.max(2100)]],
       nombre: [''],
       descripcion: [''],
       activo: [true]

@@ -24,9 +24,17 @@
       <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
         <div class="flex items-start justify-between mb-4">
           <div class="flex-1">
-            <h1 class="text-3xl font-bold text-slate-900 mb-2">
-              {{ actividad()!.nombre }}
-            </h1>
+            <div class="flex items-center gap-3 mb-2">
+              <button 
+                [routerLink]="['/actividades']"
+                class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
+                title="Regresar a actividades">
+                <app-icon icon="arrow_back" size="sm"></app-icon>
+              </button>
+              <h1 class="text-3xl font-bold text-slate-900">
+                {{ actividad()!.nombre }}
+              </h1>
+            </div>
             @if (actividad()!.nombreNivel) {
               <span class="inline-block px-3 py-1 text-sm font-medium bg-orange-100 text-orange-800 rounded-full">
                 {{ actividad()!.nombreNivel }}
@@ -142,162 +150,331 @@
         <div class="p-6">
           <!-- Tab: Información -->
           @if (activeTab() === 'info') {
-            <div class="space-y-4">
-              <div>
-                <h3 class="text-lg font-semibold text-slate-900 mb-2">Detalles</h3>
-                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <dt class="text-sm font-medium text-slate-500">Estado de Planificación</dt>
-                    <dd class="text-sm text-slate-900">
-                      @if (actividad()!.esPlanificada) {
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
-                          <app-icon icon="check_circle" size="xs"></app-icon>
-                          Planificada
-                        </span>
-                      } @else {
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">
-                          <app-icon icon="cancel" size="xs"></app-icon>
-                          No Planificada
-                        </span>
-                      }
-                    </dd>
+            <div class="space-y-6">
+              <!-- Sección 1: Planificación (solo si es planificada) -->
+              @if (actividad()!.esPlanificada) {
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                  <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <app-icon icon="calendar_today" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h3 class="text-base font-bold text-slate-900">Planificación</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Indicador y actividades relacionadas</p>
+                      </div>
+                    </div>
                   </div>
                   
-                  @if (actividad()!.fechaInicio) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Fecha de Inicio</dt>
-                      <dd class="text-sm text-slate-900">
-                        {{ actividad()!.fechaInicio | date:'shortDate' }}
-                      </dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.fechaFin) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Fecha de Fin</dt>
-                      <dd class="text-sm text-slate-900">
-                        {{ actividad()!.fechaFin | date:'shortDate' }}
-                      </dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.fechaEvento) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Fecha del Evento</dt>
-                      <dd class="text-sm text-slate-900">
-                        {{ actividad()!.fechaEvento | date:'shortDate' }}
-                      </dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.modalidad) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Modalidad</dt>
-                      <dd class="text-sm text-slate-900">{{ actividad()!.modalidad }}</dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.nombreDepartamentoResponsable) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Departamento Responsable</dt>
-                      <dd class="text-sm text-slate-900">{{ actividad()!.nombreDepartamentoResponsable }}</dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.idTipoActividad) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Tipo de Actividad</dt>
-                      <dd class="text-sm text-slate-900">{{ getNombresTiposActividad() }}</dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.nombreEstadoActividad) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Estado</dt>
-                      <dd class="text-sm text-slate-900">{{ actividad()!.nombreEstadoActividad }}</dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.nombreIndicador || actividad()!.codigoIndicadorAsociado) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Indicador</dt>
-                      <dd class="text-sm text-slate-900">
-                        @if (actividad()!.codigoIndicadorAsociado) {
-                          <span class="font-mono">{{ actividad()!.codigoIndicadorAsociado }}</span>
-                          @if (actividad()!.nombreIndicador) {
-                            <span class="text-slate-500 ml-2">- {{ actividad()!.nombreIndicador }}</span>
+                  <div class="p-6 space-y-6">
+                    <!-- Indicador -->
+                    @if (actividad()!.idIndicador) {
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                          <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
+                          Indicador
+                        </label>
+                        <p class="text-sm text-slate-900">
+                          @if (actividad()!.codigoIndicadorAsociado) {
+                            <span class="font-mono font-semibold">{{ actividad()!.codigoIndicadorAsociado }}</span>
+                            @if (actividad()!.nombreIndicador) {
+                              <span class="text-slate-600 ml-2">- {{ actividad()!.nombreIndicador }}</span>
+                            }
+                          } @else if (actividad()!.nombreIndicador) {
+                            {{ actividad()!.nombreIndicador }}
                           }
-                        } @else if (actividad()!.nombreIndicador) {
-                          {{ actividad()!.nombreIndicador }}
-                        }
-                      </dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.idTipoProtagonista) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Protagonista principal</dt>
-                      <dd class="text-sm text-slate-900">{{ getNombresProtagonistas() }}</dd>
-                    </div>
-                  }
-                  
-                  @if (actividad()!.codigoActividad) {
-                    <div>
-                      <dt class="text-sm font-medium text-slate-500">Código de Actividad</dt>
-                      <dd class="text-sm text-slate-900 font-mono">{{ actividad()!.codigoActividad }}</dd>
-                    </div>
-                  }
-                </dl>
-              </div>
-              
-              <!-- Sección de Responsables -->
-              @if (responsables().length > 0) {
-                <div class="mt-6">
-                  <h3 class="text-lg font-semibold text-slate-900 mb-4">Responsables</h3>
-                  <div class="space-y-3">
-                    @for (resp of responsables(); track resp.idActividadResponsable) {
-                      <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                        <div class="flex items-start justify-between">
-                          <div class="flex-1">
-                            <!-- Nombre del responsable -->
-                            @if (resp.nombrePersona && resp.nombrePersona.trim()) {
-                              <p class="font-medium text-slate-900 mb-1">
-                                {{ resp.nombrePersona }}
-                              </p>
-                            } @else if (resp.nombreDocente && resp.nombreDocente.trim()) {
-                              <p class="font-medium text-slate-900 mb-1">
-                                {{ resp.nombreDocente }}
-                              </p>
-                            } @else if (resp.nombreAdmin && resp.nombreAdmin.trim()) {
-                              <p class="font-medium text-slate-900 mb-1">
-                                {{ resp.nombreAdmin }}
-                              </p>
-                            } @else if (resp.nombreUsuario && resp.nombreUsuario.trim()) {
-                              <p class="font-medium text-slate-900 mb-1">
-                                {{ resp.nombreUsuario }}
-                              </p>
-                            } @else if (resp.nombreDepartamento && resp.nombreDepartamento.trim()) {
-                              <p class="font-medium text-slate-900 mb-1">
-                                {{ resp.nombreDepartamento }}
-                              </p>
-                            } @else {
-                              <p class="font-medium text-slate-900 mb-1 text-slate-500 italic">
-                                Responsable sin información asignada
-                              </p>
-                            }
-                            <!-- Rol del responsable -->
-                            @if (resp.rolResponsable && resp.rolResponsable.trim()) {
-                              <p class="text-sm text-slate-600">
-                                <span class="font-medium">Rol:</span> {{ resp.rolResponsable }}
-                              </p>
-                            }
-                          </div>
+                        </p>
+                      </div>
+                    }
+
+                    <!-- Actividades Anuales -->
+                    @if (getActividadesAnualesSeleccionadas().length > 0) {
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                          <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                          Actividades anuales
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                          @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                              <span>{{ anual.nombre || 'Actividad ' + anual.idActividadAnual }} - {{ anual.anio }}</span>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <!-- Actividades Mensuales -->
+                    @if (getActividadesMensualesSeleccionadas().length > 0) {
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                          <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
+                          Actividades Mensuales Institucionales
+                        </label>
+                        <div class="flex flex-wrap gap-2">
+                          @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                              <span>{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}</span>
+                            </div>
+                          }
                         </div>
                       </div>
                     }
                   </div>
                 </div>
               }
+
+              <!-- Sección 2: Información de la Actividad -->
+              <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                      <app-icon icon="edit_note" size="sm"></app-icon>
+                    </div>
+                    <div>
+                      <h3 class="text-base font-bold text-slate-900">Información de la Actividad</h3>
+                      <p class="text-xs text-slate-500 mt-0.5">Detalles de la actividad</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="p-6 space-y-4 text-left">
+                  <!-- Nombre de la actividad -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                      <app-icon icon="title" size="xs" class="text-emerald-600"></app-icon>
+                      Nombre de la Actividad
+                    </label>
+                    <p class="text-sm text-slate-900 font-medium text-left">
+                      {{ actividad()!.nombreActividad || actividad()!.nombre || 'Sin nombre' }}
+                    </p>
+                  </div>
+
+                  <!-- Descripción y Objetivo -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                        Descripción
+                      </label>
+                      <p class="text-sm text-slate-700 whitespace-pre-wrap text-left">
+                        {{ actividad()!.descripcion || 'Sin descripción' }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="flag" size="xs" class="text-emerald-600"></app-icon>
+                        Objetivo
+                      </label>
+                      <p class="text-sm text-slate-700 whitespace-pre-wrap text-left">
+                        {{ actividad()!.objetivo || 'Sin objetivo' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Fechas y Horas -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+                        Fecha de realización de la actividad
+                      </label>
+                      <p class="text-sm text-slate-900 text-left">
+                        {{ actividad()!.fechaInicio ? (actividad()!.fechaInicio | date:'shortDate') : 'Sin fecha' }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
+                        Hora de realización
+                      </label>
+                      <p class="text-sm text-slate-900 text-left">
+                        {{ actividad()!.horaRealizacion || 'Sin hora' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-4">
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                          <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
+                          Fecha de Fin
+                        </label>
+                        <p class="text-sm text-slate-900 text-left">
+                          {{ actividad()!.fechaFin ? (actividad()!.fechaFin | date:'shortDate') : 'Sin fecha' }}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                          <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
+                          Protagonista principal
+                        </label>
+                        @if (getProtagonistasArray().length > 0) {
+                          <div class="flex flex-wrap gap-2 justify-start">
+                            @for (tipo of getProtagonistasArray(); track tipo.id) {
+                              <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                                <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                <span>{{ tipo.nombre }}</span>
+                              </div>
+                            }
+                          </div>
+                        } @else {
+                          <p class="text-sm text-slate-500 italic text-left">Sin protagonistas asignados</p>
+                        }
+                      </div>
+
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                          <app-icon icon="people_outline" size="xs" class="text-emerald-600"></app-icon>
+                          Total participantes protagonistas
+                        </label>
+                        <p class="text-sm text-slate-900 text-left">
+                          {{ getCantidadTotalParticipantesProtagonistas() }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
+                        Estado de Actividad
+                      </label>
+                      @if (actividad()!.nombreEstadoActividad) {
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                          <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                          <span>{{ actividad()!.nombreEstadoActividad }}</span>
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500 italic text-left">Sin estado asignado</p>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Departamentos -->
+                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
+                        Departamentos Responsables
+                      </label>
+                      @if (getDepartamentosResponsablesArray().length > 0) {
+                        <div class="flex flex-wrap gap-2 justify-start">
+                          @for (dept of getDepartamentosResponsablesArray(); track dept.id) {
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                              <span>{{ dept.nombre }}</span>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500 italic text-left">Sin departamentos asignados</p>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Modalidad -->
+                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="video_call" size="xs" class="text-emerald-600"></app-icon>
+                        Modalidad
+                      </label>
+                      @if (actividad()!.modalidad) {
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                          <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                          <span>{{ actividad()!.modalidad }}</span>
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500 italic text-left">Sin modalidad</p>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Local y Código -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-4">
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                          <app-icon icon="location_on" size="xs" class="text-emerald-600"></app-icon>
+                          Local principal
+                        </label>
+                        @if (actividad()!.idCapacidadInstalada) {
+                          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                            <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                            <span>{{ getNombreCapacidadInstalada(actividad()!.idCapacidadInstalada) }}</span>
+                          </div>
+                        } @else {
+                          <p class="text-sm text-slate-500 italic text-left">Sin local asignado</p>
+                        }
+                      </div>
+
+                      @if (actividad()!.codigoActividad) {
+                        <div>
+                          <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                            <app-icon icon="tag" size="xs" class="text-emerald-600"></app-icon>
+                            Código de Actividad
+                          </label>
+                          <p class="text-sm text-slate-900 font-mono text-left">
+                            {{ actividad()!.codigoActividad }}
+                          </p>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Participantes -->
+                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="people" size="xs" class="text-emerald-600"></app-icon>
+                        Cantidad total de participantes proyectados
+                      </label>
+                      <p class="text-sm text-slate-900 text-left">
+                        {{ actividad()!.cantidadParticipantesProyectados || 0 }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                        Edición
+                      </label>
+                      <p class="text-sm text-slate-900 text-left">
+                        {{ actividad()!.anio || 'Sin año' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Tipo de Actividad -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                      <app-icon icon="category" size="xs" class="text-emerald-600"></app-icon>
+                      Tipo de Actividad
+                    </label>
+                    @if (getTiposActividadArray().length > 0) {
+                      <div class="flex flex-wrap gap-2 justify-start">
+                        @for (tipo of getTiposActividadArray(); track tipo.id) {
+                          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                            <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                            <span>{{ tipo.nombre }}</span>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-sm text-slate-500 italic text-left">Sin tipos de actividad asignados</p>
+                    }
+                  </div>
+
+                </div>
+              </div>
             </div>
           }
 

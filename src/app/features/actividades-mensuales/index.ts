@@ -1,2 +1,2 @@
-export * from './actividad-mensual-form.component';
+export { ActividadMensualFormComponent } from './actividad-mensual-form.component';
 

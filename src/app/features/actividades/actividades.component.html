@@ -110,69 +110,23 @@
           class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
           title="Vista de tarjetas">
           <app-icon icon="grid_view" size="xs"></app-icon>
-          <span>Cards</span>
+          <span>Tarjetas</span>
         </button>
-      </div>
-      <!-- Dropdown Indicador Seleccionado -->
-      <div class="relative dropdown-indicador" style="z-index: 1000;">
-        <button 
-          type="button"
-          (click)="toggleDropdownIndicadorSeleccionado(); $event.stopPropagation()"
-          class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
-          title="Seleccionar indicador para filtrar actividades">
-          <span>{{ getIndicadorSeleccionadoNombre() }}</span>
-          <app-icon icon="expand_more" size="sm" color="white" [class.rotate-180]="mostrarDropdownIndicadorSeleccionado()" class="transition-transform duration-200"></app-icon>
-        </button>
-        
-        <!-- Dropdown de indicadores -->
-        @if (mostrarDropdownIndicadorSeleccionado() && indicadores().length > 0) {
-          <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl max-h-60 overflow-y-auto" 
-               (click)="$event.stopPropagation()">
-            <div class="py-1">
-              <button
-                type="button"
-                (click)="seleccionarIndicadorGlobal(null); $event.stopPropagation()"
-                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
-                [class.bg-blue-50]="indicadorSeleccionado() === null">
-                <app-icon icon="close" size="xs" class="text-blue-600"></app-icon>
-                Ninguno
-              </button>
-              @for (indicador of indicadores(); track indicador.idIndicador) {
-                <button
-                  type="button"
-                  (click)="seleccionarIndicadorGlobal(indicador.idIndicador); $event.stopPropagation()"
-                  class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
-                  [class.bg-blue-50]="indicadorSeleccionado() === indicador.idIndicador">
-                  <app-icon icon="check_circle" size="xs" class="text-blue-600 transition-opacity" [class.opacity-0]="indicadorSeleccionado() !== indicador.idIndicador"></app-icon>
-                  <span class="truncate">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
-                </button>
-              }
-            </div>
-          </div>
-        } @else if (mostrarDropdownIndicadorSeleccionado() && indicadores().length === 0) {
-          <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl"
-               (click)="$event.stopPropagation()">
-            <div class="py-4 px-4 text-center text-sm text-slate-500">
-              No hay indicadores disponibles. Cree uno primero.
-            </div>
-          </div>
-        }
       </div>
 
-      <!-- Botón Nueva Actividad con dropdown condicional -->
+      <!-- Botón Nueva Actividad con dropdown -->
       <div class="relative dropdown-actividad" style="z-index: 1000;">
         <button 
           type="button"
           (click)="toggleDropdownActividad(); $event.stopPropagation()"
-          [disabled]="!indicadorSeleccionado()"
-          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
-          [title]="!indicadorSeleccionado() ? 'Primero selecciona un indicador' : 'Crear nueva actividad planificada'">
-          <span>Nueva Actividad planificada</span>
+          class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+          title="Crear nueva actividad">
+          <span>Nueva Actividad</span>
           <app-icon icon="add" size="sm" color="white" [class.rotate-180]="mostrarDropdownTipoActividad()" class="transition-transform duration-200"></app-icon>
         </button>
         
-        <!-- Dropdown de opciones de actividad (solo si hay indicador seleccionado) -->
-        @if (mostrarDropdownTipoActividad() && indicadorSeleccionado()) {
+        <!-- Dropdown de opciones de actividad -->
+        @if (mostrarDropdownTipoActividad()) {
           <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl"
                (click)="$event.stopPropagation()">
             <div class="py-1">
@@ -181,7 +135,21 @@
                 (click)="seleccionarTipoActividad('anual'); $event.stopPropagation()"
                 class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
                 <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                Actividad planificada
+                Actividad Anual
+              </button>
+              <button
+                type="button"
+                (click)="seleccionarTipoActividad('mensual'); $event.stopPropagation()"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+                <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
+                Actividad Mensual
+              </button>
+              <button
+                type="button"
+                (click)="seleccionarTipoActividad('planificada'); $event.stopPropagation()"
+                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+                <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+                Actividad Planificada
               </button>
               <button
                 type="button"
@@ -207,7 +175,13 @@
           </div>
           <div>
             <h2 class="text-xl font-bold text-slate-900">
-              {{ tipoActividadSeleccionado() === 'anual' ? 'Nueva Actividad planificada' : 'Nueva Actividad no Planificada' }}
+              @switch (tipoActividadSeleccionado()) {
+                @case ('anual') { Nueva Actividad Anual }
+                @case ('mensual') { Nueva Actividad Mensual }
+                @case ('planificada') { Nueva Actividad Planificada }
+                @case ('no-planificada') { Nueva Actividad no Planificada }
+                @default { Nueva Actividad }
+              }
             </h2>
             <p class="text-xs text-slate-500 mt-0.5">Complete el formulario para crear una nueva actividad</p>
           </div>
@@ -223,32 +197,49 @@
       
       <form [formGroup]="formNuevaActividad" (ngSubmit)="onSubmitNuevaActividad()" class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Indicador (solo lectura, viene del indicador seleccionado) -->
+          <!-- Indicador (opcional y editable) -->
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
               <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
-              Indicador
-              <span class="text-xs font-normal text-slate-500">(Puedes cambiar el indicador regresando al botón de indicador seleccionado si lo deseas)</span>
+              Indicador (Opcional)
             </label>
             <div class="relative">
-              <input 
-                type="text"
-                [value]="getIndicadorFormNombre()"
-                readonly
-                disabled
-                class="w-full px-4 py-2.5 bg-gradient-to-r from-slate-50 to-slate-100 border-2 border-slate-200 rounded-lg text-sm text-slate-600 cursor-not-allowed transition-all">
-              <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <app-icon icon="lock" size="xs"></app-icon>
-              </span>
+              <button
+                type="button"
+                (click)="toggleDropdownIndicadorForm(); $event.stopPropagation()"
+                class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-left flex items-center justify-between hover:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                [class.border-emerald-500]="mostrarDropdownIndicadorForm()">
+                <span class="text-slate-700">{{ getIndicadorFormNombre() }}</span>
+                <app-icon icon="expand_more" size="xs" class="text-slate-400 transition-transform duration-200" [class.rotate-180]="mostrarDropdownIndicadorForm()"></app-icon>
+              </button>
+              
+              <!-- Dropdown de indicadores -->
+              @if (mostrarDropdownIndicadorForm()) {
+                <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl max-h-60 overflow-y-auto"
+                     (click)="$event.stopPropagation()">
+                  <div class="py-1">
+                    <button
+                      type="button"
+                      (click)="seleccionarIndicadorForm(null); $event.stopPropagation()"
+                      class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors"
+                      [class.bg-emerald-50]="!formNuevaActividad.get('idIndicador')?.value">
+                      <app-icon icon="close" size="xs" class="text-emerald-600"></app-icon>
+                      Ninguno
+                    </button>
+                    @for (indicador of indicadores(); track indicador.idIndicador) {
+                      <button
+                        type="button"
+                        (click)="seleccionarIndicadorForm(indicador.idIndicador); $event.stopPropagation()"
+                        class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors"
+                        [class.bg-emerald-50]="formNuevaActividad.get('idIndicador')?.value === indicador.idIndicador">
+                        <app-icon icon="check_circle" size="xs" class="text-emerald-600 transition-opacity" [class.opacity-0]="formNuevaActividad.get('idIndicador')?.value !== indicador.idIndicador"></app-icon>
+                        <span class="truncate">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
             </div>
-            @if (!indicadorSeleccionado()) {
-              <div class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                <app-icon icon="warning" size="xs" class="text-amber-600 mt-0.5 flex-shrink-0"></app-icon>
-                <p class="text-xs text-amber-800 leading-relaxed">
-                  Debe seleccionar un indicador en el botón "Indicador Seleccionado" antes de crear una actividad.
-                </p>
-              </div>
-            }
           </div>
 
           <!-- Seleccionar Actividades Anuales -->
@@ -258,16 +249,14 @@
                 <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
                 Actividades anuales
               </label>
-              @if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
-                <button
-                  type="button"
-                  (click)="crearNuevaActividadAnual()"
-                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all duration-200 active:scale-95 shadow-sm hover:shadow"
-                  title="Crear nueva actividad anual">
-                  <app-icon icon="add" size="xs"></app-icon>
-                  <span>Nueva</span>
-                </button>
-              }
+              <button
+                type="button"
+                (click)="crearNuevaActividadAnual()"
+                class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all duration-200 active:scale-95 shadow-sm hover:shadow"
+                title="Crear nueva actividad anual">
+                <app-icon icon="add" size="xs"></app-icon>
+                <span>Nueva</span>
+              </button>
             </div>
             
             <!-- Actividades Anuales Seleccionadas (Chips) -->
@@ -309,21 +298,17 @@
                       </label>
                     }
                   </div>
-                } @else if (formNuevaActividad.get('idIndicador')?.value || indicadorSeleccionado()) {
+                } @else {
                   <div class="flex flex-col items-center justify-center py-8 text-center">
                     <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
                       <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
                     </div>
                     <p class="text-sm font-medium text-slate-600">No hay actividades anuales</p>
-                    <p class="text-xs text-slate-500 mt-1">No se encontraron actividades anuales para este indicador</p>
-                  </div>
-                } @else {
-                  <div class="flex flex-col items-center justify-center py-8 text-center">
-                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
-                      <app-icon icon="info" size="sm" class="text-amber-600"></app-icon>
-                    </div>
-                    <p class="text-sm font-medium text-slate-600">Seleccione un indicador primero</p>
-                    <p class="text-xs text-slate-500 mt-1">Debe seleccionar un indicador para ver las actividades anuales</p>
+                    <p class="text-xs text-slate-500 mt-1">@if (formNuevaActividad.get('idIndicador')?.value) {
+                      No se encontraron actividades anuales para este indicador
+                    } @else {
+                      Seleccione un indicador para ver las actividades anuales disponibles
+                    }</p>
                   </div>
                 }
               </div>

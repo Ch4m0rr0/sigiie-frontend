@@ -58,6 +58,7 @@ export class ActividadDetailComponent implements OnInit {
   categoriasActividad = signal<any[]>([]);
   tiposProtagonista = signal<any[]>([]);
   tiposResponsable = signal<any[]>([]);
+  capacidadesInstaladas = signal<any[]>([]);
   loading = signal(false);
   error = signal<string | null>(null);
   activeTab = signal<'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales'>('info');
@@ -106,11 +107,12 @@ export class ActividadDetailComponent implements OnInit {
       this.loadActividad(+id);
       this.loadIndicadoresList();
       this.loadDepartamentos();
-      this.loadCategoriasActividad();
-      this.loadTiposProtagonista();
-      this.loadTiposResponsable();
-      // Cargar todas las personas para poder enriquecer los responsables
-      this.loadTodasLasPersonas();
+    this.loadCategoriasActividad();
+    this.loadTiposProtagonista();
+    this.loadTiposResponsable();
+    this.loadCapacidadesInstaladas();
+    // Cargar todas las personas para poder enriquecer los responsables
+    this.loadTodasLasPersonas();
     }
   }
 
@@ -153,6 +155,30 @@ export class ActividadDetailComponent implements OnInit {
     });
   }
 
+  loadCapacidadesInstaladas(): void {
+    this.catalogosService.getCapacidadesInstaladas().subscribe({
+      next: (data) => {
+        this.capacidadesInstaladas.set(data || []);
+      },
+      error: (err) => {
+        console.error('Error loading capacidades instaladas:', err);
+        this.capacidadesInstaladas.set([]);
+      }
+    });
+  }
+
+  getNombreCapacidadInstalada(id?: number): string {
+    if (!id) return 'Sin local asignado';
+    const capacidad = this.capacidadesInstaladas().find(c => c.id === id);
+    return capacidad?.nombre || `ID: ${id}`;
+  }
+
+  getCantidadTotalParticipantesProtagonistas(): number {
+    const actividad = this.actividad();
+    if (!actividad) return 0;
+    return (actividad as any).cantidadTotalParticipantesProtagonistas || 0;
+  }
+
   getNombresTiposActividad(): string {
     const actividad = this.actividad();
     if (!actividad || !actividad.idTipoActividad) return 'Sin asignar';
@@ -187,6 +213,92 @@ export class ActividadDetailComponent implements OnInit {
     }).filter(n => n);
     
     return nombres.length > 0 ? nombres.join(', ') : 'Sin asignar';
+  }
+
+  // Métodos helper para obtener arrays de datos para mostrar como chips
+  getTiposActividadArray(): any[] {
+    const actividad = this.actividad();
+    if (!actividad || !actividad.idTipoActividad) return [];
+    
+    const ids = Array.isArray(actividad.idTipoActividad) 
+      ? actividad.idTipoActividad 
+      : [actividad.idTipoActividad];
+    
+    return ids.map(id => {
+      const tipo = this.categoriasActividad().find(t => (t.idCategoriaActividad || t.id) === id);
+      return tipo || { id, nombre: `ID: ${id}` };
+    }).filter(t => t);
+  }
+
+  getProtagonistasArray(): any[] {
+    const actividad = this.actividad();
+    if (!actividad || !actividad.idTipoProtagonista) return [];
+    
+    const ids = Array.isArray(actividad.idTipoProtagonista) 
+      ? actividad.idTipoProtagonista 
+      : [actividad.idTipoProtagonista];
+    
+    return ids.map(id => {
+      const tipo = this.tiposProtagonista().find(t => (t.id || t.idTipoProtagonista) === id);
+      return tipo || { id, nombre: `ID: ${id}` };
+    }).filter(t => t);
+  }
+
+  getDepartamentosResponsablesArray(): any[] {
+    const actividad = this.actividad();
+    if (!actividad) return [];
+    
+    const deptos: any[] = [];
+    
+    // Agregar departamento principal si existe
+    if (actividad.departamentoId && actividad.nombreDepartamento) {
+      deptos.push({
+        id: actividad.departamentoId,
+        nombre: actividad.nombreDepartamento
+      });
+    }
+    
+    // Agregar departamentos responsables si existen
+    if (actividad.departamentoResponsableId) {
+      const ids = Array.isArray(actividad.departamentoResponsableId) 
+        ? actividad.departamentoResponsableId 
+        : [actividad.departamentoResponsableId];
+      
+      ids.forEach(id => {
+        const dept = this.todosLosDepartamentos().find(d => d.id === id);
+        if (dept && !deptos.find(d => d.id === id)) {
+          deptos.push(dept);
+        }
+      });
+    }
+    
+    return deptos;
+  }
+
+  getActividadesAnualesSeleccionadas(): ActividadAnual[] {
+    const actividad = this.actividad();
+    if (!actividad || !actividad.idActividadAnual) return [];
+    
+    const ids = Array.isArray(actividad.idActividadAnual) 
+      ? actividad.idActividadAnual 
+      : [actividad.idActividadAnual];
+    
+    return this.actividadesAnuales().filter(a => 
+      a.idActividadAnual && ids.includes(a.idActividadAnual)
+    );
+  }
+
+  getActividadesMensualesSeleccionadas(): ActividadMensualInst[] {
+    const actividad = this.actividad();
+    if (!actividad || !actividad.idActividadMensualInst) return [];
+    
+    const ids = Array.isArray(actividad.idActividadMensualInst) 
+      ? actividad.idActividadMensualInst 
+      : [actividad.idActividadMensualInst];
+    
+    return this.actividadesMensuales().filter(m => 
+      m.idActividadMensualInst && ids.includes(m.idActividadMensualInst)
+    );
   }
 
   loadTiposResponsable(): void {
@@ -628,9 +740,17 @@ export class ActividadDetailComponent implements OnInit {
   }
 
   navigateToEdit(): void {
-    const id = this.actividad()?.id;
-    if (id) {
-      this.router.navigate(['/actividades', id, 'editar']);
+    const actividad = this.actividad();
+    if (actividad?.id) {
+      // Navegar a la ruta correcta según el tipo de actividad
+      if (actividad.esPlanificada === true) {
+        this.router.navigate(['/actividades-planificadas', actividad.id, 'editar']);
+      } else if (actividad.esPlanificada === false) {
+        this.router.navigate(['/actividades-no-planificadas', actividad.id, 'editar']);
+      } else {
+        // Si no se puede determinar, navegar a la vista de detalle
+        this.router.navigate(['/actividades', actividad.id]);
+      }
     }
   }
 

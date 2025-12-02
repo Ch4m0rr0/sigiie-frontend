@@ -77,19 +77,9 @@ export const routes: Routes = [
           import('../features/actividades').then(m => m.ListActividadesComponent)
       },
       {
-        path: 'actividades/nueva',
-        loadComponent: () =>
-          import('../features/actividades').then(m => m.ActividadFormComponent)
-      },
-      {
         path: 'actividades/:id',
         loadComponent: () =>
           import('../features/actividades').then(m => m.ActividadDetailComponent)
-      },
-      {
-        path: 'actividades/:id/editar',
-        loadComponent: () =>
-          import('../features/actividades').then(m => m.ActividadFormComponent)
       },
       {
         path: 'actividades-mensuales/nueva',
@@ -110,6 +100,26 @@ export const routes: Routes = [
         path: 'actividades-anuales/:id/editar',
         loadComponent: () =>
           import('../features/actividades-anuales').then(m => m.ActividadAnualFormComponent)
+      },
+      {
+        path: 'actividades-planificadas/nueva',
+        loadComponent: () =>
+          import('../features/actividades-planificadas').then(m => m.ActividadPlanificadaFormComponent)
+      },
+      {
+        path: 'actividades-planificadas/:id/editar',
+        loadComponent: () =>
+          import('../features/actividades-planificadas').then(m => m.ActividadPlanificadaFormComponent)
+      },
+      {
+        path: 'actividades-no-planificadas/nueva',
+        loadComponent: () =>
+          import('../features/actividades-no-planificadas').then(m => m.ActividadNoPlanificadaFormComponent)
+      },
+      {
+        path: 'actividades-no-planificadas/:id/editar',
+        loadComponent: () =>
+          import('../features/actividades-no-planificadas').then(m => m.ActividadNoPlanificadaFormComponent)
       },
       {
         path: 'subactividades',

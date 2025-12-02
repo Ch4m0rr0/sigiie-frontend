@@ -1,0 +1,1676 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  <div class="max-w-5xl mx-auto">
+    
+    <div class="mb-8 animate-fade-in">
+      <div class="flex items-center gap-3 mb-2">
+        <button [routerLink]="['/actividades']" class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+            <app-icon icon="arrow_back" size="sm"></app-icon>
+        </button>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+            {{ isEditMode() ? 'Editar Actividad planificada' : 'Nueva Actividad planificada' }}
+        </h1>
+      </div>
+      <p class="text-slate-500 text-sm ml-10">
+        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad planificada.' : 'Registra una nueva actividad planificada con todos sus detalles.' }}
+      </p>
+    </div>
+
+    @if (loading()) {
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8 animate-pulse">
+        <div class="space-y-4">
+            <div class="h-4 w-1/4 bg-slate-200 rounded"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-24 bg-slate-100 rounded-lg"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+        </div>
+      </div>
+    }
+
+    @if (error() && !loading()) {
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error" size="md" class="text-red-600 mt-0.5"></app-icon>
+        <div>
+           <h3 class="text-sm font-bold text-red-800">Error al cargar formulario</h3>
+           <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+        </div>
+      </div>
+    }
+
+    @if (!loading()) {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200" style="position: relative;">
+        <div class="p-6 md:p-8 space-y-6" style="position: relative;">
+            
+            <!-- Sección 1: Planificación -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <!-- Header del acordeón -->
+                <button
+                    type="button"
+                    (click)="seccionPlanificacionExpandida.set(!seccionPlanificacionExpandida())"
+                    class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <app-icon icon="calendar_today" size="sm"></app-icon>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-slate-900">Planificación</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Seleccione el indicador y las actividades relacionadas</p>
+                        </div>
+                    </div>
+                    <app-icon 
+                        [icon]="seccionPlanificacionExpandida() ? 'expand_less' : 'expand_more'" 
+                        size="md" 
+                        class="text-emerald-600 transition-transform duration-200"
+                        [class.rotate-180]="!seccionPlanificacionExpandida()"></app-icon>
+                </button>
+                
+                <!-- Contenido del acordeón -->
+                @if (seccionPlanificacionExpandida()) {
+                    <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
+                        <div class="pt-2">
+                            <label class="inline-flex items-center cursor-pointer group">
+                                <input type="checkbox" formControlName="esPlanificada" class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Planificada</span>
+                            </label>
+                        </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="idIndicador">
+                            <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
+                            Indicador
+                            @if (form.get('idIndicador')?.disabled) {
+                                <span class="text-xs text-slate-500 font-normal ml-1">(No editable)</span>
+                            }
+                        </label>
+                        <div class="relative">
+                            <select 
+                                formControlName="idIndicador"
+                                id="idIndicador"
+                                class="w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none"
+                                [class.bg-white]="!form.get('idIndicador')?.disabled"
+                                [class.bg-slate-100]="form.get('idIndicador')?.disabled"
+                                [class.border-slate-300]="!form.get('idIndicador')?.disabled"
+                                [class.border-slate-200]="form.get('idIndicador')?.disabled"
+                                [class.text-slate-900]="!form.get('idIndicador')?.disabled"
+                                [class.text-slate-600]="form.get('idIndicador')?.disabled"
+                                [class.cursor-pointer]="!form.get('idIndicador')?.disabled"
+                                [class.cursor-not-allowed]="form.get('idIndicador')?.disabled"
+                                [class.focus:ring-2]="!form.get('idIndicador')?.disabled"
+                                [class.focus:ring-emerald-500/20]="!form.get('idIndicador')?.disabled"
+                                [class.focus:border-emerald-500]="!form.get('idIndicador')?.disabled">
+                                <option [value]="null">Seleccione indicador...</option>
+                                @for (indicador of indicadores(); track indicador.idIndicador) {
+                                    <option [value]="indicador.idIndicador">{{ indicador.codigo }} - {{ indicador.nombre }}</option>
+                                }
+                            </select>
+                            <app-icon 
+                                [icon]="form.get('idIndicador')?.disabled ? 'lock' : 'expand_more'" 
+                                size="sm" 
+                                class="absolute right-3 top-2.5 pointer-events-none"
+                                [class.text-slate-400]="!form.get('idIndicador')?.disabled"
+                                [class.text-slate-500]="form.get('idIndicador')?.disabled"></app-icon>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                                Actividades anuales
+                            </label>
+                            @if (form.get('idIndicador')?.value) {
+                                <button
+                                    type="button"
+                                    (click)="crearNuevaActividadAnual()"
+                                    class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all duration-200 active:scale-95 shadow-sm hover:shadow"
+                                    title="Crear nueva actividad anual">
+                                    <app-icon icon="add" size="xs"></app-icon>
+                                    <span>Nueva</span>
+                                </button>
+                            }
+                        </div>
+                        
+                        <!-- Actividades Anuales Seleccionadas (Chips) -->
+                        @if (getActividadesAnualesSeleccionadas().length > 0) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarActividadAnual(anual.idActividadAnual)"
+                                            class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                            title="Eliminar actividad anual">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Actividades Anuales -->
+                        @if (mostrarDropdownActividadAnual()) {
+                            <div class="bg-white border border-slate-300 rounded-lg py-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                @if (actividadesAnualesFiltradas().length > 0) {
+                                    <div class="space-y-1 px-3">
+                                        @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
+                                            <label class="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                <input 
+                                                    type="checkbox"
+                                                    [value]="anual.idActividadAnual"
+                                                    (change)="toggleActividadAnual(anual.idActividadAnual, $event)"
+                                                    [checked]="isActividadAnualSelected(anual.idActividadAnual)"
+                                                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                                <app-icon icon="calendar_today" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">
+                                                    {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                                                </span>
+                                            </label>
+                                        }
+                                    </div>
+                                } @else if (form.get('idIndicador')?.value) {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay actividades anuales</p>
+                                        <p class="text-xs text-slate-500 mt-1">No se encontraron actividades anuales para este indicador</p>
+                                    </div>
+                                } @else {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="info" size="sm" class="text-amber-600"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">Seleccione un indicador primero</p>
+                                        <p class="text-xs text-slate-500 mt-1">Debe seleccionar un indicador para ver las actividades anuales</p>
+                                    </div>
+                                }
+                            </div>
+                        } @else if (getActividadesAnualesSeleccionadas().length > 0) {
+                            <!-- Botón para agregar otra actividad anual -->
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownAnual()"
+                                class="w-full pl-3 pr-10 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-between focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                                <span class="flex items-center gap-2">
+                                    <app-icon icon="add" size="xs"></app-icon>
+                                    <span>Agregar otra actividad anual</span>
+                                </span>
+                                <app-icon icon="expand_more" size="sm" class="text-slate-400 pointer-events-none"></app-icon>
+                            </button>
+                        } @else {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownAnual()"
+                                class="w-full pl-3 pr-10 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-between focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                                <span class="flex items-center gap-2">
+                                    <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                    <span>Seleccionar actividades anuales</span>
+                                </span>
+                                <app-icon icon="expand_more" size="sm" class="text-slate-400 pointer-events-none"></app-icon>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                        <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
+                        Actividades Mensuales Institucionales
+                    </label>
+                    
+                    <!-- Actividades Mensuales Seleccionadas (Chips) -->
+                    @if (getActividadesMensualesSeleccionadas().length > 0) {
+                        <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                            @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
+                                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                    <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                    <span class="max-w-xs truncate">{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}</span>
+                                    <button
+                                        type="button"
+                                        (click)="eliminarActividadMensual(mensual.idActividadMensualInst)"
+                                        class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                        title="Eliminar actividad mensual">
+                                        <app-icon icon="close" size="xs"></app-icon>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    
+                    <!-- Dropdown de Actividades Mensuales -->
+                    @if (mostrarDropdownActividadMensual()) {
+                        <div class="bg-white border border-slate-300 rounded-lg py-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            @if (actividadesMensualesFiltradas().length > 0) {
+                                <div class="space-y-1 px-3">
+                                    @for (mensual of actividadesMensualesFiltradas(); track mensual.idActividadMensualInst) {
+                                        <label class="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <input 
+                                                type="checkbox"
+                                                [value]="mensual.idActividadMensualInst"
+                                                (change)="toggleActividadMensual(mensual.idActividadMensualInst, $event)"
+                                                [checked]="isActividadMensualSelected(mensual.idActividadMensualInst)"
+                                                class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                            <app-icon icon="calendar_month" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                            <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">
+                                                {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
+                                            </span>
+                                        </label>
+                                    }
+                                </div>
+                            } @else if (form.get('idIndicador')?.value || form.get('idActividadAnual')?.value) {
+                                <div class="flex flex-col items-center justify-center py-8 text-center">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                        <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-600">No hay actividades mensuales</p>
+                                    <p class="text-xs text-slate-500 mt-1">No se encontraron actividades mensuales para este indicador</p>
+                                </div>
+                            } @else {
+                                <div class="flex flex-col items-center justify-center py-8 text-center">
+                                    <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                                        <app-icon icon="info" size="sm" class="text-amber-600"></app-icon>
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-600">Seleccione un indicador primero</p>
+                                    <p class="text-xs text-slate-500 mt-1">Debe seleccionar un indicador para ver las actividades mensuales</p>
+                                </div>
+                            }
+                        </div>
+                    } @else if (getActividadesMensualesSeleccionadas().length > 0) {
+                        <!-- Botón para agregar otra actividad mensual -->
+                        <button
+                            type="button"
+                            (click)="mostrarDropdownMensual()"
+                            class="w-full pl-3 pr-10 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-between focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                            <span class="flex items-center gap-2">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                <span>Agregar otra actividad mensual</span>
+                            </span>
+                            <app-icon icon="expand_more" size="sm" class="text-slate-400 pointer-events-none"></app-icon>
+                        </button>
+                    } @else {
+                        <button
+                            type="button"
+                            (click)="mostrarDropdownMensual()"
+                            class="w-full pl-3 pr-10 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-between focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                            <span class="flex items-center gap-2">
+                                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                <span>Seleccionar actividades mensuales</span>
+                            </span>
+                            <app-icon icon="expand_more" size="sm" class="text-slate-400 pointer-events-none"></app-icon>
+                        </button>
+                    }
+                </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Sección 2: Información de la Actividad -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <!-- Header del acordeón -->
+                <button
+                    type="button"
+                    (click)="seccionInformacionExpandida.set(!seccionInformacionExpandida())"
+                    class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <app-icon icon="edit_note" size="sm"></app-icon>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-slate-900">Información de la Actividad</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad planificada</p>
+                        </div>
+                    </div>
+                    <app-icon 
+                        [icon]="seccionInformacionExpandida() ? 'expand_less' : 'expand_more'" 
+                        size="md" 
+                        class="text-emerald-600 transition-transform duration-200"
+                        [class.rotate-180]="!seccionInformacionExpandida()"></app-icon>
+                </button>
+                
+                <!-- Contenido del acordeón -->
+                @if (seccionInformacionExpandida()) {
+                    <div class="p-6 space-y-8 border-t border-slate-200 animate-fade-in">
+                        <!-- Nombre de la actividad -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                        <app-icon icon="title" size="xs" class="text-emerald-600"></app-icon>
+                                Nombre de la Actividad <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                            type="text"
+                            formControlName="nombreActividad"
+                            placeholder=""
+                            class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                                [class.border-red-500]="form.get('nombreActividad')?.invalid && form.get('nombreActividad')?.touched">
+                                @if (form.get('nombreActividad')?.valid && form.get('nombreActividad')?.touched) {
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
+                                        <app-icon icon="check_circle" size="xs"></app-icon>
+                                    </span>
+                                }
+                            </div>
+                            @if (form.get('nombreActividad')?.invalid && form.get('nombreActividad')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">El nombre es obligatorio (mínimo 3 caracteres)</p>
+                            }
+                        </div>
+
+                        <!-- Descripción y Objetivo -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                            Descripción
+                        </label>
+                        <textarea 
+                            formControlName="descripcion"
+                            rows="3"
+                            placeholder="Descripción detallada de la actividad..."
+                            class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="flag" size="xs" class="text-emerald-600"></app-icon>
+                            Objetivo
+                        </label>
+                        <textarea 
+                            formControlName="objetivo"
+                            rows="3"
+                            placeholder="Objetivo principal de la actividad..."
+                            class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none"></textarea>
+                    </div>
+                </div>
+
+                <!-- Fechas y Horas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+                            Fecha de realización de la actividad
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="date"
+                                formControlName="fechaInicio"
+                                class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
+                            Hora de realización
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="time"
+                                formControlName="horaRealizacion"
+                                class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
+                            Fecha de Fin
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="date"
+                                formControlName="fechaFin"
+                                class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Departamentos y Estado -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
+                            Departamentos Responsables
+                        </label>
+                        
+                        <!-- Departamentos Seleccionados (Chips) -->
+                        @if (tieneDepartamentosSeleccionados()) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @for (dept of getDepartamentosSeleccionados(); track dept.id) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ dept.nombre }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarDepartamento(dept.id)"
+                                            class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                            title="Eliminar departamento">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Departamentos -->
+                        @if (mostrarDropdownDepartamentos()) {
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                @if (departamentos().length > 0) {
+                                    <div class="space-y-1">
+                                        @for (dept of departamentos(); track dept.id) {
+                                            <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                <input 
+                                                    type="checkbox"
+                                                    [value]="dept.id"
+                                                    (change)="toggleDepartamentoResponsable(dept.id, $event)"
+                                                    [checked]="isDepartamentoResponsableSelected(dept.id)"
+                                                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                                <app-icon icon="business" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ dept.nombre }}</span>
+                                            </label>
+                                        }
+                                    </div>
+                                } @else {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay departamentos disponibles</p>
+                                    </div>
+                                }
+                            </div>
+                        } @else if (tieneDepartamentosSeleccionados()) {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownDepartamentosFunc()"
+                                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                <span>Agregar otro departamento</span>
+                            </button>
+                        } @else {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownDepartamentosFunc()"
+                                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                <span>Seleccionar departamentos</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
+                            Estado de Actividad
+                        </label>
+                        
+                        <!-- Estado Seleccionado (Chip) -->
+                        @if (tieneEstadoActividadSeleccionado()) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @if (getEstadoActividadSeleccionado()) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ getEstadoActividadSeleccionado()?.nombre }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarEstadoActividad()"
+                                            class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                            title="Eliminar estado">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Estado de Actividad -->
+                        @if (mostrarDropdownEstadoActividad()) {
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                @if (estadosActividad().length > 0) {
+                                    <div class="space-y-1">
+                                        @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <input 
+                                                type="radio"
+                                                name="idEstadoActividad"
+                                                [value]="estado.idEstadoActividad || estado.id"
+                                                (change)="toggleEstadoActividad(estado.idEstadoActividad || estado.id, $event)"
+                                                [checked]="isEstadoActividadSelected(estado.idEstadoActividad || estado.id)"
+                                                class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                            <app-icon icon="toggle_on" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                            <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ estado.nombre }}</span>
+                                        </label>
+                                        }
+                                    </div>
+                                } @else {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay estados disponibles</p>
+                                    </div>
+                                }
+                            </div>
+                        } @else if (tieneEstadoActividadSeleccionado()) {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownEstadoActividadFunc()"
+                                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                <span>Cambiar estado</span>
+                            </button>
+                        } @else {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownEstadoActividadFunc()"
+                                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                <span>Seleccionar estado</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                    <!-- Modalidad, Capacidad Instalada y Código -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                        <app-icon icon="video_call" size="xs" class="text-emerald-600"></app-icon>
+                        Modalidad
+                    </label>
+                    
+                    <!-- Modalidad Seleccionada (Chip) -->
+                    @if (tieneModalidadSeleccionada()) {
+                        <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                <span class="max-w-xs truncate">{{ getModalidadSeleccionada() }}</span>
+                                <button
+                                    type="button"
+                                    (click)="eliminarModalidad()"
+                                    class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                    title="Eliminar modalidad">
+                                    <app-icon icon="close" size="xs"></app-icon>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    
+                    <!-- Dropdown de Modalidad -->
+                    @if (mostrarDropdownModalidad()) {
+                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            <div class="space-y-1">
+                                @for (modalidad of getOpcionesModalidad(); track modalidad) {
+                                    <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                        <input 
+                                            type="radio"
+                                            name="modalidad"
+                                            [value]="modalidad"
+                                            (change)="toggleModalidad(modalidad, $event)"
+                                            [checked]="isModalidadSelected(modalidad)"
+                                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                        <app-icon icon="video_call" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                        <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ modalidad }}</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    } @else if (tieneModalidadSeleccionada()) {
+                        <button
+                            type="button"
+                            (click)="mostrarDropdownModalidadFunc()"
+                            class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                            <app-icon icon="add" size="xs"></app-icon>
+                            <span>Cambiar modalidad</span>
+                        </button>
+                    } @else {
+                        <button
+                            type="button"
+                            (click)="mostrarDropdownModalidadFunc()"
+                            class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                            <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                            <span>Seleccionar modalidad</span>
+                        </button>
+                    }
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                        <app-icon icon="location_on" size="xs" class="text-emerald-600"></app-icon>
+                        Local principal
+                    </label>
+                    
+                    <!-- Local Seleccionado (Chip) -->
+                    @if (tieneLocalSeleccionado()) {
+                        <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                            @if (localSeleccionado(); as local) {
+                                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                    <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                    <span class="max-w-xs truncate">{{ local.nombre }}</span>
+                                    <button
+                                        type="button"
+                                        (click)="eliminarLocal()"
+                                        class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                        title="Eliminar local">
+                                        <app-icon icon="close" size="xs"></app-icon>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    
+                    <!-- Dropdown de Local -->
+                    @if (mostrarDropdownLocal()) {
+                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            @if (capacidadesInstaladas().length > 0) {
+                                <div class="space-y-1">
+                                    @for (capacidad of capacidadesInstaladas(); track capacidad.id) {
+                                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <input 
+                                                type="radio"
+                                                name="idCapacidadInstalada"
+                                                [value]="capacidad.id"
+                                                (change)="toggleLocal(capacidad.id, $event)"
+                                                [checked]="isLocalSelected(capacidad.id)"
+                                                class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all"
+                                                [attr.id]="'local-' + capacidad.id">
+                                            <app-icon icon="location_on" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                            <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ capacidad.nombre }}</span>
+                                        </label>
+                                    }
+                                </div>
+                            } @else {
+                                <div class="flex flex-col items-center justify-center py-8 text-center">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                        <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-600">No hay locales disponibles</p>
+                                </div>
+                            }
+                        </div>
+                    } @else if (tieneLocalSeleccionado()) {
+                        <button
+                            type="button"
+                            (click)="mostrarDropdownLocalFunc()"
+                            class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                            <app-icon icon="add" size="xs"></app-icon>
+                            <span>Cambiar local</span>
+                        </button>
+                    } @else {
+                        <button
+                            type="button"
+                            (click)="mostrarDropdownLocalFunc()"
+                            class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                            <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                            <span>Seleccionar local</span>
+                        </button>
+                    }
+                    </div>
+                    </div>
+
+                    <!-- Protagonista principal -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
+                            Protagonista principal
+                        </label>
+                        
+                        <!-- Protagonistas Seleccionados (Chips) -->
+                        @if (tieneProtagonistasSeleccionados()) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @for (tipo of getProtagonistasSeleccionados(); track tipo.id) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ tipo.nombre }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarProtagonista(tipo.id)"
+                                            class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                            title="Eliminar protagonista">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Protagonistas -->
+                        @if (mostrarDropdownProtagonista()) {
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                @if (tiposProtagonista().length > 0) {
+                                    <div class="space-y-1">
+                                        @for (tipo of tiposProtagonista(); track tipo.id) {
+                                            <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                <input 
+                                                    type="checkbox"
+                                                    [value]="tipo.id"
+                                                    (change)="toggleProtagonista(tipo.id, $event)"
+                                                    [checked]="isProtagonistaSelected(tipo.id)"
+                                                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                                <app-icon icon="groups" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ tipo.nombre }}</span>
+                                            </label>
+                                        }
+                                    </div>
+                                } @else {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay tipos de protagonista disponibles</p>
+                                    </div>
+                                }
+                            </div>
+                        } @else if (tieneProtagonistasSeleccionados()) {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownProtagonistaFunc()"
+                                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                <span>Agregar otro protagonista</span>
+                            </button>
+                        } @else {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownProtagonistaFunc()"
+                                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                <span>Seleccionar protagonistas</span>
+                            </button>
+                        }
+                    </div>
+                    <!-- Participantes -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="people" size="xs" class="text-emerald-600"></app-icon>
+                                Cantidad total de participantes proyectados <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="number"
+                                    formControlName="cantidadParticipantesProyectados"
+                                    min="0"
+                                    placeholder="0"
+                                    required
+                                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    style="appearance: textfield; -moz-appearance: textfield;"
+                                    [class.border-red-500]="form.get('cantidadParticipantesProyectados')?.invalid && form.get('cantidadParticipantesProyectados')?.touched">
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                    <app-icon icon="numbers" size="xs"></app-icon>
+                                </span>
+                            </div>
+                            @if (form.get('cantidadParticipantesProyectados')?.invalid && form.get('cantidadParticipantesProyectados')?.touched) {
+                                <p class="mt-1 text-xs text-red-600">Este campo es obligatorio</p>
+                            }
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="people_outline" size="xs" class="text-emerald-600"></app-icon>
+                                Total participantes protagonistas
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="number"
+                                    formControlName="cantidadTotalParticipantesProtagonistas"
+                                    min="0"
+                                    placeholder="0"
+                                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    style="appearance: textfield; -moz-appearance: textfield;">
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                    <app-icon icon="numbers" size="xs"></app-icon>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                                Edición
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="number"
+                                    formControlName="anio"
+                                    min="2000"
+                                    max="2100"
+                                    placeholder=""
+                                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    style="appearance: textfield; -moz-appearance: textfield;">
+                                <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                    <app-icon icon="calendar_today" size="xs"></app-icon>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tipos de Evidencia -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                            Tipos de Evidencia
+                        </label>
+                        
+                        <!-- Tipos de Evidencia Seleccionados (Chips) -->
+                        @if (getTiposEvidenciaSeleccionados().length > 0) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @for (tipo of getTiposEvidenciaSeleccionados(); track tipo.idTipoEvidencia || tipo.id) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ tipo.nombre }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarTipoEvidencia(tipo.idTipoEvidencia || tipo.id)"
+                                            class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                            title="Eliminar tipo de evidencia">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Tipos de Evidencia -->
+                        @if (mostrarDropdownTipoEvidencia()) {
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                @if (tiposEvidencia().length > 0) {
+                                    <div class="space-y-1">
+                                        @for (tipo of tiposEvidencia(); track tipo.idTipoEvidencia || tipo.id) {
+                                            <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                <input 
+                                                    type="checkbox"
+                                                    [value]="tipo.idTipoEvidencia || tipo.id"
+                                                    (change)="toggleTipoEvidencia(tipo.idTipoEvidencia || tipo.id, $event)"
+                                                    [checked]="isTipoEvidenciaSelected(tipo.idTipoEvidencia || tipo.id)"
+                                                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                                <app-icon icon="description" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ tipo.nombre }}</span>
+                                            </label>
+                                        }
+                                    </div>
+                                } @else {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay tipos de evidencia disponibles</p>
+                                        <p class="text-xs text-slate-500 mt-1">No se encontraron tipos de evidencia en el sistema</p>
+                                    </div>
+                                }
+                            </div>
+                        } @else if (getTiposEvidenciaSeleccionados().length > 0) {
+                            <!-- Botón para agregar otro tipo de evidencia -->
+                            <button
+                                type="button"
+                                (click)="abrirDropdownTipoEvidencia()"
+                                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                <app-icon icon="add" size="xs"></app-icon>
+                                <span>Agregar otro tipo de evidencia</span>
+                            </button>
+                        } @else {
+                            <button
+                                type="button"
+                                (click)="abrirDropdownTipoEvidencia()"
+                                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                <span>Seleccionar tipos de evidencia</span>
+                            </button>
+                        }
+                    </div>
+
+                    <!-- Estado -->
+                    <div class="space-y-6">
+                        <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
+                            <app-icon icon="toggle_on" size="sm"></app-icon>
+                            <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
+                        </div>
+
+                        <div class="pt-2 pb-6">
+                            <label class="inline-flex items-center cursor-pointer group">
+                                <input 
+                                    type="checkbox" 
+                                    formControlName="activo"
+                                    class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
+                            </label>
+                        </div>
+                    </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Sección 3: Asignar Responsables -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <!-- Header del acordeón -->
+                <button
+                    type="button"
+                    (click)="seccionResponsablesExpandida.set(!seccionResponsablesExpandida())"
+                    class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <app-icon icon="people" size="sm"></app-icon>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-slate-900">Asignar Responsables</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Seleccione al menos un tipo de responsable y complete la información</p>
+                        </div>
+                    </div>
+                    <app-icon 
+                        [icon]="seccionResponsablesExpandida() ? 'expand_less' : 'expand_more'" 
+                        size="md" 
+                        class="text-emerald-600 transition-transform duration-200"
+                        [class.rotate-180]="!seccionResponsablesExpandida()"></app-icon>
+                </button>
+                
+                <!-- Contenido del acordeón -->
+                @if (seccionResponsablesExpandida()) {
+                    <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
+                    
+                    <div [formGroup]="formResponsable" class="space-y-6">
+                        
+                        <!-- Checklist de Tipos de Responsables -->
+                        <div class="bg-gradient-to-br from-emerald-50 to-white border-2 border-emerald-200 rounded-xl p-5 shadow-sm">
+                            <label class="block text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <app-icon icon="checklist" size="xs" class="text-emerald-600"></app-icon>
+                                Tipos de Responsables <span class="text-red-500">*</span>
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                <!-- Usuarios -->
+                                <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
+                                    [class.border-indigo-500]="isTipoResponsableSeleccionado('usuario')"
+                                    [class.bg-indigo-50]="isTipoResponsableSeleccionado('usuario')"
+                                    [class.border-slate-300]="!isTipoResponsableSeleccionado('usuario')"
+                                    [class.hover:border-indigo-300]="!isTipoResponsableSeleccionado('usuario')">
+                                    <input 
+                                        type="checkbox"
+                                        value="usuario"
+                                        (change)="toggleTipoResponsable('usuario', $event)"
+                                        [checked]="isTipoResponsableSeleccionado('usuario')"
+                                        class="w-5 h-5 text-indigo-600 border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <app-icon icon="person" size="sm" class="text-slate-400 group-hover:text-indigo-600 transition-colors"
+                                        [class.text-indigo-600]="isTipoResponsableSeleccionado('usuario')"></app-icon>
+                                    <span class="text-sm font-medium text-slate-700 flex-1 group-hover:text-indigo-900 transition-colors truncate whitespace-nowrap"
+                                        [class.text-indigo-900]="isTipoResponsableSeleccionado('usuario')">Usuarios</span>
+                                </label>
+
+                                <!-- Docentes -->
+                                <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
+                                    [class.border-emerald-500]="isTipoResponsableSeleccionado('docente')"
+                                    [class.bg-emerald-50]="isTipoResponsableSeleccionado('docente')"
+                                    [class.border-slate-300]="!isTipoResponsableSeleccionado('docente')"
+                                    [class.hover:border-emerald-300]="!isTipoResponsableSeleccionado('docente')">
+                                    <input 
+                                        type="checkbox"
+                                        value="docente"
+                                        (change)="toggleTipoResponsable('docente', $event)"
+                                        [checked]="isTipoResponsableSeleccionado('docente')"
+                                        class="w-5 h-5 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                    <app-icon icon="school" size="sm" class="text-slate-400 group-hover:text-emerald-600 transition-colors"
+                                        [class.text-emerald-600]="isTipoResponsableSeleccionado('docente')"></app-icon>
+                                    <span class="text-sm font-medium text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors truncate whitespace-nowrap"
+                                        [class.text-emerald-900]="isTipoResponsableSeleccionado('docente')">Docentes</span>
+                                </label>
+
+                                <!-- Estudiantes -->
+                                <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
+                                    [class.border-purple-500]="isTipoResponsableSeleccionado('estudiante')"
+                                    [class.bg-purple-50]="isTipoResponsableSeleccionado('estudiante')"
+                                    [class.border-slate-300]="!isTipoResponsableSeleccionado('estudiante')"
+                                    [class.hover:border-purple-300]="!isTipoResponsableSeleccionado('estudiante')">
+                                    <input 
+                                        type="checkbox"
+                                        value="estudiante"
+                                        (change)="toggleTipoResponsable('estudiante', $event)"
+                                        [checked]="isTipoResponsableSeleccionado('estudiante')"
+                                        class="w-5 h-5 text-purple-600 border-slate-300 rounded focus:ring-2 focus:ring-purple-500 transition-all">
+                                    <app-icon icon="groups" size="sm" class="text-slate-400 group-hover:text-purple-600 transition-colors"
+                                        [class.text-purple-600]="isTipoResponsableSeleccionado('estudiante')"></app-icon>
+                                    <span class="text-sm font-medium text-slate-700 flex-1 group-hover:text-purple-900 transition-colors truncate whitespace-nowrap"
+                                        [class.text-purple-900]="isTipoResponsableSeleccionado('estudiante')">Estudiantes</span>
+                                </label>
+
+                                <!-- Administrativos -->
+                                <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
+                                    [class.border-orange-500]="isTipoResponsableSeleccionado('administrativo')"
+                                    [class.bg-orange-50]="isTipoResponsableSeleccionado('administrativo')"
+                                    [class.border-slate-300]="!isTipoResponsableSeleccionado('administrativo')"
+                                    [class.hover:border-orange-300]="!isTipoResponsableSeleccionado('administrativo')">
+                                    <input 
+                                        type="checkbox"
+                                        value="administrativo"
+                                        (change)="toggleTipoResponsable('administrativo', $event)"
+                                        [checked]="isTipoResponsableSeleccionado('administrativo')"
+                                        class="w-5 h-5 text-orange-600 border-slate-300 rounded focus:ring-2 focus:ring-orange-500 transition-all">
+                                    <app-icon icon="business_center" size="sm" class="text-slate-400 group-hover:text-orange-600 transition-colors"
+                                        [class.text-orange-600]="isTipoResponsableSeleccionado('administrativo')"></app-icon>
+                                    <span class="text-sm font-medium text-slate-700 flex-1 group-hover:text-orange-900 transition-colors truncate whitespace-nowrap"
+                                        [class.text-orange-900]="isTipoResponsableSeleccionado('administrativo')">Administrativos</span>
+                                </label>
+
+                                <!-- Responsables Externos -->
+                                <label class="flex items-center gap-3 p-4 cursor-pointer border-2 rounded-lg transition-all duration-200 group"
+                                    [class.border-teal-500]="isTipoResponsableSeleccionado('externo')"
+                                    [class.bg-teal-50]="isTipoResponsableSeleccionado('externo')"
+                                    [class.border-slate-300]="!isTipoResponsableSeleccionado('externo')"
+                                    [class.hover:border-teal-300]="!isTipoResponsableSeleccionado('externo')">
+                                    <input 
+                                        type="checkbox"
+                                        value="externo"
+                                        (change)="toggleTipoResponsable('externo', $event)"
+                                        [checked]="isTipoResponsableSeleccionado('externo')"
+                                        class="w-5 h-5 text-teal-600 border-slate-300 rounded focus:ring-2 focus:ring-teal-500 transition-all">
+                                    <app-icon icon="person_outline" size="sm" class="text-slate-400 group-hover:text-teal-600 transition-colors"
+                                        [class.text-teal-600]="isTipoResponsableSeleccionado('externo')"></app-icon>
+                                    <span class="text-sm font-medium text-slate-700 flex-1 group-hover:text-teal-900 transition-colors truncate whitespace-nowrap"
+                                        [class.text-teal-900]="isTipoResponsableSeleccionado('externo')">Externos</span>
+                                </label>
+                            </div>
+                            @if (!tieneAlMenosUnResponsable() && form.get('nombreActividad')?.touched) {
+                                <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                    <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                    <p class="text-xs text-red-800">Debe seleccionar al menos un tipo de responsable</p>
+                                </div>
+                            }
+                        </div>
+                        
+                        <!-- Sección de Usuarios -->
+                        @if (isTipoResponsableSeleccionado('usuario')) {
+                        <div class="border-2 border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                        <app-icon icon="person" size="sm"></app-icon>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Usuarios</h4>
+                                        <p class="text-xs text-slate-500">Asignar usuarios responsables</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    (click)="agregarPersona('usuario')"
+                                    class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs" color="white"></app-icon>
+                                    <span>Agregar Usuario</span>
+                                </button>
+                            </div>
+                            
+                            <div formArrayName="usuarios" class="space-y-3">
+                                @if (usuariosArray.length === 0) {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="person_add" size="sm" class="text-indigo-600"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay usuarios agregados</p>
+                                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Usuario" para comenzar</p>
+                                    </div>
+                                } @else {
+                                    @for (usuarioControl of usuariosArray.controls; track $index) {
+                                        <div class="bg-white border-2 border-indigo-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                                            <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                                        {{ $index + 1 }}
+                                                    </div>
+                                                    <h5 class="text-sm font-semibold text-slate-900">Usuario {{ $index + 1 }}</h5>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    (click)="eliminarPersona('usuario', $index)"
+                                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title="Eliminar usuario">
+                                                    <app-icon icon="delete" size="xs"></app-icon>
+                                                </button>
+                                            </div>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="person" size="xs" class="text-indigo-600"></app-icon>
+                                                        Usuario <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idUsuario"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un usuario...</option>
+                                                            @for (usuario of getPersonasDisponiblesPorTipo('usuario'); track usuario.id || usuario.idUsuario || $index) {
+                                                                <option [value]="usuario.id || usuario.idUsuario">{{ usuario.nombreCompleto || usuario.nombre || 'Sin nombre' }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                    @if (usuarioControl.get('idUsuario')?.invalid && usuarioControl.get('idUsuario')?.touched) {
+                                                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                            <p class="text-xs text-red-800">Este campo es requerido</p>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div class="p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                                                    <div class="flex items-start gap-2">
+                                                        <app-icon icon="info" size="xs" class="text-indigo-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                        <p class="text-xs text-indigo-800">Para usuarios, el sistema usará automáticamente el rol del usuario. No se requiere seleccionar un rol responsable.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        }
+                        
+                        <!-- Sección de Docentes -->
+                        @if (isTipoResponsableSeleccionado('docente')) {
+                        <div class="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-br from-blue-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                                        <app-icon icon="school" size="sm"></app-icon>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Docentes</h4>
+                                        <p class="text-xs text-slate-500">Asignar docentes responsables</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    (click)="agregarPersona('docente')"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs" color="white"></app-icon>
+                                    <span>Agregar Docente</span>
+                                </button>
+                            </div>
+                            
+                            <div formArrayName="docentes" class="space-y-3">
+                                @if (docentesArray.length === 0) {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="person_add" size="sm" class="text-blue-600"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay docentes agregados</p>
+                                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Docente" para comenzar</p>
+                                    </div>
+                                } @else {
+                                    @for (docenteControl of docentesArray.controls; track $index) {
+                                        <div class="bg-white border-2 border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                                            <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                                                        {{ $index + 1 }}
+                                                    </div>
+                                                    <h5 class="text-sm font-semibold text-slate-900">Docente {{ $index + 1 }}</h5>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    (click)="eliminarPersona('docente', $index)"
+                                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title="Eliminar docente">
+                                                    <app-icon icon="delete" size="xs"></app-icon>
+                                                </button>
+                                            </div>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="person" size="xs" class="text-blue-600"></app-icon>
+                                                        Docente <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idPersona"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un docente...</option>
+                                                            @for (docente of getPersonasDisponiblesPorTipo('docente'); track docente.id || $index) {
+                                                                <option [value]="docente.id">{{ getNombrePersona(docente) }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                    @if (docenteControl.get('idPersona')?.invalid && docenteControl.get('idPersona')?.touched) {
+                                                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                            <p class="text-xs text-red-800">Este campo es requerido</p>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="badge" size="xs" class="text-blue-600"></app-icon>
+                                                        Rol Responsable
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idRolResponsable"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un rol...</option>
+                                                            @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                                <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        }
+                        
+                        <!-- Sección de Estudiantes -->
+                        @if (isTipoResponsableSeleccionado('estudiante')) {
+                        <div class="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                                        <app-icon icon="groups" size="sm"></app-icon>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Estudiantes</h4>
+                                        <p class="text-xs text-slate-500">Asignar estudiantes responsables</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    (click)="agregarPersona('estudiante')"
+                                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs" color="white"></app-icon>
+                                    <span>Agregar Estudiante</span>
+                                </button>
+                            </div>
+                            
+                            <div formArrayName="estudiantes" class="space-y-3">
+                                @if (estudiantesArray.length === 0) {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="person_add" size="sm" class="text-purple-600"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay estudiantes agregados</p>
+                                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Estudiante" para comenzar</p>
+                                    </div>
+                                } @else {
+                                    @for (estudianteControl of estudiantesArray.controls; track $index) {
+                                        <div class="bg-white border-2 border-purple-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                                            <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
+                                                        {{ $index + 1 }}
+                                                    </div>
+                                                    <h5 class="text-sm font-semibold text-slate-900">Estudiante {{ $index + 1 }}</h5>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    (click)="eliminarPersona('estudiante', $index)"
+                                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title="Eliminar estudiante">
+                                                    <app-icon icon="delete" size="xs"></app-icon>
+                                                </button>
+                                            </div>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="person" size="xs" class="text-purple-600"></app-icon>
+                                                        Estudiante <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idPersona"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un estudiante...</option>
+                                                            @for (estudiante of getPersonasDisponiblesPorTipo('estudiante'); track estudiante.id || $index) {
+                                                                <option [value]="estudiante.id">{{ getNombrePersona(estudiante) }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                    @if (estudianteControl.get('idPersona')?.invalid && estudianteControl.get('idPersona')?.touched) {
+                                                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                            <p class="text-xs text-red-800">Este campo es requerido</p>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="badge" size="xs" class="text-purple-600"></app-icon>
+                                                        Rol Responsable <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idRolResponsable"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un rol...</option>
+                                                            @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                                <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                    @if (estudianteControl.get('idRolResponsable')?.invalid && estudianteControl.get('idRolResponsable')?.touched) {
+                                                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                            <p class="text-xs text-red-800">El rol responsable es obligatorio para estudiantes</p>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        }
+                        
+                        <!-- Sección de Administrativos -->
+                        @if (isTipoResponsableSeleccionado('administrativo')) {
+                        <div class="border-2 border-amber-200 rounded-xl p-5 bg-gradient-to-br from-amber-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                        <app-icon icon="business_center" size="sm"></app-icon>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Administrativos</h4>
+                                        <p class="text-xs text-slate-500">Asignar administrativos responsables</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    (click)="agregarPersona('administrativo')"
+                                    class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs" color="white"></app-icon>
+                                    <span>Agregar Administrativo</span>
+                                </button>
+                            </div>
+                            
+                            <div formArrayName="administrativos" class="space-y-3">
+                                @if (administrativosArray.length === 0) {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                                        <div class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="person_add" size="sm" class="text-amber-600"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay administrativos agregados</p>
+                                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Administrativo" para comenzar</p>
+                                    </div>
+                                } @else {
+                                    @for (adminControl of administrativosArray.controls; track $index) {
+                                        <div class="bg-white border-2 border-amber-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                                            <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-xs font-bold">
+                                                        {{ $index + 1 }}
+                                                    </div>
+                                                    <h5 class="text-sm font-semibold text-slate-900">Administrativo {{ $index + 1 }}</h5>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    (click)="eliminarPersona('administrativo', $index)"
+                                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title="Eliminar administrativo">
+                                                    <app-icon icon="delete" size="xs"></app-icon>
+                                                </button>
+                                            </div>
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="person" size="xs" class="text-amber-600"></app-icon>
+                                                        Administrativo <span class="text-red-500">*</span>
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idPersona"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un administrativo...</option>
+                                                            @for (admin of getPersonasDisponiblesPorTipo('administrativo'); track admin.id || $index) {
+                                                                <option [value]="admin.id">{{ getNombrePersona(admin) }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                    @if (adminControl.get('idPersona')?.invalid && adminControl.get('idPersona')?.touched) {
+                                                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                            <p class="text-xs text-red-800">Este campo es requerido</p>
+                                                        </div>
+                                                    }
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="badge" size="xs" class="text-amber-600"></app-icon>
+                                                        Rol Responsable
+                                                    </label>
+                                                    <div class="relative">
+                                                        <select 
+                                                            formControlName="idRolResponsable"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none cursor-pointer bg-white">
+                                                            <option value="">Seleccione un rol...</option>
+                                                            @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                                <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                                            }
+                                                        </select>
+                                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                            <app-icon icon="expand_more" size="xs"></app-icon>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        }
+                        
+                        <!-- Sección de Responsables Externos -->
+                        @if (isTipoResponsableSeleccionado('externo')) {
+                        <div class="border-2 border-teal-200 rounded-xl p-5 bg-gradient-to-br from-teal-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center">
+                                        <app-icon icon="person_outline" size="sm"></app-icon>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Responsables Externos</h4>
+                                        <p class="text-xs text-slate-500">Asignar personas externas a la institución</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button"
+                                    (click)="agregarResponsableExterno()"
+                                    class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs" color="white"></app-icon>
+                                    <span>Agregar Externo</span>
+                                </button>
+                            </div>
+                            
+                            <div formArrayName="responsablesExternos" class="space-y-3">
+                                @if (responsablesExternosArray.length === 0) {
+                                    <div class="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 rounded-lg border-2 border-dashed border-slate-200">
+                                        <div class="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center mb-3">
+                                            <app-icon icon="person_add" size="sm" class="text-teal-600"></app-icon>
+                                        </div>
+                                        <p class="text-sm font-medium text-slate-600">No hay responsables externos agregados</p>
+                                        <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Externo" para comenzar</p>
+                                    </div>
+                                } @else {
+                                    @for (externoControl of responsablesExternosArray.controls; track $index) {
+                                        <div class="bg-white border-2 border-teal-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
+                                            <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-6 h-6 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-xs font-bold">
+                                                        {{ $index + 1 }}
+                                                    </div>
+                                                    <h5 class="text-sm font-semibold text-slate-900">Responsable Externo {{ $index + 1 }}</h5>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    (click)="eliminarResponsableExterno($index)"
+                                                    class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title="Eliminar responsable externo">
+                                                    <app-icon icon="delete" size="xs"></app-icon>
+                                                </button>
+                                            </div>
+                                            <div class="space-y-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="person" size="xs" class="text-teal-600"></app-icon>
+                                                            Nombre <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <input 
+                                                            type="text"
+                                                            formControlName="nombre"
+                                                            placeholder="Ej: Dr. Carlos Méndez"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
+                                                        @if (externoControl.get('nombre')?.invalid && externoControl.get('nombre')?.touched) {
+                                                            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                                <p class="text-xs text-red-800">Este campo es requerido</p>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="business" size="xs" class="text-teal-600"></app-icon>
+                                                            Institución <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <input 
+                                                            type="text"
+                                                            formControlName="institucion"
+                                                            placeholder="Ej: INATEC"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
+                                                        @if (externoControl.get('institucion')?.invalid && externoControl.get('institucion')?.touched) {
+                                                            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                                <p class="text-xs text-red-800">Este campo es requerido</p>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="work" size="xs" class="text-teal-600"></app-icon>
+                                                            Cargo
+                                                        </label>
+                                                        <input 
+                                                            type="text"
+                                                            formControlName="cargo"
+                                                            placeholder="Ej: Director de Formación Técnica"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="badge" size="xs" class="text-teal-600"></app-icon>
+                                                            Rol Responsable <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <div class="relative">
+                                                            <select 
+                                                                formControlName="idRolResponsable"
+                                                                class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer bg-white">
+                                                                <option value="">Seleccione un rol...</option>
+                                                                @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                                    <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                                                }
+                                                            </select>
+                                                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                                <app-icon icon="expand_more" size="xs"></app-icon>
+                                                            </span>
+                                                        </div>
+                                                        @if (externoControl.get('idRolResponsable')?.invalid && externoControl.get('idRolResponsable')?.touched) {
+                                                            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                                <p class="text-xs text-red-800">El rol responsable es obligatorio</p>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="phone" size="xs" class="text-teal-600"></app-icon>
+                                                            Teléfono
+                                                        </label>
+                                                        <input 
+                                                            type="tel"
+                                                            formControlName="telefono"
+                                                            placeholder="Ej: 8888-8888"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="email" size="xs" class="text-teal-600"></app-icon>
+                                                            Correo
+                                                        </label>
+                                                        <input 
+                                                            type="email"
+                                                            formControlName="correo"
+                                                            placeholder="Ej: carlos.mendez@inatec.edu.ni"
+                                                            class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        }
+                    </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="pt-6 flex flex-col-reverse md:flex-row md:justify-end gap-3">
+                <button 
+                    type="button"
+                    [routerLink]="['/actividades']"
+                    class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 hover:text-slate-900 transition-all">
+                    Cancelar
+                </button>
+                <button 
+                    type="submit"
+                    [disabled]="form.invalid || loading()"
+                    class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg font-medium text-sm hover:bg-emerald-700 shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all flex items-center justify-center gap-2 min-w-[120px]">
+                    @if (loading()) {
+                        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Guardando...</span>
+                    } @else {
+                        <app-icon icon="save" size="xs"></app-icon>
+                        <span>{{ isEditMode() ? 'Guardar Cambios' : 'Crear Actividad' }}</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+      </form>
+    }
+  </div>
+</div>
+

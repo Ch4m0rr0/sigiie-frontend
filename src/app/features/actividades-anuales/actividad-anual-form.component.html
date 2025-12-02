@@ -36,9 +36,9 @@
     }
 
     @if (!loading()) {
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200" style="position: relative;">
         
-        <div class="p-6 md:p-8 space-y-8">
+        <div class="p-6 md:p-8 space-y-8" style="position: relative;">
             
             <!-- Información Básica -->
             <div class="space-y-6">
@@ -71,8 +71,8 @@
                             <p class="mt-1.5 text-xs text-red-600">El indicador es obligatorio.</p>
                         }
                         <p class="mt-1.5 text-xs text-slate-500">
-                            <app-icon icon="info" size="xs" class="inline-block mr-1"></app-icon>
-                            Solo se pueden crear actividades anuales para indicadores de nivel inferior (hijos, como 6.1.1, 6.1.2, etc.).
+                            <app-icon icon="info" size="xs" class="inline-block mr-3"></app-icon>
+                            Solo se pueden crear actividades anuales para indicadores de nivel inferior (como 6.1.1, 6.1.2, etc.).
                         </p>
                     </div>
 
@@ -86,8 +86,8 @@
                             id="anio"
                             min="2000"
                             max="2100"
-                            placeholder="2024"
-                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                            placeholder="2026"
+                            class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-400 placeholder-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                             [class.border-red-500]="anio?.invalid && anio?.touched">
                         @if (anio?.invalid && anio?.touched) {
                             <p class="mt-1.5 text-xs text-red-600">
@@ -139,7 +139,7 @@
                 </div>
             </div>
 
-            <div class="pt-6 border-t border-slate-100 flex flex-col-reverse md:flex-row md:justify-end gap-3">
+            <div class="pt-6 flex flex-col-reverse md:flex-row md:justify-end gap-3">
                 <button 
                     type="button"
                     [routerLink]="['/actividades']"

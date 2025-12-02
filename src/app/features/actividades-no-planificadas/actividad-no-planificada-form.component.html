@@ -7,11 +7,11 @@
             <app-icon icon="arrow_back" size="sm"></app-icon>
         </button>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-            {{ isEditMode() ? 'Editar Actividad planificada' : 'Nueva Actividad planificada' }}
+            {{ isEditMode() ? 'Editar Actividad no planificada' : 'Nueva Actividad no planificada' }}
         </h1>
       </div>
       <p class="text-slate-500 text-sm ml-10">
-        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad.' : 'Registra una nueva actividad con todos sus detalles.' }}
+        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad no planificada.' : 'Registra una nueva actividad no planificada con todos sus detalles.' }}
       </p>
     </div>
 
@@ -42,22 +42,14 @@
     }
 
     @if (!loading()) {
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
-        <div class="p-6 md:p-8 space-y-8">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200" style="position: relative;">
+        <div class="p-6 md:p-8 space-y-8" style="position: relative;">
             
-            <!-- Planificación - Mover al inicio -->
+            <!-- Planificación -->
             <div class="space-y-6">
                 <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="calendar_today" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Planificación</h3>
-                </div>
-
-                <div class="pt-2">
-                    <label class="inline-flex items-center cursor-pointer group">
-                        <input type="checkbox" formControlName="esPlanificada" class="sr-only peer">
-                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Planificada</span>
-                    </label>
+                    <app-icon icon="event_busy" size="sm"></app-icon>
+                    <h3 class="text-sm font-bold uppercase tracking-wide">Información de la Actividad</h3>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -129,7 +121,7 @@
                                     </label>
                                 }
                             } @else if (form.get('idIndicador')?.value) {
-                                <p class="text-sm text-slate-500 text-center py-4">No hay actividades planificadas para este indicador</p>
+                                <p class="text-sm text-slate-500 text-center py-4">No hay actividades para este indicador</p>
                             } @else {
                                 <p class="text-sm text-slate-500 text-center py-4">Seleccione un indicador primero</p>
                             }
@@ -463,7 +455,7 @@
                     <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
                 </div>
 
-                <div class="pt-2">
+                <div class="pt-2 pb-6">
                     <label class="inline-flex items-center cursor-pointer group">
                         <input 
                             type="checkbox" 
@@ -475,7 +467,7 @@
                 </div>
             </div>
 
-            <div class="pt-6 border-t border-slate-100 flex flex-col-reverse md:flex-row md:justify-end gap-3">
+            <div class="pt-6 flex flex-col-reverse md:flex-row md:justify-end gap-3">
                 <button 
                     type="button"
                     [routerLink]="['/actividades']"
@@ -501,3 +493,4 @@
     }
   </div>
 </div>
+

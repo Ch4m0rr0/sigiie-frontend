@@ -156,7 +156,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   // Formulario para nueva actividad
   formNuevaActividad!: FormGroup;
-  tipoActividadSeleccionado = signal<'anual' | 'no-planificada' | null>(null);
+  tipoActividadSeleccionado = signal<'anual' | 'mensual' | 'planificada' | 'no-planificada' | null>(null);
   mostrarFormNuevaActividad = signal(false);
   mostrarDropdownIndicadorForm = signal(false);
   mostrarDropdownTipoActividad = signal(false);
@@ -168,7 +168,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   mostrarDropdownTipoEvidencia = signal(true); // Controla si se muestra el dropdown de tipos de evidencia
   loadingNuevaActividad = signal(false);
   errorNuevaActividad = signal<string | null>(null);
-  successNuevaActividad = signal<{ id: number; nombre: string } | null>(null);
+  successNuevaActividad = signal<{ id: number; nombre: string; esPlanificada?: boolean } | null>(null);
   private cargandoRelaciones = false; // Flag para evitar loops infinitos
 
   // Formulario de responsables
@@ -360,7 +360,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     
     this.formNuevaActividad = this.fb.group({
       // Campos básicos de relación
-      idIndicador: [null, Validators.required], // Obligatorio para actividad no planificada
+      idIndicador: [null], // Opcional - no requiere validación
       idActividadAnual: [[]], // Array para múltiples selecciones (opcional)
       idActividadMensualInst: [[]], // Array para múltiples selecciones (opcional)
       
@@ -392,6 +392,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       
       // Tipos de evidencia
       idTipoEvidencias: [[]], // Array de IDs de tipos de evidencias requeridas
+      
+      // Tipo de actividad
+      esPlanificada: [true], // Por defecto planificada
       
     });
     
@@ -618,13 +621,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   toggleDropdownActividad(): void {
-    // Verificar que haya un indicador seleccionado
-    if (!this.indicadorSeleccionado()) {
-      this.errorNuevaActividad.set('Por favor, seleccione un indicador antes de crear una nueva actividad.');
-      return;
-    }
-    
-    // Si hay indicador seleccionado, mostrar el dropdown de tipo de actividad
+    // Mostrar el dropdown de tipo de actividad sin requerir indicador
     this.mostrarDropdownTipoActividad.set(!this.mostrarDropdownTipoActividad());
     this.mostrarDropdownActividad.set(false);
   }
@@ -693,41 +690,58 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     return indicador ? indicador.codigo : 'Seleccione un indicador...';
   }
 
-  seleccionarTipoActividad(tipo: 'anual' | 'no-planificada'): void {
-    // Verificar que haya un indicador seleccionado
-    if (!this.indicadorSeleccionado()) {
-      this.errorNuevaActividad.set('Por favor, seleccione un indicador antes de crear una nueva actividad.');
-      this.mostrarDropdownTipoActividad.set(false);
-      return;
-  }
-
-    this.tipoActividadSeleccionado.set(tipo);
+  seleccionarTipoActividad(tipo: 'anual' | 'mensual' | 'planificada' | 'no-planificada'): void {
     this.mostrarDropdownTipoActividad.set(false);
-    this.mostrarFormNuevaActividad.set(true);
-    this.errorNuevaActividad.set(null);
     
-    // Reiniciar el formulario
-    this.initializeFormNuevaActividad();
-    
-    // Asegurarse de que las listas filtradas estén vacías inicialmente
-    this.actividadesAnualesFiltradas.set([]);
-    this.actividadesMensualesFiltradas.set([]);
-    
-    // Establecer el indicador seleccionado automáticamente
-    const indicadorId = this.indicadorSeleccionado();
-    this.formNuevaActividad.patchValue({ idIndicador: indicadorId }, { emitEvent: false });
-    
-    // Cargar las actividades anuales del indicador seleccionado
-    if (indicadorId) {
-      this.cargarActividadesPorIndicador(indicadorId);
+    // Si es anual o mensual, navegar a la ruta correspondiente
+    if (tipo === 'anual') {
+      const indicadorId = this.indicadorSeleccionado();
+      if (indicadorId) {
+        this.router.navigate(['/actividades-anuales/nueva'], {
+          queryParams: { idIndicador: indicadorId }
+        });
+      } else {
+        this.router.navigate(['/actividades-anuales/nueva']);
+      }
+      return;
     }
     
-    // Ningún campo es requerido - todos son opcionales y se cargan automáticamente
-    this.formNuevaActividad.get('idIndicador')?.clearValidators();
-    this.formNuevaActividad.get('idActividadAnual')?.clearValidators();
-    this.formNuevaActividad.get('idActividadMensualInst')?.clearValidators();
+    if (tipo === 'mensual') {
+      const indicadorId = this.indicadorSeleccionado();
+      if (indicadorId) {
+        this.router.navigate(['/actividades-mensuales/nueva'], {
+          queryParams: { idIndicador: indicadorId }
+        });
+      } else {
+        this.router.navigate(['/actividades-mensuales/nueva']);
+      }
+      return;
+    }
     
-    this.formNuevaActividad.updateValueAndValidity();
+    // Para planificada y no-planificada, navegar a las rutas correspondientes
+    if (tipo === 'planificada') {
+      const indicadorId = this.indicadorSeleccionado();
+      if (indicadorId) {
+        this.router.navigate(['/actividades-planificadas/nueva'], {
+          queryParams: { idIndicador: indicadorId }
+        });
+      } else {
+        this.router.navigate(['/actividades-planificadas/nueva']);
+      }
+      return;
+    }
+    
+    if (tipo === 'no-planificada') {
+      const indicadorId = this.indicadorSeleccionado();
+      if (indicadorId) {
+        this.router.navigate(['/actividades-no-planificadas/nueva'], {
+          queryParams: { idIndicador: indicadorId }
+        });
+      } else {
+        this.router.navigate(['/actividades-no-planificadas/nueva']);
+      }
+      return;
+    }
   }
 
   cerrarFormNuevaActividad(): void {
@@ -751,7 +765,15 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   editarActividadCreada(): void {
     const actividad = this.successNuevaActividad();
     if (actividad) {
-      this.router.navigate(['/actividades', actividad.id, 'editar']);
+      // Navegar a la ruta correcta según el tipo de actividad
+      if (actividad.esPlanificada === true) {
+        this.router.navigate(['/actividades-planificadas', actividad.id, 'editar']);
+      } else if (actividad.esPlanificada === false) {
+        this.router.navigate(['/actividades-no-planificadas', actividad.id, 'editar']);
+      } else {
+        // Si no se puede determinar, navegar a la vista de detalle
+        this.router.navigate(['/actividades', actividad.id]);
+      }
       this.successNuevaActividad.set(null);
     }
   }
@@ -1086,9 +1108,21 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   seleccionarIndicadorForm(idIndicador: number | null): void {
-    this.formNuevaActividad.patchValue({ idIndicador });
+    this.formNuevaActividad.patchValue({ idIndicador }, { emitEvent: false });
     this.mostrarDropdownIndicadorForm.set(false);
-    // El valueChanges del formulario se encargará de cargar las actividades relacionadas
+    
+    // Cargar las actividades relacionadas si se selecciona un indicador
+    if (idIndicador) {
+      this.cargarActividadesPorIndicador(idIndicador);
+    } else {
+      // Limpiar las actividades si no hay indicador seleccionado
+      this.actividadesAnualesFiltradas.set([]);
+      this.actividadesMensualesFiltradas.set([]);
+      this.formNuevaActividad.patchValue({
+        idActividadAnual: [],
+        idActividadMensualInst: []
+      }, { emitEvent: false });
+    }
   }
 
   cargarActividadesPorIndicador(idIndicador: number, autoSeleccionar: boolean = false): void {
@@ -1445,7 +1479,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // No enviar campos con valor 0 cuando deberían ser null o no enviarse
         const actividadData: any = {
           nombreActividad: formValue.nombreActividad || '',
-          esPlanificada: tipo === 'anual' // true para actividad planificada, false para no planificada
+          esPlanificada: formValue.esPlanificada !== undefined ? formValue.esPlanificada : (tipo === 'planificada' || tipo === 'anual')
         };
 
         // Campos opcionales - solo agregar si tienen valor
@@ -1559,7 +1593,8 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
             // Mostrar mensaje de éxito con el ID de la actividad creada
             this.successNuevaActividad.set({
               id: idActividadCreada,
-              nombre: actividad.nombreActividad || actividad.nombre || 'Actividad'
+              nombre: actividad.nombreActividad || actividad.nombre || 'Actividad',
+              esPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : (tipo === 'planificada')
             });
             
             // Auto-cerrar la notificación después de 8 segundos
@@ -1602,15 +1637,15 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   crearNuevaActividadAnual(): void {
     const indicadorId = this.formNuevaActividad.get('idIndicador')?.value || this.indicadorSeleccionado();
-    if (!indicadorId) {
-      this.errorNuevaActividad.set('Por favor, seleccione un indicador antes de crear una nueva actividad anual.');
-      return;
-    }
     
-    // Navegar a crear actividad anual con el indicador seleccionado
-    this.router.navigate(['/actividades-anuales/nueva'], {
-      queryParams: { idIndicador: indicadorId }
-    });
+    // Navegar a crear actividad anual (el indicador es opcional)
+    if (indicadorId) {
+      this.router.navigate(['/actividades-anuales/nueva'], {
+        queryParams: { idIndicador: indicadorId }
+      });
+    } else {
+      this.router.navigate(['/actividades-anuales/nueva']);
+    }
   }
 
 
@@ -2462,8 +2497,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   shouldShowCamposAdicionales(): boolean {
     const tieneIndicador = !!(this.formNuevaActividad.get('idIndicador')?.value || this.indicadorSeleccionado());
-    const esNoPlanificada = this.tipoActividadSeleccionado() === 'no-planificada';
-    const esPlanificada = this.tipoActividadSeleccionado() === 'anual';
+    const tipo = this.tipoActividadSeleccionado();
+    const esNoPlanificada = tipo === 'no-planificada';
+    const esPlanificada = tipo === 'planificada' || tipo === 'anual';
     const tieneActividadesSeleccionadas = this.hasActividadesSeleccionadas();
     
     // Mostrar campos si:
@@ -2601,3 +2637,4 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 }
+
