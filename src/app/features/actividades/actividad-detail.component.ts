@@ -59,6 +59,9 @@ export class ActividadDetailComponent implements OnInit {
   tiposProtagonista = signal<any[]>([]);
   tiposResponsable = signal<any[]>([]);
   capacidadesInstaladas = signal<any[]>([]);
+  estadosActividad = signal<any[]>([]);
+  editandoEstado = signal(false);
+  guardandoEstado = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
   activeTab = signal<'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales'>('info');
@@ -107,10 +110,11 @@ export class ActividadDetailComponent implements OnInit {
       this.loadActividad(+id);
       this.loadIndicadoresList();
       this.loadDepartamentos();
-    this.loadCategoriasActividad();
+      this.loadCategoriasActividad();
     this.loadTiposProtagonista();
     this.loadTiposResponsable();
     this.loadCapacidadesInstaladas();
+    this.loadEstadosActividad();
     // Cargar todas las personas para poder enriquecer los responsables
     this.loadTodasLasPersonas();
     }
@@ -163,6 +167,18 @@ export class ActividadDetailComponent implements OnInit {
       error: (err) => {
         console.error('Error loading capacidades instaladas:', err);
         this.capacidadesInstaladas.set([]);
+      }
+    });
+  }
+
+  loadEstadosActividad(): void {
+    this.catalogosService.getEstadosActividad().subscribe({
+      next: (data) => {
+        this.estadosActividad.set(data || []);
+      },
+      error: (err) => {
+        console.error('Error loading estados actividad:', err);
+        this.estadosActividad.set([]);
       }
     });
   }
@@ -752,6 +768,54 @@ export class ActividadDetailComponent implements OnInit {
         this.router.navigate(['/actividades', actividad.id]);
       }
     }
+  }
+
+  onEstadoChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    const idEstadoActividad = value && value !== '' ? Number(value) : null;
+    this.actualizarEstadoActividad(idEstadoActividad);
+  }
+
+  actualizarEstadoActividad(idEstadoActividad: number | null): void {
+    const actividad = this.actividad();
+    if (!actividad?.id) {
+      alert('No se puede actualizar el estado: actividad no encontrada');
+      return;
+    }
+
+    this.guardandoEstado.set(true);
+    this.error.set(null);
+
+    // El backend requiere NombreActividad como campo obligatorio
+    // Incluimos el nombre actual de la actividad junto con el nuevo estado
+    const updateData: any = {
+      nombreActividad: actividad.nombreActividad || actividad.nombre || '',
+      idEstadoActividad: idEstadoActividad || undefined
+    };
+
+    this.actividadesService.update(actividad.id, updateData).subscribe({
+      next: (success) => {
+        if (success) {
+          // Recargar la actividad para obtener los datos actualizados
+          this.loadActividad(actividad.id!);
+          this.editandoEstado.set(false);
+          console.log('✅ Estado de actividad actualizado correctamente');
+        } else {
+          alert('Error al actualizar el estado de la actividad');
+        }
+        this.guardandoEstado.set(false);
+      },
+      error: (err: any) => {
+        console.error('Error updating estado actividad:', err);
+        this.guardandoEstado.set(false);
+        let errorMessage = 'Error al actualizar el estado de la actividad';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        }
+        alert(errorMessage);
+      }
+    });
   }
 
   onDelete(): void {

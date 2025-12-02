@@ -129,7 +129,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   capacidadesInstaladas = signal<any[]>([]);
 
   // Filtros
-  filtroActivo = signal<boolean | null>(null);
+  filtroEstadoActividad = signal<number | null>(null);
   filtroActividadAnual = signal<number | null>(null);
   filtroActividadMensualInst = signal<number | null>(null);
 
@@ -288,6 +288,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.tiposIniciativa.set(results.catalogos.tiposIniciativa);
         this.estadosActividad.set(results.catalogos.estadosActividad);
         this.tiposActividad.set(results.catalogos.tiposActividad);
+        
+        // Establecer estado por defecto después de cargar los catálogos
+        this.establecerEstadoActividadPorDefecto();
         this.tiposDocumento.set(results.catalogos.tiposDocumento);
         this.tiposProtagonista.set(results.catalogos.tiposProtagonista);
         this.tiposEvidencia.set(results.catalogos.tiposEvidencia);
@@ -334,7 +337,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
 
     this.catalogosService.getEstadosActividad().subscribe({
-      next: (data) => this.estadosActividad.set(data),
+      next: (data) => {
+        this.estadosActividad.set(data);
+        // Establecer estado por defecto si el formulario existe y no tiene estado seleccionado
+        this.establecerEstadoActividadPorDefecto();
+      },
       error: (err) => console.error('Error loading estados actividad:', err)
     });
 
@@ -434,6 +441,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       // Tipo de actividad
       esPlanificada: [true], // Por defecto planificada
       
+      // Estado activo - siempre true por defecto
+      activo: [true]
+      
     });
     
     // Suscribirse a cambios en el indicador
@@ -497,8 +507,46 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       }
       // No limpiar el indicador si se deseleccionan las actividades mensuales
     });
+    
+    // Establecer estado por defecto si los catálogos ya están cargados
+    if (this.estadosActividad().length > 0) {
+      this.establecerEstadoActividadPorDefecto();
+    }
   }
 
+  /**
+   * Establece el estado de actividad por defecto (Planificada o En Curso)
+   * si el formulario no tiene un estado seleccionado
+   */
+  establecerEstadoActividadPorDefecto(): void {
+    if (!this.formNuevaActividad) return;
+    
+    const estadoActual = this.formNuevaActividad.get('idEstadoActividad')?.value;
+    if (estadoActual) return; // Ya tiene un estado seleccionado
+    
+    const estados = this.estadosActividad();
+    if (estados.length === 0) return;
+    
+    // Buscar "Planificada" primero, luego "En Curso", luego el primero disponible
+    const estadoPlanificada = estados.find(e => 
+      e.nombre?.toLowerCase().includes('planificada') || 
+      e.nombre?.toLowerCase().includes('planificad')
+    );
+    
+    const estadoEnCurso = estados.find(e => 
+      e.nombre?.toLowerCase().includes('en curso') || 
+      e.nombre?.toLowerCase().includes('en_curso') ||
+      e.nombre?.toLowerCase().includes('curso')
+    );
+    
+    const estadoPorDefecto = estadoPlanificada || estadoEnCurso || estados[0];
+    
+    if (estadoPorDefecto) {
+      const idEstado = estadoPorDefecto.idEstadoActividad || estadoPorDefecto.id;
+      this.formNuevaActividad.patchValue({ idEstadoActividad: idEstado }, { emitEvent: false });
+      console.log('✅ Estado de actividad por defecto establecido:', estadoPorDefecto.nombre);
+    }
+  }
 
   loadActividadesAnuales(): void {
     this.actividadAnualService.getAll().subscribe({
@@ -564,7 +612,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     
     console.log('🔄 Cargando actividades...');
     console.log('📊 Filtros activos:', {
-      activo: this.filtroActivo(),
+      estadoActividad: this.filtroEstadoActividad(),
       actividadAnual: this.filtroActividadAnual(),
       actividadMensualInst: this.filtroActividadMensualInst()
     });
@@ -575,8 +623,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // Aplicar filtros del lado del cliente
         let filtered = data;
         
-        if (this.filtroActivo() !== null) {
-          filtered = filtered.filter(a => a.activo === this.filtroActivo()!);
+        // Filtrar por estado de actividad (del catálogo)
+        if (this.filtroEstadoActividad() !== null) {
+          filtered = filtered.filter(a => a.idEstadoActividad === this.filtroEstadoActividad()!);
         }
         
         // Filtrar por actividad mensual institucional
@@ -1564,7 +1613,8 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // No enviar campos con valor 0 cuando deberían ser null o no enviarse
         const actividadData: any = {
           nombreActividad: formValue.nombreActividad || '',
-          esPlanificada: formValue.esPlanificada !== undefined ? formValue.esPlanificada : (tipo === 'planificada' || tipo === 'anual')
+          esPlanificada: formValue.esPlanificada !== undefined ? formValue.esPlanificada : (tipo === 'planificada' || tipo === 'anual'),
+          activo: formValue.activo !== undefined ? formValue.activo : true // Siempre activo por defecto
         };
 
         // Campos opcionales - solo agregar si tienen valor
@@ -1739,12 +1789,19 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   clearFilters(): void {
-    this.filtroActivo.set(null);
+    this.filtroEstadoActividad.set(null);
     this.filtroActividadAnual.set(null);
     this.filtroActividadMensualInst.set(null);
     this.error.set(null);
     this.showRetryButton = false;
     this.loadActividades();
+  }
+
+  onEstadoFiltroChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    this.filtroEstadoActividad.set(value === '' ? null : Number(value));
+    this.onFiltroChange();
   }
 
   cambiarModoVista(modo: 'cards' | 'lista' | 'calendario'): void {

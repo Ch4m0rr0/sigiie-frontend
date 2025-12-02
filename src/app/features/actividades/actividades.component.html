@@ -1862,12 +1862,15 @@
                 <app-icon icon="toggle_on" size="xs"></app-icon>
             </span>
             <select 
-                [value]="filtroActivo() === null ? '' : (filtroActivo() ? 'true' : 'false')"
-                (change)="filtroActivo.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
+                [value]="filtroEstadoActividad() || ''"
+                (change)="onEstadoFiltroChange($event)"
                 class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
-                <option value="">Todos</option>
-                <option value="true">Activas</option>
-                <option value="false">Inactivas</option>
+                <option value="">Todos los estados</option>
+                @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                  <option [value]="estado.idEstadoActividad || estado.id">
+                    {{ estado.nombre || estado.Nombre }}
+                  </option>
+                }
             </select>
             <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                 <app-icon icon="expand_more" size="xs"></app-icon>
@@ -1977,7 +1980,7 @@
                     <app-icon icon="refresh" size="sm"></app-icon>
                     Reintentar
                 </button>
-                @if (filtroActividadAnual() || filtroActividadMensualInst() || filtroActivo() !== null) {
+                @if (filtroActividadAnual() || filtroActividadMensualInst() || filtroEstadoActividad() !== null) {
                     <button 
                         type="button"
                         (click)="clearFilters()"
@@ -1997,7 +2000,7 @@
         <span class="font-semibold text-slate-900">{{ actividades().length }}</span>
         {{ actividades().length === 1 ? 'actividad encontrada' : 'actividades encontradas' }}
       </p>
-      @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+      @if (filtroEstadoActividad() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
         <button 
           (click)="clearFilters()"
           class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-colors">
@@ -2030,21 +2033,31 @@
                   </div>
               </div>
               
-              @if (actividad.activo) {
-                  <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-50 animate-pulse" title="Actividad activa" aria-label="Actividad activa"></span>
-              } @else {
-                  <span class="flex-shrink-0 w-2.5 h-2.5 rounded-full bg-slate-300 ring-4 ring-slate-50" title="Actividad inactiva" aria-label="Actividad inactiva"></span>
-              }
             </div>
 
-            @if (actividad.nombreNivel) {
-               <div class="mb-3">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                      <app-icon icon="layers" size="xs" class="mr-1 text-slate-400"></app-icon>
-                      {{ actividad.nombreNivel }}
-                  </span>
-               </div>
-             }
+            <div class="mb-3 flex flex-wrap gap-2">
+              @if (actividad.nombreEstadoActividad) {
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                  <app-icon icon="toggle_on" size="xs" class="mr-1 text-blue-600"></app-icon>
+                  {{ actividad.nombreEstadoActividad }}
+                </span>
+              } @else if (actividad.idEstadoActividad) {
+                @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                  @if ((estado.idEstadoActividad || estado.id) === actividad.idEstadoActividad) {
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                      <app-icon icon="toggle_on" size="xs" class="mr-1 text-blue-600"></app-icon>
+                      {{ estado.nombre || estado.Nombre }}
+                    </span>
+                  }
+                }
+              }
+              @if (actividad.nombreNivel) {
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                  <app-icon icon="layers" size="xs" class="mr-1 text-slate-400"></app-icon>
+                  {{ actividad.nombreNivel }}
+                </span>
+              }
+            </div>
 
             <div class="mb-4">
                <p class="text-sm text-slate-500 line-clamp-2">
@@ -2106,11 +2119,11 @@
           <table class="w-full">
             <thead class="bg-slate-50 border-b border-slate-200 sticky top-0">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actividad</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Departamento</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fecha</th>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actividad</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Departamento</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fecha</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200">
@@ -2119,22 +2132,22 @@
                   (click)="navigateToDetail(actividad.id)"
                   [style.animation-delay.ms]="i * 30"
                   class="hover:bg-emerald-50 cursor-pointer transition-all duration-200 animate-fade-in">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center gap-3">
-                      <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0">
                         <app-icon icon="assignment" size="xs"></app-icon>
                       </div>
-                      <div>
-                        <div class="text-sm font-semibold text-slate-900">{{ actividad.nombre }}</div>
-                        <div class="text-xs text-slate-500 line-clamp-1">{{ actividad.descripcion || 'Sin descripción' }}</div>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-xs font-mono font-semibold text-slate-600 truncate">{{ actividad.codigoActividad || 'Sin código' }}</div>
+                        <div class="text-sm font-medium text-slate-900 truncate">{{ actividad.nombreActividad || actividad.nombre || 'Sin nombre' }}</div>
                       </div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="text-sm text-slate-700">{{ actividad.nombreDepartamentoResponsable || 'Sin asignar' }}</span>
+                  <td class="px-3 py-2.5">
+                    <span class="text-xs text-slate-700 truncate block max-w-[150px]">{{ actividad.nombreDepartamentoResponsable || 'Sin asignar' }}</span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="text-sm text-slate-600">
+                  <td class="px-3 py-2.5 whitespace-nowrap">
+                    <span class="text-xs text-slate-600">
                       @if (actividad.fechaInicio) {
                         {{ actividad.fechaInicio | date:'dd/MM/yyyy' }}
                       } @else {
@@ -2142,23 +2155,35 @@
                       }
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    @if (actividad.activo) {
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-                        Activa
+                  <td class="px-3 py-2.5">
+                    @if (actividad.nombreEstadoActividad) {
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                        <span class="w-1 h-1 rounded-full bg-blue-500 mr-1"></span>
+                        {{ actividad.nombreEstadoActividad }}
                       </span>
+                    } @else if (actividad.idEstadoActividad) {
+                      @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                        @if ((estado.idEstadoActividad || estado.id) === actividad.idEstadoActividad) {
+                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                            <span class="w-1 h-1 rounded-full bg-blue-500 mr-1"></span>
+                            {{ estado.nombre || estado.Nombre }}
+                          </span>
+                        }
+                      }
                     } @else {
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
-                        Inactiva
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
+                        <span class="w-1 h-1 rounded-full bg-slate-400 mr-1"></span>
+                        Sin estado
                       </span>
                     }
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <span class="text-emerald-600 hover:text-emerald-700 flex items-center justify-end gap-1 text-sm font-medium">
-                      Ver detalles <app-icon icon="arrow_forward" size="xs"></app-icon>
-                    </span>
+                  <td class="px-4 py-2.5 whitespace-nowrap text-right">
+                    <button
+                      (click)="navigateToDetail(actividad.id); $event.stopPropagation()"
+                      class="px-3 py-1.5 bg-white text-emerald-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
+                      Detalles
+                      <app-icon icon="arrow_forward" size="xs"></app-icon>
+                    </button>
                   </td>
                 </tr>
               }
@@ -2314,7 +2339,7 @@
         </div>
         <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
         <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
-            @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+            @if (filtroEstadoActividad() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
                 @if (filtroActividadMensualInst()) {
                     No hay actividades asociadas a esta actividad mensual. Las actividades mensuales son contenedores que agrupan actividades. 
                     Para ver actividades aquí, necesitas crear actividades normales y asociarlas a esta actividad mensual.
@@ -2326,7 +2351,7 @@
             }
         </p>
         <div class="flex gap-3 flex-wrap justify-center">
-            @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+            @if (filtroEstadoActividad() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
                 <button 
                     (click)="clearFilters()" 
                     class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">

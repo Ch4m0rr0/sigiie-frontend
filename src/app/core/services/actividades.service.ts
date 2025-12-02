@@ -298,7 +298,8 @@ export class ActividadesService {
     // No enviar campos con valor 0, null o undefined
     const dto: any = {
       NombreActividad: nombreActividad.trim(),
-      EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true
+      EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true,
+      Activo: actividad.activo !== undefined ? actividad.activo : true // Por defecto activo
     };
     
     // Campos opcionales - solo agregar si tienen valor válido
@@ -317,6 +318,10 @@ export class ActividadesService {
     
     if (actividad.idCapacidadInstalada !== undefined && actividad.idCapacidadInstalada !== null && Number(actividad.idCapacidadInstalada) > 0) {
       dto.IdCapacidadInstalada = Number(actividad.idCapacidadInstalada);
+    }
+    
+    if (actividad.idEstadoActividad !== undefined && actividad.idEstadoActividad !== null && Number(actividad.idEstadoActividad) > 0) {
+      dto.IdEstadoActividad = Number(actividad.idEstadoActividad);
     }
     
     if (actividad.idIndicador !== undefined && actividad.idIndicador !== null && Number(actividad.idIndicador) > 0) {

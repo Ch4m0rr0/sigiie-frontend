@@ -40,11 +40,6 @@
                 {{ actividad()!.nombreNivel }}
               </span>
             }
-            @if (actividad()!.activo) {
-              <span class="ml-2 inline-block px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">
-                Activa
-              </span>
-            }
           </div>
           <div class="flex gap-2">
             <button 
@@ -345,13 +340,54 @@
                         <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
                         Estado de Actividad
                       </label>
-                      @if (actividad()!.nombreEstadoActividad) {
-                        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
-                          <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                          <span>{{ actividad()!.nombreEstadoActividad }}</span>
+                      @if (!editandoEstado()) {
+                        <div class="flex items-center gap-2">
+                          @if (actividad()!.nombreEstadoActividad) {
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                              <span>{{ actividad()!.nombreEstadoActividad }}</span>
+                            </div>
+                          } @else {
+                            <p class="text-sm text-slate-500 italic text-left">Sin estado asignado</p>
+                          }
+                          <button
+                            (click)="editandoEstado.set(true)"
+                            class="ml-2 px-2 py-1 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition flex items-center gap-1"
+                            title="Editar estado">
+                            <app-icon icon="edit" size="xs"></app-icon>
+                            Editar
+                          </button>
                         </div>
                       } @else {
-                        <p class="text-sm text-slate-500 italic text-left">Sin estado asignado</p>
+                        <div class="flex items-center gap-2">
+                          <div class="relative flex-1">
+                            <select
+                              [value]="actividad()!.idEstadoActividad || ''"
+                              (change)="onEstadoChange($event)"
+                              [disabled]="guardandoEstado()"
+                              class="w-full pl-3 pr-8 py-2 bg-white border-2 border-emerald-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer transition-all">
+                              <option [value]="">Sin estado</option>
+                              @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                                <option [value]="estado.idEstadoActividad || estado.id">
+                                  {{ estado.nombre || estado.Nombre }}
+                                </option>
+                              }
+                            </select>
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                              <app-icon icon="expand_more" size="xs"></app-icon>
+                            </span>
+                          </div>
+                          <button
+                            (click)="editandoEstado.set(false)"
+                            [disabled]="guardandoEstado()"
+                            class="px-2 py-1 text-xs text-slate-600 hover:text-slate-700 hover:bg-slate-50 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Cancelar">
+                            <app-icon icon="close" size="xs"></app-icon>
+                          </button>
+                          @if (guardandoEstado()) {
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                          }
+                        </div>
                       }
                     </div>
                   </div>
