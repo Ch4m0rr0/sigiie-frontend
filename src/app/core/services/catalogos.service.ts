@@ -1611,7 +1611,7 @@ export class CatalogosService {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
           id: item.idEstadoProyecto || item.IdEstadoProyecto || item.id || item.Id || 0,
-          nombre: item.nombre || item.Nombre || '',
+          nombre: item.nombre || item.nombreEstado || item.Nombre || item.NombreEstado || '',
           descripcion: item.descripcion || item.Descripcion || ''
         })) : [];
       }),
@@ -1627,18 +1627,18 @@ export class CatalogosService {
   }
 
   createEstadoProyecto(estado: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: estado.nombre, Descripcion: estado.descripcion || '' };
+    const data = { nombreEstado: estado.nombre, descripcion: estado.descripcion || '' };
     return this.http.post<any>(`${this.apiUrl}/EstadoProyecto`, data).pipe(
       map(item => ({
         id: item.idEstadoProyecto || item.IdEstadoProyecto || item.id || item.Id || 0,
-        nombre: item.nombre || item.Nombre || estado.nombre,
+        nombre: item.nombre || item.nombreEstado || item.Nombre || item.NombreEstado || estado.nombre,
         descripcion: item.descripcion || item.Descripcion || estado.descripcion || ''
       }))
     );
   }
 
   updateEstadoProyecto(id: number, estado: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: estado.nombre, Descripcion: estado.descripcion || '' };
+    const data = { nombreEstado: estado.nombre, descripcion: estado.descripcion || '' };
     return this.http.put<any>(`${this.apiUrl}/EstadoProyecto/${id}`, data).pipe(
       map(response => {
         if (!response) {
@@ -1650,7 +1650,7 @@ export class CatalogosService {
         }
         return {
           id: item.idEstadoProyecto || item.IdEstadoProyecto || item.Id || item.id || id,
-          nombre: item.nombre || item.Nombre || estado.nombre,
+          nombre: item.nombre || item.nombreEstado || item.Nombre || item.NombreEstado || estado.nombre,
           descripcion: item.descripcion || item.Descripcion || estado.descripcion || ''
         };
       })
@@ -1725,8 +1725,7 @@ export class CatalogosService {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
           id: item.idNivelAcademico || item.IdNivelAcademico || item.id || item.Id || 0,
-          nombre: item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
+          nombre: item.nombre || item.Nombre || ''
         })) : [];
       }),
       catchError(error => {
@@ -1740,32 +1739,30 @@ export class CatalogosService {
     );
   }
 
-  createNivelAcademico(nivel: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: nivel.nombre, Descripcion: nivel.descripcion || '' };
+  createNivelAcademico(nivel: { nombre: string }): Observable<any> {
+    const data = { nombre: nivel.nombre };
     return this.http.post<any>(`${this.apiUrl}/nivel-academico`, data).pipe(
       map(item => ({
         id: item.idNivelAcademico || item.IdNivelAcademico || item.id || item.Id || 0,
-        nombre: item.nombre || item.Nombre || nivel.nombre,
-        descripcion: item.descripcion || item.Descripcion || nivel.descripcion || ''
+        nombre: item.nombre || item.Nombre || nivel.nombre
       }))
     );
   }
 
-  updateNivelAcademico(id: number, nivel: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: nivel.nombre, Descripcion: nivel.descripcion || '' };
+  updateNivelAcademico(id: number, nivel: { nombre: string }): Observable<any> {
+    const data = { nombre: nivel.nombre };
     return this.http.put<any>(`${this.apiUrl}/nivel-academico/${id}`, data).pipe(
       map(response => {
         if (!response) {
-          return { id, nombre: nivel.nombre, descripcion: nivel.descripcion || '' };
+          return { id, nombre: nivel.nombre };
         }
         const item = response.data || response;
         if (!item) {
-          return { id, nombre: nivel.nombre, descripcion: nivel.descripcion || '' };
+          return { id, nombre: nivel.nombre };
         }
         return {
           id: item.idNivelAcademico || item.IdNivelAcademico || item.Id || item.id || id,
-          nombre: item.nombre || item.Nombre || nivel.nombre,
-          descripcion: item.descripcion || item.Descripcion || nivel.descripcion || ''
+          nombre: item.nombre || item.Nombre || nivel.nombre
         };
       })
     );

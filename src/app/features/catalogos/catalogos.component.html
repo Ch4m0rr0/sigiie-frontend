@@ -81,35 +81,11 @@
               <input type="text" formControlName="nombre" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                      required>
             </div>
-            <div *ngIf="selectedCatalogo !== 'departamentos'">
+            <div *ngIf="selectedCatalogo !== 'departamentos' && selectedCatalogo !== 'nivelesacademico'">
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Descripción
               </label>
               <input type="text" formControlName="descripcion" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            </div>
-            <!-- Campos del Jefe del Departamento -->
-            <div *ngIf="selectedCatalogo === 'departamentos'" class="space-y-4 mb-4">
-              <h4 class="text-base font-medium text-gray-700 mt-4 mb-2">Información del Jefe del Departamento</h4>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre del Jefe
-                </label>
-                <input type="text" formControlName="nombreJefe" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Correo Electrónico
-                  </label>
-                  <input type="email" formControlName="correoJefe" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Teléfono
-                  </label>
-                  <input type="tel" formControlName="telefonoJefe" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-              </div>
             </div>
             <!-- Año y Meta fields for indicadores -->
             <div *ngIf="selectedCatalogo === 'indicadores'" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -143,21 +119,22 @@
         <!-- List -->
         <div class="bg-white shadow rounded-lg overflow-hidden">
           <div class="px-4 py-5 sm:p-6">
-            <div class="flex justify-between items-center mb-4 flex-wrap gap-4">
-              <h3 class="text-lg font-medium text-gray-900">{{ getCatalogoName() }}</h3>
-              <div class="flex gap-2 items-center flex-wrap">
-                <!-- Filtro de año para indicadores -->
-                <div *ngIf="selectedCatalogo === 'indicadores'" class="flex items-center gap-2">
-                  <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Filtrar por año:</label>
-                  <select 
-                    [ngModel]="filtroAnioIndicadores()"
-                    (ngModelChange)="onFiltroAnioChange($event)"
-                    class="px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option [value]="null">Todos los años</option>
-                    <option *ngFor="let anio of getAniosDisponibles()" [value]="anio">{{ anio }}</option>
-                  </select>
-                </div>
+            <div class="flex flex-col gap-4 mb-4">
+              <div class="flex justify-between items-center flex-wrap gap-4">
+                <h3 class="text-lg font-medium text-gray-900">{{ getCatalogoName() }}</h3>
+                <div class="flex gap-2 items-center flex-wrap">
+                  <!-- Filtro de año para indicadores -->
+                  <div *ngIf="selectedCatalogo === 'indicadores'" class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Filtrar por año:</label>
+                    <select 
+                      [ngModel]="filtroAnioIndicadores()"
+                      (ngModelChange)="onFiltroAnioChange($event)"
+                      class="px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option [value]="null">Todos los años</option>
+                      <option *ngFor="let anio of getAniosDisponibles()" [value]="anio">{{ anio }}</option>
+                    </select>
+                  </div>
                 <!-- Botones especiales para Indicadores -->
                 <div *ngIf="selectedCatalogo === 'indicadores'" class="flex gap-2">
                   <button 
@@ -194,6 +171,22 @@
               </div>
             </div>
             
+            <!-- Búsqueda para indicadores -->
+            <div *ngIf="selectedCatalogo === 'indicadores'" class="mb-4">
+              <div class="relative">
+                <input
+                  type="text"
+                  [ngModel]="busquedaIndicadores()"
+                  (ngModelChange)="onBusquedaIndicadoresChange($event)"
+                  placeholder="Buscar por nombre o código..."
+                  class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+            </div>
+            
             <!-- Loading indicator -->
             <div *ngIf="isLoading()" class="flex justify-center items-center py-8">
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -219,7 +212,6 @@
                         {{ (selectedCatalogo === 'generos' || selectedCatalogo === 'indicadores') ? 'Código - Nombre' : 'Nombre' }}
                       </th>
                       <th *ngIf="hasDescriptionData()" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                      <th *ngIf="selectedCatalogo === 'departamentos'" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jefe del Departamento</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
@@ -230,20 +222,6 @@
                       </td>
                       <td *ngIf="hasDescriptionData()" class="px-6 py-4 text-sm text-gray-500" [class.max-w-xs]="selectedCatalogo === 'indicadores'" [class.truncate]="selectedCatalogo === 'indicadores'">
                         <span [title]="item.descripcion">{{ item.descripcion }}</span>
-                      </td>
-                      <td *ngIf="selectedCatalogo === 'departamentos'" class="px-6 py-4 text-sm text-gray-500">
-                        <div *ngIf="item.nombreJefe || item.correoJefe || item.telefonoJefe" class="space-y-1">
-                          <div *ngIf="item.nombreJefe" class="font-medium text-gray-900">{{ item.nombreJefe }}</div>
-                          <div *ngIf="item.correoJefe" class="text-gray-600">
-                            <span class="text-gray-500">📧</span> {{ item.correoJefe }}
-                          </div>
-                          <div *ngIf="item.telefonoJefe" class="text-gray-600">
-                            <span class="text-gray-500">📞</span> {{ item.telefonoJefe }}
-                          </div>
-                        </div>
-                        <div *ngIf="!item.nombreJefe && !item.correoJefe && !item.telefonoJefe" class="text-gray-400 italic">
-                          Sin información
-                        </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button (click)="editItem(item)" class="text-blue-600 hover:text-blue-900 mr-3" title="Editar">
@@ -264,9 +242,72 @@
                       </td>
                     </tr>
                   </tbody>
-                </table>
+            </table>
+          </div>
+          
+          <!-- Paginación para indicadores -->
+          <div *ngIf="selectedCatalogo === 'indicadores' && getTotalIndicadoresFiltrados() > 0" class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-4">
+            <div class="text-sm text-gray-700">
+              <span *ngIf="!mostrarTodosIndicadores()">
+                Mostrando {{ getInicioPagina() }} - 
+                {{ getFinPagina() }} 
+                de {{ getTotalIndicadoresFiltrados() }} indicadores
+              </span>
+              <span *ngIf="mostrarTodosIndicadores()">
+                Mostrando todos los {{ getTotalIndicadoresFiltrados() }} indicadores
+              </span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Toggle para mostrar todos -->
+              <button
+                (click)="mostrarTodosIndicadores.set(!mostrarTodosIndicadores())"
+                [class.bg-green-600]="mostrarTodosIndicadores()"
+                [class.text-white]="mostrarTodosIndicadores()"
+                [class.bg-white]="!mostrarTodosIndicadores()"
+                [class.text-gray-700]="!mostrarTodosIndicadores()"
+                class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+              >
+                {{ mostrarTodosIndicadores() ? 'Mostrar 10 por página' : 'Mostrar todos' }}
+              </button>
+              
+              <!-- Controles de paginación (solo si no se muestran todos) -->
+              <div *ngIf="!mostrarTodosIndicadores() && getTotalPaginasIndicadores() > 1" class="flex items-center gap-2">
+                <button
+                  (click)="paginaAnteriorIndicadores()"
+                [disabled]="paginaActualIndicadores() === 1"
+                [class.opacity-50]="paginaActualIndicadores() === 1"
+                [class.cursor-not-allowed]="paginaActualIndicadores() === 1"
+                class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Anterior
+              </button>
+              
+              <div class="flex gap-1">
+                <button
+                  *ngFor="let pagina of getArrayPaginas()"
+                  (click)="irAPaginaIndicadores(pagina)"
+                  [class.bg-blue-600]="pagina === paginaActualIndicadores()"
+                  [class.text-white]="pagina === paginaActualIndicadores()"
+                  [class.bg-white]="pagina !== paginaActualIndicadores()"
+                  [class.text-gray-700]="pagina !== paginaActualIndicadores()"
+                  class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  {{ pagina }}
+                </button>
+                </div>
+                
+                <button
+                  (click)="paginaSiguienteIndicadores()"
+                  [disabled]="paginaActualIndicadores() === getTotalPaginasIndicadores()"
+                  [class.opacity-50]="paginaActualIndicadores() === getTotalPaginasIndicadores()"
+                  [class.cursor-not-allowed]="paginaActualIndicadores() === getTotalPaginasIndicadores()"
+                  class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Siguiente
+                </button>
               </div>
             </div>
+          </div>
           </div>
         </div>
 

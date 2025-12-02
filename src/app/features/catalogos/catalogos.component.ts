@@ -67,6 +67,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   
   // Filtro de año para indicadores
   filtroAnioIndicadores = signal<number | null>(null);
+  busquedaIndicadores = signal<string>('');
+  paginaActualIndicadores = signal<number>(1);
+  readonly itemsPorPagina = 10;
+  mostrarTodosIndicadores = signal<boolean>(false);
 
   // Para importar indicadores
   showImportDialog = false;
@@ -133,8 +137,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.editingId = null;
     this.form.reset();
     this.updateFormValidation();
-    // Resetear filtro de año cuando se cambia de catálogo
+    // Resetear filtros y paginación cuando se cambia de catálogo
     this.filtroAnioIndicadores.set(null);
+    this.busquedaIndicadores.set('');
+    this.paginaActualIndicadores.set(1);
   }
 
   updateFormValidation() {
@@ -240,7 +246,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
 
   currentItems(): any[] {
     switch (this.selectedCatalogo) {
-      case 'departamentos': return this.departamentos().map(({id, nombre, descripcion, nombreJefe, correoJefe, telefonoJefe}) => ({id, nombre, descripcion, nombreJefe, correoJefe, telefonoJefe}));
+      case 'departamentos': return this.departamentos().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'generos': return this.generos().map(({id, codigo, descripcion}) => ({id, codigo, descripcion}));
       case 'estadoestudiantes': return this.estadoestudiantes().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'estadoparticipaciones': return this.estadoparticipaciones().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
@@ -262,18 +268,36 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         descripcion: item.descripcion || ''
       }));
       case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion}) => ({id: idNivel, nombre, descripcion}));
-      case 'nivelesacademico': return this.nivelesacademico().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
+      case 'nivelesacademico': return this.nivelesacademico().map(({id, nombre}) => ({id, nombre}));
       case 'rolesequipo': return this.rolesequipo().map(({idRolEquipo, nombre, descripcion}) => ({id: idRolEquipo, nombre, descripcion}));
       case 'rolesresponsable': return this.rolesresponsable().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'roles': return this.roles().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'indicadores': {
-        const indicadores = this.indicadores().map(({idIndicador, codigo, nombre, descripcion, anio, meta}) => ({id: idIndicador, codigo, nombre, descripcion, anio, meta}));
+        let indicadores = this.indicadores().map(({idIndicador, codigo, nombre, descripcion, anio, meta}) => ({id: idIndicador, codigo, nombre, descripcion, anio, meta}));
+        
         // Filtrar por año si hay un filtro activo
         const filtroAnio = this.filtroAnioIndicadores();
         if (filtroAnio !== null && filtroAnio !== undefined) {
-          return indicadores.filter(ind => ind.anio === filtroAnio);
+          indicadores = indicadores.filter(ind => ind.anio === filtroAnio);
         }
-        return indicadores;
+        
+        // Filtrar por búsqueda (nombre o código)
+        const busqueda = this.busquedaIndicadores().trim().toLowerCase();
+        if (busqueda) {
+          indicadores = indicadores.filter(ind => 
+            (ind.nombre && ind.nombre.toLowerCase().includes(busqueda)) ||
+            (ind.codigo && ind.codigo.toLowerCase().includes(busqueda))
+          );
+        }
+        
+        // Aplicar paginación solo si no se está mostrando todos
+        if (this.mostrarTodosIndicadores()) {
+          return indicadores;
+        }
+        const paginaActual = this.paginaActualIndicadores();
+        const inicio = (paginaActual - 1) * this.itemsPorPagina;
+        const fin = inicio + this.itemsPorPagina;
+        return indicadores.slice(inicio, fin);
       }
       default: return [];
     }
@@ -292,6 +316,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     // Para estadosactividad, también buscar NombreEstado
     if (this.selectedCatalogo === 'estadosactividad') {
       return item.nombre || item.Nombre || item.NombreEstado || '';
+    }
+    // Para estadosproyecto, buscar nombreEstado
+    if (this.selectedCatalogo === 'estadosproyecto') {
+      return item.nombre || item.nombreEstado || item.Nombre || item.NombreEstado || '';
     }
     return item.nombre || item.Nombre || '';
   }
@@ -325,13 +353,6 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Departamentos cargados:', data);
         console.log('✅ LOAD ALL CATALOGOS - Primer departamento (ejemplo):', data[0]);
-        if (data[0]) {
-          console.log('✅ LOAD ALL CATALOGOS - Campos del jefe:', {
-            nombreJefe: data[0].nombreJefe,
-            correoJefe: data[0].correoJefe,
-            telefonoJefe: data[0].telefonoJefe
-          });
-        }
         this.departamentos.set(data);
       },
       error: error => console.error('❌ LOAD ALL CATALOGOS - Error cargando departamentos:', error)
@@ -544,10 +565,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       nombre: nombreValue || '', 
       descripcion: item.descripcion || '',
       anio: (item as any).anio !== undefined ? (item as any).anio : ((item as any).Anio !== undefined ? (item as any).Anio : null),
-      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null),
-      nombreJefe: item.nombreJefe || '',
-      correoJefe: item.correoJefe || '',
-      telefonoJefe: item.telefonoJefe || ''
+      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null)
     });
   }
 
@@ -703,10 +721,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         }
         obs = this.catalogosService.createDepartamento({ 
           nombre: data.nombre, 
-          descripcion: data.descripcion || '',
-          nombreJefe: data.nombreJefe || '',
-          correoJefe: data.correoJefe || '',
-          telefonoJefe: data.telefonoJefe || ''
+          descripcion: data.descripcion || ''
         }); 
         break;
         
@@ -864,7 +879,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for nivel academico:', data);
           return;
         }
-        obs = this.catalogosService.createNivelAcademico({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createNivelAcademico({ nombre: data.nombre }); 
         break;
         
       case 'rolesequipo': 
@@ -946,10 +961,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         }
         obs = this.catalogosService.updateDepartamento(id, { 
           nombre: data.nombre, 
-          descripcion: data.descripcion || '',
-          nombreJefe: data.nombreJefe || '',
-          correoJefe: data.correoJefe || '',
-          telefonoJefe: data.telefonoJefe || ''
+          descripcion: data.descripcion || ''
         }); 
         break;
         
@@ -1112,7 +1124,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for nivel academico:', data);
           return;
         }
-        obs = this.catalogosService.updateNivelAcademico(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateNivelAcademico(id, { nombre: data.nombre }); 
         break;
         
       case 'rolesequipo': 
@@ -1369,6 +1381,99 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     } else {
       this.filtroAnioIndicadores.set(null);
     }
+    // Resetear a la primera página cuando cambia el filtro
+    this.paginaActualIndicadores.set(1);
+  }
+
+  onBusquedaIndicadoresChange(termino: string) {
+    this.busquedaIndicadores.set(termino);
+    // Resetear a la primera página cuando cambia la búsqueda
+    this.paginaActualIndicadores.set(1);
+  }
+
+  getTotalIndicadoresFiltrados(): number {
+    if (this.selectedCatalogo !== 'indicadores') {
+      return 0;
+    }
+    let indicadores = this.indicadores().map(({idIndicador, codigo, nombre, descripcion, anio, meta}) => ({id: idIndicador, codigo, nombre, descripcion, anio, meta}));
+    
+    // Filtrar por año si hay un filtro activo
+    const filtroAnio = this.filtroAnioIndicadores();
+    if (filtroAnio !== null && filtroAnio !== undefined) {
+      indicadores = indicadores.filter(ind => ind.anio === filtroAnio);
+    }
+    
+    // Filtrar por búsqueda (nombre o código)
+    const busqueda = this.busquedaIndicadores().trim().toLowerCase();
+    if (busqueda) {
+      indicadores = indicadores.filter(ind => 
+        (ind.nombre && ind.nombre.toLowerCase().includes(busqueda)) ||
+        (ind.codigo && ind.codigo.toLowerCase().includes(busqueda))
+      );
+    }
+    
+    return indicadores.length;
+  }
+
+  getTotalPaginasIndicadores(): number {
+    const total = this.getTotalIndicadoresFiltrados();
+    return Math.ceil(total / this.itemsPorPagina);
+  }
+
+  irAPaginaIndicadores(pagina: number) {
+    const totalPaginas = this.getTotalPaginasIndicadores();
+    if (pagina >= 1 && pagina <= totalPaginas) {
+      this.paginaActualIndicadores.set(pagina);
+    }
+  }
+
+  paginaAnteriorIndicadores() {
+    const paginaActual = this.paginaActualIndicadores();
+    if (paginaActual > 1) {
+      this.paginaActualIndicadores.set(paginaActual - 1);
+    }
+  }
+
+  paginaSiguienteIndicadores() {
+    const paginaActual = this.paginaActualIndicadores();
+    const totalPaginas = this.getTotalPaginasIndicadores();
+    if (paginaActual < totalPaginas) {
+      this.paginaActualIndicadores.set(paginaActual + 1);
+    }
+  }
+
+  getArrayPaginas(): number[] {
+    const totalPaginas = this.getTotalPaginasIndicadores();
+    const paginaActual = this.paginaActualIndicadores();
+    const paginas: number[] = [];
+    
+    // Mostrar máximo 5 páginas a la vez
+    const maxPaginas = 5;
+    let inicio = Math.max(1, paginaActual - Math.floor(maxPaginas / 2));
+    let fin = Math.min(totalPaginas, inicio + maxPaginas - 1);
+    
+    // Ajustar inicio si estamos cerca del final
+    if (fin - inicio < maxPaginas - 1) {
+      inicio = Math.max(1, fin - maxPaginas + 1);
+    }
+    
+    for (let i = inicio; i <= fin; i++) {
+      paginas.push(i);
+    }
+    
+    return paginas;
+  }
+
+  getInicioPagina(): number {
+    const total = this.getTotalIndicadoresFiltrados();
+    if (total === 0) return 0;
+    return (this.paginaActualIndicadores() - 1) * this.itemsPorPagina + 1;
+  }
+
+  getFinPagina(): number {
+    const total = this.getTotalIndicadoresFiltrados();
+    const fin = this.paginaActualIndicadores() * this.itemsPorPagina;
+    return Math.min(fin, total);
   }
 
   importarDesdeExcel() {
