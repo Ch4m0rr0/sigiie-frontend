@@ -408,6 +408,7 @@ export class ActividadDetailComponent implements OnInit {
     
     // Obtener los tipos de evidencia de la actividad
     const tiposEvidencia = actividad.idTipoEvidencias || [];
+    console.log('🚀 Navegando a crear evidencia. Actividad:', actividad.id, 'Tipos de evidencia:', tiposEvidencia);
     
     // Construir query params
     const queryParams: any = {
@@ -417,6 +418,9 @@ export class ActividadDetailComponent implements OnInit {
     // Si hay tipos de evidencia, pasarlos como query param
     if (tiposEvidencia.length > 0) {
       queryParams.tiposEvidencia = tiposEvidencia.join(',');
+      console.log('📤 Query params con tipos:', queryParams);
+    } else {
+      console.warn('⚠️ La actividad no tiene tipos de evidencia definidos');
     }
     
     this.router.navigate(['/evidencias/nueva'], { queryParams });

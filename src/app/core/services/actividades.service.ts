@@ -231,7 +231,13 @@ export class ActividadesService {
   // Alineado con IActividadesService.GetByIdAsync()
   getById(id: number): Observable<Actividad> {
     return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
-      map(item => this.mapActividad(item))
+      map(item => {
+        console.log('📥 Respuesta del backend al obtener actividad:', item);
+        console.log('📥 IdTipoEvidencias en respuesta GET:', item.IdTipoEvidencias || item.idTipoEvidencias);
+        const actividadMapeada = this.mapActividad(item);
+        console.log('📥 Actividad mapeada (GET) - idTipoEvidencias:', actividadMapeada.idTipoEvidencias);
+        return actividadMapeada;
+      })
     );
   }
 
@@ -425,9 +431,16 @@ export class ActividadesService {
     });
     
     console.log('🔄 POST Actividad - DTO:', JSON.stringify(dto, null, 2));
+    console.log('📤 IdTipoEvidencias enviado:', dto.IdTipoEvidencias);
     
     return this.http.post<any>(this.apiUrl, dto).pipe(
-      map(item => this.mapActividad(item))
+      map(item => {
+        console.log('📥 Respuesta del backend al crear actividad:', item);
+        console.log('📥 IdTipoEvidencias en respuesta:', item.IdTipoEvidencias || item.idTipoEvidencias);
+        const actividadMapeada = this.mapActividad(item);
+        console.log('📥 Actividad mapeada - idTipoEvidencias:', actividadMapeada.idTipoEvidencias);
+        return actividadMapeada;
+      })
     );
   }
 
@@ -988,6 +1001,11 @@ export class ActividadesService {
   }
 
   private mapActividad(item: any): Actividad {
+    // Log para debug: ver qué viene del backend
+    if (item.IdTipoEvidencias || item.idTipoEvidencias) {
+      console.log('🔍 Backend devolvió IdTipoEvidencias:', item.IdTipoEvidencias || item.idTipoEvidencias, 'Tipo:', typeof (item.IdTipoEvidencias || item.idTipoEvidencias));
+    }
+    
     const idActividad = item.IdActividad || item.idActividad || item.id || item.Id;
     const nombreActividad = item.NombreActividad || item.nombreActividad || item.nombre || item.Nombre || '';
     
@@ -1174,7 +1192,50 @@ export class ActividadesService {
       horaRealizacion: item.HoraRealizacion || item.horaRealizacion,
       cantidadParticipantesProyectados: item.CantidadParticipantesProyectados || item.cantidadParticipantesProyectados,
       idTipoProtagonista: item.IdTipoProtagonista || item.idTipoProtagonista,
-      idTipoEvidencias: item.IdTipoEvidencias || item.idTipoEvidencias || (Array.isArray(item.IdTipoEvidencias) ? item.IdTipoEvidencias : undefined),
+      idTipoEvidencias: (() => {
+        // Intentar obtener IdTipoEvidencias en diferentes formatos
+        if (Array.isArray(item.IdTipoEvidencias) && item.IdTipoEvidencias.length > 0) {
+          console.log('✅ IdTipoEvidencias encontrado como array (PascalCase):', item.IdTipoEvidencias);
+          return item.IdTipoEvidencias;
+        }
+        if (Array.isArray(item.idTipoEvidencias) && item.idTipoEvidencias.length > 0) {
+          console.log('✅ idTipoEvidencias encontrado como array (camelCase):', item.idTipoEvidencias);
+          return item.idTipoEvidencias;
+        }
+        // Si viene como string (JSON), parsearlo
+        if (typeof item.IdTipoEvidencias === 'string' && item.IdTipoEvidencias.trim() !== '') {
+          try {
+            const parsed = JSON.parse(item.IdTipoEvidencias);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log('✅ IdTipoEvidencias parseado desde string (PascalCase):', parsed);
+              return parsed;
+            }
+          } catch (e) {
+            console.warn('⚠️ Error parsing IdTipoEvidencias:', e);
+          }
+        }
+        if (typeof item.idTipoEvidencias === 'string' && item.idTipoEvidencias.trim() !== '') {
+          try {
+            const parsed = JSON.parse(item.idTipoEvidencias);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              console.log('✅ idTipoEvidencias parseado desde string (camelCase):', parsed);
+              return parsed;
+            }
+          } catch (e) {
+            console.warn('⚠️ Error parsing idTipoEvidencias:', e);
+          }
+        }
+        // Si no se encuentra, verificar si hay algún campo relacionado
+        if (item.TiposEvidencia && Array.isArray(item.TiposEvidencia)) {
+          const tipos = item.TiposEvidencia.map((t: any) => t.IdTipoEvidencia || t.idTipoEvidencia).filter((id: any) => id);
+          if (tipos.length > 0) {
+            console.log('✅ TiposEvidencia encontrado como objeto, extrayendo IDs:', tipos);
+            return tipos;
+          }
+        }
+        console.warn('⚠️ No se encontró IdTipoEvidencias en la respuesta del backend');
+        return undefined;
+      })(),
       
       // Usuario creador
       creadoPor: item.CreadoPor || item.creadoPor || 0,

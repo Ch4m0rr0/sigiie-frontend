@@ -106,16 +106,30 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   tiposEvidenciaPermitidos = signal<number[] | null>(null);
 
   loadTiposEvidencia(): void {
+    // Leer query params ANTES de cargar los datos
+    const tiposPermitidosParam = this.route.snapshot.queryParamMap.get('tiposEvidencia');
+    console.log('🔍 Query param tiposEvidencia:', tiposPermitidosParam);
+    
     this.catalogosService.getTiposEvidencia().subscribe({
       next: (data) => {
+        console.log('📦 Todos los tipos de evidencia cargados:', data.length);
         this.tiposEvidencia.set(data);
         
-        // Si hay tipos permitidos en query params, filtrar
-        const tiposPermitidosParam = this.route.snapshot.queryParamMap.get('tiposEvidencia');
+        // Si hay tipos permitidos en query params, filtrar y pre-seleccionar
         if (tiposPermitidosParam) {
-          const tiposPermitidos = tiposPermitidosParam.split(',').map(id => Number(id)).filter(id => !isNaN(id));
+          const tiposPermitidos = tiposPermitidosParam.split(',').map(id => Number(id.trim())).filter(id => !isNaN(id) && id > 0);
+          console.log('📋 Tipos de evidencia permitidos (parseados):', tiposPermitidos);
           this.tiposEvidenciaPermitidos.set(tiposPermitidos);
-          console.log('📋 Tipos de evidencia permitidos desde query params:', tiposPermitidos);
+          
+          // Pre-seleccionar automáticamente todos los tipos permitidos
+          // Solo si no estamos en modo edición y no hay tipos ya seleccionados
+          if (!this.isEditMode() && this.selectedTiposEvidencia().length === 0) {
+            this.selectedTiposEvidencia.set(tiposPermitidos);
+            console.log('✅ Tipos de evidencia pre-seleccionados automáticamente:', tiposPermitidos);
+          }
+        } else {
+          console.log('⚠️ No hay query param tiposEvidencia, mostrando todos los tipos');
+          this.tiposEvidenciaPermitidos.set(null);
         }
       },
       error: (err) => console.error('Error loading tipos evidencia:', err)
@@ -127,14 +141,22 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
     const permitidos = this.tiposEvidenciaPermitidos();
     
     if (permitidos === null || permitidos.length === 0) {
+      console.log('🔓 Sin filtro: mostrando todos los tipos', todos.length);
       return todos; // Si no hay filtro, mostrar todos
     }
     
     // Filtrar solo los tipos permitidos
-    return todos.filter(tipo => {
+    const filtrados = todos.filter(tipo => {
       const tipoId = tipo.idTipoEvidencia || (tipo as any).id;
-      return permitidos.includes(tipoId);
+      const incluido = permitidos.includes(tipoId);
+      if (!incluido) {
+        console.log(`❌ Tipo ${tipoId} (${tipo.nombre}) no está en la lista de permitidos`);
+      }
+      return incluido;
     });
+    
+    console.log(`🔒 Con filtro: mostrando ${filtrados.length} de ${todos.length} tipos`, filtrados.map(t => ({ id: t.idTipoEvidencia, nombre: t.nombre })));
+    return filtrados;
   }
 
   loadActividades(): void {
@@ -393,10 +415,12 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   getTiposEvidenciaOptions() {
     // Usar los tipos filtrados si hay filtro activo
     const tipos = this.getTiposEvidenciaFiltrados();
-    return tipos.map(tipo => ({
-      id: tipo.idTipoEvidencia,
+    const options = tipos.map(tipo => ({
+      id: tipo.idTipoEvidencia || (tipo as any).id,
       label: tipo.nombre
     }));
+    console.log('🎯 Opciones para el dropdown:', options);
+    return options;
   }
 
   get totalImages(): number {

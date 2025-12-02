@@ -1712,6 +1712,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           next: (actividad) => {
             const idActividadCreada = actividad.id || actividad.idActividad;
             console.log(`✅ Actividad creada con ID: ${idActividadCreada}`);
+            console.log(`📋 Tipos de evidencia en actividad creada:`, actividad.idTipoEvidencias);
             
             // Crear responsables manualmente después de crear la actividad
             // El backend no crea los responsables automáticamente, debemos crearlos usando el endpoint /api/actividad-responsable
@@ -1777,6 +1778,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   navigateToCrearEvidencia(actividad: Actividad): void {
     // Obtener los tipos de evidencia de la actividad
     const tiposEvidencia = actividad.idTipoEvidencias || [];
+    console.log('🚀 Navegando a crear evidencia. Actividad:', actividad.id, 'Tipos de evidencia:', tiposEvidencia);
     
     // Construir query params
     const queryParams: any = {
@@ -1786,6 +1788,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     // Si hay tipos de evidencia, pasarlos como query param
     if (tiposEvidencia.length > 0) {
       queryParams.tiposEvidencia = tiposEvidencia.join(',');
+      console.log('📤 Query params con tipos:', queryParams);
+    } else {
+      console.warn('⚠️ La actividad no tiene tipos de evidencia definidos');
     }
     
     this.router.navigate(['/evidencias/nueva'], { queryParams });
