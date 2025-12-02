@@ -2315,7 +2315,12 @@
         <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
         <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
             @if (filtroActivo() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
-                No hay actividades que coincidan con los filtros seleccionados. Intenta ajustar los filtros o crear una nueva actividad.
+                @if (filtroActividadMensualInst()) {
+                    No hay actividades asociadas a esta actividad mensual. Las actividades mensuales son contenedores que agrupan actividades. 
+                    Para ver actividades aquí, necesitas crear actividades normales y asociarlas a esta actividad mensual.
+                } @else {
+                    No hay actividades que coincidan con los filtros seleccionados. Intenta ajustar los filtros o crear una nueva actividad.
+                }
             } @else {
                 Aún no hay actividades registradas. Comienza creando tu primera actividad.
             }

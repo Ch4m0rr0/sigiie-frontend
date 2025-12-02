@@ -70,8 +70,12 @@ export class ActividadMensualFormComponent implements OnInit {
     // Leer idIndicador de query params (si viene desde el dropdown de actividades)
     const idIndicador = this.route.snapshot.queryParams['idIndicador'];
     if (idIndicador) {
-      this.form.patchValue({ idIndicador: +idIndicador });
-      this.loadActividadesAnuales(+idIndicador);
+      const idIndicadorNum = Number(idIndicador);
+      if (!isNaN(idIndicadorNum)) {
+        console.log('🔄 Preseleccionando indicador desde query params:', idIndicadorNum);
+        this.form.patchValue({ idIndicador: idIndicadorNum });
+        // No llamar loadActividadesAnuales aquí porque valueChanges se encargará
+      }
     }
   }
 
@@ -87,12 +91,24 @@ export class ActividadMensualFormComponent implements OnInit {
     
     // Suscribirse a cambios en el indicador para filtrar actividades anuales
     this.form.get('idIndicador')?.valueChanges.subscribe(idIndicador => {
+      console.log('🔄 Cambio en idIndicador:', idIndicador, 'tipo:', typeof idIndicador);
+      
       if (idIndicador) {
+        // Convertir a número si viene como string
+        const idIndicadorNum = Number(idIndicador);
+        if (isNaN(idIndicadorNum)) {
+          console.error('❌ ID de indicador inválido en valueChanges:', idIndicador);
+          this.actividadesAnuales.set([]);
+          this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
+          return;
+        }
+        
         // Limpiar la selección de actividad anual cuando cambia el indicador
         this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
-        this.loadActividadesAnuales(idIndicador);
+        this.loadActividadesAnuales(idIndicadorNum);
       } else {
         // Si no hay indicador, limpiar las actividades anuales
+        console.log('🔄 Limpiando actividades anuales (sin indicador)');
         this.actividadesAnuales.set([]);
         this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
       }
@@ -116,15 +132,53 @@ export class ActividadMensualFormComponent implements OnInit {
       return;
     }
     
+    // Asegurar que idIndicador sea un número
+    const idIndicadorNum = Number(idIndicador);
+    if (isNaN(idIndicadorNum)) {
+      console.error('❌ ID de indicador inválido:', idIndicador);
+      this.actividadesAnuales.set([]);
+      return;
+    }
+    
+    console.log('🔄 Cargando actividades anuales para indicador:', idIndicadorNum);
+    
     // Usar getByIndicador para obtener solo las actividades anuales del indicador
-    this.actividadAnualService.getByIndicador(idIndicador).subscribe({
+    this.actividadAnualService.getByIndicador(idIndicadorNum).subscribe({
       next: (data) => {
-        // Filtrar para asegurar que solo sean del indicador seleccionado
-        const actividadesFiltradas = (data || []).filter(a => a.idIndicador === idIndicador);
+        console.log('✅ Actividades anuales recibidas del servicio:', data);
+        console.log('📊 Total de actividades recibidas:', data?.length || 0);
+        
+        // El servicio ya filtra por indicador, pero verificamos que coincidan
+        const actividadesFiltradas = (data || []).filter(a => {
+          const aIdIndicador = Number(a.idIndicador);
+          const matches = aIdIndicador === idIndicadorNum;
+          if (!matches) {
+            console.warn('⚠️ Actividad anual con idIndicador diferente:', a.idActividadAnual, 'esperado:', idIndicadorNum, 'recibido:', aIdIndicador);
+          }
+          return matches;
+        });
+        
+        console.log('✅ Actividades anuales filtradas:', actividadesFiltradas.length);
+        console.log('📋 Actividades:', actividadesFiltradas.map(a => ({
+          id: a.idActividadAnual,
+          nombre: a.nombre,
+          anio: a.anio,
+          idIndicador: a.idIndicador
+        })));
+        
         this.actividadesAnuales.set(actividadesFiltradas);
+        
+        if (actividadesFiltradas.length === 0) {
+          console.warn('⚠️ No se encontraron actividades anuales para el indicador:', idIndicadorNum);
+        }
       },
       error: (err) => {
-        console.error('Error loading actividades anuales:', err);
+        console.error('❌ Error loading actividades anuales:', err);
+        console.error('❌ Error details:', {
+          status: err.status,
+          message: err.message,
+          error: err.error
+        });
         this.error.set('Error al cargar las actividades anuales');
         this.actividadesAnuales.set([]);
       }
@@ -139,24 +193,35 @@ export class ActividadMensualFormComponent implements OnInit {
           // Obtener el idIndicador desde la actividad anual relacionada
           const idIndicador = data.actividadAnual?.idIndicador || null;
           
+          console.log('🔄 Cargando actividad mensual:', id);
+          console.log('📋 Datos recibidos:', data);
+          console.log('📊 ID Indicador desde actividad anual:', idIndicador);
+          
           // Si hay indicador, cargar las actividades anuales primero
           if (idIndicador) {
-            this.loadActividadesAnuales(idIndicador);
+            const idIndicadorNum = Number(idIndicador);
+            if (!isNaN(idIndicadorNum)) {
+              // Cargar actividades anuales antes de hacer patchValue
+              // para que el dropdown tenga las opciones disponibles
+              this.loadActividadesAnuales(idIndicadorNum);
+            }
           }
           
+          // Hacer patchValue después de cargar actividades anuales
+          // El valueChanges se encargará de cargar las actividades si cambia el indicador
           this.form.patchValue({
-            idIndicador: idIndicador,
+            idIndicador: idIndicador ? Number(idIndicador) : null,
             idActividadAnual: data.idActividadAnual || null,
             mes: data.mes || null,
             nombre: data.nombre || '',
             descripcion: data.descripcion || '',
             activo: data.activo ?? true
-          });
+          }, { emitEvent: false }); // No emitir eventos para evitar cargas duplicadas
         }
         this.loading.set(false);
       },
       error: (err) => {
-        console.error('Error loading actividad mensual:', err);
+        console.error('❌ Error loading actividad mensual:', err);
         this.error.set('Error al cargar la actividad mensual institucional');
         this.loading.set(false);
       }
@@ -223,12 +288,28 @@ export class ActividadMensualFormComponent implements OnInit {
           }
         });
       } else {
+        console.log('🔄 Creando actividad mensual institucional...');
+        console.log('📋 Datos a enviar:', data);
+        
         this.actividadMensualInstService.create(data).subscribe({
-          next: () => {
-            this.router.navigate(['/actividades']);
+          next: (response) => {
+            console.log('✅ Actividad mensual creada exitosamente:', response);
+            console.log('📊 ID de actividad mensual creada:', response.idActividadMensualInst);
+            
+            // Navegar a la lista de actividades con un parámetro para recargar
+            this.router.navigate(['/actividades'], { 
+              queryParams: { 
+                recargar: 'true',
+                actividadMensualCreada: response.idActividadMensualInst 
+              } 
+            });
           },
           error: (err: any) => {
-            console.error('Error saving actividad mensual:', err);
+            console.error('❌ Error saving actividad mensual:', err);
+            console.error('❌ Error status:', err.status);
+            console.error('❌ Error message:', err.message);
+            console.error('❌ Error body:', err.error);
+            
             let errorMessage = 'Error al crear la actividad mensual institucional';
             
             if (err.error) {

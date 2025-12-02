@@ -88,12 +88,29 @@
                             max="2100"
                             placeholder="2026"
                             class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-400 placeholder-slate-300 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-                            [class.border-red-500]="anio?.invalid && anio?.touched">
+                            [class.border-red-500]="anio?.invalid && anio?.touched"
+                            [class.border-yellow-500]="showYearWarning() && anio?.valid && anio?.touched">
                         @if (anio?.invalid && anio?.touched) {
                             <p class="mt-1.5 text-xs text-red-600">
                                 @if (anio?.errors?.['required']) { El año es obligatorio. }
                                 @else if (anio?.errors?.['min'] || anio?.errors?.['max']) { El año debe estar entre 2000 y 2100. }
                             </p>
+                        }
+                        @if (showYearWarning() && anio?.valid && anio?.touched && !yearWarningConfirmed()) {
+                            <div class="mt-1.5 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div class="flex items-start gap-2">
+                                    <app-icon icon="warning" size="sm" class="text-yellow-600 mt-0.5 flex-shrink-0"></app-icon>
+                                    <div class="flex-1">
+                                        <p class="text-xs font-medium text-yellow-800 mb-1">
+                                            Advertencia: Año fuera del rango esperado
+                                        </p>
+                                        <p class="text-xs text-yellow-700">
+                                            Normalmente las actividades anuales se planifican para el año en curso ({{ getCurrentYear() }}) o para el año siguiente ({{ getNextYear() }}). 
+                                            Por favor, verifique que el año <strong>{{ anio?.value }}</strong> sea correcto antes de continuar.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         }
                     </div>
                 </div>

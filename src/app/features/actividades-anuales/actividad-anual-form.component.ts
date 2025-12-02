@@ -36,6 +36,8 @@ export class ActividadAnualFormComponent implements OnInit {
   actividadAnualId = signal<number | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
+  showYearWarning = signal(false);
+  yearWarningConfirmed = signal(false);
 
   ngOnInit(): void {
     this.initializeForm();
@@ -65,6 +67,46 @@ export class ActividadAnualFormComponent implements OnInit {
       descripcion: [''],
       activo: [true]
     });
+
+    // Escuchar cambios en el campo año para mostrar advertencia
+    this.form.get('anio')?.valueChanges.subscribe(() => {
+      this.checkYearWarning();
+      // Resetear la confirmación cuando cambia el año
+      this.yearWarningConfirmed.set(false);
+    });
+  }
+
+  checkYearWarning(): void {
+    const anioValue = this.form.get('anio')?.value;
+    if (!anioValue) {
+      this.showYearWarning.set(false);
+      return;
+    }
+
+    const year = Number(anioValue);
+    if (isNaN(year)) {
+      this.showYearWarning.set(false);
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+
+    // Mostrar advertencia si el año no es el actual ni el siguiente
+    this.showYearWarning.set(year !== currentYear && year !== nextYear);
+  }
+
+  isYearInRange(): boolean {
+    const anioValue = this.form.get('anio')?.value;
+    if (!anioValue) return false;
+
+    const year = Number(anioValue);
+    if (isNaN(year)) return false;
+
+    const currentYear = new Date().getFullYear();
+    const nextYear = currentYear + 1;
+
+    return year === currentYear || year === nextYear;
   }
 
   loadIndicadores(): void {
@@ -121,6 +163,21 @@ export class ActividadAnualFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.form.valid) {
+      // Verificar si el año requiere confirmación
+      const anioValueForCheck = this.form.get('anio')?.value;
+      if (anioValueForCheck && this.showYearWarning() && !this.yearWarningConfirmed()) {
+        const year = Number(anioValueForCheck);
+        const confirmMessage = `¿Está seguro de que el año "${year}" es correcto para crear esta actividad anual?\n\nNormalmente las actividades anuales se planifican para el año en curso (${new Date().getFullYear()}) o para el año siguiente (${new Date().getFullYear() + 1}).\n\nPor favor, verifique que el año ingresado sea correcto antes de continuar.`;
+        
+        if (!confirm(confirmMessage)) {
+          // El usuario canceló, no hacer nada
+          return;
+        }
+        
+        // El usuario confirmó
+        this.yearWarningConfirmed.set(true);
+      }
+
       this.loading.set(true);
       this.error.set(null);
 
@@ -226,5 +283,13 @@ export class ActividadAnualFormComponent implements OnInit {
 
   get idIndicador() { return this.form.get('idIndicador'); }
   get anio() { return this.form.get('anio'); }
+
+  getCurrentYear(): number {
+    return new Date().getFullYear();
+  }
+
+  getNextYear(): number {
+    return new Date().getFullYear() + 1;
+  }
 }
 

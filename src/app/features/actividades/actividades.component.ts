@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, AfterViewInit, signal, HostListener, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { firstValueFrom, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CalendarEvent, CalendarView } from 'angular-calendar';
@@ -91,6 +91,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   private personasService = inject(PersonasService);
   private usuariosService = inject(UsuariosService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private elementRef = inject(ElementRef);
 
@@ -188,16 +189,45 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.initializeFormImportarAnio();
     this.initializeFormNuevaActividad();
     this.initializeFormResponsable();
-    // Cargar todos los datos en paralelo para mejorar el rendimiento
-    this.loadAllDataInParallel();
+    
+    // Verificar si hay query params para recargar datos
+    const queryParams = this.route.snapshot.queryParams;
+    const necesitaRecargar = queryParams['recargar'] === 'true';
+    
+    if (necesitaRecargar) {
+      console.log('🔄 Recargando datos después de crear actividad mensual...');
+      
+      // Si hay un ID de actividad mensual creada, filtrar por ella
+      if (queryParams['actividadMensualCreada']) {
+        const idActividadMensual = Number(queryParams['actividadMensualCreada']);
+        if (!isNaN(idActividadMensual)) {
+          console.log('📊 Filtrando por actividad mensual creada:', idActividadMensual);
+          this.filtroActividadMensualInst.set(idActividadMensual);
+        }
+      }
+      
+      // Limpiar query params inmediatamente para evitar recargas múltiples
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {},
+        replaceUrl: true
+      });
+      
+      // Cargar datos con recarga específica
+      this.loadAllDataInParallel(true);
+    } else {
+      // Cargar todos los datos en paralelo normalmente
+      this.loadAllDataInParallel(false);
+    }
   }
 
   /**
    * Carga todos los datos necesarios en paralelo usando forkJoin
    * Esto reduce significativamente el tiempo de carga
    * Si alguna llamada falla, las demás continúan ejecutándose
+   * @param recargarActividades Si es true, recarga las actividades después de cargar los datos
    */
-  loadAllDataInParallel(): void {
+  loadAllDataInParallel(recargarActividades: boolean = false): void {
     this.loading.set(true);
     
     // Helper para manejar errores individuales sin detener las demás llamadas
@@ -268,8 +298,16 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.actividadesMensualesInst.set(results.datos.actividadesMensualesInst);
         this.indicadores.set(results.datos.indicadores);
         
-        // Ahora cargar actividades (puede ser más lento, así que lo hacemos después)
-    this.loadActividades();
+        // Actualizar actividades mensuales filtradas después de cargar los datos
+        this.actualizarActividadesMensualesFiltradas();
+        
+        // Cargar actividades solo si se solicita explícitamente o si no hay recarga pendiente
+        if (recargarActividades || !this.cargandoActividades) {
+          // Usar setTimeout para evitar llamadas simultáneas
+          setTimeout(() => {
+            this.loadActividades();
+          }, 100);
+        }
       },
       error: (err) => {
         console.error('Error crítico en carga paralela:', err);
@@ -470,10 +508,47 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   loadActividadesMensualesInst(): void {
+    console.log('🔄 Cargando actividades mensuales institucionales...');
     this.actividadMensualInstService.getAll().subscribe({
-      next: (data) => this.actividadesMensualesInst.set(data),
-      error: (err) => console.error('Error loading actividades mensuales institucionales:', err)
+      next: (data) => {
+        console.log('✅ Actividades mensuales cargadas:', data.length);
+        console.log('📋 Actividades mensuales:', data.map(m => ({
+          id: m.idActividadMensualInst,
+          nombre: m.nombre,
+          mes: m.mes,
+          idActividadAnual: m.idActividadAnual
+        })));
+        this.actividadesMensualesInst.set(data);
+        
+        // Actualizar las actividades mensuales filtradas si hay un filtro activo
+        this.actualizarActividadesMensualesFiltradas();
+      },
+      error: (err) => {
+        console.error('❌ Error loading actividades mensuales institucionales:', err);
+        this.actividadesMensualesInst.set([]);
+      }
     });
+  }
+  
+  actualizarActividadesMensualesFiltradas(): void {
+    const indicadorId = this.indicadorSeleccionado();
+    const todasMensuales = this.actividadesMensualesInst();
+    
+    if (indicadorId) {
+      // Filtrar por indicador a través de actividades anuales
+      const actividadesAnualesDelIndicador = this.actividadesAnuales()
+        .filter(a => a.idIndicador === indicadorId)
+        .map(a => a.idActividadAnual);
+      
+      const mensualesFiltradas = todasMensuales.filter(m => 
+        actividadesAnualesDelIndicador.includes(m.idActividadAnual)
+      );
+      
+      console.log('📊 Actividades mensuales filtradas por indicador:', mensualesFiltradas.length);
+      this.actividadesMensualesFiltradas.set(mensualesFiltradas);
+    } else {
+      this.actividadesMensualesFiltradas.set(todasMensuales);
+    }
   }
 
   loadActividades(): void {
@@ -486,6 +561,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.cargandoActividades = true;
     this.loading.set(true);
     this.error.set(null);
+    
+    console.log('🔄 Cargando actividades...');
+    console.log('📊 Filtros activos:', {
+      activo: this.filtroActivo(),
+      actividadAnual: this.filtroActividadAnual(),
+      actividadMensualInst: this.filtroActividadMensualInst()
+    });
 
     // Usar GetAllAsync() - sin filtros del backend, filtramos en el cliente
     this.actividadesService.getAll().subscribe({
@@ -515,7 +597,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           );
         }
         
-        console.log('✅ Actividades cargadas:', filtered.length);
+        console.log('✅ Actividades cargadas:', filtered.length, 'de', data.length, 'totales');
+        if (filtered.length === 0 && data.length > 0) {
+          console.warn('⚠️ No hay actividades que coincidan con los filtros aplicados');
+        }
         this.actividades.set(filtered);
         this.actualizarEventosCalendario(filtered);
         this.loading.set(false);
