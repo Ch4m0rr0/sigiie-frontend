@@ -265,10 +265,50 @@ export class IndicadorService {
     return this.http.post(`${this.apiUrl}/importar-desde-anio`, payload);
   }
 
-  importarDesdeExcel(file: File): Observable<any> {
+  importarDesdeExcel(file: File, anioDestino?: number, estrategiaMatching: string = 'Ambos', actualizarExistentes: boolean = true, crearNuevos: boolean = true): Observable<any> {
+    console.log('🔄 IndicadorService.importarDesdeExcel - Iniciando');
+    console.log('🔄 IndicadorService.importarDesdeExcel - URL:', `${this.apiUrl}/importar-desde-excel`);
+    console.log('🔄 IndicadorService.importarDesdeExcel - Archivo:', file.name, 'Tamaño:', file.size, 'Tipo:', file.type);
+    console.log('🔄 IndicadorService.importarDesdeExcel - AnioDestino:', anioDestino);
+    console.log('🔄 IndicadorService.importarDesdeExcel - EstrategiaMatching:', estrategiaMatching);
+    console.log('🔄 IndicadorService.importarDesdeExcel - ActualizarExistentes:', actualizarExistentes);
+    console.log('🔄 IndicadorService.importarDesdeExcel - CrearNuevos:', crearNuevos);
+    
     const formData = new FormData();
-    formData.append('file', file);
-    return this.http.post(`${this.apiUrl}/importar-desde-excel`, formData);
+    // El backend espera 'Archivo' con A mayúscula
+    formData.append('Archivo', file, file.name);
+    
+    // Agregar parámetros opcionales si están presentes
+    if (anioDestino !== undefined && anioDestino !== null) {
+      formData.append('AnioDestino', anioDestino.toString());
+    }
+    if (estrategiaMatching) {
+      formData.append('EstrategiaMatching', estrategiaMatching);
+    }
+    formData.append('ActualizarExistentes', actualizarExistentes.toString());
+    formData.append('CrearNuevos', crearNuevos.toString());
+    
+    console.log('🔄 IndicadorService.importarDesdeExcel - FormData creado');
+    
+    return this.http.post(`${this.apiUrl}/importar-desde-excel`, formData, {
+      reportProgress: true,
+      observe: 'response'
+    }).pipe(
+      map(response => {
+        console.log('✅ IndicadorService.importarDesdeExcel - Respuesta recibida:', response);
+        return response.body || response;
+      }),
+      catchError(error => {
+        console.error('❌ IndicadorService.importarDesdeExcel - Error:', error);
+        console.error('❌ IndicadorService.importarDesdeExcel - Error status:', error.status);
+        console.error('❌ IndicadorService.importarDesdeExcel - Error body:', error.error);
+        if (error.error && error.error.errors) {
+          console.error('❌ IndicadorService.importarDesdeExcel - Errores de validación:', JSON.stringify(error.error.errors, null, 2));
+          console.error('❌ IndicadorService.importarDesdeExcel - Keys de errores:', Object.keys(error.error.errors));
+        }
+        throw error;
+      })
+    );
   }
 
   descargarPlantillaExcel(): Observable<Blob> {

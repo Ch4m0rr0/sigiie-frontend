@@ -1603,4 +1603,405 @@ export class CatalogosService {
       })
     );
   }
+
+  // Estado Proyecto - Endpoint: /api/EstadoProyecto
+  getEstadosProyecto(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/EstadoProyecto`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idEstadoProyecto || item.IdEstadoProyecto || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/EstadoProyecto no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching estados proyecto:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  createEstadoProyecto(estado: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: estado.nombre, Descripcion: estado.descripcion || '' };
+    return this.http.post<any>(`${this.apiUrl}/EstadoProyecto`, data).pipe(
+      map(item => ({
+        id: item.idEstadoProyecto || item.IdEstadoProyecto || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || estado.nombre,
+        descripcion: item.descripcion || item.Descripcion || estado.descripcion || ''
+      }))
+    );
+  }
+
+  updateEstadoProyecto(id: number, estado: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: estado.nombre, Descripcion: estado.descripcion || '' };
+    return this.http.put<any>(`${this.apiUrl}/EstadoProyecto/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return { id, nombre: estado.nombre, descripcion: estado.descripcion || '' };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return { id, nombre: estado.nombre, descripcion: estado.descripcion || '' };
+        }
+        return {
+          id: item.idEstadoProyecto || item.IdEstadoProyecto || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || estado.nombre,
+          descripcion: item.descripcion || item.Descripcion || estado.descripcion || ''
+        };
+      })
+    );
+  }
+
+  deleteEstadoProyecto(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/EstadoProyecto/${id}`);
+  }
+
+  // Tipo Actividad - Endpoint: /api/tipo-actividad
+  getTiposActividad(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/tipo-actividad`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idTipoActividad || item.IdTipoActividad || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/tipo-actividad no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching tipos actividad:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  createTipoActividad(tipo: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion || '' };
+    return this.http.post<any>(`${this.apiUrl}/tipo-actividad`, data).pipe(
+      map(item => ({
+        id: item.idTipoActividad || item.IdTipoActividad || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || tipo.nombre,
+        descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+      }))
+    );
+  }
+
+  updateTipoActividad(id: number, tipo: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion || '' };
+    return this.http.put<any>(`${this.apiUrl}/tipo-actividad/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return { id, nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return { id, nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+        }
+        return {
+          id: item.idTipoActividad || item.IdTipoActividad || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || tipo.nombre,
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+        };
+      })
+    );
+  }
+
+  deleteTipoActividad(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/tipo-actividad/${id}`);
+  }
+
+  // Nivel Académico - Endpoint: /api/nivel-academico
+  getNivelesAcademico(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/nivel-academico`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idNivelAcademico || item.IdNivelAcademico || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/nivel-academico no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching niveles academico:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  createNivelAcademico(nivel: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: nivel.nombre, Descripcion: nivel.descripcion || '' };
+    return this.http.post<any>(`${this.apiUrl}/nivel-academico`, data).pipe(
+      map(item => ({
+        id: item.idNivelAcademico || item.IdNivelAcademico || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || nivel.nombre,
+        descripcion: item.descripcion || item.Descripcion || nivel.descripcion || ''
+      }))
+    );
+  }
+
+  updateNivelAcademico(id: number, nivel: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: nivel.nombre, Descripcion: nivel.descripcion || '' };
+    return this.http.put<any>(`${this.apiUrl}/nivel-academico/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return { id, nombre: nivel.nombre, descripcion: nivel.descripcion || '' };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return { id, nombre: nivel.nombre, descripcion: nivel.descripcion || '' };
+        }
+        return {
+          id: item.idNivelAcademico || item.IdNivelAcademico || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || nivel.nombre,
+          descripcion: item.descripcion || item.Descripcion || nivel.descripcion || ''
+        };
+      })
+    );
+  }
+
+  deleteNivelAcademico(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/nivel-academico/${id}`);
+  }
+
+  // Permiso - Endpoint: /api/permisos
+  getPermisos(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/permisos`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idPermiso || item.IdPermiso || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/permisos no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching permisos:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  createPermiso(permiso: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: permiso.nombre, Descripcion: permiso.descripcion || '' };
+    return this.http.post<any>(`${this.apiUrl}/permisos`, data).pipe(
+      map(item => ({
+        id: item.idPermiso || item.IdPermiso || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || permiso.nombre,
+        descripcion: item.descripcion || item.Descripcion || permiso.descripcion || ''
+      }))
+    );
+  }
+
+  updatePermiso(id: number, permiso: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: permiso.nombre, Descripcion: permiso.descripcion || '' };
+    return this.http.put<any>(`${this.apiUrl}/permisos/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return { id, nombre: permiso.nombre, descripcion: permiso.descripcion || '' };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return { id, nombre: permiso.nombre, descripcion: permiso.descripcion || '' };
+        }
+        return {
+          id: item.idPermiso || item.IdPermiso || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || permiso.nombre,
+          descripcion: item.descripcion || item.Descripcion || permiso.descripcion || ''
+        };
+      })
+    );
+  }
+
+  deletePermiso(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/permisos/${id}`);
+  }
+
+  // Role (Rol) - Endpoint: /api/roles
+  getRoles(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/roles`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          id: item.idRol || item.IdRol || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || ''
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/roles no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching roles:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  createRole(rol: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: rol.nombre, Descripcion: rol.descripcion || '' };
+    return this.http.post<any>(`${this.apiUrl}/roles`, data).pipe(
+      map(item => ({
+        id: item.idRol || item.IdRol || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || rol.nombre,
+        descripcion: item.descripcion || item.Descripcion || rol.descripcion || ''
+      }))
+    );
+  }
+
+  updateRole(id: number, rol: { nombre: string, descripcion?: string }): Observable<any> {
+    const data = { Nombre: rol.nombre, Descripcion: rol.descripcion || '' };
+    return this.http.put<any>(`${this.apiUrl}/roles/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return { id, nombre: rol.nombre, descripcion: rol.descripcion || '' };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return { id, nombre: rol.nombre, descripcion: rol.descripcion || '' };
+        }
+        return {
+          id: item.idRol || item.IdRol || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || rol.nombre,
+          descripcion: item.descripcion || item.Descripcion || rol.descripcion || ''
+        };
+      })
+    );
+  }
+
+  deleteRole(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/roles/${id}`);
+  }
+
+  // CRUD completo para Tipo Protagonista
+  createTipoProtagonista(tipo: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
+    const data = { 
+      Nombre: tipo.nombre, 
+      Descripcion: tipo.descripcion || '', 
+      Activo: tipo.activo !== undefined ? tipo.activo : true 
+    };
+    return this.http.post<any>(`${this.apiUrl}/tipo-protagonista`, data).pipe(
+      map(item => ({
+        id: item.idTipoProtagonista || item.IdTipoProtagonista || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || tipo.nombre,
+        descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+      }))
+    );
+  }
+
+  updateTipoProtagonista(id: number, tipo: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
+    const data = { 
+      Nombre: tipo.nombre, 
+      Descripcion: tipo.descripcion || '', 
+      Activo: tipo.activo !== undefined ? tipo.activo : true 
+    };
+    return this.http.put<any>(`${this.apiUrl}/tipo-protagonista/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return {
+            id,
+            nombre: tipo.nombre,
+            descripcion: tipo.descripcion || '',
+            activo: tipo.activo !== undefined ? tipo.activo : true
+          };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return {
+            id,
+            nombre: tipo.nombre,
+            descripcion: tipo.descripcion || '',
+            activo: tipo.activo !== undefined ? tipo.activo : true
+          };
+        }
+        return {
+          id: item.idTipoProtagonista || item.IdTipoProtagonista || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || tipo.nombre,
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : (tipo.activo !== undefined ? tipo.activo : true))
+        };
+      })
+    );
+  }
+
+  deleteTipoProtagonista(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/tipo-protagonista/${id}`);
+  }
+
+  // CRUD completo para Rol Responsable
+  createRolResponsable(rol: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
+    const data = { 
+      Nombre: rol.nombre, 
+      Descripcion: rol.descripcion || '', 
+      Activo: rol.activo !== undefined ? rol.activo : true 
+    };
+    return this.http.post<any>(`${this.apiUrl}/rol-responsable`, data).pipe(
+      map(item => ({
+        id: item.idRolResponsable || item.IdRolResponsable || item.id || item.Id || 0,
+        idRolResponsable: item.idRolResponsable || item.IdRolResponsable || item.id || item.Id || 0,
+        nombre: item.nombre || item.Nombre || rol.nombre,
+        descripcion: item.descripcion || item.Descripcion || rol.descripcion || '',
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+      }))
+    );
+  }
+
+  updateRolResponsable(id: number, rol: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
+    const data = { 
+      Nombre: rol.nombre, 
+      Descripcion: rol.descripcion || '', 
+      Activo: rol.activo !== undefined ? rol.activo : true 
+    };
+    return this.http.put<any>(`${this.apiUrl}/rol-responsable/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return {
+            id,
+            idRolResponsable: id,
+            nombre: rol.nombre,
+            descripcion: rol.descripcion || '',
+            activo: rol.activo !== undefined ? rol.activo : true
+          };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return {
+            id,
+            idRolResponsable: id,
+            nombre: rol.nombre,
+            descripcion: rol.descripcion || '',
+            activo: rol.activo !== undefined ? rol.activo : true
+          };
+        }
+        return {
+          id: item.idRolResponsable || item.IdRolResponsable || item.Id || item.id || id,
+          idRolResponsable: item.idRolResponsable || item.IdRolResponsable || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || rol.nombre,
+          descripcion: item.descripcion || item.Descripcion || rol.descripcion || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : (rol.activo !== undefined ? rol.activo : true))
+        };
+      })
+    );
+  }
+
+  deleteRolResponsable(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/rol-responsable/${id}`);
+  }
 }

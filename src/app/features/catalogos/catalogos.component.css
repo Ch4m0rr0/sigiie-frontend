@@ -22,3 +22,14 @@
   background: #a0aec0;
 }
 
+/* Estilos para limitar ancho de celdas en indicadores */
+.max-w-xs {
+  max-width: 20rem;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
