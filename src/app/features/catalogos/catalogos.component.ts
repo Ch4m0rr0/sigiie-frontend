@@ -97,6 +97,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     nombreJefe: new FormControl(''),
     correoJefe: new FormControl(''),
     telefonoJefe: new FormControl(''),
+    color: new FormControl('#3B82F6'), // Color por defecto (azul)
   });
 
   // Signals for reactive data
@@ -265,7 +266,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'estadosactividad': return this.estadosactividad().map(item => ({
         id: item.id,
         nombre: item.nombre || (item as any).NombreEstado || '',
-        descripcion: item.descripcion || ''
+        descripcion: item.descripcion || '',
+        color: (item as any).color || (item as any).Color || '#3B82F6'
       }));
       case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion}) => ({id: idNivel, nombre, descripcion}));
       case 'nivelesacademico': return this.nivelesacademico().map(({id, nombre}) => ({id, nombre}));
@@ -518,6 +520,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.editingId = null;
     this.form.reset();
     this.updateFormValidation();
+    // Activar scroll automático al formulario
+    this.shouldScrollToForm = true;
   }
 
   editItem(item: CatalogoItem) {
@@ -565,7 +569,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       nombre: nombreValue || '', 
       descripcion: item.descripcion || '',
       anio: (item as any).anio !== undefined ? (item as any).anio : ((item as any).Anio !== undefined ? (item as any).Anio : null),
-      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null)
+      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null),
+      color: (item as any).color || (item as any).Color || '#3B82F6'
     });
   }
 
@@ -666,6 +671,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const descripcion = this.form.value.descripcion as string;
     const anio = this.form.value.anio;
     const meta = this.form.value.meta;
+    const color = this.form.value.color as string;
     
     // Validar año antes de enviar
     if (this.selectedCatalogo === 'indicadores' && anio !== null && anio !== undefined) {
@@ -678,7 +684,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     }
     
-    console.log('Form values:', { codigo, nombre, descripcion, anio, meta });
+    console.log('Form values:', { codigo, nombre, descripcion, anio, meta, color });
     console.log('Selected catalog:', this.selectedCatalogo);
     
     let data: any;
@@ -693,6 +699,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         anio: anio !== null && anio !== undefined ? Number(anio) : undefined,
         meta: meta !== null && meta !== undefined ? Number(meta) : undefined
       };
+    } else if (this.selectedCatalogo === 'estadosactividad') {
+      // Para estadosactividad, incluir color
+      data = { nombre, descripcion, color: color || '#3B82F6' };
     } else {
       data = { nombre, descripcion };
     }
@@ -862,7 +871,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for estado actividad:', data);
           return;
         }
-        obs = this.catalogosService.createEstadoActividad({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        const colorValue = (data as any).color || '#3B82F6';
+        obs = this.catalogosService.createEstadoActividad({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          color: colorValue
+        }); 
         break;
         
         
@@ -1101,7 +1115,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for estado actividad:', data);
           return;
         }
-        obs = this.catalogosService.updateEstadoActividad(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        const updateColorValue = (data as any).color || '#3B82F6';
+        obs = this.catalogosService.updateEstadoActividad(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          color: updateColorValue
+        }); 
         break;
         
         
