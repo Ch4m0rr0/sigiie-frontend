@@ -127,6 +127,33 @@
                 <input type="number" formControlName="meta" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
               </div>
             </div>
+            <!-- Campos para carreras -->
+            <div *ngIf="selectedCatalogo === 'carreras'" class="mb-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Departamento <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="departamentoId" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option [value]="null">Seleccione un departamento</option>
+                  <option *ngFor="let dept of departamentos()" [value]="dept.id">{{ dept.nombre }}</option>
+                </select>
+              </div>
+              <!-- Campo Activo solo visible al editar (al crear se crea activa por defecto) -->
+              <div *ngIf="isEditing" class="mb-4">
+                <label class="flex items-center gap-2">
+                  <input 
+                    type="checkbox" 
+                    formControlName="activo" 
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  >
+                  <span class="text-sm font-medium text-gray-700">Activo</span>
+                </label>
+              </div>
+            </div>
             <div class="flex justify-end space-x-3">
               <button type="button" (click)="cancelEdit()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancelar</button>
               <button type="submit" [disabled]="form.invalid" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">Guardar</button>
@@ -176,6 +203,29 @@
                     Importar
                   </button>
                 </div>
+                <!-- Botones especiales para Carreras -->
+                <div *ngIf="selectedCatalogo === 'carreras'" class="flex gap-2">
+                  <button 
+                    (click)="descargarPlantillaCarreras()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                    title="Descargar plantilla Excel"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Descargar Plantilla
+                  </button>
+                  <button 
+                    (click)="abrirDialogoImportar()" 
+                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+                    title="Importar carreras"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    Importar
+                  </button>
+                </div>
                 <button 
                   *ngIf="selectedCatalogo !== 'generos'"
                   (click)="addNew()" 
@@ -196,6 +246,22 @@
                   type="text"
                   [ngModel]="busquedaIndicadores()"
                   (ngModelChange)="onBusquedaIndicadoresChange($event)"
+                  placeholder="Buscar por nombre o código..."
+                  class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Búsqueda para carreras -->
+            <div *ngIf="selectedCatalogo === 'carreras'" class="mb-4">
+              <div class="relative">
+                <input
+                  type="text"
+                  [ngModel]="busquedaCarreras()"
+                  (ngModelChange)="onBusquedaCarrerasChange($event)"
                   placeholder="Buscar por nombre o código..."
                   class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -230,6 +296,7 @@
                         {{ (selectedCatalogo === 'generos' || selectedCatalogo === 'indicadores') ? 'Código - Nombre' : 'Nombre' }}
                       </th>
                       <th *ngIf="hasDescriptionData()" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                      <th *ngIf="selectedCatalogo === 'carreras'" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
@@ -249,6 +316,9 @@
                       </td>
                       <td *ngIf="hasDescriptionData()" class="px-6 py-4 text-sm text-gray-500" [class.max-w-xs]="selectedCatalogo === 'indicadores'" [class.truncate]="selectedCatalogo === 'indicadores'">
                         <span [title]="item.descripcion">{{ item.descripcion }}</span>
+                      </td>
+                      <td *ngIf="selectedCatalogo === 'carreras'" class="px-6 py-4 text-sm text-gray-500">
+                        <span>{{ item.departamento || 'N/A' }}</span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button (click)="editItem(item)" class="text-blue-600 hover:text-blue-900 mr-3" title="Editar">
@@ -301,36 +371,84 @@
               <div *ngIf="!mostrarTodosIndicadores() && getTotalPaginasIndicadores() > 1" class="flex items-center gap-2">
                 <button
                   (click)="paginaAnteriorIndicadores()"
-                [disabled]="paginaActualIndicadores() === 1"
-                [class.opacity-50]="paginaActualIndicadores() === 1"
-                [class.cursor-not-allowed]="paginaActualIndicadores() === 1"
-                class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Anterior
-              </button>
-              
-              <div class="flex gap-1">
-                <button
-                  *ngFor="let pagina of getArrayPaginas()"
-                  (click)="irAPaginaIndicadores(pagina)"
-                  [class.bg-blue-600]="pagina === paginaActualIndicadores()"
-                  [class.text-white]="pagina === paginaActualIndicadores()"
-                  [class.bg-white]="pagina !== paginaActualIndicadores()"
-                  [class.text-gray-700]="pagina !== paginaActualIndicadores()"
-                  class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50"
+                  [disabled]="paginaActualIndicadores() === 1"
+                  [class.opacity-50]="paginaActualIndicadores() === 1"
+                  [class.cursor-not-allowed]="paginaActualIndicadores() === 1"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página anterior"
                 >
-                  {{ pagina }}
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                  </svg>
                 </button>
-                </div>
                 
                 <button
                   (click)="paginaSiguienteIndicadores()"
                   [disabled]="paginaActualIndicadores() === getTotalPaginasIndicadores()"
                   [class.opacity-50]="paginaActualIndicadores() === getTotalPaginasIndicadores()"
                   [class.cursor-not-allowed]="paginaActualIndicadores() === getTotalPaginasIndicadores()"
-                  class="px-3 py-1 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página siguiente"
                 >
-                  Siguiente
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Paginación para carreras -->
+          <div *ngIf="selectedCatalogo === 'carreras' && getTotalCarrerasFiltradas() > 0" class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-4">
+            <div class="text-sm text-gray-700">
+              <span *ngIf="!mostrarTodosCarreras()">
+                Mostrando {{ getInicioPaginaCarreras() }} - 
+                {{ getFinPaginaCarreras() }} 
+                de {{ getTotalCarrerasFiltradas() }} carreras
+              </span>
+              <span *ngIf="mostrarTodosCarreras()">
+                Mostrando todas las {{ getTotalCarrerasFiltradas() }} carreras
+              </span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Toggle para mostrar todos -->
+              <button
+                (click)="mostrarTodosCarreras.set(!mostrarTodosCarreras())"
+                [class.bg-green-600]="mostrarTodosCarreras()"
+                [class.text-white]="mostrarTodosCarreras()"
+                [class.bg-white]="!mostrarTodosCarreras()"
+                [class.text-gray-700]="!mostrarTodosCarreras()"
+                class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+              >
+                {{ mostrarTodosCarreras() ? 'Mostrar 10 por página' : 'Mostrar todas' }}
+              </button>
+              
+              <!-- Controles de paginación (solo si no se muestran todos) -->
+              <div *ngIf="!mostrarTodosCarreras() && getTotalPaginasCarreras() > 1" class="flex items-center gap-2">
+                <button
+                  (click)="paginaAnteriorCarreras()"
+                  [disabled]="paginaActualCarreras() === 1"
+                  [class.opacity-50]="paginaActualCarreras() === 1"
+                  [class.cursor-not-allowed]="paginaActualCarreras() === 1"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página anterior"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </button>
+                
+                <button
+                  (click)="paginaSiguienteCarreras()"
+                  [disabled]="paginaActualCarreras() === getTotalPaginasCarreras()"
+                  [class.opacity-50]="paginaActualCarreras() === getTotalPaginasCarreras()"
+                  [class.cursor-not-allowed]="paginaActualCarreras() === getTotalPaginasCarreras()"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página siguiente"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -338,13 +456,13 @@
           </div>
         </div>
 
-        <!-- Dialogo de Importar Indicadores -->
-        <div *ngIf="showImportDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" (click)="cerrarDialogoImportar()">
-          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" (click)="$event.stopPropagation()">
+        <!-- Dialogo de Importar Indicadores/Carreras -->
+        <div *ngIf="showImportDialog" class="fixed inset-0 bg-gray-900 bg-opacity-20 overflow-y-auto h-full w-full z-50 flex items-center justify-center" (click)="cerrarDialogoImportar()">
+          <div class="relative mx-auto p-6 border-2 border-gray-200 w-full max-w-md shadow-xl rounded-lg bg-white" (click)="$event.stopPropagation()">
             <div class="mt-3">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Importar Indicadores</h3>
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Importar {{ selectedCatalogo === 'carreras' ? 'Carreras' : 'Indicadores' }}</h3>
               
-              <div class="mb-4">
+              <div class="mb-4" *ngIf="selectedCatalogo === 'indicadores'">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Método de Importación</label>
                 <div class="space-y-2">
                   <button
@@ -365,9 +483,18 @@
                   </button>
                 </div>
               </div>
+              <div class="mb-4" *ngIf="selectedCatalogo === 'carreras'">
+                <button
+                  type="button"
+                  (click)="showImportFromFile = true; showImportFromYear = false"
+                  class="w-full px-4 py-2 text-left border border-gray-300 rounded-md hover:bg-gray-50 bg-blue-50"
+                >
+                  Importar desde Excel
+                </button>
+              </div>
 
-              <!-- Importar desde Año -->
-              <div *ngIf="showImportFromYear" class="space-y-4">
+              <!-- Importar desde Año (solo para indicadores) -->
+              <div *ngIf="showImportFromYear && selectedCatalogo === 'indicadores'" class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Año Destino</label>
                   <div class="relative">
@@ -458,7 +585,7 @@
                 </div>
                 <button
                   type="button"
-                  (click)="importarDesdeExcel()"
+                  (click)="selectedCatalogo === 'carreras' ? importarCarrerasDesdeExcel() : importarDesdeExcel()"
                   [disabled]="!importFile"
                   class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
