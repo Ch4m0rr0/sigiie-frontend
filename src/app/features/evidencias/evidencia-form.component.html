@@ -1,33 +1,35 @@
-<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
-  <div class="max-w-3xl mx-auto">
-    <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-slate-900 mb-2">
-        {{ isEditMode() ? 'Editar' : 'Nueva' }} Evidencia
-      </h1>
-      <p class="text-sm text-slate-600">
-        {{ isEditMode() ? 'Modifica los datos de la evidencia' : 'Completa los datos para crear una nueva evidencia' }}
-      </p>
-    </div>
+<div [class]="isModalMode ? 'w-full' : 'h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6'">
+  <div [class]="isModalMode ? 'w-full' : 'max-w-3xl mx-auto'">
+    <!-- Header - Solo mostrar si no está en modo modal -->
+    @if (!isModalMode) {
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold text-slate-900 mb-2">
+          {{ isEditMode() ? 'Editar' : 'Nueva' }} Evidencia
+        </h1>
+        <p class="text-sm text-slate-600">
+          {{ isEditMode() ? 'Modifica los datos de la evidencia' : 'Completa los datos para crear una nueva evidencia' }}
+        </p>
+      </div>
+    }
 
     <!-- Loading State -->
     @if (loading()) {
-      <div class="flex justify-center items-center h-64">
+      <div [class]="isModalMode ? 'flex justify-center items-center py-8' : 'flex justify-center items-center h-64'">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     }
 
     <!-- Error State -->
     @if (error() && !loading()) {
-      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <div [class]="isModalMode ? 'bg-red-50 border border-red-200 rounded-lg p-4 mb-4' : 'bg-red-50 border border-red-200 rounded-lg p-4 mb-6'">
         <p class="text-red-800">{{ error() }}</p>
       </div>
     }
 
     <!-- Form -->
     @if (!loading()) {
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
-        <div class="space-y-6">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="isModalMode ? 'bg-transparent' : 'bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6'">
+        <div [class]="isModalMode ? 'space-y-4' : 'space-y-6'">
           <!-- Tipo de Evidencia -->
           <div>
             <app-multi-select-dropdown
@@ -193,10 +195,10 @@
         </div>
 
         <!-- Actions -->
-        <div class="mt-6 flex justify-end space-x-4">
+        <div [class]="isModalMode ? 'mt-4 pt-4 border-t border-slate-200 flex justify-end space-x-4' : 'mt-6 flex justify-end space-x-4'">
           <button 
             type="button"
-            [routerLink]="['/evidencias']"
+            (click)="onClose ? onClose() : router.navigate(['/evidencias'])"
             class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
             Cancelar
           </button>

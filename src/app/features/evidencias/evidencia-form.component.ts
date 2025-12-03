@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, signal, Input, Optional } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -31,7 +31,14 @@ import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown
   ],
   templateUrl: './evidencia-form.component.html',
 })
-export class EvidenciaFormComponent implements OnInit, OnDestroy {
+export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
+  // Inputs opcionales para usar el componente en modal
+  @Input() @Optional() actividadIdInput?: number | null;
+  @Input() @Optional() tiposEvidenciaInput?: number[] | null;
+  @Input() @Optional() onClose?: () => void;
+  @Input() @Optional() onSuccess?: () => void;
+  @Input() @Optional() isModalMode?: boolean = false;
+
   private fb = inject(FormBuilder);
   private evidenciaService = inject(EvidenciaService);
   private subactividadService = inject(SubactividadService);
@@ -39,7 +46,7 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   private actividadesService = inject(ActividadesService);
   private imageStorageService = inject(ImageStorageService);
   private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  router = inject(Router);
   private sanitizer = inject(DomSanitizer);
 
   form!: FormGroup;
@@ -58,13 +65,15 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initializeForm();
     this.loadSubactividades();
-    this.loadTiposEvidencia();
     this.loadActividades();
 
+    // Priorizar inputs sobre query params si están disponibles
     const id = this.route.snapshot.paramMap.get('id');
     const subactividadId = this.route.snapshot.queryParamMap.get('subactividadId');
-    const actividadId = this.route.snapshot.queryParamMap.get('actividadId');
-    const tiposEvidenciaParam = this.route.snapshot.queryParamMap.get('tiposEvidencia');
+    const actividadIdParam = this.route.snapshot.queryParamMap.get('actividadId');
+    
+    // Usar input si está disponible, sino usar query param
+    const actividadId = this.actividadIdInput !== undefined ? this.actividadIdInput : (actividadIdParam ? +actividadIdParam : null);
     
     if (id) {
       this.isEditMode.set(true);
@@ -75,9 +84,52 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
         this.form.patchValue({ idSubactividad: +subactividadId });
       }
       if (actividadId) {
-        this.form.patchValue({ idActividad: +actividadId });
+        this.form.patchValue({ idActividad: actividadId });
       }
-      // Los tipos de evidencia se procesan en loadTiposEvidencia después de cargar los datos
+    }
+    
+    // Cargar tipos de evidencia después de establecer los valores del formulario
+    // loadTiposEvidencia manejará los tipos permitidos desde inputs o query params
+    this.loadTiposEvidencia();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Si cambian los inputs de tipos de evidencia, actualizar el filtro
+    if (changes['tiposEvidenciaInput']) {
+      console.log('🔄 Input tiposEvidenciaInput cambió:', this.tiposEvidenciaInput);
+      console.log('🔄 Es primera vez:', changes['tiposEvidenciaInput'].firstChange);
+      // Si es la primera vez y hay tipos cargados, aplicar el filtro
+      if (changes['tiposEvidenciaInput'].firstChange && this.tiposEvidencia().length > 0) {
+        this.actualizarFiltroTiposEvidencia();
+      } else if (!changes['tiposEvidenciaInput'].firstChange) {
+        this.actualizarFiltroTiposEvidencia();
+      }
+    }
+    
+    // Si cambia el input de actividadId, también actualizar
+    if (changes['actividadIdInput'] && this.tiposEvidenciaInput) {
+      console.log('🔄 Input actividadIdInput cambió, actualizando filtro de tipos');
+      if (this.tiposEvidencia().length > 0) {
+        this.actualizarFiltroTiposEvidencia();
+      }
+    }
+  }
+
+  private actualizarFiltroTiposEvidencia(): void {
+    const tiposPermitidos = this.tiposEvidenciaInput;
+    
+    if (tiposPermitidos && tiposPermitidos.length > 0) {
+      console.log('✅ Actualizando filtro con tipos permitidos:', tiposPermitidos);
+      this.tiposEvidenciaPermitidos.set(tiposPermitidos);
+      
+      // Si los tipos de evidencia ya están cargados, pre-seleccionar
+      if (this.tiposEvidencia().length > 0 && !this.isEditMode() && this.selectedTiposEvidencia().length === 0) {
+        this.selectedTiposEvidencia.set(tiposPermitidos);
+        console.log('✅ Tipos pre-seleccionados después de actualizar filtro');
+      }
+    } else {
+      console.log('⚠️ No hay tipos permitidos en el input, mostrando todos');
+      this.tiposEvidenciaPermitidos.set(null);
     }
   }
 
@@ -106,29 +158,47 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   tiposEvidenciaPermitidos = signal<number[] | null>(null);
 
   loadTiposEvidencia(): void {
-    // Leer query params ANTES de cargar los datos
+    // Priorizar input sobre query params
+    const tiposPermitidosInput = this.tiposEvidenciaInput;
     const tiposPermitidosParam = this.route.snapshot.queryParamMap.get('tiposEvidencia');
-    console.log('🔍 Query param tiposEvidencia:', tiposPermitidosParam);
+    
+    // Usar input si está disponible, sino usar query param
+    let tiposPermitidos: number[] | null = null;
+    if (tiposPermitidosInput && Array.isArray(tiposPermitidosInput) && tiposPermitidosInput.length > 0) {
+      tiposPermitidos = tiposPermitidosInput;
+      console.log('🔍 Tipos de evidencia desde input:', tiposPermitidos);
+    } else if (tiposPermitidosParam) {
+      tiposPermitidos = tiposPermitidosParam.split(',').map(id => Number(id.trim())).filter(id => !isNaN(id) && id > 0);
+      console.log('🔍 Tipos de evidencia desde query param:', tiposPermitidos);
+    } else {
+      console.log('⚠️ No se encontraron tipos de evidencia permitidos ni en input ni en query params');
+    }
     
     this.catalogosService.getTiposEvidencia().subscribe({
       next: (data) => {
         console.log('📦 Todos los tipos de evidencia cargados:', data.length);
+        console.log('📦 Tipos disponibles:', data.map(t => ({ id: t.idTipoEvidencia || (t as any).id, nombre: t.nombre })));
         this.tiposEvidencia.set(data);
         
-        // Si hay tipos permitidos en query params, filtrar y pre-seleccionar
-        if (tiposPermitidosParam) {
-          const tiposPermitidos = tiposPermitidosParam.split(',').map(id => Number(id.trim())).filter(id => !isNaN(id) && id > 0);
-          console.log('📋 Tipos de evidencia permitidos (parseados):', tiposPermitidos);
-          this.tiposEvidenciaPermitidos.set(tiposPermitidos);
+        // Verificar nuevamente el input después de cargar los datos (por si se estableció después de ngOnInit)
+        const tiposPermitidosFinal = this.tiposEvidenciaInput && Array.isArray(this.tiposEvidenciaInput) && this.tiposEvidenciaInput.length > 0
+          ? this.tiposEvidenciaInput
+          : tiposPermitidos;
+        
+        // Si hay tipos permitidos, filtrar y pre-seleccionar
+        if (tiposPermitidosFinal && tiposPermitidosFinal.length > 0) {
+          console.log('📋 Tipos de evidencia permitidos (final):', tiposPermitidosFinal);
+          this.tiposEvidenciaPermitidos.set(tiposPermitidosFinal);
           
           // Pre-seleccionar automáticamente todos los tipos permitidos
           // Solo si no estamos en modo edición y no hay tipos ya seleccionados
           if (!this.isEditMode() && this.selectedTiposEvidencia().length === 0) {
-            this.selectedTiposEvidencia.set(tiposPermitidos);
-            console.log('✅ Tipos de evidencia pre-seleccionados automáticamente:', tiposPermitidos);
+            this.selectedTiposEvidencia.set(tiposPermitidosFinal);
+            console.log('✅ Tipos de evidencia pre-seleccionados automáticamente:', tiposPermitidosFinal);
           }
         } else {
-          console.log('⚠️ No hay query param tiposEvidencia, mostrando todos los tipos');
+          console.log('⚠️ No hay tipos de evidencia permitidos, mostrando todos los tipos');
+          console.log('⚠️ Input tiposEvidenciaInput:', this.tiposEvidenciaInput);
           this.tiposEvidenciaPermitidos.set(null);
         }
       },
@@ -139,6 +209,16 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
   getTiposEvidenciaFiltrados(): TipoEvidencia[] {
     const todos = this.tiposEvidencia();
     const permitidos = this.tiposEvidenciaPermitidos();
+    
+    console.log('🔍 getTiposEvidenciaFiltrados - Total tipos:', todos.length);
+    console.log('🔍 getTiposEvidenciaFiltrados - Tipos permitidos:', permitidos);
+    console.log('🔍 getTiposEvidenciaFiltrados - Input tiposEvidenciaInput:', this.tiposEvidenciaInput);
+    
+    // Si no hay tipos cargados aún, retornar array vacío
+    if (todos.length === 0) {
+      console.log('⚠️ Aún no se han cargado los tipos de evidencia');
+      return [];
+    }
     
     if (permitidos === null || permitidos.length === 0) {
       console.log('🔓 Sin filtro: mostrando todos los tipos', todos.length);
@@ -155,7 +235,7 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
       return incluido;
     });
     
-    console.log(`🔒 Con filtro: mostrando ${filtrados.length} de ${todos.length} tipos`, filtrados.map(t => ({ id: t.idTipoEvidencia, nombre: t.nombre })));
+    console.log(`🔒 Con filtro: mostrando ${filtrados.length} de ${todos.length} tipos`, filtrados.map(t => ({ id: t.idTipoEvidencia || (t as any).id, nombre: t.nombre })));
     return filtrados;
   }
 
@@ -384,7 +464,11 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
                 console.error('❌ Error al guardar imágenes:', error);
               }
             }
-            this.router.navigate(['/evidencias']);
+            if (this.onSuccess) {
+              this.onSuccess();
+            } else {
+              this.router.navigate(['/evidencias']);
+            }
           },
           error: (err: any) => {
             console.error('Error saving evidencia:', err);
@@ -420,6 +504,10 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
       label: tipo.nombre
     }));
     console.log('🎯 Opciones para el dropdown:', options);
+    console.log('🎯 Tipos permitidos activos:', this.tiposEvidenciaPermitidos());
+    console.log('🎯 Input tiposEvidenciaInput:', this.tiposEvidenciaInput);
+    console.log('🎯 Total tipos disponibles:', this.tiposEvidencia().length);
+    console.log('🎯 Tipos filtrados:', tipos.length);
     return options;
   }
 
@@ -485,7 +573,11 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy {
           completed++;
           if (completed === total) {
             // Todas las evidencias fueron creadas
-            this.router.navigate(['/evidencias']);
+            if (this.onSuccess) {
+              this.onSuccess();
+            } else {
+              this.router.navigate(['/evidencias']);
+            }
           }
         },
         error: (err: any) => {
