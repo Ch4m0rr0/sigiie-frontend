@@ -266,13 +266,13 @@ export class ParticipacionService {
       dto.IdTutor = data.idTutor;
     }
     if (data.estudianteId !== undefined) {
-      dto.EstudianteId = data.estudianteId;
+      dto.IdEstudiante = data.estudianteId;
     }
     if (data.docenteId !== undefined) {
-      dto.DocenteId = data.docenteId;
+      dto.IdDocente = data.docenteId;
     }
     if (data.administrativoId !== undefined) {
-      dto.AdministrativoId = data.administrativoId;
+      dto.IdAdmin = data.administrativoId;
     }
     if (data.categoriaParticipacionId !== undefined) {
       dto.IdCategoriaParticipacionParticipante = data.categoriaParticipacionId;
@@ -781,9 +781,14 @@ export class ParticipacionService {
         : data.fechaParticipacion
     };
 
-    if (data.idSubactividad !== undefined) {
+    // Asignar idActividad o idSubactividad (al menos uno es requerido)
+    if (data.idActividad !== undefined && data.idActividad !== null) {
+      dto.IdActividad = data.idActividad;
+    }
+    if (data.idSubactividad !== undefined && data.idSubactividad !== null) {
       dto.IdSubactividad = data.idSubactividad;
     }
+    
     if (data.grupoNumero !== undefined) {
       dto.GrupoNumero = data.grupoNumero;
     }
@@ -793,15 +798,18 @@ export class ParticipacionService {
     if (data.idTutor !== undefined) {
       dto.IdTutor = data.idTutor;
     }
-    if (data.estudianteId !== undefined) {
-      dto.EstudianteId = data.estudianteId;
+    // El backend espera IdEstudiante, IdDocente, IdAdmin (no EstudianteId, DocenteId, AdministrativoId)
+    if (data.estudianteId !== undefined && data.estudianteId !== null) {
+      dto.IdEstudiante = data.estudianteId;
     }
-    if (data.docenteId !== undefined) {
-      dto.DocenteId = data.docenteId;
+    if (data.docenteId !== undefined && data.docenteId !== null) {
+      dto.IdDocente = data.docenteId;
     }
-    if (data.administrativoId !== undefined) {
-      dto.AdministrativoId = data.administrativoId;
+    if (data.administrativoId !== undefined && data.administrativoId !== null) {
+      dto.IdAdmin = data.administrativoId;
     }
+
+    console.log('📤 POST /api/participaciones/individual - DTO enviado:', dto);
 
     return this.http.post<any>(`${this.apiUrl}/individual`, dto).pipe(
       map(response => {
@@ -838,13 +846,13 @@ export class ParticipacionService {
       dto.IdTutor = data.idTutor;
     }
     if (data.estudianteId !== undefined) {
-      dto.EstudianteId = data.estudianteId;
+      dto.IdEstudiante = data.estudianteId;
     }
     if (data.docenteId !== undefined) {
-      dto.DocenteId = data.docenteId;
+      dto.IdDocente = data.docenteId;
     }
     if (data.administrativoId !== undefined) {
-      dto.AdministrativoId = data.administrativoId;
+      dto.IdAdmin = data.administrativoId;
     }
     if (data.categoriaParticipacionId !== undefined) {
       dto.IdCategoriaParticipacionParticipante = data.categoriaParticipacionId;

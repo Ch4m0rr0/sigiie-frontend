@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -9,6 +9,7 @@ import { PersonasService } from '../../core/services/personas.service';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { EdicionService } from '../../core/services/edicion.service';
 import { ReportesService } from '../../core/services/reportes.service';
+import { AlertService } from '../../core/services/alert.service';
 import type { Participacion } from '../../core/models/participacion';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { RolEquipo } from '../../core/models/catalogos-nuevos';
@@ -36,6 +37,7 @@ export class ParticipacionesListComponent implements OnInit {
   private actividadesService = inject(ActividadesService);
   private edicionService = inject(EdicionService);
   private reportesService = inject(ReportesService);
+  private alertService = inject(AlertService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
@@ -69,6 +71,16 @@ export class ParticipacionesListComponent implements OnInit {
   mostrarFormParticipante = signal(false);
   participanteEditando = signal<Participacion | null>(null);
   formParticipante!: FormGroup;
+  
+  // Búsqueda en selectores de participantes
+  busquedaEstudiante = signal<string>('');
+  busquedaDocente = signal<string>('');
+  busquedaAdministrativo = signal<string>('');
+  
+  // Estados para mostrar/ocultar dropdowns personalizados
+  mostrarDropdownEstudiante = signal<boolean>(false);
+  mostrarDropdownDocente = signal<boolean>(false);
+  mostrarDropdownAdministrativo = signal<boolean>(false);
   
   // Catálogos
   estudiantes = signal<Estudiante[]>([]);
@@ -322,12 +334,35 @@ export class ParticipacionesListComponent implements OnInit {
       estudianteId: [null],
       docenteId: [null],
       administrativoId: [null],
-      categoriaParticipacionId: [null, Validators.required],
-      estadoParticipacionId: [null, Validators.required],
-      fechaParticipacion: [new Date().toISOString().split('T')[0], Validators.required],
       grupoNumero: [null],
       idRolEquipo: [null],
       idTutor: [null]
+    });
+    
+    // Aplicar validación inicial para el tipo por defecto (estudiante)
+    this.formParticipante.get('estudianteId')?.setValidators([Validators.required]);
+    this.formParticipante.get('estudianteId')?.updateValueAndValidity({ emitEvent: false });
+    
+    // Agregar validación dinámica según el tipo de participante
+    this.formParticipante.get('tipoParticipante')?.valueChanges.subscribe(tipo => {
+      // Remover validadores de todos los campos
+      this.formParticipante.get('estudianteId')?.clearValidators();
+      this.formParticipante.get('docenteId')?.clearValidators();
+      this.formParticipante.get('administrativoId')?.clearValidators();
+      
+      // Agregar validador requerido solo al campo correspondiente
+      if (tipo === 'estudiante') {
+        this.formParticipante.get('estudianteId')?.setValidators([Validators.required]);
+      } else if (tipo === 'docente') {
+        this.formParticipante.get('docenteId')?.setValidators([Validators.required]);
+      } else if (tipo === 'administrativo') {
+        this.formParticipante.get('administrativoId')?.setValidators([Validators.required]);
+      }
+      
+      // Actualizar estado de validación
+      this.formParticipante.get('estudianteId')?.updateValueAndValidity({ emitEvent: false });
+      this.formParticipante.get('docenteId')?.updateValueAndValidity({ emitEvent: false });
+      this.formParticipante.get('administrativoId')?.updateValueAndValidity({ emitEvent: false });
     });
   }
 
@@ -335,6 +370,13 @@ export class ParticipacionesListComponent implements OnInit {
   abrirFormAgregarParticipante(): void {
     this.participanteEditando.set(null);
     this.initializeFormParticipante();
+    // Limpiar búsquedas y cerrar dropdowns
+    this.busquedaEstudiante.set('');
+    this.busquedaDocente.set('');
+    this.busquedaAdministrativo.set('');
+    this.mostrarDropdownEstudiante.set(false);
+    this.mostrarDropdownDocente.set(false);
+    this.mostrarDropdownAdministrativo.set(false);
     this.mostrarFormParticipante.set(true);
   }
 
@@ -349,14 +391,157 @@ export class ParticipacionesListComponent implements OnInit {
       estudianteId: [participante.estudianteId || null],
       docenteId: [participante.docenteId || null],
       administrativoId: [participante.administrativoId || null],
-      categoriaParticipacionId: [participante.categoriaParticipacionId, Validators.required],
-      estadoParticipacionId: [participante.estadoParticipacionId, Validators.required],
-      fechaParticipacion: [participante.fechaParticipacion ? new Date(participante.fechaParticipacion).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], Validators.required],
       grupoNumero: [participante.grupoNumero || null],
       idRolEquipo: [participante.idRolEquipo || null],
       idTutor: [participante.idTutor || null]
     });
+    
+    // Aplicar validación según el tipo
+    if (tipo === 'estudiante') {
+      this.formParticipante.get('estudianteId')?.setValidators([Validators.required]);
+    } else if (tipo === 'docente') {
+      this.formParticipante.get('docenteId')?.setValidators([Validators.required]);
+    } else if (tipo === 'administrativo') {
+      this.formParticipante.get('administrativoId')?.setValidators([Validators.required]);
+    }
+    this.formParticipante.get('estudianteId')?.updateValueAndValidity({ emitEvent: false });
+    this.formParticipante.get('docenteId')?.updateValueAndValidity({ emitEvent: false });
+    this.formParticipante.get('administrativoId')?.updateValueAndValidity({ emitEvent: false });
+    
+    // Agregar validación dinámica cuando cambie el tipo
+    this.formParticipante.get('tipoParticipante')?.valueChanges.subscribe(tipoCambiado => {
+      // Remover validadores de todos los campos
+      this.formParticipante.get('estudianteId')?.clearValidators();
+      this.formParticipante.get('docenteId')?.clearValidators();
+      this.formParticipante.get('administrativoId')?.clearValidators();
+      
+      // Agregar validador requerido solo al campo correspondiente
+      if (tipoCambiado === 'estudiante') {
+        this.formParticipante.get('estudianteId')?.setValidators([Validators.required]);
+      } else if (tipoCambiado === 'docente') {
+        this.formParticipante.get('docenteId')?.setValidators([Validators.required]);
+      } else if (tipoCambiado === 'administrativo') {
+        this.formParticipante.get('administrativoId')?.setValidators([Validators.required]);
+      }
+      
+      // Actualizar estado de validación
+      this.formParticipante.get('estudianteId')?.updateValueAndValidity({ emitEvent: false });
+      this.formParticipante.get('docenteId')?.updateValueAndValidity({ emitEvent: false });
+      this.formParticipante.get('administrativoId')?.updateValueAndValidity({ emitEvent: false });
+    });
+    
+    // Limpiar búsquedas y cerrar dropdowns
+    this.busquedaEstudiante.set('');
+    this.busquedaDocente.set('');
+    this.busquedaAdministrativo.set('');
+    this.mostrarDropdownEstudiante.set(false);
+    this.mostrarDropdownDocente.set(false);
+    this.mostrarDropdownAdministrativo.set(false);
     this.mostrarFormParticipante.set(true);
+  }
+  
+  // Filtrar estudiantes por búsqueda
+  getEstudiantesFiltrados(): Estudiante[] {
+    const busqueda = this.busquedaEstudiante().trim().toLowerCase();
+    if (!busqueda) return this.estudiantes();
+    return this.estudiantes().filter(est => 
+      est.nombreCompleto?.toLowerCase().includes(busqueda)
+    );
+  }
+  
+  // Filtrar docentes por búsqueda
+  getDocentesFiltrados(): Docente[] {
+    const busqueda = this.busquedaDocente().trim().toLowerCase();
+    if (!busqueda) return this.docentes();
+    return this.docentes().filter(doc => 
+      doc.nombreCompleto?.toLowerCase().includes(busqueda)
+    );
+  }
+  
+  // Filtrar administrativos por búsqueda
+  getAdministrativosFiltrados(): Administrativo[] {
+    const busqueda = this.busquedaAdministrativo().trim().toLowerCase();
+    if (!busqueda) return this.administrativos();
+    return this.administrativos().filter(admin => 
+      admin.nombreCompleto?.toLowerCase().includes(busqueda)
+    );
+  }
+  
+  // Obtener nombre del estudiante seleccionado
+  getNombreEstudianteSeleccionado(): string {
+    const id = this.formParticipante?.get('estudianteId')?.value;
+    if (!id) return 'Seleccionar estudiante...';
+    const est = this.estudiantes().find(e => e.id === id);
+    return est?.nombreCompleto || 'Seleccionar estudiante...';
+  }
+  
+  // Obtener nombre del docente seleccionado
+  getNombreDocenteSeleccionado(): string {
+    const id = this.formParticipante?.get('docenteId')?.value;
+    if (!id) return 'Seleccionar docente...';
+    const doc = this.docentes().find(d => d.id === id);
+    return doc?.nombreCompleto || 'Seleccionar docente...';
+  }
+  
+  // Obtener nombre del administrativo seleccionado
+  getNombreAdministrativoSeleccionado(): string {
+    const id = this.formParticipante?.get('administrativoId')?.value;
+    if (!id) return 'Seleccionar administrativo...';
+    const admin = this.administrativos().find(a => a.id === id);
+    return admin?.nombreCompleto || 'Seleccionar administrativo...';
+  }
+  
+  // Seleccionar estudiante
+  seleccionarEstudiante(estudiante: Estudiante): void {
+    console.log('👤 Estudiante seleccionado:', estudiante);
+    this.formParticipante.patchValue({ 
+      estudianteId: estudiante.id,
+      docenteId: null, // Limpiar otros campos
+      administrativoId: null
+    });
+    this.formParticipante.get('estudianteId')?.updateValueAndValidity();
+    console.log('✅ Formulario actualizado - estudianteId:', this.formParticipante.get('estudianteId')?.value);
+    this.mostrarDropdownEstudiante.set(false);
+    this.busquedaEstudiante.set('');
+  }
+  
+  // Seleccionar docente
+  seleccionarDocente(docente: Docente): void {
+    console.log('👨‍🏫 Docente seleccionado:', docente);
+    this.formParticipante.patchValue({ 
+      docenteId: docente.id,
+      estudianteId: null, // Limpiar otros campos
+      administrativoId: null
+    });
+    this.formParticipante.get('docenteId')?.updateValueAndValidity();
+    console.log('✅ Formulario actualizado - docenteId:', this.formParticipante.get('docenteId')?.value);
+    this.mostrarDropdownDocente.set(false);
+    this.busquedaDocente.set('');
+  }
+  
+  // Seleccionar administrativo
+  seleccionarAdministrativo(administrativo: Administrativo): void {
+    console.log('👔 Administrativo seleccionado:', administrativo);
+    this.formParticipante.patchValue({ 
+      administrativoId: administrativo.id,
+      estudianteId: null, // Limpiar otros campos
+      docenteId: null
+    });
+    this.formParticipante.get('administrativoId')?.updateValueAndValidity();
+    console.log('✅ Formulario actualizado - administrativoId:', this.formParticipante.get('administrativoId')?.value);
+    this.mostrarDropdownAdministrativo.set(false);
+    this.busquedaAdministrativo.set('');
+  }
+  
+  // Cerrar dropdowns al hacer click fuera
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.dropdown-container')) {
+      this.mostrarDropdownEstudiante.set(false);
+      this.mostrarDropdownDocente.set(false);
+      this.mostrarDropdownAdministrativo.set(false);
+    }
   }
 
   // Guardar participante (crear o actualizar)
@@ -369,23 +554,31 @@ export class ParticipacionesListComponent implements OnInit {
     // Obtener edición actual (necesario para crear participación)
     const edicionActual = this.ediciones().find(e => e.anio === new Date().getFullYear());
     if (!edicionActual) {
-      alert('No se encontró una edición para el año actual');
+      this.alertService.error('Error', 'No se encontró una edición para el año actual');
       return;
     }
 
     const participacionData: any = {
       edicionId: edicionActual.id,
-      categoriaParticipacionId: formValue.categoriaParticipacionId,
-      estadoParticipacionId: formValue.estadoParticipacionId,
-      fechaParticipacion: formValue.fechaParticipacion
+      categoriaParticipacionId: 1, // Valor por defecto
+      estadoParticipacionId: 1, // Valor por defecto
+      fechaParticipacion: new Date().toISOString().split('T')[0] // Fecha actual por defecto
     };
 
+    // Asignar idActividad o idSubactividad según el tipo de vista (REQUERIDO)
     if (vista.tipo === 'subactividad') {
       participacionData.idSubactividad = vista.id;
+      console.log('📝 Asignando idSubactividad:', vista.id);
+    } else if (vista.tipo === 'actividad') {
+      participacionData.idActividad = vista.id;
+      console.log('📝 Asignando idActividad:', vista.id);
     } else {
-      // Para actividades, necesitamos obtener la subactividad asociada o usar el endpoint correcto
-      // Por ahora, asumimos que viene desde una actividad específica
+      console.error('❌ Error: tipo de vista desconocido:', vista.tipo);
+      this.alertService.error('Error', 'No se pudo determinar el tipo de actividad o subactividad');
+      return;
     }
+    
+    console.log('📦 Datos de participación a enviar:', participacionData);
 
     if (formValue.grupoNumero) {
       participacionData.grupoNumero = formValue.grupoNumero;
@@ -397,12 +590,31 @@ export class ParticipacionesListComponent implements OnInit {
       participacionData.idTutor = formValue.idTutor;
     }
 
+    // Asignar ID del participante según el tipo
     if (formValue.tipoParticipante === 'estudiante') {
       participacionData.estudianteId = formValue.estudianteId;
+      console.log('📝 Asignando estudianteId:', formValue.estudianteId);
+      if (!formValue.estudianteId) {
+        this.alertService.error('Error', 'Debe seleccionar un estudiante');
+        this.loadingParticipantes.set(false);
+        return;
+      }
     } else if (formValue.tipoParticipante === 'docente') {
       participacionData.docenteId = formValue.docenteId;
-    } else {
+      console.log('📝 Asignando docenteId:', formValue.docenteId);
+      if (!formValue.docenteId) {
+        this.alertService.error('Error', 'Debe seleccionar un docente');
+        this.loadingParticipantes.set(false);
+        return;
+      }
+    } else if (formValue.tipoParticipante === 'administrativo') {
       participacionData.administrativoId = formValue.administrativoId;
+      console.log('📝 Asignando administrativoId:', formValue.administrativoId);
+      if (!formValue.administrativoId) {
+        this.alertService.error('Error', 'Debe seleccionar un administrativo');
+        this.loadingParticipantes.set(false);
+        return;
+      }
     }
 
     this.loadingParticipantes.set(true);
@@ -411,70 +623,80 @@ export class ParticipacionesListComponent implements OnInit {
       // Actualizar
       this.participacionService.updateIndividual(this.participanteEditando()!.id, participacionData).subscribe({
         next: () => {
-          alert('Participante actualizado exitosamente');
+          this.alertService.success('Éxito', 'Participante actualizado exitosamente');
           this.mostrarFormParticipante.set(false);
           this.participanteEditando.set(null);
           this.loadParticipantesPorItem(vista.tipo, vista.id);
           this.aplicarFiltros();
+          // Recargar resumen para actualizar las cards
+          this.loadResumenParticipantes();
         },
         error: (err: any) => {
           console.error('Error actualizando participante:', err);
-          alert('Error al actualizar el participante');
+          let errorMessage = 'Error al actualizar el participante';
+          if (err.error?.message) {
+            errorMessage = err.error.message;
+          } else if (err.error?.error) {
+            errorMessage = err.error.error;
+          }
+          this.alertService.error('Error', errorMessage);
           this.loadingParticipantes.set(false);
         }
       });
     } else {
-      // Crear - para actividades necesitamos usar el endpoint con idActividad
-      if (vista.tipo === 'actividad') {
-        participacionData.idActividad = vista.id;
-        // Usar createPorActividad o similar
-        this.participacionService.createIndividual(participacionData).subscribe({
-          next: () => {
-            alert('Participante agregado exitosamente');
-            this.mostrarFormParticipante.set(false);
-            this.loadParticipantesPorItem(vista.tipo, vista.id);
-          },
-          error: (err: any) => {
-            console.error('Error creando participante:', err);
-            alert('Error al agregar el participante');
-            this.loadingParticipantes.set(false);
+      // Crear participante
+      // El idActividad o idSubactividad ya está asignado arriba según el tipo de vista
+      this.participacionService.createIndividual(participacionData).subscribe({
+        next: () => {
+          this.alertService.success('Éxito', 'Participante agregado exitosamente');
+          this.mostrarFormParticipante.set(false);
+          this.loadParticipantesPorItem(vista.tipo, vista.id);
+          // Recargar resumen para actualizar las cards
+          this.loadResumenParticipantes();
+        },
+        error: (err: any) => {
+          console.error('Error creando participante:', err);
+          let errorMessage = 'Error al agregar el participante';
+          if (err.error?.message) {
+            errorMessage = err.error.message;
+          } else if (err.error?.error) {
+            errorMessage = err.error.error;
           }
-        });
-      } else {
-        this.participacionService.createIndividual(participacionData).subscribe({
-          next: () => {
-            alert('Participante agregado exitosamente');
-            this.mostrarFormParticipante.set(false);
-            this.loadParticipantesPorItem(vista.tipo, vista.id);
-          },
-          error: (err: any) => {
-            console.error('Error creando participante:', err);
-            alert('Error al agregar el participante');
-            this.loadingParticipantes.set(false);
-          }
-        });
-      }
+          this.alertService.error('Error', errorMessage);
+          this.loadingParticipantes.set(false);
+        }
+      });
     }
   }
 
   // Eliminar participante
   eliminarParticipante(id: number): void {
-    if (!confirm('¿Estás seguro de eliminar este participante?')) return;
-
     const vista = this.vistaGestion();
     if (!vista) return;
 
-    this.loadingParticipantes.set(true);
-    this.participacionService.delete(id).subscribe({
-      next: () => {
-        alert('Participante eliminado exitosamente');
-        this.loadParticipantesPorItem(vista.tipo, vista.id);
-        this.aplicarFiltros();
-      },
-      error: (err: any) => {
-        console.error('Error eliminando participante:', err);
-        alert('Error al eliminar el participante');
-        this.loadingParticipantes.set(false);
+    this.alertService.confirmDelete('participante', 'Esta acción no se puede deshacer.').then((result) => {
+      if (result.isConfirmed) {
+        this.loadingParticipantes.set(true);
+        this.participacionService.delete(id).subscribe({
+          next: () => {
+            this.alertService.success('Éxito', 'Participante eliminado exitosamente');
+            this.loadParticipantesPorItem(vista.tipo, vista.id);
+            this.aplicarFiltros();
+            // Recargar resumen para actualizar las cards
+            this.loadResumenParticipantes();
+          },
+          error: (err: any) => {
+            console.error('Error eliminando participante:', err);
+            let errorMessage = 'Error al eliminar el participante';
+            if (err.error?.message) {
+              errorMessage = err.error.message;
+            } else if (err.error?.error) {
+              errorMessage = err.error.error;
+            }
+            this.alertService.error('Error', errorMessage);
+            this.loadingParticipantes.set(false);
+          }
+        });
       }
     });
   }
@@ -483,6 +705,24 @@ export class ParticipacionesListComponent implements OnInit {
   onFileSelectedParticipantes(event: any): void {
     const file = event.target.files?.[0];
     if (file) {
+      // Validar tipo de archivo
+      const validExtensions = ['.xlsx', '.xls'];
+      const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+      
+      if (!validExtensions.includes(fileExtension)) {
+        this.alertService.error('Archivo inválido', 'Por favor selecciona un archivo Excel (.xlsx o .xls)');
+        event.target.value = ''; // Limpiar el input
+        return;
+      }
+      
+      // Validar tamaño (máximo 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        this.alertService.error('Archivo muy grande', 'El archivo no debe exceder 10MB');
+        event.target.value = ''; // Limpiar el input
+        return;
+      }
+      
       this.importFileParticipantes.set(file);
     }
   }
@@ -493,7 +733,18 @@ export class ParticipacionesListComponent implements OnInit {
 
   importarParticipantesDesdeExcel(): void {
     if (!this.importFileParticipantes() || !this.vistaGestion()) {
-      alert('Por favor selecciona un archivo Excel');
+      this.alertService.warning('Archivo requerido', 'Por favor selecciona un archivo Excel');
+      return;
+    }
+
+    // Validar tipo de archivo antes de enviar
+    const file = this.importFileParticipantes()!;
+    const validExtensions = ['.xlsx', '.xls'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!validExtensions.includes(fileExtension)) {
+      this.alertService.error('Archivo inválido', 'Por favor selecciona un archivo Excel (.xlsx o .xls)');
+      this.importFileParticipantes.set(null);
       return;
     }
 
@@ -502,27 +753,99 @@ export class ParticipacionesListComponent implements OnInit {
     
     this.reportesService.importarParticipantesPorActividad(
       vista.tipo === 'actividad' ? vista.id : 0, // Necesitaríamos el idActividad para subactividades
-      this.importFileParticipantes()!,
+      file,
       new Date().getFullYear()
     ).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         console.log('✅ Participantes importados:', response);
-        alert('Participantes importados exitosamente');
+        
+        // Construir mensaje con los datos de la respuesta
+        let mensaje = '';
+        const data = response.data || response;
+        
+        // Validar si realmente se procesaron datos
+        const totalProcesados = data.totalProcesados ?? 0;
+        const totalCreados = data.totalCreados ?? 0;
+        const totalActualizados = data.totalActualizados ?? 0;
+        const totalOmitidos = data.totalOmitidos ?? 0;
+        const totalErrores = data.totalErrores ?? 0;
+        
+        // Si no se procesó nada y no hay errores, el archivo probablemente no tenía datos válidos
+        if (totalProcesados === 0 && totalCreados === 0 && totalActualizados === 0 && totalErrores === 0) {
+          this.alertService.warning(
+            'Archivo sin datos', 
+            'El archivo Excel no contiene datos válidos de participantes o no se pudo procesar. Por favor verifica que el archivo tenga el formato correcto y contenga datos.'
+          );
+          this.importFileParticipantes.set(null);
+          this.loadingImportarParticipantes.set(false);
+          return;
+        }
+        
+        // Si hay datos procesados, mostrar resumen
+        if (totalProcesados > 0 || totalCreados > 0 || totalActualizados > 0) {
+          mensaje = '<div style="text-align: left;">';
+          mensaje += `<strong>Importación completada:</strong><br><br>`;
+          
+          if (data.totalProcesados !== undefined) {
+            mensaje += `• Total procesados: <strong>${totalProcesados}</strong><br>`;
+          }
+          if (data.totalCreados !== undefined) {
+            mensaje += `• Agregados: <strong>${totalCreados}</strong><br>`;
+          }
+          if (data.totalActualizados !== undefined) {
+            mensaje += `• Actualizados: <strong>${totalActualizados}</strong><br>`;
+          }
+          if (totalOmitidos > 0) {
+            mensaje += `• Omitidos: <strong>${totalOmitidos}</strong><br>`;
+          }
+          if (totalErrores > 0) {
+            mensaje += `• Errores: <strong style="color: #ef4444;">${totalErrores}</strong><br>`;
+          }
+          if (data.mensaje) {
+            mensaje += `<br>${data.mensaje}`;
+          }
+          mensaje += '</div>';
+          
+          // Mostrar alerta de éxito
+          this.alertService.success('Importación completada', mensaje, {
+            html: true
+          });
+        } else if (data.mensaje) {
+          // Si hay un mensaje pero no datos procesados, mostrar advertencia
+          this.alertService.warning('Importación sin resultados', data.mensaje);
+        } else {
+          // Caso por defecto
+          this.alertService.warning(
+            'Sin datos procesados', 
+            'No se procesaron participantes del archivo. Verifica que el archivo tenga el formato correcto.'
+          );
+        }
+        
+        // Limpiar archivo
         this.importFileParticipantes.set(null);
         this.loadingImportarParticipantes.set(false);
-        this.loadParticipantesPorItem(vista.tipo, vista.id);
-        this.aplicarFiltros();
+        
+        // Recargar participantes de la vista actual solo si se procesaron datos
+        if (totalProcesados > 0 || totalCreados > 0 || totalActualizados > 0) {
+          this.loadParticipantesPorItem(vista.tipo, vista.id);
+          this.aplicarFiltros();
+          // Recargar el resumen de participantes para actualizar las cards
+          this.loadResumenParticipantes();
+        }
       },
       error: (err: any) => {
         console.error('❌ Error importando participantes:', err);
         let errorMessage = 'Error al importar participantes';
         if (err.error?.message) {
           errorMessage = err.error.message;
+        } else if (err.error?.error) {
+          errorMessage = err.error.error;
         } else if (typeof err.error === 'string') {
           errorMessage = err.error;
         }
-        alert(errorMessage);
+        this.alertService.error('Error en la importación', errorMessage);
         this.loadingImportarParticipantes.set(false);
+        this.importFileParticipantes.set(null);
       }
     });
   }

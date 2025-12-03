@@ -375,8 +375,18 @@ export class ActividadDetailComponent implements OnInit {
     // Obtener todas las evidencias y filtrar por actividad
     this.evidenciaService.getAll().subscribe({
       next: async (data) => {
-        // Filtrar evidencias por idActividad
-        const evidenciasFiltradas = data.filter(e => e.idActividad === actividadId);
+        // Filtrar evidencias por idActividad Y que NO tengan idSubactividad
+        // Esto asegura que las evidencias de la actividad no se muestren en subactividades
+        const evidenciasFiltradas = data.filter(e => 
+          e.idActividad === actividadId && 
+          (!e.idSubactividad || e.idSubactividad === null || e.idSubactividad === undefined)
+        );
+        console.log('📎 Evidencias filtradas para actividad:', {
+          totalEvidencias: data.length,
+          filtradas: evidenciasFiltradas.length,
+          actividadId: actividadId,
+          evidenciasConSubactividad: data.filter(e => e.idActividad === actividadId && e.idSubactividad).length
+        });
         this.evidencias.set(evidenciasFiltradas);
         
         // Cargar imágenes desde IndexedDB para cada evidencia

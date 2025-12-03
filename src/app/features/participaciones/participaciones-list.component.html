@@ -140,65 +140,163 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-2">Tipo de Participante</label>
-                <select formControlName="tipoParticipante" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                <select 
+                  formControlName="tipoParticipante" 
+                  (change)="busquedaEstudiante.set(''); busquedaDocente.set(''); busquedaAdministrativo.set('')"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg">
                   <option value="estudiante">Estudiante</option>
                   <option value="docente">Docente</option>
                   <option value="administrativo">Administrativo</option>
                 </select>
               </div>
               @if (formParticipante.get('tipoParticipante')?.value === 'estudiante') {
-                <div>
+                <div class="relative dropdown-container">
                   <label class="block text-sm font-medium text-slate-700 mb-2">Estudiante</label>
-                  <select formControlName="estudianteId" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                    <option value="">Seleccionar...</option>
-                    @for (est of estudiantes(); track est.id) {
-                      <option [value]="est.id">{{ est.nombreCompleto || 'Estudiante ' + est.id }}</option>
+                  <div class="relative">
+                    <button
+                      type="button"
+                      (click)="mostrarDropdownEstudiante.set(!mostrarDropdownEstudiante())"
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-left flex items-center justify-between hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <span [class.text-slate-400]="!formParticipante.get('estudianteId')?.value">
+                        {{ getNombreEstudianteSeleccionado() }}
+                      </span>
+                      <app-icon icon="arrow_drop_down" size="sm" class="text-slate-500"></app-icon>
+                    </button>
+                    @if (mostrarDropdownEstudiante()) {
+                      <div class="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg">
+                        <div class="p-2 border-b border-slate-200">
+                          <input
+                            type="text"
+                            [value]="busquedaEstudiante()"
+                            (input)="busquedaEstudiante.set($any($event.target).value)"
+                            (click)="$event.stopPropagation()"
+                            placeholder="Buscar por nombre..."
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="max-h-60 overflow-y-auto">
+                          @if (getEstudiantesFiltrados().length === 0) {
+                            <div class="px-4 py-3 text-sm text-slate-500 text-center">
+                              @if (busquedaEstudiante().trim()) {
+                                No se encontraron estudiantes
+                              } @else {
+                                No hay estudiantes disponibles
+                              }
+                            </div>
+                          } @else {
+                            @for (est of getEstudiantesFiltrados(); track est.id) {
+                              <button
+                                type="button"
+                                (click)="seleccionarEstudiante(est)"
+                                class="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none text-sm"
+                                [class.bg-blue-100]="formParticipante.get('estudianteId')?.value === est.id">
+                                {{ est.nombreCompleto || 'Estudiante ' + est.id }}
+                              </button>
+                            }
+                          }
+                        </div>
+                      </div>
                     }
-                  </select>
+                  </div>
                 </div>
               } @else if (formParticipante.get('tipoParticipante')?.value === 'docente') {
-                <div>
+                <div class="relative dropdown-container">
                   <label class="block text-sm font-medium text-slate-700 mb-2">Docente</label>
-                  <select formControlName="docenteId" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                    <option value="">Seleccionar...</option>
-                    @for (doc of docentes(); track doc.id) {
-                      <option [value]="doc.id">{{ doc.nombreCompleto || 'Docente ' + doc.id }}</option>
+                  <div class="relative">
+                    <button
+                      type="button"
+                      (click)="mostrarDropdownDocente.set(!mostrarDropdownDocente())"
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-left flex items-center justify-between hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <span [class.text-slate-400]="!formParticipante.get('docenteId')?.value">
+                        {{ getNombreDocenteSeleccionado() }}
+                      </span>
+                      <app-icon icon="arrow_drop_down" size="sm" class="text-slate-500"></app-icon>
+                    </button>
+                    @if (mostrarDropdownDocente()) {
+                      <div class="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg">
+                        <div class="p-2 border-b border-slate-200">
+                          <input
+                            type="text"
+                            [value]="busquedaDocente()"
+                            (input)="busquedaDocente.set($any($event.target).value)"
+                            (click)="$event.stopPropagation()"
+                            placeholder="Buscar por nombre..."
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="max-h-60 overflow-y-auto">
+                          @if (getDocentesFiltrados().length === 0) {
+                            <div class="px-4 py-3 text-sm text-slate-500 text-center">
+                              @if (busquedaDocente().trim()) {
+                                No se encontraron docentes
+                              } @else {
+                                No hay docentes disponibles
+                              }
+                            </div>
+                          } @else {
+                            @for (doc of getDocentesFiltrados(); track doc.id) {
+                              <button
+                                type="button"
+                                (click)="seleccionarDocente(doc)"
+                                class="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none text-sm"
+                                [class.bg-blue-100]="formParticipante.get('docenteId')?.value === doc.id">
+                                {{ doc.nombreCompleto || 'Docente ' + doc.id }}
+                              </button>
+                            }
+                          }
+                        </div>
+                      </div>
                     }
-                  </select>
+                  </div>
                 </div>
               } @else {
-                <div>
+                <div class="relative dropdown-container">
                   <label class="block text-sm font-medium text-slate-700 mb-2">Administrativo</label>
-                  <select formControlName="administrativoId" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                    <option value="">Seleccionar...</option>
-                    @for (admin of administrativos(); track admin.id) {
-                      <option [value]="admin.id">{{ admin.nombreCompleto || 'Administrativo ' + admin.id }}</option>
+                  <div class="relative">
+                    <button
+                      type="button"
+                      (click)="mostrarDropdownAdministrativo.set(!mostrarDropdownAdministrativo())"
+                      class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-left flex items-center justify-between hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <span [class.text-slate-400]="!formParticipante.get('administrativoId')?.value">
+                        {{ getNombreAdministrativoSeleccionado() }}
+                      </span>
+                      <app-icon icon="arrow_drop_down" size="sm" class="text-slate-500"></app-icon>
+                    </button>
+                    @if (mostrarDropdownAdministrativo()) {
+                      <div class="absolute z-50 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg">
+                        <div class="p-2 border-b border-slate-200">
+                          <input
+                            type="text"
+                            [value]="busquedaAdministrativo()"
+                            (input)="busquedaAdministrativo.set($any($event.target).value)"
+                            (click)="$event.stopPropagation()"
+                            placeholder="Buscar por nombre..."
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="max-h-60 overflow-y-auto">
+                          @if (getAdministrativosFiltrados().length === 0) {
+                            <div class="px-4 py-3 text-sm text-slate-500 text-center">
+                              @if (busquedaAdministrativo().trim()) {
+                                No se encontraron administrativos
+                              } @else {
+                                No hay administrativos disponibles
+                              }
+                            </div>
+                          } @else {
+                            @for (admin of getAdministrativosFiltrados(); track admin.id) {
+                              <button
+                                type="button"
+                                (click)="seleccionarAdministrativo(admin)"
+                                class="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none text-sm"
+                                [class.bg-blue-100]="formParticipante.get('administrativoId')?.value === admin.id">
+                                {{ admin.nombreCompleto || 'Administrativo ' + admin.id }}
+                              </button>
+                            }
+                          }
+                        </div>
+                      </div>
                     }
-                  </select>
+                  </div>
                 </div>
               }
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Fecha de Participación</label>
-                <input type="date" formControlName="fechaParticipacion" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Categoría de Participación</label>
-                <select formControlName="categoriaParticipacionId" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                  <option value="">Seleccionar...</option>
-                  @for (cat of categoriasParticipacion(); track cat.id) {
-                    <option [value]="cat.id">{{ cat.nombre }}</option>
-                  }
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Estado de Participación</label>
-                <select formControlName="estadoParticipacionId" class="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                  <option value="">Seleccionar...</option>
-                  @for (estado of estadosParticipacion(); track estado.id) {
-                    <option [value]="estado.id">{{ estado.nombre }}</option>
-                  }
-                </select>
-              </div>
             </div>
             <div class="flex justify-end gap-3">
               <button
