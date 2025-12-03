@@ -90,13 +90,13 @@
 
           </dl>
 
-          @if (imageUrls().length > 0) {
+          @if (imageUrls().length > 0 || officeFiles().length > 0) {
             <div class="mt-6">
               <button 
                 (click)="downloadFile()"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 <app-icon icon="download" size="sm" color="white"></app-icon>
-                Descargar Archivo
+                Descargar Todo (ZIP)
               </button>
             </div>
           }
