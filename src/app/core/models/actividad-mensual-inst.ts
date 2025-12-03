@@ -26,7 +26,7 @@ export interface ActividadMensualInst {
 
 export interface ActividadMensualInstCreate {
   idActividadAnual: number;
-  mes: number;
+  mes?: number; // Opcional, se maneja automáticamente en el backend
   nombre?: string; // Campo de la tabla SQL
   descripcion?: string; // Campo de la tabla SQL
   metaMensual?: number;

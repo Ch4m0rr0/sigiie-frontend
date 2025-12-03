@@ -4,6 +4,8 @@ import { FormsModule, ReactiveFormsModule, FormGroup, FormControl, Validators } 
 import { Observable } from 'rxjs';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { IndicadorService } from '../../core/services/indicador.service';
+import { ActividadAnualService } from '../../core/services/actividad-anual.service';
+import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
 import type { Departamento } from '../../core/models/departamento';
 import type { Genero } from '../../core/models/genero';
 import type { EstadoEstudiante } from '../../core/models/estado-estudiante';
@@ -19,12 +21,14 @@ import type { AreaConocimiento } from '../../core/models/area-conocimiento';
 import type { EstadoActividad } from '../../core/models/estado-actividad';
 import type { NivelActividad, TipoEvidencia, RolEquipo } from '../../core/models/catalogos-nuevos';
 import type { Indicador } from '../../core/models/indicador';
+import type { ActividadAnual } from '../../core/models/actividad-anual';
+import type { ActividadMensualInst } from '../../core/models/actividad-mensual-inst';
 
 // Spartan UI
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
-type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras';
+type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras' | 'actividades-anuales' | 'actividades-mensuales';
 
 interface CatalogoItem {
   id: number;
@@ -53,6 +57,8 @@ interface CatalogoItem {
 export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   private catalogosService = inject(CatalogosService);
   private indicadorService = inject(IndicadorService);
+  private actividadAnualService = inject(ActividadAnualService);
+  private actividadMensualInstService = inject(ActividadMensualInstService);
   private elementRef = inject(ElementRef);
 
   @ViewChild('formContainer', { static: false }) formContainer!: ElementRef;
@@ -76,6 +82,17 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   busquedaCarreras = signal<string>('');
   paginaActualCarreras = signal<number>(1);
   mostrarTodosCarreras = signal<boolean>(false);
+  
+  // Filtro de año para actividades anuales
+  filtroAnioActividadesAnuales = signal<number | null>(null);
+  busquedaActividadesAnuales = signal<string>('');
+  paginaActualActividadesAnuales = signal<number>(1);
+  mostrarTodosActividadesAnuales = signal<boolean>(false);
+  
+  // Búsqueda y paginación para actividades mensuales
+  busquedaActividadesMensuales = signal<string>('');
+  paginaActualActividadesMensuales = signal<number>(1);
+  mostrarTodosActividadesMensuales = signal<boolean>(false);
 
   // Para importar indicadores
   showImportDialog = false;
@@ -105,6 +122,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     color: new FormControl('#3B82F6'), // Color por defecto (azul)
     departamentoId: new FormControl<number | null>(null), // Para carreras
     activo: new FormControl<boolean>(true), // Para carreras
+    idIndicador: new FormControl<number | null>(null), // Para actividades anuales
+    idActividadAnual: new FormControl<number | null>(null), // Para actividades mensuales
+    mes: new FormControl<number | null>(null), // Para actividades mensuales
   });
 
   // Signals for reactive data
@@ -132,6 +152,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   roles = signal<any[]>([]);
   indicadores = signal<Indicador[]>([]);
   carreras = signal<any[]>([]);
+  actividadesAnuales = signal<ActividadAnual[]>([]);
+  actividadesMensuales = signal<ActividadMensualInst[]>([]);
   
   // Loading state
   isLoading = signal<boolean>(false);
@@ -150,6 +172,18 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.filtroAnioIndicadores.set(null);
     this.busquedaIndicadores.set('');
     this.paginaActualIndicadores.set(1);
+    this.mostrarTodosIndicadores.set(false);
+    
+    // Resetear filtros y paginación para actividades anuales
+    this.filtroAnioActividadesAnuales.set(null);
+    this.busquedaActividadesAnuales.set('');
+    this.paginaActualActividadesAnuales.set(1);
+    this.mostrarTodosActividadesAnuales.set(false);
+    
+    // Resetear filtros y paginación para actividades mensuales
+    this.busquedaActividadesMensuales.set('');
+    this.paginaActualActividadesMensuales.set(1);
+    this.mostrarTodosActividadesMensuales.set(false);
   }
 
   updateFormValidation() {
@@ -198,6 +232,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       roles: 'Rol en el Sistema',
       indicadores: 'Indicadores',
       carreras: 'Carreras',
+      'actividades-anuales': 'Actividades Anuales',
+      'actividades-mensuales': 'Actividades Mensuales',
     };
     return names[this.selectedCatalogo];
   }
@@ -228,6 +264,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       { value: 'roles', label: 'Rol en el Sistema' },
       { value: 'indicadores', label: 'Indicadores' },
       { value: 'carreras', label: 'Carreras' },
+      { value: 'actividades-anuales', label: 'Actividades Anuales' },
+      { value: 'actividades-mensuales', label: 'Actividades Mensuales' },
     ];
     
     const searchTerm = this.searchCatalogo().toLowerCase().trim();
@@ -340,6 +378,69 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         const fin = inicio + this.itemsPorPagina;
         return carreras.slice(inicio, fin);
       }
+      case 'actividades-anuales': {
+        let actividades = this.actividadesAnuales().map(({idActividadAnual, nombre, descripcion, anio, idIndicador, nombreIndicador, codigoIndicador}) => ({
+          id: idActividadAnual,
+          nombre: nombre || nombreIndicador,
+          descripcion,
+          anio,
+          idIndicador,
+          codigoIndicador,
+          nombreIndicador
+        }));
+        
+        // Filtrar por año si hay un filtro activo
+        const filtroAnio = this.filtroAnioActividadesAnuales();
+        if (filtroAnio !== null && filtroAnio !== undefined) {
+          actividades = actividades.filter(a => a.anio === filtroAnio);
+        }
+        
+        // Filtrar por búsqueda (nombre o código indicador)
+        const busqueda = this.busquedaActividadesAnuales().trim().toLowerCase();
+        if (busqueda) {
+          actividades = actividades.filter(a => 
+            (a.nombre && a.nombre.toLowerCase().includes(busqueda)) ||
+            (a.codigoIndicador && a.codigoIndicador.toLowerCase().includes(busqueda))
+          );
+        }
+        
+        // Aplicar paginación solo si no se está mostrando todos
+        if (this.mostrarTodosActividadesAnuales()) {
+          return actividades;
+        }
+        const paginaActual = this.paginaActualActividadesAnuales();
+        const inicio = (paginaActual - 1) * this.itemsPorPagina;
+        const fin = inicio + this.itemsPorPagina;
+        return actividades.slice(inicio, fin);
+      }
+      case 'actividades-mensuales': {
+        let actividades = this.actividadesMensuales().map(({idActividadMensualInst, nombre, descripcion, mes, nombreMes, idActividadAnual, actividadAnual}) => ({
+          id: idActividadMensualInst,
+          nombre: nombre || actividadAnual?.nombreIndicador,
+          descripcion,
+          mes,
+          nombreMes,
+          idActividadAnual,
+          actividadAnual
+        }));
+        
+        // Filtrar por búsqueda (nombre)
+        const busqueda = this.busquedaActividadesMensuales().trim().toLowerCase();
+        if (busqueda) {
+          actividades = actividades.filter(a => 
+            (a.nombre && a.nombre.toLowerCase().includes(busqueda))
+          );
+        }
+        
+        // Aplicar paginación solo si no se está mostrando todos
+        if (this.mostrarTodosActividadesMensuales()) {
+          return actividades;
+        }
+        const paginaActual = this.paginaActualActividadesMensuales();
+        const inicio = (paginaActual - 1) * this.itemsPorPagina;
+        const fin = inicio + this.itemsPorPagina;
+        return actividades.slice(inicio, fin);
+      }
       default: return [];
     }
   }
@@ -380,6 +481,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     }
     if (this.selectedCatalogo === 'carreras') {
       return item.id || (item as any).idCarrera;
+    }
+    if (this.selectedCatalogo === 'actividades-anuales') {
+      return item.id || (item as any).idActividadAnual;
+    }
+    if (this.selectedCatalogo === 'actividades-mensuales') {
+      return item.id || (item as any).idActividadMensualInst;
     }
     return item.id;
   }
@@ -558,13 +665,35 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Carreras cargadas:', data);
         this.carreras.set(data);
-        this.isLoading.set(false);
       },
       error: error => {
         console.error('❌ LOAD ALL CATALOGOS - Error cargando carreras:', error);
-        this.isLoading.set(false);
       }
     });
+    
+    // Cargar actividades anuales
+    this.actividadAnualService.getAll().subscribe({
+      next: data => {
+        console.log('✅ LOAD ALL CATALOGOS - Actividades anuales cargadas:', data);
+        this.actividadesAnuales.set(data);
+      },
+      error: error => {
+        console.error('❌ LOAD ALL CATALOGOS - Error cargando actividades anuales:', error);
+      }
+    });
+    
+    // Cargar actividades mensuales
+    this.actividadMensualInstService.getAll().subscribe({
+      next: data => {
+        console.log('✅ LOAD ALL CATALOGOS - Actividades mensuales cargadas:', data);
+        this.actividadesMensuales.set(data);
+      },
+      error: error => {
+        console.error('❌ LOAD ALL CATALOGOS - Error cargando actividades mensuales:', error);
+      }
+    });
+    
+    this.isLoading.set(false);
   }
 
   addNew() {
@@ -618,6 +747,32 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           descripcion: carreraCompleta.descripcion || '',
           departamentoId: carreraCompleta.departamentoId || null,
           activo: carreraCompleta.activo !== undefined ? carreraCompleta.activo : true
+        });
+        this.updateFormValidation();
+        return;
+      }
+    } else if (this.selectedCatalogo === 'actividades-anuales') {
+      this.editingId = item.id || (item as any).idActividadAnual;
+      const actividadCompleta = this.actividadesAnuales().find(a => a.idActividadAnual === this.editingId);
+      if (actividadCompleta) {
+        this.form.patchValue({
+          nombre: actividadCompleta.nombre || '',
+          descripcion: actividadCompleta.descripcion || '',
+          idIndicador: actividadCompleta.idIndicador || null
+          // No incluimos anio porque se maneja automáticamente
+        });
+        this.updateFormValidation();
+        return;
+      }
+    } else if (this.selectedCatalogo === 'actividades-mensuales') {
+      this.editingId = item.id || (item as any).idActividadMensualInst;
+      const actividadCompleta = this.actividadesMensuales().find(a => a.idActividadMensualInst === this.editingId);
+      if (actividadCompleta) {
+        this.form.patchValue({
+          nombre: actividadCompleta.nombre || '',
+          descripcion: actividadCompleta.descripcion || '',
+          idActividadAnual: actividadCompleta.idActividadAnual || null
+          // No incluimos mes ni anio porque se manejan automáticamente
         });
         this.updateFormValidation();
         return;
@@ -688,6 +843,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'roles': obs = this.catalogosService.deleteRole(id); break;
       case 'indicadores': obs = this.indicadorService.delete(id); break;
       case 'carreras': obs = this.catalogosService.deleteCarrera(id); break;
+      case 'actividades-anuales': obs = this.actividadAnualService.delete(id); break;
+      case 'actividades-mensuales': obs = this.actividadMensualInstService.delete(id); break;
       default:
         console.error('Unknown catalog type for deletion:', this.selectedCatalogo);
         return;
@@ -1022,7 +1179,33 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           departamentoId: departamentoId
         });
         break;
-        
+      case 'actividades-anuales':
+        const idIndicador = (this.form.get('idIndicador')?.value as number) || null;
+        if (!idIndicador || !data.nombre) {
+          alert('El indicador y el nombre son requeridos');
+          return;
+        }
+        obs = this.actividadAnualService.create({
+          idIndicador,
+          nombre: data.nombre.trim(),
+          descripcion: data.descripcion?.trim() || undefined
+          // anio se agrega automáticamente (año actual) en el servicio
+          // activo se agrega automáticamente (true) en el servicio
+        });
+        break;
+      case 'actividades-mensuales':
+        const idActividadAnual = (this.form.get('idActividadAnual')?.value as number) || null;
+        if (!idActividadAnual || !data.nombre) {
+          alert('La actividad anual y el nombre son requeridos');
+          return;
+        }
+        obs = this.actividadMensualInstService.create({
+          idActividadAnual,
+          nombre: data.nombre.trim(),
+          descripcion: data.descripcion?.trim() || undefined,
+          // mes, anio y activo se agregan automáticamente en el backend
+        });
+        break;
       default:
         console.error('Unknown catalog type:', this.selectedCatalogo);
         return;
@@ -1320,7 +1503,37 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           activo: activo
         });
         break;
-        
+      case 'actividades-anuales':
+        const idIndicadorUpdate = (this.form.get('idIndicador')?.value as number) || null;
+        if (!idIndicadorUpdate || !data.nombre) {
+          alert('El indicador y el nombre son requeridos');
+          return;
+        }
+        // Obtener la actividad actual para mantener el estado activo
+        const actividadAnualActual = this.actividadesAnuales().find(a => a.idActividadAnual === id);
+        obs = this.actividadAnualService.update(id, {
+          idIndicador: idIndicadorUpdate,
+          nombre: data.nombre.trim(),
+          descripcion: data.descripcion?.trim() || undefined,
+          activo: actividadAnualActual?.activo !== undefined ? actividadAnualActual.activo : true
+        });
+        break;
+      case 'actividades-mensuales':
+        const idActividadAnualUpdate = (this.form.get('idActividadAnual')?.value as number) || null;
+        if (!idActividadAnualUpdate || !data.nombre) {
+          alert('La actividad anual y el nombre son requeridos');
+          return;
+        }
+        // Obtener la actividad actual para mantener el estado activo
+        const actividadMensualActual = this.actividadesMensuales().find(a => a.idActividadMensualInst === id);
+        obs = this.actividadMensualInstService.update(id, {
+          idActividadAnual: idActividadAnualUpdate,
+          nombre: data.nombre.trim(),
+          descripcion: data.descripcion?.trim() || undefined,
+          activo: actividadMensualActual?.activo !== undefined ? actividadMensualActual.activo : true
+          // mes y anio se manejan automáticamente en el backend
+        });
+        break;
       default:
         console.error('Unknown catalog type:', this.selectedCatalogo);
         return;
@@ -1610,6 +1823,221 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.busquedaCarreras.set(termino);
     // Resetear a la primera página cuando cambia la búsqueda
     this.paginaActualCarreras.set(1);
+  }
+
+  // Métodos de búsqueda y paginación para actividades anuales
+  onBusquedaActividadesAnualesChange(termino: string) {
+    this.busquedaActividadesAnuales.set(termino);
+    this.paginaActualActividadesAnuales.set(1);
+  }
+
+  onFiltroAnioActividadesAnualesChange(anio: number | null) {
+    this.filtroAnioActividadesAnuales.set(anio);
+    this.paginaActualActividadesAnuales.set(1);
+  }
+
+  getTotalActividadesAnualesFiltradas(): number {
+    if (this.selectedCatalogo !== 'actividades-anuales') return 0;
+    let actividades = this.actividadesAnuales().map(({idActividadAnual, nombre, descripcion, anio, idIndicador, nombreIndicador, codigoIndicador}) => ({
+      id: idActividadAnual,
+      nombre: nombre || nombreIndicador,
+      descripcion,
+      anio,
+      idIndicador,
+      codigoIndicador,
+      nombreIndicador
+    }));
+    const filtroAnio = this.filtroAnioActividadesAnuales();
+    if (filtroAnio !== null && filtroAnio !== undefined) {
+      actividades = actividades.filter(a => a.anio === filtroAnio);
+    }
+    const busqueda = this.busquedaActividadesAnuales().trim().toLowerCase();
+    if (busqueda) {
+      actividades = actividades.filter(a => 
+        (a.nombre && a.nombre.toLowerCase().includes(busqueda)) ||
+        (a.codigoIndicador && a.codigoIndicador.toLowerCase().includes(busqueda))
+      );
+    }
+    return actividades.length;
+  }
+
+  getTotalPaginasActividadesAnuales(): number {
+    const total = this.getTotalActividadesAnualesFiltradas();
+    return Math.ceil(total / this.itemsPorPagina);
+  }
+
+  paginaAnteriorActividadesAnuales() {
+    const paginaActual = this.paginaActualActividadesAnuales();
+    if (paginaActual > 1) {
+      this.paginaActualActividadesAnuales.set(paginaActual - 1);
+    }
+  }
+
+  paginaSiguienteActividadesAnuales() {
+    const paginaActual = this.paginaActualActividadesAnuales();
+    const totalPaginas = this.getTotalPaginasActividadesAnuales();
+    if (paginaActual < totalPaginas) {
+      this.paginaActualActividadesAnuales.set(paginaActual + 1);
+    }
+  }
+
+  getInicioPaginaActividadesAnuales(): number {
+    const total = this.getTotalActividadesAnualesFiltradas();
+    if (total === 0) return 0;
+    return (this.paginaActualActividadesAnuales() - 1) * this.itemsPorPagina + 1;
+  }
+
+  getFinPaginaActividadesAnuales(): number {
+    const total = this.getTotalActividadesAnualesFiltradas();
+    const fin = this.paginaActualActividadesAnuales() * this.itemsPorPagina;
+    return Math.min(fin, total);
+  }
+
+  getAniosDisponiblesActividadesAnuales(): number[] {
+    const anios = new Set<number>();
+    this.actividadesAnuales().forEach(a => {
+      if (a.anio) anios.add(a.anio);
+    });
+    return Array.from(anios).sort((a, b) => b - a);
+  }
+
+  // Métodos de búsqueda y paginación para actividades mensuales
+  onBusquedaActividadesMensualesChange(termino: string) {
+    this.busquedaActividadesMensuales.set(termino);
+    this.paginaActualActividadesMensuales.set(1);
+  }
+
+  getTotalActividadesMensualesFiltradas(): number {
+    if (this.selectedCatalogo !== 'actividades-mensuales') return 0;
+    let actividades = this.actividadesMensuales().map(({idActividadMensualInst, nombre, descripcion, mes, nombreMes, idActividadAnual, actividadAnual}) => ({
+      id: idActividadMensualInst,
+      nombre: nombre || actividadAnual?.nombreIndicador,
+      descripcion,
+      mes,
+      nombreMes,
+      idActividadAnual,
+      actividadAnual
+    }));
+    const busqueda = this.busquedaActividadesMensuales().trim().toLowerCase();
+    if (busqueda) {
+      actividades = actividades.filter(a => 
+        (a.nombre && a.nombre.toLowerCase().includes(busqueda))
+      );
+    }
+    return actividades.length;
+  }
+
+  getTotalPaginasActividadesMensuales(): number {
+    const total = this.getTotalActividadesMensualesFiltradas();
+    return Math.ceil(total / this.itemsPorPagina);
+  }
+
+  paginaAnteriorActividadesMensuales() {
+    const paginaActual = this.paginaActualActividadesMensuales();
+    if (paginaActual > 1) {
+      this.paginaActualActividadesMensuales.set(paginaActual - 1);
+    }
+  }
+
+  paginaSiguienteActividadesMensuales() {
+    const paginaActual = this.paginaActualActividadesMensuales();
+    const totalPaginas = this.getTotalPaginasActividadesMensuales();
+    if (paginaActual < totalPaginas) {
+      this.paginaActualActividadesMensuales.set(paginaActual + 1);
+    }
+  }
+
+  getInicioPaginaActividadesMensuales(): number {
+    const total = this.getTotalActividadesMensualesFiltradas();
+    if (total === 0) return 0;
+    return (this.paginaActualActividadesMensuales() - 1) * this.itemsPorPagina + 1;
+  }
+
+  getFinPaginaActividadesMensuales(): number {
+    const total = this.getTotalActividadesMensualesFiltradas();
+    const fin = this.paginaActualActividadesMensuales() * this.itemsPorPagina;
+    return Math.min(fin, total);
+  }
+
+  // Métodos para importar y exportar
+  descargarPlantillaActividadesAnuales() {
+    this.actividadAnualService.obtenerPlantillaExcel().subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'plantilla-actividades-anuales.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      },
+      error: (err) => {
+        console.error('Error descargando plantilla:', err);
+        alert('Error al descargar la plantilla');
+      }
+    });
+  }
+
+  descargarPlantillaActividadesMensuales() {
+    this.actividadMensualInstService.obtenerPlantillaExcel().subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'plantilla-actividades-mensuales.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      },
+      error: (err) => {
+        console.error('Error descargando plantilla:', err);
+        alert('Error al descargar la plantilla');
+      }
+    });
+  }
+
+  importarActividadesAnuales(file: File) {
+    this.actividadAnualService.importarDesdeExcel(file).subscribe({
+      next: (response) => {
+        alert('Actividades anuales importadas exitosamente');
+        this.loadAllCatalogos();
+        this.showImportDialog = false;
+        this.importFile = null;
+      },
+      error: (err) => {
+        console.error('Error importando actividades anuales:', err);
+        alert('Error al importar actividades anuales: ' + (err.error?.message || err.message || 'Error desconocido'));
+      }
+    });
+  }
+
+  importarActividadesMensuales(file: File) {
+    this.actividadMensualInstService.importarDesdeExcel(file).subscribe({
+      next: (response) => {
+        alert('Actividades mensuales importadas exitosamente');
+        this.loadAllCatalogos();
+        this.showImportDialog = false;
+        this.importFile = null;
+      },
+      error: (err) => {
+        console.error('Error importando actividades mensuales:', err);
+        alert('Error al importar actividades mensuales: ' + (err.error?.message || err.message || 'Error desconocido'));
+      }
+    });
+  }
+
+  importarSegunCatalogo() {
+    if (this.selectedCatalogo === 'carreras') {
+      this.importarCarrerasDesdeExcel();
+    } else if (this.selectedCatalogo === 'actividades-anuales' && this.importFile) {
+      this.importarActividadesAnuales(this.importFile);
+    } else if (this.selectedCatalogo === 'actividades-mensuales' && this.importFile) {
+      this.importarActividadesMensuales(this.importFile);
+    } else {
+      this.importarDesdeExcel();
+    }
   }
 
   getTotalCarrerasFiltradas(): number {

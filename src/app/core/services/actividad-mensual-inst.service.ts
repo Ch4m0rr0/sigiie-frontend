@@ -74,16 +74,17 @@ export class ActividadMensualInstService {
     if (data.idActividadAnual === null || data.idActividadAnual === undefined) {
       throw new Error('idActividadAnual es requerido');
     }
-    if (data.mes === null || data.mes === undefined) {
-      throw new Error('mes es requerido');
-    }
 
     // Convertir a PascalCase para el backend
     const payload: any = {
       IdActividadAnual: Number(data.idActividadAnual), // Asegurar que sea número
-      Mes: Number(data.mes), // Asegurar que sea número
       Activo: data.activo !== undefined ? data.activo : true
     };
+    
+    // Agregar Mes solo si está presente (el backend lo maneja automáticamente si no se envía)
+    if (data.mes !== undefined && data.mes !== null) {
+      payload.Mes = Number(data.mes);
+    }
     
     // Agregar campos opcionales solo si están presentes
     if (data.nombre !== undefined && data.nombre !== null && data.nombre.trim() !== '') {
@@ -148,6 +149,24 @@ export class ActividadMensualInstService {
 
     return this.http.put<any>(`${this.apiUrl}/${id}`, payload).pipe(
       map(response => {
+        // Manejar caso cuando response es null
+        if (!response) {
+          // Si la respuesta es null, devolver un objeto con los datos originales
+          return {
+            idActividadMensualInst: id,
+            idActividadAnual: data.idActividadAnual || 0,
+            mes: data.mes || 0,
+            nombre: data.nombre,
+            descripcion: data.descripcion,
+            metaMensual: data.metaMensual,
+            metaAlcanzada: data.metaAlcanzada,
+            porcentajeCumplimiento: data.porcentajeCumplimiento,
+            valoracionCualitativa: data.valoracionCualitativa,
+            brechas: data.brechas,
+            evidenciaResumen: data.evidenciaResumen,
+            activo: data.activo !== undefined ? data.activo : true
+          } as ActividadMensualInst;
+        }
         const item = response.data || response;
         if (!item) {
           // Si la respuesta es null, devolver un objeto con los datos originales
@@ -191,6 +210,25 @@ export class ActividadMensualInstService {
     return this.getAll({ mes, anio });
   }
 
+  buscarPorTexto(texto: string): Observable<ActividadMensualInst[]> {
+    if (!texto || texto.trim().length === 0) {
+      return of([]);
+    }
+
+    const params = new HttpParams().set('texto', texto.trim());
+    
+    return this.http.get<any>(`${this.apiUrl}/buscar`, { params }).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => this.mapActividadMensualInst(item)) : [];
+      }),
+      catchError(error => {
+        console.error('❌ Error buscando actividades mensuales por texto:', error);
+        return of([]);
+      })
+    );
+  }
+
   getByNombreActividadAnual(nombreActividadAnual: string): Observable<ActividadMensualInst[]> {
     // Validar que el nombre no esté vacío
     if (!nombreActividadAnual || nombreActividadAnual.trim().length === 0) {
@@ -229,6 +267,26 @@ export class ActividadMensualInstService {
         }
       })
     );
+  }
+
+  importarDesdeExcel(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('Archivo', file, file.name);
+    
+    return this.http.post(`${this.apiUrl}/importar-desde-excel`, formData, {
+      reportProgress: true,
+      observe: 'response'
+    }).pipe(
+      map(response => response.body || response),
+      catchError(error => {
+        console.error('❌ Error importing actividades mensuales from Excel:', error);
+        throw error;
+      })
+    );
+  }
+
+  obtenerPlantillaExcel(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/plantilla-excel`, { responseType: 'blob' });
   }
 
   private mapActividadMensualInst(item: any): ActividadMensualInst {

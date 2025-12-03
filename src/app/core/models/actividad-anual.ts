@@ -20,7 +20,7 @@ export interface ActividadAnual {
 
 export interface ActividadAnualCreate {
   idIndicador: number;
-  anio: number;
+  anio?: number; // Opcional, se usa año actual si no se proporciona
   nombre?: string; // Campo de la tabla SQL
   descripcion?: string; // Campo de la tabla SQL
   metaAnual?: number;
@@ -29,7 +29,7 @@ export interface ActividadAnualCreate {
   valoracionCualitativa?: string;
   brechas?: string;
   evidenciaResumen?: string;
-  activo?: boolean;
+  activo?: boolean; // Opcional, por defecto es true
 }
 
 export interface ActividadAnualUpdate {

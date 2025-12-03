@@ -148,6 +148,24 @@ export class ActividadAnualService {
 
     return this.http.put<any>(`${this.apiUrl}/${id}`, payload).pipe(
       map(response => {
+        // Manejar caso cuando response es null
+        if (!response) {
+          // Si la respuesta es null, devolver un objeto con los datos originales
+          return {
+            idActividadAnual: id,
+            idIndicador: data.idIndicador || 0,
+            nombre: data.nombre,
+            descripcion: data.descripcion,
+            anio: data.anio || new Date().getFullYear(),
+            metaAnual: data.metaAnual,
+            metaAlcanzada: data.metaAlcanzada,
+            porcentajeCumplimiento: data.porcentajeCumplimiento,
+            valoracionCualitativa: data.valoracionCualitativa,
+            brechas: data.brechas,
+            evidenciaResumen: data.evidenciaResumen,
+            activo: data.activo !== undefined ? data.activo : true
+          } as ActividadAnual;
+        }
         const item = response.data || response;
         if (!item) {
           // Si la respuesta es null, devolver un objeto con los datos originales
@@ -189,6 +207,26 @@ export class ActividadAnualService {
 
   getByAnio(anio: number): Observable<ActividadAnual[]> {
     return this.getAll({ anio });
+  }
+
+  importarDesdeExcel(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('Archivo', file, file.name);
+    
+    return this.http.post(`${this.apiUrl}/importar-desde-excel`, formData, {
+      reportProgress: true,
+      observe: 'response'
+    }).pipe(
+      map(response => response.body || response),
+      catchError(error => {
+        console.error('❌ Error importing actividades anuales from Excel:', error);
+        throw error;
+      })
+    );
+  }
+
+  obtenerPlantillaExcel(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/plantilla-excel`, { responseType: 'blob' });
   }
 
   private mapActividadAnual(item: any): ActividadAnual {

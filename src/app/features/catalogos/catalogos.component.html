@@ -127,6 +127,44 @@
                 <input type="number" formControlName="meta" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
               </div>
             </div>
+            <!-- Campos para actividades anuales -->
+            <div *ngIf="selectedCatalogo === 'actividades-anuales'" class="mb-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Indicador <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="idIndicador" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option [value]="null">Seleccione un indicador</option>
+                  <option *ngFor="let ind of indicadores()" [value]="ind.idIndicador">
+                    {{ ind.codigo }} - {{ ind.nombre }}
+                  </option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Seleccione el indicador al que pertenece esta actividad anual</p>
+              </div>
+            </div>
+            <!-- Campos para actividades mensuales -->
+            <div *ngIf="selectedCatalogo === 'actividades-mensuales'" class="mb-4">
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Actividad Anual <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="idActividadAnual" 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option [value]="null">Seleccione una actividad anual</option>
+                  <option *ngFor="let act of actividadesAnuales()" [value]="act.idActividadAnual">
+                    {{ act.nombre || act.nombreIndicador }} ({{ act.anio }})
+                  </option>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Seleccione la actividad anual a la que pertenece esta actividad mensual</p>
+              </div>
+            </div>
             <!-- Campos para carreras -->
             <div *ngIf="selectedCatalogo === 'carreras'" class="mb-4">
               <div class="mb-4">
@@ -180,6 +218,18 @@
                       <option *ngFor="let anio of getAniosDisponibles()" [value]="anio">{{ anio }}</option>
                     </select>
                   </div>
+                  <!-- Filtro de año para actividades anuales -->
+                  <div *ngIf="selectedCatalogo === 'actividades-anuales'" class="flex items-center gap-2">
+                    <label class="text-sm font-medium text-gray-700 whitespace-nowrap">Filtrar por año:</label>
+                    <select 
+                      [ngModel]="filtroAnioActividadesAnuales()"
+                      (ngModelChange)="onFiltroAnioActividadesAnualesChange($event)"
+                      class="px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option [value]="null">Todos los años</option>
+                      <option *ngFor="let anio of getAniosDisponiblesActividadesAnuales()" [value]="anio">{{ anio }}</option>
+                    </select>
+                  </div>
                 <!-- Botones especiales para Indicadores -->
                 <div *ngIf="selectedCatalogo === 'indicadores'" class="flex gap-2">
                   <button 
@@ -196,6 +246,52 @@
                     (click)="abrirDialogoImportar()" 
                     class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
                     title="Importar indicadores"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    Importar
+                  </button>
+                </div>
+                <!-- Botones especiales para Actividades Anuales -->
+                <div *ngIf="selectedCatalogo === 'actividades-anuales'" class="flex gap-2">
+                  <button 
+                    (click)="descargarPlantillaActividadesAnuales()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                    title="Descargar plantilla Excel para actividades anuales"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Descargar Plantilla
+                  </button>
+                  <button 
+                    (click)="abrirDialogoImportar()" 
+                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+                    title="Importar actividades anuales desde Excel"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    Importar
+                  </button>
+                </div>
+                <!-- Botones especiales para Actividades Mensuales -->
+                <div *ngIf="selectedCatalogo === 'actividades-mensuales'" class="flex gap-2">
+                  <button 
+                    (click)="descargarPlantillaActividadesMensuales()" 
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                    title="Descargar plantilla Excel para actividades mensuales"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Descargar Plantilla
+                  </button>
+                  <button 
+                    (click)="abrirDialogoImportar()" 
+                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+                    title="Importar actividades mensuales desde Excel"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -247,6 +343,38 @@
                   [ngModel]="busquedaIndicadores()"
                   (ngModelChange)="onBusquedaIndicadoresChange($event)"
                   placeholder="Buscar por nombre o código..."
+                  class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Búsqueda para actividades anuales -->
+            <div *ngIf="selectedCatalogo === 'actividades-anuales'" class="mb-4">
+              <div class="relative">
+                <input
+                  type="text"
+                  [ngModel]="busquedaActividadesAnuales()"
+                  (ngModelChange)="onBusquedaActividadesAnualesChange($event)"
+                  placeholder="Buscar por nombre o código de indicador..."
+                  class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Búsqueda para actividades mensuales -->
+            <div *ngIf="selectedCatalogo === 'actividades-mensuales'" class="mb-4">
+              <div class="relative">
+                <input
+                  type="text"
+                  [ngModel]="busquedaActividadesMensuales()"
+                  (ngModelChange)="onBusquedaActividadesMensualesChange($event)"
+                  placeholder="Buscar por nombre..."
                   class="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,6 +470,118 @@
             </table>
           </div>
           
+          <!-- Paginación para actividades anuales -->
+          <div *ngIf="selectedCatalogo === 'actividades-anuales' && getTotalActividadesAnualesFiltradas() > 0" class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-4">
+            <div class="text-sm text-gray-700">
+              <span *ngIf="!mostrarTodosActividadesAnuales()">
+                Mostrando {{ getInicioPaginaActividadesAnuales() }} - 
+                {{ getFinPaginaActividadesAnuales() }} 
+                de {{ getTotalActividadesAnualesFiltradas() }} actividades anuales
+              </span>
+              <span *ngIf="mostrarTodosActividadesAnuales()">
+                Mostrando todas las {{ getTotalActividadesAnualesFiltradas() }} actividades anuales
+              </span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Toggle para mostrar todos -->
+              <button
+                (click)="mostrarTodosActividadesAnuales.set(!mostrarTodosActividadesAnuales())"
+                [class.bg-green-600]="mostrarTodosActividadesAnuales()"
+                [class.text-white]="mostrarTodosActividadesAnuales()"
+                [class.bg-white]="!mostrarTodosActividadesAnuales()"
+                [class.text-gray-700]="!mostrarTodosActividadesAnuales()"
+                class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+              >
+                {{ mostrarTodosActividadesAnuales() ? 'Mostrar 10 por página' : 'Mostrar todos' }}
+              </button>
+              
+              <!-- Controles de paginación (solo si hay más de 10 items y no se muestran todos) -->
+              <div *ngIf="!mostrarTodosActividadesAnuales() && getTotalActividadesAnualesFiltradas() > 10" class="flex items-center gap-2">
+                <button
+                  (click)="paginaAnteriorActividadesAnuales()"
+                  [disabled]="paginaActualActividadesAnuales() === 1"
+                  [class.opacity-50]="paginaActualActividadesAnuales() === 1"
+                  [class.cursor-not-allowed]="paginaActualActividadesAnuales() === 1"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página anterior"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </button>
+                
+                <button
+                  (click)="paginaSiguienteActividadesAnuales()"
+                  [disabled]="paginaActualActividadesAnuales() === getTotalPaginasActividadesAnuales()"
+                  [class.opacity-50]="paginaActualActividadesAnuales() === getTotalPaginasActividadesAnuales()"
+                  [class.cursor-not-allowed]="paginaActualActividadesAnuales() === getTotalPaginasActividadesAnuales()"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página siguiente"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Paginación para actividades mensuales -->
+          <div *ngIf="selectedCatalogo === 'actividades-mensuales' && getTotalActividadesMensualesFiltradas() > 0" class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-4">
+            <div class="text-sm text-gray-700">
+              <span *ngIf="!mostrarTodosActividadesMensuales()">
+                Mostrando {{ getInicioPaginaActividadesMensuales() }} - 
+                {{ getFinPaginaActividadesMensuales() }} 
+                de {{ getTotalActividadesMensualesFiltradas() }} actividades mensuales
+              </span>
+              <span *ngIf="mostrarTodosActividadesMensuales()">
+                Mostrando todas las {{ getTotalActividadesMensualesFiltradas() }} actividades mensuales
+              </span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Toggle para mostrar todos -->
+              <button
+                (click)="mostrarTodosActividadesMensuales.set(!mostrarTodosActividadesMensuales())"
+                [class.bg-green-600]="mostrarTodosActividadesMensuales()"
+                [class.text-white]="mostrarTodosActividadesMensuales()"
+                [class.bg-white]="!mostrarTodosActividadesMensuales()"
+                [class.text-gray-700]="!mostrarTodosActividadesMensuales()"
+                class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
+              >
+                {{ mostrarTodosActividadesMensuales() ? 'Mostrar 10 por página' : 'Mostrar todos' }}
+              </button>
+              
+              <!-- Controles de paginación (solo si hay más de 10 items y no se muestran todos) -->
+              <div *ngIf="!mostrarTodosActividadesMensuales() && getTotalActividadesMensualesFiltradas() > 10" class="flex items-center gap-2">
+                <button
+                  (click)="paginaAnteriorActividadesMensuales()"
+                  [disabled]="paginaActualActividadesMensuales() === 1"
+                  [class.opacity-50]="paginaActualActividadesMensuales() === 1"
+                  [class.cursor-not-allowed]="paginaActualActividadesMensuales() === 1"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página anterior"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </button>
+                
+                <button
+                  (click)="paginaSiguienteActividadesMensuales()"
+                  [disabled]="paginaActualActividadesMensuales() === getTotalPaginasActividadesMensuales()"
+                  [class.opacity-50]="paginaActualActividadesMensuales() === getTotalPaginasActividadesMensuales()"
+                  [class.cursor-not-allowed]="paginaActualActividadesMensuales() === getTotalPaginasActividadesMensuales()"
+                  class="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  title="Página siguiente"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Paginación para indicadores -->
           <div *ngIf="selectedCatalogo === 'indicadores' && getTotalIndicadoresFiltrados() > 0" class="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-4">
             <div class="text-sm text-gray-700">
@@ -367,8 +607,8 @@
                 {{ mostrarTodosIndicadores() ? 'Mostrar 10 por página' : 'Mostrar todos' }}
               </button>
               
-              <!-- Controles de paginación (solo si no se muestran todos) -->
-              <div *ngIf="!mostrarTodosIndicadores() && getTotalPaginasIndicadores() > 1" class="flex items-center gap-2">
+              <!-- Controles de paginación (solo si hay más de 10 items y no se muestran todos) -->
+              <div *ngIf="!mostrarTodosIndicadores() && getTotalIndicadoresFiltrados() > 10" class="flex items-center gap-2">
                 <button
                   (click)="paginaAnteriorIndicadores()"
                   [disabled]="paginaActualIndicadores() === 1"
@@ -423,8 +663,8 @@
                 {{ mostrarTodosCarreras() ? 'Mostrar 10 por página' : 'Mostrar todas' }}
               </button>
               
-              <!-- Controles de paginación (solo si no se muestran todos) -->
-              <div *ngIf="!mostrarTodosCarreras() && getTotalPaginasCarreras() > 1" class="flex items-center gap-2">
+              <!-- Controles de paginación (solo si hay más de 10 items y no se muestran todos) -->
+              <div *ngIf="!mostrarTodosCarreras() && getTotalCarrerasFiltradas() > 10" class="flex items-center gap-2">
                 <button
                   (click)="paginaAnteriorCarreras()"
                   [disabled]="paginaActualCarreras() === 1"
@@ -460,7 +700,14 @@
         <div *ngIf="showImportDialog" class="fixed inset-0 bg-gray-900 bg-opacity-20 overflow-y-auto h-full w-full z-50 flex items-center justify-center" (click)="cerrarDialogoImportar()">
           <div class="relative mx-auto p-6 border-2 border-gray-200 w-full max-w-md shadow-xl rounded-lg bg-white" (click)="$event.stopPropagation()">
             <div class="mt-3">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Importar {{ selectedCatalogo === 'carreras' ? 'Carreras' : 'Indicadores' }}</h3>
+              <h3 class="text-lg font-medium text-gray-900 mb-4">
+                Importar {{ 
+                  selectedCatalogo === 'carreras' ? 'Carreras' : 
+                  selectedCatalogo === 'actividades-anuales' ? 'Actividades Anuales' :
+                  selectedCatalogo === 'actividades-mensuales' ? 'Actividades Mensuales' :
+                  'Indicadores' 
+                }}
+              </h3>
               
               <div class="mb-4" *ngIf="selectedCatalogo === 'indicadores'">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Método de Importación</label>
@@ -585,7 +832,7 @@
                 </div>
                 <button
                   type="button"
-                  (click)="selectedCatalogo === 'carreras' ? importarCarrerasDesdeExcel() : importarDesdeExcel()"
+                  (click)="importarSegunCatalogo()"
                   [disabled]="!importFile"
                   class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
