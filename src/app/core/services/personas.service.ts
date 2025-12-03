@@ -289,18 +289,11 @@ export class PersonasService {
     if (estudiante.cedula !== undefined && estudiante.cedula && String(estudiante.cedula).trim()) {
       dto.Cedula = String(estudiante.cedula).trim();
     }
-<<<<<<< HEAD
-    
-    const categoriaId = toNumber(estudiante.idCategoriaParticipacion);
-    if (categoriaId !== null) {
-      dto.IdCategoriaParticipacion = categoriaId;
-=======
     if (estudiante.numeroOrcid !== undefined && estudiante.numeroOrcid && String(estudiante.numeroOrcid).trim()) {
       dto.NumeroOrcid = String(estudiante.numeroOrcid).trim();
     }
     if (estudiante.numeroTelefono !== undefined && estudiante.numeroTelefono && String(estudiante.numeroTelefono).trim()) {
       dto.NumeroTelefono = String(estudiante.numeroTelefono).trim();
->>>>>>> 4ac6e97a522cd659ce55423a91b146af2054ffa5
     }
     if (estudiante.nivelFormacion !== undefined && estudiante.nivelFormacion && String(estudiante.nivelFormacion).trim()) {
       dto.NivelFormacion = String(estudiante.nivelFormacion).trim();
