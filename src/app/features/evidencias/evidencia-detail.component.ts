@@ -4,10 +4,13 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { ImageStorageService } from '../../core/services/image-storage.service';
+import { ActividadesService } from '../../core/services/actividades.service';
 import type { Evidencia } from '../../core/models/evidencia';
+import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import JSZip from 'jszip';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -18,6 +21,7 @@ import JSZip from 'jszip';
 export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   private evidenciaService = inject(EvidenciaService);
   private imageStorageService = inject(ImageStorageService);
+  private actividadesService = inject(ActividadesService);
   private sanitizer = inject(DomSanitizer);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -29,6 +33,7 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   currentImageIndex = signal<number>(0);
   imageError = signal(false);
   officeFiles = signal<Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>>([]);
+  nombreActividad = signal<string | null>(null);
   private objectUrls: string[] = [];
 
   ngOnInit(): void {
@@ -50,6 +55,27 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
     this.evidenciaService.getById(id).subscribe({
       next: async (data) => {
         this.evidencia.set(data);
+        
+        // Cargar el nombre de la actividad si existe
+        if (data.idActividad) {
+          try {
+            const actividad = await firstValueFrom(this.actividadesService.getById(data.idActividad));
+            if (actividad) {
+              const nombre = actividad.nombreActividad || actividad.nombre || data.nombreActividad || null;
+              this.nombreActividad.set(nombre);
+            } else {
+              // Si no se puede cargar, usar el nombre de la evidencia si está disponible
+              this.nombreActividad.set(data.nombreActividad || null);
+            }
+          } catch (err) {
+            console.warn('⚠️ No se pudo cargar la actividad:', err);
+            // Usar el nombre de la evidencia si está disponible
+            this.nombreActividad.set(data.nombreActividad || null);
+          }
+        } else {
+          // Si no hay idActividad, usar el nombre de la evidencia si está disponible
+          this.nombreActividad.set(data.nombreActividad || null);
+        }
         
         // Cargar todas las imágenes desde almacenamiento local del frontend (IndexedDB)
         const storedImages = await this.imageStorageService.getAllImages(data.idEvidencia);
@@ -179,11 +205,53 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
       console.log('📦 Generando archivo ZIP...');
       const zipBlob = await zip.generateAsync({ type: 'blob' });
       
-      // Crear el nombre del archivo ZIP
-      const baseFileName = evidencia.rutaArchivo 
-        ? (evidencia.rutaArchivo.split('/').pop() || evidencia.rutaArchivo.split('\\').pop() || 'evidencia')
-        : `evidencia_${evidencia.idEvidencia}`;
-      const zipFileName = `${baseFileName}_completo.zip`;
+      // Obtener información de la actividad para el nombre del archivo
+      let nombreActividad = evidencia.nombreActividad || 'Actividad';
+      let fechaActividad = '';
+      
+      if (evidencia.idActividad) {
+        try {
+          const actividad = await firstValueFrom(this.actividadesService.getById(evidencia.idActividad));
+          if (actividad) {
+            nombreActividad = actividad.nombreActividad || actividad.nombre || nombreActividad;
+            // Obtener la fecha de la actividad (fechaInicio o fechaCreacion)
+            const fecha = actividad.fechaInicio || actividad.fechaCreacion;
+            if (fecha) {
+              // Formatear la fecha como DD-MM-YYYY
+              const fechaObj = new Date(fecha);
+              if (!isNaN(fechaObj.getTime())) {
+                const dia = String(fechaObj.getDate()).padStart(2, '0');
+                const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+                const anio = fechaObj.getFullYear();
+                fechaActividad = `${dia}-${mes}-${anio}`;
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ No se pudo cargar la actividad para el nombre del archivo:', err);
+        }
+      }
+      
+      // Obtener nombre de la evidencia
+      const nombreEvidencia = evidencia.descripcion || evidencia.nombreTipoEvidencia || `Evidencia_${evidencia.idEvidencia}`;
+      
+      // Limpiar nombres para que sean válidos como nombres de archivo
+      const limpiarNombre = (nombre: string): string => {
+        return nombre
+          .replace(/[^a-zA-Z0-9\s\-_]/g, '') // Remover caracteres especiales
+          .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
+          .substring(0, 50); // Limitar longitud
+      };
+      
+      // Construir el nombre del archivo: Actividad + Evidencia + Fecha
+      const partesNombre: string[] = [];
+      partesNombre.push(limpiarNombre(nombreActividad));
+      partesNombre.push(limpiarNombre(nombreEvidencia));
+      if (fechaActividad) {
+        partesNombre.push(fechaActividad);
+      }
+      
+      const zipFileName = `${partesNombre.join('_')}.zip`;
       
       // Descargar el ZIP
       const blobUrl = URL.createObjectURL(zipBlob);

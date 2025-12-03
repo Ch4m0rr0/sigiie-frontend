@@ -2097,7 +2097,69 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   getEstadoColor(estado: any): string {
-    return estado?.color || '#3B82F6';
+    return estado?.color || estado?.Color || '#3B82F6';
+  }
+
+  /**
+   * Obtiene el estado completo de una actividad
+   */
+  getEstadoDeActividad(actividad: any): any | null {
+    if (actividad.nombreEstadoActividad && actividad.idEstadoActividad) {
+      // Buscar el estado en la lista de estados cargados
+      const estado = this.estadosActividad().find(
+        e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
+      );
+      return estado || null;
+    } else if (actividad.idEstadoActividad) {
+      // Buscar el estado en la lista de estados cargados
+      const estado = this.estadosActividad().find(
+        e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
+      );
+      return estado || null;
+    }
+    return null;
+  }
+
+  /**
+   * Obtiene el color del estado de una actividad
+   */
+  getColorEstadoActividad(actividad: any): string {
+    const estado = this.getEstadoDeActividad(actividad);
+    if (estado) {
+      return this.getEstadoColor(estado);
+    }
+    return '#94a3b8'; // slate-400 como color por defecto cuando no hay estado
+  }
+
+  /**
+   * Convierte un color hex a rgba con transparencia
+   */
+  hexToRgba(hex: string, alpha: number = 0.2): string {
+    // Remover el # si existe
+    hex = hex.replace('#', '');
+    
+    // Convertir a RGB
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  /**
+   * Obtiene el color de fondo con transparencia para el estado
+   */
+  getColorFondoEstado(actividad: any): string {
+    const color = this.getColorEstadoActividad(actividad);
+    return this.hexToRgba(color, 0.15);
+  }
+
+  /**
+   * Obtiene el color de borde con transparencia para el estado
+   */
+  getColorBordeEstado(actividad: any): string {
+    const color = this.getColorEstadoActividad(actividad);
+    return this.hexToRgba(color, 0.4);
   }
 
   getTiposEvidenciaDeActividad(): number[] | null {

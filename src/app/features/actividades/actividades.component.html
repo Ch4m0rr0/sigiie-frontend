@@ -2036,20 +2036,23 @@
             </div>
 
             <div class="mb-3 flex flex-wrap gap-2">
-              @if (actividad.nombreEstadoActividad) {
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                  <app-icon icon="toggle_on" size="xs" class="mr-1 text-blue-600"></app-icon>
-                  {{ actividad.nombreEstadoActividad }}
+              @if (actividad.nombreEstadoActividad || actividad.idEstadoActividad) {
+                @let estadoActividad = getEstadoDeActividad(actividad);
+                @let colorEstado = getColorEstadoActividad(actividad);
+                @let colorFondo = getColorFondoEstado(actividad);
+                @let colorBorde = getColorBordeEstado(actividad);
+                @let nombreEstado = actividad.nombreEstadoActividad || (estadoActividad?.nombre || estadoActividad?.Nombre) || 'Sin estado';
+                <span 
+                  class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border"
+                  [style.background-color]="colorFondo"
+                  [style.color]="colorEstado"
+                  [style.border-color]="colorBorde">
+                  <div 
+                    class="w-2 h-2 rounded-full mr-1.5"
+                    [style.background-color]="colorEstado">
+                  </div>
+                  {{ nombreEstado }}
                 </span>
-              } @else if (actividad.idEstadoActividad) {
-                @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
-                  @if ((estado.idEstadoActividad || estado.id) === actividad.idEstadoActividad) {
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                      <app-icon icon="toggle_on" size="xs" class="mr-1 text-blue-600"></app-icon>
-                      {{ estado.nombre || estado.Nombre }}
-                    </span>
-                  }
-                }
               }
               @if (actividad.nombreNivel) {
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
@@ -2168,23 +2171,26 @@
                     </span>
                   </td>
                   <td class="px-3 py-2.5">
-                    @if (actividad.nombreEstadoActividad) {
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                        <span class="w-1 h-1 rounded-full bg-blue-500 mr-1"></span>
-                        {{ actividad.nombreEstadoActividad }}
+                    @if (actividad.nombreEstadoActividad || actividad.idEstadoActividad) {
+                      @let estadoActividad = getEstadoDeActividad(actividad);
+                      @let colorEstado = getColorEstadoActividad(actividad);
+                      @let colorFondo = getColorFondoEstado(actividad);
+                      @let colorBorde = getColorBordeEstado(actividad);
+                      @let nombreEstado = actividad.nombreEstadoActividad || (estadoActividad?.nombre || estadoActividad?.Nombre) || 'Sin estado';
+                      <span 
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                        [style.background-color]="colorFondo"
+                        [style.color]="colorEstado"
+                        [style.border-color]="colorBorde">
+                        <span 
+                          class="w-1.5 h-1.5 rounded-full mr-1.5"
+                          [style.background-color]="colorEstado">
+                        </span>
+                        {{ nombreEstado }}
                       </span>
-                    } @else if (actividad.idEstadoActividad) {
-                      @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
-                        @if ((estado.idEstadoActividad || estado.id) === actividad.idEstadoActividad) {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                            <span class="w-1 h-1 rounded-full bg-blue-500 mr-1"></span>
-                            {{ estado.nombre || estado.Nombre }}
-                          </span>
-                        }
-                      }
                     } @else {
                       <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                        <span class="w-1 h-1 rounded-full bg-slate-400 mr-1"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
                         Sin estado
                       </span>
                     }

@@ -163,6 +163,12 @@
 
           <!-- Información -->
           <div class="space-y-2 mb-4">
+            @if (getNombreActividad(evidencia.idActividad)) {
+              <div class="flex items-center gap-2 text-sm text-slate-700 font-medium">
+                <app-icon icon="event" size="sm" color="slate-600"></app-icon>
+                <span>{{ getNombreActividad(evidencia.idActividad) }}</span>
+              </div>
+            }
             @if (evidencia.nombreSubactividad) {
               <div class="flex items-center gap-2 text-sm text-slate-600">
                 <app-icon icon="assignment" size="sm" color="slate-500"></app-icon>

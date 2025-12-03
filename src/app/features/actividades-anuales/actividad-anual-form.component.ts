@@ -42,6 +42,10 @@ export class ActividadAnualFormComponent implements OnInit {
   seccionEstadoExpandida = signal(true);
   showYearWarning = signal(false);
   yearWarningConfirmed = signal(false);
+  
+  // Dropdown de indicador
+  mostrarDropdownIndicador = signal(false);
+  indicadorSeleccionado = signal<Indicador | null>(null);
 
   ngOnInit(): void {
     this.initializeForm();
@@ -77,6 +81,16 @@ export class ActividadAnualFormComponent implements OnInit {
       this.checkYearWarning();
       // Resetear la confirmación cuando cambia el año
       this.yearWarningConfirmed.set(false);
+    });
+
+    // Escuchar cambios en el indicador para actualizar el signal
+    this.form.get('idIndicador')?.valueChanges.subscribe((idIndicador) => {
+      if (idIndicador) {
+        const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicador);
+        this.indicadorSeleccionado.set(indicador || null);
+      } else {
+        this.indicadorSeleccionado.set(null);
+      }
     });
   }
 
@@ -133,6 +147,7 @@ export class ActividadAnualFormComponent implements OnInit {
         const indicador = data.find((ind: Indicador) => ind.idIndicador === idIndicador);
         if (indicador) {
           this.form.patchValue({ idIndicador: idIndicador });
+          this.indicadorSeleccionado.set(indicador);
         }
       },
       error: (err) => {
@@ -154,6 +169,17 @@ export class ActividadAnualFormComponent implements OnInit {
             descripcion: data.descripcion || '',
             activo: data.activo ?? true
           });
+          
+          // Actualizar el indicador seleccionado
+          if (data.idIndicador) {
+            this.loadIndicadores();
+            setTimeout(() => {
+              const indicador = this.indicadores().find(ind => ind.idIndicador === data.idIndicador);
+              if (indicador) {
+                this.indicadorSeleccionado.set(indicador);
+              }
+            }, 100);
+          }
         }
         this.loading.set(false);
       },
@@ -287,6 +313,38 @@ export class ActividadAnualFormComponent implements OnInit {
 
   get idIndicador() { return this.form.get('idIndicador'); }
   get anio() { return this.form.get('anio'); }
+
+  // Métodos para el dropdown de indicador
+  mostrarDropdownIndicadorFunc(): void {
+    this.mostrarDropdownIndicador.set(!this.mostrarDropdownIndicador());
+  }
+
+  toggleIndicador(idIndicador: number, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    if (target.checked) {
+      this.form.patchValue({ idIndicador: idIndicador });
+      const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicador);
+      this.indicadorSeleccionado.set(indicador || null);
+      this.mostrarDropdownIndicador.set(false);
+    }
+  }
+
+  isIndicadorSelected(idIndicador: number): boolean {
+    return this.form.get('idIndicador')?.value === idIndicador;
+  }
+
+  tieneIndicadorSeleccionado(): boolean {
+    return !!this.indicadorSeleccionado();
+  }
+
+  eliminarIndicador(): void {
+    this.form.patchValue({ idIndicador: null });
+    this.indicadorSeleccionado.set(null);
+  }
+
+  getIndicadoresFiltrados(): Indicador[] {
+    return this.indicadores();
+  }
 
   getCurrentYear(): number {
     return new Date().getFullYear();

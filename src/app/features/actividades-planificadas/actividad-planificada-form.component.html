@@ -88,34 +88,82 @@
                                 <span class="text-xs text-slate-500 font-normal ml-1">(No editable)</span>
                             }
                         </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idIndicador"
-                                id="idIndicador"
-                                class="w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none"
-                                [class.bg-white]="!form.get('idIndicador')?.disabled"
-                                [class.bg-slate-100]="form.get('idIndicador')?.disabled"
-                                [class.border-slate-300]="!form.get('idIndicador')?.disabled"
-                                [class.border-slate-200]="form.get('idIndicador')?.disabled"
-                                [class.text-slate-900]="!form.get('idIndicador')?.disabled"
-                                [class.text-slate-600]="form.get('idIndicador')?.disabled"
-                                [class.cursor-pointer]="!form.get('idIndicador')?.disabled"
-                                [class.cursor-not-allowed]="form.get('idIndicador')?.disabled"
-                                [class.focus:ring-2]="!form.get('idIndicador')?.disabled"
-                                [class.focus:ring-emerald-500/20]="!form.get('idIndicador')?.disabled"
-                                [class.focus:border-emerald-500]="!form.get('idIndicador')?.disabled">
-                                <option [value]="null">Seleccione indicador...</option>
-                                @for (indicador of indicadores(); track indicador.idIndicador) {
-                                    <option [value]="indicador.idIndicador">{{ indicador.codigo }} - {{ indicador.nombre }}</option>
+                        
+                        <!-- Campo oculto para validación del formulario -->
+                        <input type="hidden" formControlName="idIndicador">
+                        
+                        <!-- Indicador Seleccionado (Chip) -->
+                        @if (tieneIndicadorSeleccionado() && !form.get('idIndicador')?.disabled) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @if (indicadorSeleccionado(); as indicador) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                        <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarIndicador()"
+                                            class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                            title="Eliminar indicador">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
                                 }
-                            </select>
-                            <app-icon 
-                                [icon]="form.get('idIndicador')?.disabled ? 'lock' : 'expand_more'" 
-                                size="sm" 
-                                class="absolute right-3 top-2.5 pointer-events-none"
-                                [class.text-slate-400]="!form.get('idIndicador')?.disabled"
-                                [class.text-slate-500]="form.get('idIndicador')?.disabled"></app-icon>
-                        </div>
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Indicador -->
+                        @if (!form.get('idIndicador')?.disabled) {
+                            @if (mostrarDropdownIndicador()) {
+                                <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                    @if (getIndicadoresFiltrados().length > 0) {
+                                        <div class="space-y-0.5">
+                                            @for (indicador of getIndicadoresFiltrados(); track indicador.idIndicador) {
+                                                <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                    <input 
+                                                        type="radio"
+                                                        name="idIndicador"
+                                                        [value]="indicador.idIndicador"
+                                                        (change)="toggleIndicador(indicador.idIndicador, $event)"
+                                                        [checked]="isIndicadorSelected(indicador.idIndicador)"
+                                                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all"
+                                                        [attr.id]="'indicador-' + indicador.idIndicador">
+                                                    <app-icon icon="assessment" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                    <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
+                                                </label>
+                                            }
+                                        </div>
+                                    } @else {
+                                        <div class="flex flex-col items-center justify-center py-8 text-center">
+                                            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                                <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                            </div>
+                                            <p class="text-sm font-medium text-slate-600">No hay indicadores disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            } @else if (tieneIndicadorSeleccionado()) {
+                                <button
+                                    type="button"
+                                    (click)="mostrarDropdownIndicadorFunc()"
+                                    class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs"></app-icon>
+                                    <span>Cambiar indicador</span>
+                                </button>
+                            } @else {
+                                <button
+                                    type="button"
+                                    (click)="mostrarDropdownIndicadorFunc()"
+                                    class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                                    <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                    <span>Seleccionar indicador</span>
+                                </button>
+                            }
+                        } @else {
+                            <div class="w-full px-4 py-2.5 text-sm text-slate-500 bg-slate-100 border-2 border-slate-200 rounded-lg cursor-not-allowed flex items-center justify-center gap-2">
+                                <app-icon icon="lock" size="xs"></app-icon>
+                                <span>Indicador bloqueado</span>
+                            </div>
+                        }
                     </div>
 
                     <div>
@@ -157,11 +205,11 @@
                         
                         <!-- Dropdown de Actividades Anuales -->
                         @if (mostrarDropdownActividadAnual()) {
-                            <div class="bg-white border border-slate-300 rounded-lg py-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                                 @if (actividadesAnualesFiltradas().length > 0) {
-                                    <div class="space-y-1 px-3">
+                                    <div class="space-y-0.5">
                                         @for (anual of actividadesAnualesFiltradas(); track anual.idActividadAnual) {
-                                            <label class="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                                 <input 
                                                     type="checkbox"
                                                     [value]="anual.idActividadAnual"
@@ -247,11 +295,11 @@
                     
                     <!-- Dropdown de Actividades Mensuales -->
                     @if (mostrarDropdownActividadMensual()) {
-                        <div class="bg-white border border-slate-300 rounded-lg py-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                             @if (actividadesMensualesFiltradas().length > 0) {
-                                <div class="space-y-1 px-3">
+                                <div class="space-y-0.5">
                                     @for (mensual of actividadesMensualesFiltradas(); track mensual.idActividadMensualInst) {
-                                        <label class="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                        <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                             <input 
                                                 type="checkbox"
                                                 [value]="mensual.idActividadMensualInst"
@@ -462,11 +510,11 @@
                         
                         <!-- Dropdown de Departamentos -->
                         @if (mostrarDropdownDepartamentos()) {
-                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                                 @if (departamentos().length > 0) {
-                                    <div class="space-y-1">
+                                    <div class="space-y-0.5">
                                         @for (dept of departamentos(); track dept.id) {
-                                            <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                                 <input 
                                                     type="checkbox"
                                                     [value]="dept.id"
@@ -533,11 +581,11 @@
                         
                         <!-- Dropdown de Estado de Actividad -->
                         @if (mostrarDropdownEstadoActividad()) {
-                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                                 @if (estadosActividad().length > 0) {
-                                    <div class="space-y-1">
+                                    <div class="space-y-0.5">
                                         @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
-                                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                        <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                             <input 
                                                 type="radio"
                                                 name="idEstadoActividad"
@@ -606,10 +654,10 @@
                     
                     <!-- Dropdown de Modalidad -->
                     @if (mostrarDropdownModalidad()) {
-                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
-                            <div class="space-y-1">
+                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            <div class="space-y-0.5">
                                 @for (modalidad of getOpcionesModalidad(); track modalidad) {
-                                    <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                    <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                         <input 
                                             type="radio"
                                             name="modalidad"
@@ -669,11 +717,11 @@
                     
                     <!-- Dropdown de Local -->
                     @if (mostrarDropdownLocal()) {
-                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                        <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                             @if (capacidadesInstaladas().length > 0) {
-                                <div class="space-y-1">
+                                <div class="space-y-0.5">
                                     @for (capacidad of capacidadesInstaladas(); track capacidad.id) {
-                                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                        <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                             <input 
                                                 type="radio"
                                                 name="idCapacidadInstalada"
@@ -744,11 +792,11 @@
                         
                         <!-- Dropdown de Protagonistas -->
                         @if (mostrarDropdownProtagonista()) {
-                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
                                 @if (tiposProtagonista().length > 0) {
-                                    <div class="space-y-1">
+                                    <div class="space-y-0.5">
                                         @for (tipo of tiposProtagonista(); track tipo.id) {
-                                            <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
                                                 <input 
                                                     type="checkbox"
                                                     [value]="tipo.id"

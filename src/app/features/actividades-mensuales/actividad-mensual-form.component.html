@@ -77,26 +77,77 @@
                                 <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
                                 Indicador <span class="text-red-500">*</span>
                             </label>
-                            <div class="relative">
-                                <select 
-                                    formControlName="idIndicador"
-                                    id="idIndicador"
-                                    class="w-full pl-3 pr-10 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
-                                    [class.border-red-500]="idIndicador?.invalid && idIndicador?.touched">
-                                    <option [value]="null">Seleccione un indicador...</option>
-                                    @for (indicador of indicadores(); track indicador.idIndicador) {
-                                        <option [value]="indicador.idIndicador">
-                                            {{ indicador.codigo }} - {{ indicador.nombre }}
-                                        </option>
+                            
+                            <!-- Campo oculto para validación del formulario -->
+                            <input type="hidden" formControlName="idIndicador">
+                            
+                            <!-- Indicador Seleccionado (Chip) -->
+                            @if (tieneIndicadorSeleccionado()) {
+                                <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                    @if (indicadorSeleccionado(); as indicador) {
+                                        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                            <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                            <span class="max-w-xs truncate">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
+                                            <button
+                                                type="button"
+                                                (click)="eliminarIndicador()"
+                                                class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                                title="Eliminar indicador">
+                                                <app-icon icon="close" size="xs"></app-icon>
+                                            </button>
+                                        </div>
                                     }
-                                </select>
-                                <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                                @if (idIndicador?.valid && idIndicador?.touched) {
-                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
-                                        <app-icon icon="check_circle" size="xs"></app-icon>
-                                    </span>
-                                }
-                            </div>
+                                </div>
+                            }
+                            
+                            <!-- Dropdown de Indicador -->
+                            @if (mostrarDropdownIndicador()) {
+                                <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                    @if (getIndicadoresFiltrados().length > 0) {
+                                        <div class="space-y-0.5">
+                                            @for (indicador of getIndicadoresFiltrados(); track indicador.idIndicador) {
+                                                <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                    <input 
+                                                        type="radio"
+                                                        name="idIndicador"
+                                                        [value]="indicador.idIndicador"
+                                                        (change)="toggleIndicador(indicador.idIndicador, $event)"
+                                                        [checked]="isIndicadorSelected(indicador.idIndicador)"
+                                                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all"
+                                                        [attr.id]="'indicador-' + indicador.idIndicador">
+                                                    <app-icon icon="assessment" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                    <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ indicador.codigo }} - {{ indicador.nombre }}</span>
+                                                </label>
+                                            }
+                                        </div>
+                                    } @else {
+                                        <div class="flex flex-col items-center justify-center py-8 text-center">
+                                            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                                <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                            </div>
+                                            <p class="text-sm font-medium text-slate-600">No hay indicadores disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            } @else if (tieneIndicadorSeleccionado()) {
+                                <button
+                                    type="button"
+                                    (click)="mostrarDropdownIndicadorFunc()"
+                                    class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                    <app-icon icon="add" size="xs"></app-icon>
+                                    <span>Cambiar indicador</span>
+                                </button>
+                            } @else {
+                                <button
+                                    type="button"
+                                    (click)="mostrarDropdownIndicadorFunc()"
+                                    class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                    [class.border-red-500]="idIndicador?.invalid && idIndicador?.touched">
+                                    <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                    <span>Seleccionar indicador</span>
+                                </button>
+                            }
+                            
                             @if (idIndicador?.invalid && idIndicador?.touched) {
                                 <p class="mt-1 text-xs text-red-600">El indicador es obligatorio.</p>
                             }
@@ -109,37 +160,92 @@
                                         <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
                                         Actividad Anual <span class="text-red-500">*</span>
                                     </label>
-                                    <a 
-                                        [routerLink]="['/actividades-anuales/nueva']"
-                                        [queryParams]="idIndicador?.value ? { idIndicador: idIndicador?.value } : {}"
-                                        class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
-                                        <app-icon icon="add" size="xs"></app-icon>
-                                        Crear nueva
-                                    </a>
-                                </div>
-                                <div class="relative">
-                                    <select 
-                                        formControlName="idActividadAnual"
-                                        id="idActividadAnual"
-                                        class="w-full pl-3 pr-10 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
-                                        [class.border-red-500]="idActividadAnual?.invalid && idActividadAnual?.touched"
-                                        [disabled]="!idIndicador?.value">
-                                        <option [value]="null">Seleccione una actividad anual...</option>
-                                        @if (idIndicador?.value) {
-                                            @for (anual of actividadesAnuales(); track anual.idActividadAnual) {
-                                                <option [value]="anual.idActividadAnual">
-                                                    {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
-                                                </option>
-                                            }
-                                        }
-                                    </select>
-                                    <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                                    @if (idActividadAnual?.valid && idActividadAnual?.touched) {
-                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
-                                            <app-icon icon="check_circle" size="xs"></app-icon>
-                                        </span>
+                                    @if (idIndicador?.value) {
+                                        <a 
+                                            [routerLink]="['/actividades-anuales/nueva']"
+                                            [queryParams]="{ idIndicador: idIndicador?.value }"
+                                            class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
+                                            <app-icon icon="add" size="xs"></app-icon>
+                                            Crear nueva
+                                        </a>
                                     }
                                 </div>
+                                
+                                <!-- Campo oculto para validación del formulario -->
+                                <input type="hidden" formControlName="idActividadAnual">
+                                
+                                <!-- Actividad Anual Seleccionada (Chip) -->
+                                @if (tieneActividadAnualSeleccionada()) {
+                                    <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                        @if (actividadAnualSeleccionada(); as anual) {
+                                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
+                                                <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                                <span class="max-w-xs truncate">{{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}</span>
+                                                <button
+                                                    type="button"
+                                                    (click)="eliminarActividadAnual()"
+                                                    class="ml-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110 active:scale-95"
+                                                    title="Eliminar actividad anual">
+                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                
+                                <!-- Dropdown de Actividad Anual -->
+                                @if (mostrarDropdownActividadAnual() && idIndicador?.value) {
+                                    <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                        @if (getActividadesAnualesFiltradas().length > 0) {
+                                            <div class="space-y-0.5">
+                                                @for (anual of getActividadesAnualesFiltradas(); track anual.idActividadAnual) {
+                                                    <label class="flex items-center gap-2.5 py-1.5 px-2.5 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                        <input 
+                                                            type="radio"
+                                                            name="idActividadAnual"
+                                                            [value]="anual.idActividadAnual"
+                                                            (change)="toggleActividadAnual(anual.idActividadAnual, $event)"
+                                                            [checked]="isActividadAnualSelected(anual.idActividadAnual)"
+                                                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all"
+                                                            [attr.id]="'actividad-anual-' + anual.idActividadAnual">
+                                                        <app-icon icon="calendar_today" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                        <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}</span>
+                                                    </label>
+                                                }
+                                            </div>
+                                        } @else {
+                                            <div class="flex flex-col items-center justify-center py-8 text-center">
+                                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                                    <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                                </div>
+                                                <p class="text-sm font-medium text-slate-600">No hay actividades anuales disponibles</p>
+                                            </div>
+                                        }
+                                    </div>
+                                } @else if (tieneActividadAnualSeleccionada() && idIndicador?.value) {
+                                    <button
+                                        type="button"
+                                        (click)="mostrarDropdownActividadAnualFunc()"
+                                        class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                        <app-icon icon="add" size="xs"></app-icon>
+                                        <span>Cambiar actividad anual</span>
+                                    </button>
+                                } @else if (idIndicador?.value) {
+                                    <button
+                                        type="button"
+                                        (click)="mostrarDropdownActividadAnualFunc()"
+                                        class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50"
+                                        [class.border-red-500]="idActividadAnual?.invalid && idActividadAnual?.touched">
+                                        <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                        <span>Seleccionar actividad anual</span>
+                                    </button>
+                                } @else {
+                                    <div class="w-full px-4 py-2.5 text-sm text-slate-500 bg-slate-100 border-2 border-slate-200 rounded-lg cursor-not-allowed flex items-center justify-center gap-2">
+                                        <app-icon icon="lock" size="xs"></app-icon>
+                                        <span>Seleccione un indicador primero</span>
+                                    </div>
+                                }
+                                
                                 @if (idActividadAnual?.invalid && idActividadAnual?.touched) {
                                     <p class="mt-1 text-xs text-red-600">La actividad anual es obligatoria.</p>
                                 }

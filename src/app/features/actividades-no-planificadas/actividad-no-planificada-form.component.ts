@@ -80,6 +80,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
   mostrarDropdownEstadoActividad = signal(false);
   mostrarDropdownModalidad = signal(false);
   mostrarDropdownLocal = signal(false);
+  mostrarDropdownIndicador = signal(false);
 
   // Acordeones para secciones del formulario
   seccionPlanificacionExpandida = signal(false);
@@ -89,6 +90,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
 
   // Signal para local seleccionado
   localSeleccionado = signal<any>(null);
+  indicadorSeleccionado = signal<Indicador | null>(null);
 
   // Formulario de responsables
   formResponsable!: FormGroup;
@@ -171,6 +173,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
 
     this.form.get('idIndicador')?.valueChanges.subscribe(idIndicador => {
       if (this.cargandoRelaciones) return;
+      
+      // Actualizar el indicador seleccionado
+      if (idIndicador) {
+        const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicador);
+        this.indicadorSeleccionado.set(indicador || null);
+      } else {
+        this.indicadorSeleccionado.set(null);
+      }
       
       if (idIndicador) {
         this.actividadesAnualesFiltradas.set([]);
@@ -453,6 +463,18 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           ubicacion: data.ubicacion || '',
           activo: data.activo ?? true
         }, { emitEvent: false });
+
+        // Actualizar signal del indicador seleccionado
+        setTimeout(() => {
+          if (data.idIndicador) {
+            const indicador = this.indicadores().find(ind => ind.idIndicador === data.idIndicador);
+            if (indicador) {
+              this.indicadorSeleccionado.set(indicador);
+            }
+          } else {
+            this.indicadorSeleccionado.set(null);
+          }
+        }, 100);
 
         // Inicializar local seleccionado si hay capacidad instalada
         if (data.idCapacidadInstalada) {
@@ -1450,6 +1472,142 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
       console.warn('⚠️ No hay responsables para crear');
       this.mostrarAlertaExito();
     }
+  }
+
+  /**
+   * Verifica si el formulario tiene cambios sin guardar
+   */
+  private tieneCambiosSinGuardar(): boolean {
+    if (!this.form) return false;
+    
+    // Si está en modo edición, verificar si hay cambios
+    if (this.isEditMode()) {
+      return this.form.dirty;
+    }
+    
+    // En modo creación, verificar si hay datos ingresados
+    const formValue = this.form.value;
+    const tieneDatos = !!(
+      formValue.nombreActividad?.trim() ||
+      formValue.descripcion?.trim() ||
+      formValue.fechaInicio ||
+      formValue.fechaFin ||
+      formValue.horaRealizacion ||
+      formValue.idIndicador ||
+      (formValue.idActividadAnual && formValue.idActividadAnual.length > 0) ||
+      (formValue.idActividadMensualInst && formValue.idActividadMensualInst.length > 0) ||
+      formValue.departamentoResponsableId ||
+      formValue.idTipoProtagonista ||
+      formValue.modalidad ||
+      formValue.idCapacidadInstalada ||
+      formValue.cantidadParticipantesProyectados ||
+      formValue.objetivo?.trim() ||
+      formValue.ubicacion?.trim()
+    );
+    
+    return tieneDatos;
+  }
+
+  /**
+   * Maneja el clic en el botón de cancelar
+   * Muestra alertas de confirmación antes de cancelar
+   */
+  async onCancel(): Promise<void> {
+    // Verificar si hay cambios sin guardar
+    const tieneCambios = this.tieneCambiosSinGuardar();
+    
+    if (tieneCambios) {
+      // Si hay cambios, mostrar alerta con opción de guardar
+      const result = await this.alertService.confirm(
+        '¿Desea cancelar la actividad?',
+        'Tiene cambios sin guardar. ¿Desea guardar la actividad para más tarde o descartar los cambios?',
+        'Guardar para más tarde',
+        'Descartar cambios',
+        {
+          showDenyButton: true,
+          denyButtonText: 'Continuar editando',
+          denyButtonColor: '#6b7280'
+        }
+      );
+      
+      if (result.isConfirmed) {
+        // Usuario eligió "Guardar para más tarde"
+        // Aquí podrías implementar lógica para guardar en localStorage o similar
+        this.confirmarCancelacion();
+      } else if (result.isDenied) {
+        // Usuario eligió "Continuar editando"
+        return; // No hacer nada, quedarse en el formulario
+      } else {
+        // Usuario eligió "Descartar cambios" o cerró el diálogo
+        this.confirmarCancelacion();
+      }
+    } else {
+      // Si no hay cambios, mostrar alerta simple de confirmación
+      const result = await this.alertService.confirm(
+        '¿Desea cancelar?',
+        '¿Está seguro de que desea salir?',
+        'Sí, cancelar',
+        'No, continuar'
+      );
+      
+      if (result.isConfirmed) {
+        this.confirmarCancelacion();
+      }
+      // Si no confirma, no hacer nada
+    }
+  }
+
+  /**
+   * Confirma la cancelación y navega a la lista de actividades
+   */
+  private confirmarCancelacion(): void {
+    // Limpiar el formulario actual
+    if (this.form) {
+      this.form.reset();
+      // Restablecer valores por defecto
+      this.form.patchValue({
+        esPlanificada: false,
+        activo: true
+      });
+    }
+    
+    // Resetear estado visual
+    this.localSeleccionado.set(null);
+    
+    // Navegar a la lista de actividades
+    this.router.navigate(['/actividades']);
+  }
+
+  // Métodos para el dropdown de indicador
+  mostrarDropdownIndicadorFunc(): void {
+    this.mostrarDropdownIndicador.set(!this.mostrarDropdownIndicador());
+  }
+
+  toggleIndicador(idIndicador: number, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    if (target.checked) {
+      this.form.patchValue({ idIndicador: idIndicador });
+      const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicador);
+      this.indicadorSeleccionado.set(indicador || null);
+      this.mostrarDropdownIndicador.set(false);
+    }
+  }
+
+  isIndicadorSelected(idIndicador: number): boolean {
+    return this.form.get('idIndicador')?.value === idIndicador;
+  }
+
+  tieneIndicadorSeleccionado(): boolean {
+    return !!this.indicadorSeleccionado();
+  }
+
+  eliminarIndicador(): void {
+    this.form.patchValue({ idIndicador: null });
+    this.indicadorSeleccionado.set(null);
+  }
+
+  getIndicadoresFiltrados(): Indicador[] {
+    return this.indicadores();
   }
 }
 

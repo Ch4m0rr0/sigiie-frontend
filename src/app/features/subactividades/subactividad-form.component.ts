@@ -1737,7 +1737,111 @@ export class SubactividadFormComponent implements OnInit {
     return null;
   }
 
-  onCancel(): void {
+  /**
+   * Verifica si el formulario tiene cambios sin guardar
+   */
+  private tieneCambiosSinGuardar(): boolean {
+    if (!this.form) return false;
+    
+    // Si está en modo edición, verificar si hay cambios
+    if (this.isEditMode()) {
+      return this.form.dirty;
+    }
+    
+    // En modo creación, verificar si hay datos ingresados
+    const formValue = this.form.value;
+    const tieneDatos = !!(
+      formValue.nombreSubactividad?.trim() ||
+      formValue.nombre?.trim() ||
+      formValue.descripcion?.trim() ||
+      formValue.fechaInicio ||
+      formValue.fechaFin ||
+      formValue.horaRealizacion ||
+      formValue.idActividad ||
+      formValue.idIndicador ||
+      (formValue.idActividadAnual && formValue.idActividadAnual.length > 0) ||
+      (formValue.idActividadMensualInst && formValue.idActividadMensualInst.length > 0) ||
+      formValue.departamentoResponsableId ||
+      formValue.idTipoProtagonista ||
+      formValue.modalidad ||
+      formValue.idCapacidadInstalada ||
+      formValue.cantidadParticipantesProyectados ||
+      formValue.cantidadTotalParticipantesProtagonistas ||
+      formValue.objetivo?.trim() ||
+      formValue.ubicacion?.trim() ||
+      (formValue.idTipoEvidencias && formValue.idTipoEvidencias.length > 0)
+    );
+    
+    return tieneDatos;
+  }
+
+  /**
+   * Maneja el clic en el botón de cancelar
+   * Muestra alertas de confirmación antes de cancelar
+   */
+  async onCancel(): Promise<void> {
+    // Verificar si hay cambios sin guardar
+    const tieneCambios = this.tieneCambiosSinGuardar();
+    
+    if (tieneCambios) {
+      // Si hay cambios, mostrar alerta con opción de guardar
+      const result = await this.alertService.confirm(
+        '¿Desea cancelar la subactividad?',
+        'Tiene cambios sin guardar. ¿Desea guardar la subactividad para más tarde o descartar los cambios?',
+        'Guardar para más tarde',
+        'Descartar cambios',
+        {
+          showDenyButton: true,
+          denyButtonText: 'Continuar editando',
+          denyButtonColor: '#6b7280'
+        }
+      );
+      
+      if (result.isConfirmed) {
+        // Usuario eligió "Guardar para más tarde"
+        // Aquí podrías implementar lógica para guardar en localStorage o similar
+        this.confirmarCancelacion();
+      } else if (result.isDenied) {
+        // Usuario eligió "Continuar editando"
+        return; // No hacer nada, quedarse en el formulario
+      } else {
+        // Usuario eligió "Descartar cambios" o cerró el diálogo
+        this.confirmarCancelacion();
+      }
+    } else {
+      // Si no hay cambios, mostrar alerta simple de confirmación
+      const result = await this.alertService.confirm(
+        '¿Desea cancelar?',
+        '¿Está seguro de que desea salir?',
+        'Sí, cancelar',
+        'No, continuar'
+      );
+      
+      if (result.isConfirmed) {
+        this.confirmarCancelacion();
+      }
+      // Si no confirma, no hacer nada
+    }
+  }
+
+  /**
+   * Confirma la cancelación y navega a la lista de subactividades
+   */
+  private confirmarCancelacion(): void {
+    // Limpiar el formulario actual
+    if (this.form) {
+      this.form.reset();
+      // Restablecer valores por defecto
+      this.form.patchValue({
+        esPlanificada: false,
+        activo: true
+      });
+    }
+    
+    // Resetear estado visual
+    this.localSeleccionado.set(null);
+    
+    // Navegar a la lista de subactividades
     this.router.navigate(['/subactividades']);
   }
 

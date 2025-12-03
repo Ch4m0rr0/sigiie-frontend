@@ -2,9 +2,11 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
+import { ActividadesService } from '../../core/services/actividades.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
@@ -22,11 +24,13 @@ export class EvidenciasListComponent implements OnInit {
   private evidenciaService = inject(EvidenciaService);
   private subactividadService = inject(SubactividadService);
   private catalogosService = inject(CatalogosService);
+  private actividadesService = inject(ActividadesService);
   private router = inject(Router);
 
   evidencias = signal<Evidencia[]>([]);
   subactividades = signal<Subactividad[]>([]);
   tiposEvidencia = signal<TipoEvidencia[]>([]);
+  nombresActividades = signal<Map<number, string>>(new Map());
   loading = signal(false);
   error = signal<string | null>(null);
 
@@ -67,7 +71,7 @@ export class EvidenciasListComponent implements OnInit {
     // Si hay filtro por subactividad, usar ese endpoint
     if (this.filtroSubactividad()) {
       this.evidenciaService.getBySubactividad(this.filtroSubactividad()!).subscribe({
-        next: (data) => {
+        next: async (data) => {
           let filtered = data;
           if (this.filtroTipo().length > 0) {
             filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
@@ -76,6 +80,7 @@ export class EvidenciasListComponent implements OnInit {
             filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
           }
           this.evidencias.set(filtered);
+          await this.loadNombresActividades(filtered);
           this.loading.set(false);
         },
         error: (err) => {
@@ -86,7 +91,7 @@ export class EvidenciasListComponent implements OnInit {
       });
     } else {
       this.evidenciaService.getAll().subscribe({
-        next: (data) => {
+        next: async (data) => {
           let filtered = data;
           if (this.filtroTipo().length > 0) {
             filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
@@ -95,6 +100,7 @@ export class EvidenciasListComponent implements OnInit {
             filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
           }
           this.evidencias.set(filtered);
+          await this.loadNombresActividades(filtered);
           this.loading.set(false);
         },
         error: (err) => {
@@ -104,6 +110,43 @@ export class EvidenciasListComponent implements OnInit {
         }
       });
     }
+  }
+
+  async loadNombresActividades(evidencias: Evidencia[]): Promise<void> {
+    const nombresMap = new Map<number, string>(this.nombresActividades());
+    const actividadesIds = new Set<number>();
+    
+    // Recopilar todos los IDs de actividades únicos
+    evidencias.forEach(evidencia => {
+      if (evidencia.idActividad && !nombresMap.has(evidencia.idActividad)) {
+        actividadesIds.add(evidencia.idActividad);
+      }
+    });
+
+    // Cargar actividades en paralelo
+    if (actividadesIds.size > 0) {
+      const promesas = Array.from(actividadesIds).map(async (id) => {
+        try {
+          const actividad = await firstValueFrom(this.actividadesService.getById(id));
+          if (actividad) {
+            const nombre = actividad.nombreActividad || actividad.nombre || null;
+            if (nombre) {
+              nombresMap.set(id, nombre);
+            }
+          }
+        } catch (err) {
+          console.warn(`⚠️ No se pudo cargar la actividad ${id}:`, err);
+        }
+      });
+
+      await Promise.all(promesas);
+      this.nombresActividades.set(nombresMap);
+    }
+  }
+
+  getNombreActividad(idActividad: number | undefined): string | null {
+    if (!idActividad) return null;
+    return this.nombresActividades().get(idActividad) || null;
   }
 
   navigateToCreate(): void {

@@ -44,6 +44,12 @@ export class ActividadMensualFormComponent implements OnInit {
   error = signal<string | null>(null);
   seccionInformacionExpandida = signal(true);
   seccionEstadoExpandida = signal(true);
+  
+  // Dropdowns
+  mostrarDropdownIndicador = signal(false);
+  indicadorSeleccionado = signal<Indicador | null>(null);
+  mostrarDropdownActividadAnual = signal(false);
+  actividadAnualSeleccionada = signal<ActividadAnual | null>(null);
 
   readonly meses = [
     { value: 1, nombre: 'Enero' },
@@ -77,7 +83,14 @@ export class ActividadMensualFormComponent implements OnInit {
       const idIndicadorNum = Number(idIndicador);
       if (!isNaN(idIndicadorNum)) {
         console.log('🔄 Preseleccionando indicador desde query params:', idIndicadorNum);
-        this.form.patchValue({ idIndicador: idIndicadorNum });
+        // Esperar a que los indicadores se carguen antes de preseleccionar
+        setTimeout(() => {
+          this.form.patchValue({ idIndicador: idIndicadorNum });
+          const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicadorNum);
+          if (indicador) {
+            this.indicadorSeleccionado.set(indicador);
+          }
+        }, 100);
         // No llamar loadActividadesAnuales aquí porque valueChanges se encargará
       }
     }
@@ -104,17 +117,35 @@ export class ActividadMensualFormComponent implements OnInit {
           console.error('❌ ID de indicador inválido en valueChanges:', idIndicador);
           this.actividadesAnuales.set([]);
           this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
+          this.indicadorSeleccionado.set(null);
           return;
         }
         
+        // Actualizar el indicador seleccionado
+        const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicadorNum);
+        this.indicadorSeleccionado.set(indicador || null);
+        
         // Limpiar la selección de actividad anual cuando cambia el indicador
         this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
+        this.actividadAnualSeleccionada.set(null);
         this.loadActividadesAnuales(idIndicadorNum);
       } else {
         // Si no hay indicador, limpiar las actividades anuales
         console.log('🔄 Limpiando actividades anuales (sin indicador)');
         this.actividadesAnuales.set([]);
         this.form.patchValue({ idActividadAnual: null }, { emitEvent: false });
+        this.indicadorSeleccionado.set(null);
+        this.actividadAnualSeleccionada.set(null);
+      }
+    });
+
+    // Escuchar cambios en la actividad anual para actualizar el signal
+    this.form.get('idActividadAnual')?.valueChanges.subscribe((idActividadAnual) => {
+      if (idActividadAnual) {
+        const actividadAnual = this.actividadesAnuales().find(a => a.idActividadAnual === idActividadAnual);
+        this.actividadAnualSeleccionada.set(actividadAnual || null);
+      } else {
+        this.actividadAnualSeleccionada.set(null);
       }
     });
   }
@@ -221,6 +252,22 @@ export class ActividadMensualFormComponent implements OnInit {
             descripcion: data.descripcion || '',
             activo: data.activo ?? true
           }, { emitEvent: false }); // No emitir eventos para evitar cargas duplicadas
+          
+          // Actualizar los signals de selección después de un pequeño delay
+          setTimeout(() => {
+            if (idIndicador) {
+              const indicador = this.indicadores().find(ind => ind.idIndicador === Number(idIndicador));
+              if (indicador) {
+                this.indicadorSeleccionado.set(indicador);
+              }
+            }
+            if (data.idActividadAnual) {
+              const actividadAnual = this.actividadesAnuales().find(a => a.idActividadAnual === data.idActividadAnual);
+              if (actividadAnual) {
+                this.actividadAnualSeleccionada.set(actividadAnual);
+              }
+            }
+          }, 200);
         }
         this.loading.set(false);
       },
@@ -344,6 +391,70 @@ export class ActividadMensualFormComponent implements OnInit {
   get idIndicador() { return this.form.get('idIndicador'); }
   get idActividadAnual() { return this.form.get('idActividadAnual'); }
   get mes() { return this.form.get('mes'); }
+
+  // Métodos para el dropdown de indicador
+  mostrarDropdownIndicadorFunc(): void {
+    this.mostrarDropdownIndicador.set(!this.mostrarDropdownIndicador());
+  }
+
+  toggleIndicador(idIndicador: number, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    if (target.checked) {
+      this.form.patchValue({ idIndicador: idIndicador });
+      const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicador);
+      this.indicadorSeleccionado.set(indicador || null);
+      this.mostrarDropdownIndicador.set(false);
+    }
+  }
+
+  isIndicadorSelected(idIndicador: number): boolean {
+    return this.form.get('idIndicador')?.value === idIndicador;
+  }
+
+  tieneIndicadorSeleccionado(): boolean {
+    return !!this.indicadorSeleccionado();
+  }
+
+  eliminarIndicador(): void {
+    this.form.patchValue({ idIndicador: null });
+    this.indicadorSeleccionado.set(null);
+  }
+
+  getIndicadoresFiltrados(): Indicador[] {
+    return this.indicadores();
+  }
+
+  // Métodos para el dropdown de actividad anual
+  mostrarDropdownActividadAnualFunc(): void {
+    this.mostrarDropdownActividadAnual.set(!this.mostrarDropdownActividadAnual());
+  }
+
+  toggleActividadAnual(idActividadAnual: number, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    if (target.checked) {
+      this.form.patchValue({ idActividadAnual: idActividadAnual });
+      const actividadAnual = this.actividadesAnuales().find(a => a.idActividadAnual === idActividadAnual);
+      this.actividadAnualSeleccionada.set(actividadAnual || null);
+      this.mostrarDropdownActividadAnual.set(false);
+    }
+  }
+
+  isActividadAnualSelected(idActividadAnual: number): boolean {
+    return this.form.get('idActividadAnual')?.value === idActividadAnual;
+  }
+
+  tieneActividadAnualSeleccionada(): boolean {
+    return !!this.actividadAnualSeleccionada();
+  }
+
+  eliminarActividadAnual(): void {
+    this.form.patchValue({ idActividadAnual: null });
+    this.actividadAnualSeleccionada.set(null);
+  }
+
+  getActividadesAnualesFiltradas(): ActividadAnual[] {
+    return this.actividadesAnuales();
+  }
 
   private mostrarAlertaExito(): void {
     const nombreActividad = this.form.get('nombre')?.value || 'la actividad mensual';
