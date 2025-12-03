@@ -82,6 +82,7 @@ export interface Actividad {
   horaRealizacion?: string; // TimeOnly del backend
   cantidadParticipantesProyectados?: number;
   cantidadParticipantesEstudiantesProyectados?: number;
+  cantidadTotalParticipantesProtagonistas?: number;
   idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
   responsableActividad?: string;
   idTipoEvidencias?: number[]; // Lista de IDs de tipos de evidencias requeridas

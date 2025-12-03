@@ -1529,7 +1529,8 @@ export class CatalogosService {
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
-          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id 
+            || item.id_instalacion || item.IdInstalacion || item.idInstalacion || 0,
           nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
           descripcion: item.descripcion || item.Descripcion || ''
         })) : [];
@@ -1553,7 +1554,8 @@ export class CatalogosService {
       map(response => {
         const item = response.data || response;
         return {
-          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id 
+            || item.id_instalacion || item.IdInstalacion || item.idInstalacion || id,
           nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
           descripcion: item.descripcion || item.Descripcion || ''
         };

@@ -1237,7 +1237,47 @@ export class ActividadesService {
       // Información adicional
       organizador: item.Organizador || item.organizador,
       modalidad: item.Modalidad || item.modalidad,
-      idCapacidadInstalada: item.IdCapacidadInstalada || item.idCapacidadInstalada,
+      idCapacidadInstalada: (() => {
+        // Buscar en diferentes formatos posibles - incluyendo id_instalacion
+        const id = item.IdCapacidadInstalada ?? item.idCapacidadInstalada 
+          ?? item.IdCapacidad ?? item.idCapacidad
+          ?? item.CapacidadInstaladaId ?? item.capacidadInstaladaId
+          ?? item.IdInstalacion ?? item.id_instalacion ?? item.idInstalacion;
+        
+        // Si viene como objeto relacionado, extraer el ID
+        if (!id && item.CapacidadInstalada) {
+          const capacidadObj = item.CapacidadInstalada;
+          const capacidadId = capacidadObj.IdCapacidadInstalada ?? capacidadObj.idCapacidadInstalada 
+            ?? capacidadObj.Id ?? capacidadObj.id
+            ?? capacidadObj.IdInstalacion ?? capacidadObj.id_instalacion ?? capacidadObj.idInstalacion;
+          if (capacidadId) {
+            console.log('✅ idCapacidadInstalada encontrado en objeto CapacidadInstalada:', capacidadId);
+            return capacidadId;
+          }
+        }
+        
+        if (!id && item.capacidadInstalada) {
+          const capacidadObj = item.capacidadInstalada;
+          const capacidadId = capacidadObj.IdCapacidadInstalada ?? capacidadObj.idCapacidadInstalada 
+            ?? capacidadObj.Id ?? capacidadObj.id
+            ?? capacidadObj.IdInstalacion ?? capacidadObj.id_instalacion ?? capacidadObj.idInstalacion;
+          if (capacidadId) {
+            console.log('✅ idCapacidadInstalada encontrado en objeto capacidadInstalada:', capacidadId);
+            return capacidadId;
+          }
+        }
+        
+        console.log('🔍 CAPACIDAD INSTALADA - Buscando en item:', {
+          IdCapacidadInstalada: item.IdCapacidadInstalada,
+          idCapacidadInstalada: item.idCapacidadInstalada,
+          id_instalacion: item.id_instalacion,
+          IdInstalacion: item.IdInstalacion,
+          idInstalacion: item.idInstalacion,
+          encontrado: id
+        });
+        
+        return id !== null && id !== undefined ? id : undefined;
+      })(),
       ubicacion: item.Ubicacion || item.ubicacion,
       
       // Nivel
@@ -1273,8 +1313,17 @@ export class ActividadesService {
       anio: item.Anio || item.anio,
       horaRealizacion: item.HoraRealizacion || item.horaRealizacion,
       cantidadParticipantesProyectados: item.CantidadParticipantesProyectados || item.cantidadParticipantesProyectados,
+      cantidadParticipantesEstudiantesProyectados: item.CantidadParticipantesEstudiantesProyectados !== undefined ? item.CantidadParticipantesEstudiantesProyectados : (item.cantidadParticipantesEstudiantesProyectados !== undefined ? item.cantidadParticipantesEstudiantesProyectados : undefined),
+      cantidadTotalParticipantesProtagonistas: item.CantidadTotalParticipantesProtagonistas !== undefined ? item.CantidadTotalParticipantesProtagonistas : (item.cantidadTotalParticipantesProtagonistas !== undefined ? item.cantidadTotalParticipantesProtagonistas : undefined),
       idTipoProtagonista: item.IdTipoProtagonista || item.idTipoProtagonista,
       idTipoEvidencias: (() => {
+        console.log('🔍 Buscando IdTipoEvidencias en item:', {
+          IdTipoEvidencias: item.IdTipoEvidencias,
+          idTipoEvidencias: item.idTipoEvidencias,
+          TiposEvidencia: item.TiposEvidencia,
+          allKeys: Object.keys(item).filter(k => k.toLowerCase().includes('evidencia') || k.toLowerCase().includes('tipo'))
+        });
+        
         // Intentar obtener IdTipoEvidencias en diferentes formatos
         if (Array.isArray(item.IdTipoEvidencias) && item.IdTipoEvidencias.length > 0) {
           console.log('✅ IdTipoEvidencias encontrado como array (PascalCase):', item.IdTipoEvidencias);
@@ -1283,6 +1332,11 @@ export class ActividadesService {
         if (Array.isArray(item.idTipoEvidencias) && item.idTipoEvidencias.length > 0) {
           console.log('✅ idTipoEvidencias encontrado como array (camelCase):', item.idTipoEvidencias);
           return item.idTipoEvidencias;
+        }
+        // Si es un array vacío, retornar array vacío en lugar de undefined
+        if (Array.isArray(item.IdTipoEvidencias) || Array.isArray(item.idTipoEvidencias)) {
+          console.log('⚠️ IdTipoEvidencias es un array vacío');
+          return [];
         }
         // Si viene como string (JSON), parsearlo
         if (typeof item.IdTipoEvidencias === 'string' && item.IdTipoEvidencias.trim() !== '') {

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -49,6 +49,7 @@ export class ActividadDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private cdr = inject(ChangeDetectorRef);
 
   actividad = signal<Actividad | null>(null);
   responsables = signal<ActividadResponsable[]>([]);
@@ -67,7 +68,9 @@ export class ActividadDetailComponent implements OnInit {
   categoriasActividad = signal<any[]>([]);
   tiposProtagonista = signal<any[]>([]);
   tiposResponsable = signal<any[]>([]);
+  tiposEvidencia = signal<any[]>([]);
   capacidadesInstaladas = signal<any[]>([]);
+  capacidadInstaladaCache = signal<Map<number, string>>(new Map());
   estadosActividad = signal<any[]>([]);
   editandoEstado = signal(false);
   guardandoEstado = signal(false);
@@ -122,6 +125,7 @@ export class ActividadDetailComponent implements OnInit {
       this.loadCategoriasActividad();
     this.loadTiposProtagonista();
     this.loadTiposResponsable();
+    this.loadTiposEvidencia();
       this.loadCapacidadesInstaladas();
       this.loadEstadosActividad();
       // Cargar todas las personas para poder enriquecer los responsables
@@ -169,6 +173,18 @@ export class ActividadDetailComponent implements OnInit {
     });
   }
 
+  loadTiposEvidencia(): void {
+    this.catalogosService.getTiposEvidencia().subscribe({
+      next: (data) => {
+        this.tiposEvidencia.set(data || []);
+      },
+      error: (err) => {
+        console.error('Error loading tipos evidencia:', err);
+        this.tiposEvidencia.set([]);
+      }
+    });
+  }
+
   loadCapacidadesInstaladas(): void {
     this.catalogosService.getCapacidadesInstaladas().subscribe({
       next: (data) => {
@@ -193,16 +209,167 @@ export class ActividadDetailComponent implements OnInit {
     });
   }
 
+  getIdCapacidadInstalada(): number | undefined {
+    const actividad = this.actividad();
+    if (!actividad) return undefined;
+    const actividadData = actividad as any;
+    
+    // Buscar en diferentes formatos - incluyendo todas las variaciones posibles
+    const allKeys = Object.keys(actividadData);
+    const capacidadKeys = allKeys.filter(k => 
+      k.toLowerCase().includes('capacidad') || 
+      k.toLowerCase().includes('local') ||
+      k.toLowerCase().includes('instalada')
+    );
+    
+    let id = actividad.idCapacidadInstalada 
+      ?? actividadData.IdCapacidadInstalada 
+      ?? actividadData.idCapacidadInstalada
+      ?? actividadData.IdCapacidad
+      ?? actividadData.idCapacidad
+      ?? actividadData.CapacidadInstaladaId
+      ?? actividadData.capacidadInstaladaId
+      ?? actividadData.IdInstalacion
+      ?? actividadData.id_instalacion
+      ?? actividadData.idInstalacion;
+    
+    // Si viene como objeto relacionado, extraer el ID
+    if (!id && actividadData.CapacidadInstalada) {
+      const capacidadObj = actividadData.CapacidadInstalada;
+      id = capacidadObj.IdCapacidadInstalada ?? capacidadObj.idCapacidadInstalada 
+        ?? capacidadObj.Id ?? capacidadObj.id
+        ?? capacidadObj.IdInstalacion ?? capacidadObj.id_instalacion ?? capacidadObj.idInstalacion;
+      if (id) {
+        console.log('✅ ID encontrado en objeto CapacidadInstalada:', id);
+      }
+    }
+    
+    if (!id && actividadData.capacidadInstalada) {
+      const capacidadObj = actividadData.capacidadInstalada;
+      id = capacidadObj.IdCapacidadInstalada ?? capacidadObj.idCapacidadInstalada 
+        ?? capacidadObj.Id ?? capacidadObj.id
+        ?? capacidadObj.IdInstalacion ?? capacidadObj.id_instalacion ?? capacidadObj.idInstalacion;
+      if (id) {
+        console.log('✅ ID encontrado en objeto capacidadInstalada:', id);
+      }
+    }
+    
+    // Si no se encontró, buscar en todas las claves relacionadas
+    if (!id && capacidadKeys.length > 0) {
+      for (const key of capacidadKeys) {
+        const value = actividadData[key];
+        if (value !== null && value !== undefined) {
+          if (typeof value === 'number') {
+            id = value;
+            console.log('✅ ID encontrado en clave numérica:', key, 'valor:', value);
+            break;
+          } else if (typeof value === 'object' && value !== null) {
+            // Si es un objeto, intentar extraer el ID
+            const objId = value.IdCapacidadInstalada ?? value.idCapacidadInstalada 
+              ?? value.Id ?? value.id;
+            if (objId) {
+              id = objId;
+              console.log('✅ ID encontrado en objeto de clave:', key, 'valor:', objId);
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    const valoresCapacidad = capacidadKeys.reduce((acc, k) => { acc[k] = actividadData[k]; return acc; }, {} as any);
+    
+    console.log('🔍 getIdCapacidadInstalada:', {
+      id,
+      idCapacidadInstalada: actividad.idCapacidadInstalada,
+      IdCapacidadInstalada: actividadData.IdCapacidadInstalada,
+      capacidadKeys,
+      valoresCapacidad,
+      detalleValores: capacidadKeys.map(k => ({ clave: k, valor: actividadData[k], tipo: typeof actividadData[k] })),
+      capacidadesCargadas: this.capacidadesInstaladas().length
+    });
+    
+    // Si el ID es null o undefined, retornar undefined
+    return (id !== null && id !== undefined) ? id : undefined;
+  }
+
   getNombreCapacidadInstalada(id?: number): string {
     if (!id) return 'Sin local asignado';
-    const capacidad = this.capacidadesInstaladas().find(c => c.id === id);
-    return capacidad?.nombre || `ID: ${id}`;
+    const capacidades = this.capacidadesInstaladas();
+    const cache = this.capacidadInstaladaCache();
+    
+    // Verificar cache primero
+    if (cache.has(id)) {
+      return cache.get(id) || `ID: ${id}`;
+    }
+    
+    // Buscar en la lista cargada
+    let capacidad = capacidades.find(c => {
+      const cId = c.id || c.idCapacidadInstalada || c.Id || c.IdCapacidadInstalada 
+        || c.id_instalacion || c.IdInstalacion || c.idInstalacion;
+      return Number(cId) === Number(id);
+    });
+    
+    if (capacidad) {
+      const nombre = capacidad.nombre || capacidad.Nombre || capacidad.nombreCapacidadInstalada 
+        || capacidad.nombreInstalacion || capacidad.NombreInstalacion || `ID: ${id}`;
+      // Guardar en cache
+      const newCache = new Map(cache);
+      newCache.set(id, nombre);
+      this.capacidadInstaladaCache.set(newCache);
+      return nombre;
+    }
+    
+    // Si no se encuentra en la lista, cargarlo desde el endpoint
+    console.log('🔍 Capacidad no encontrada en lista, cargando desde endpoint para ID:', id);
+    this.catalogosService.getCapacidadInstaladaById(id).subscribe({
+      next: (data) => {
+        if (data) {
+          const nombre = data.nombre || data.nombreInstalacion || data.NombreInstalacion || data.Nombre || '';
+          // Guardar en cache
+          const newCache = new Map(cache);
+          newCache.set(id, nombre || `ID: ${id}`);
+          this.capacidadInstaladaCache.set(newCache);
+          // Agregar a la lista para futuras búsquedas
+          const capacidadData = {
+            id: data.id || data.idCapacidadInstalada || data.IdCapacidadInstalada 
+              || data.id_instalacion || data.IdInstalacion || data.idInstalacion || id,
+            nombre: nombre || `ID: ${id}`
+          };
+          const capacidadesActuales = this.capacidadesInstaladas();
+          if (!capacidadesActuales.find(c => {
+            const cId = c.id || c.idCapacidadInstalada || c.id_instalacion;
+            return Number(cId) === Number(capacidadData.id);
+          })) {
+            this.capacidadesInstaladas.set([...capacidadesActuales, capacidadData]);
+          }
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => {
+        console.error('Error cargando capacidad instalada por ID:', err);
+        // Guardar error en cache para no intentar cargar de nuevo
+        const newCache = new Map(cache);
+        newCache.set(id, `ID: ${id}`);
+        this.capacidadInstaladaCache.set(newCache);
+      }
+    });
+    
+    // Retornar placeholder mientras se carga
+    return 'Cargando...';
+  }
+
+  getNombreResponsable(resp: ActividadResponsable): string {
+    return resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin || 
+           (resp as any).nombreResponsableExterno || `Responsable ${resp.idActividadResponsable}`;
   }
 
   getCantidadTotalParticipantesProtagonistas(): number {
     const actividad = this.actividad();
     if (!actividad) return 0;
-    return (actividad as any).cantidadTotalParticipantesProtagonistas || 0;
+    const actividadData = actividad as any;
+    const valor = actividadData.cantidadTotalParticipantesProtagonistas ?? actividadData.CantidadTotalParticipantesProtagonistas;
+    return valor !== undefined && valor !== null ? valor : 0;
   }
 
   getNombresTiposActividad(): string {
@@ -299,6 +466,56 @@ export class ActividadDetailComponent implements OnInit {
     }
     
     return deptos;
+  }
+
+  getTiposEvidenciaArray(): any[] {
+    const actividad = this.actividad();
+    if (!actividad) return [];
+    
+    const actividadData = actividad as any;
+    const allKeys = Object.keys(actividadData);
+    const evidenciaKeys = allKeys.filter(k => 
+      k.toLowerCase().includes('evidencia') || 
+      k.toLowerCase().includes('tipo') ||
+      (k.toLowerCase().includes('id') && k.toLowerCase().includes('evidencia'))
+    );
+    
+    // Buscar en diferentes formatos - incluyendo todas las posibles variaciones
+    let idTipoEvidencias = actividadData.idTipoEvidencias 
+      || actividadData.IdTipoEvidencias 
+      || actividad.idTipoEvidencias
+      || actividadData.IdTipoEvidencia
+      || actividadData.idTipoEvidencia;
+    
+    // Si no se encontró, buscar en todas las claves relacionadas
+    if (!idTipoEvidencias && evidenciaKeys.length > 0) {
+      for (const key of evidenciaKeys) {
+        const value = actividadData[key];
+        if (value !== null && value !== undefined) {
+          if (Array.isArray(value) && value.length > 0) {
+            idTipoEvidencias = value;
+            break;
+          } else if (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) {
+            idTipoEvidencias = value;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (!idTipoEvidencias) return [];
+    
+    const ids = Array.isArray(idTipoEvidencias) 
+      ? idTipoEvidencias 
+      : [idTipoEvidencias];
+    
+    return ids.map((id: number) => {
+      const tipo = this.tiposEvidencia().find(t => {
+        const tId = t.idTipoEvidencia || t.id || t.IdTipoEvidencia || t.Id;
+        return Number(tId) === Number(id);
+      });
+      return tipo || { id, nombre: `ID: ${id}` };
+    }).filter((t: any) => t);
   }
 
   getActividadesAnualesSeleccionadas(): ActividadAnual[] {
@@ -435,6 +652,16 @@ export class ActividadDetailComponent implements OnInit {
     this.error.set(null);
     this.actividadesService.get(id).subscribe({
       next: (data) => {
+        const dataAny = data as any;
+        const allKeys = Object.keys(dataAny);
+        const keysWithCapacidad = allKeys.filter(k => k.toLowerCase().includes('capacidad') || k.toLowerCase().includes('local'));
+        
+        console.log('🔍 CAPACIDAD INSTALADA - Datos de actividad:', {
+          id: data.id,
+          idCapacidadInstalada: data.idCapacidadInstalada,
+          keysWithCapacidad,
+          valoresCapacidad: keysWithCapacidad.reduce((acc, k) => { acc[k] = dataAny[k]; return acc; }, {} as any)
+        });
         this.actividad.set(data);
         
         // Siempre cargar responsables desde el endpoint dedicado /api/actividad-responsable

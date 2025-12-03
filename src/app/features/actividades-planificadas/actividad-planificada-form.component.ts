@@ -544,7 +544,8 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       next: (data) => {
         let horaRealizacionFormatted = '';
         if (data.horaRealizacion) {
-          horaRealizacionFormatted = this.convertir24hA12h(String(data.horaRealizacion).substring(0, 5));
+          // El input de tipo "time" requiere formato HH:MM (24 horas)
+          horaRealizacionFormatted = String(data.horaRealizacion).substring(0, 5);
         }
 
         const nombreActividad = data.nombreActividad || data.nombre || '';
@@ -569,6 +570,10 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           ? data.idActividadMensualInst 
           : (data.idActividadMensualInst ? [data.idActividadMensualInst] : []);
         
+        const idTipoEvidenciasArray = Array.isArray(data.idTipoEvidencias) 
+          ? data.idTipoEvidencias 
+          : (data.idTipoEvidencias ? [data.idTipoEvidencias] : []);
+        
         this.form.patchValue({
           nombre: nombreActividad,
           nombreActividad: nombreActividad,
@@ -592,7 +597,9 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           horaRealizacion: horaRealizacionFormatted,
           cantidadParticipantesProyectados: data.cantidadParticipantesProyectados || null,
           cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados || null,
+          cantidadTotalParticipantesProtagonistas: (data as any).cantidadTotalParticipantesProtagonistas || null,
           idTipoProtagonista: idTipoProtagonistaArray,
+          idTipoEvidencias: idTipoEvidenciasArray,
           responsableActividad: data.responsableActividad || '',
           categoriaActividadId: data.idTipoActividad || data.categoriaActividadId || null,
           areaConocimientoId: data.idArea || data.areaConocimientoId || null,
@@ -601,12 +608,26 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         }, { emitEvent: false });
 
         // Actualizar signal del local seleccionado
-        if (data.idCapacidadInstalada) {
-          const local = this.capacidadesInstaladas().find(c => Number(c.id) === Number(data.idCapacidadInstalada));
-          this.localSeleccionado.set(local || null);
-        } else {
-          this.localSeleccionado.set(null);
-        }
+        // Usar setTimeout para asegurar que las capacidades instaladas estén cargadas
+        setTimeout(() => {
+          if (data.idCapacidadInstalada) {
+            const local = this.capacidadesInstaladas().find(c => Number(c.id) === Number(data.idCapacidadInstalada));
+            if (local) {
+              this.localSeleccionado.set(local);
+            } else {
+              // Si no se encuentra, intentar buscar después de un breve delay
+              setTimeout(() => {
+                const localEncontrado = this.capacidadesInstaladas().find(c => Number(c.id) === Number(data.idCapacidadInstalada));
+                if (localEncontrado) {
+                  this.localSeleccionado.set(localEncontrado);
+                  this.cdr.detectChanges();
+                }
+              }, 200);
+            }
+          } else {
+            this.localSeleccionado.set(null);
+          }
+        }, 100);
 
         if (this.isEditMode()) {
           this.form.get('idIndicador')?.disable({ emitEvent: false });
@@ -670,11 +691,9 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
 
       let horaRealizacion: string | undefined = undefined;
       if (formValue.horaRealizacion) {
-        const hora12h = String(formValue.horaRealizacion).trim();
-        const hora24h = this.convertir12hA24h(hora12h);
-        if (hora24h) {
-          horaRealizacion = hora24h.includes(':') ? (hora24h.split(':').length === 2 ? hora24h + ':00' : hora24h) : hora24h;
-        }
+        // El input de tipo "time" ya devuelve formato HH:MM (24 horas)
+        const hora = String(formValue.horaRealizacion).trim();
+        horaRealizacion = hora.includes(':') ? (hora.split(':').length === 2 ? hora + ':00' : hora) : hora;
       }
 
       const data: ActividadCreate = {
