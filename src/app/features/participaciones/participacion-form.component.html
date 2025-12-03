@@ -146,7 +146,7 @@
                         class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option [ngValue]="null">Seleccione un estudiante...</option>
                         @for (est of estudiantesList(); track est.id) {
-                          <option [ngValue]="est.id">{{ est.nombreCompleto }} - {{ est.matricula }}</option>
+                          <option [ngValue]="est.id">{{ est.nombreCompleto }} - {{ est.numeroCarnet }}</option>
                         }
                       </select>
                       <button

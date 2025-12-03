@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { PersonasService } from '../../core/services/personas.service';
 import type { Estudiante } from '../../core/models/estudiante';
 import type { Docente } from '../../core/models/docente';
@@ -20,6 +20,7 @@ import { catchError, finalize } from 'rxjs/operators';
 export class ListPersonasComponent implements OnInit {
   private personasService = inject(PersonasService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private searchTimeout: any;
 
   selectedTipo = signal<'estudiantes' | 'docentes' | 'administrativos'>('estudiantes');
@@ -38,44 +39,165 @@ export class ListPersonasComponent implements OnInit {
   error = signal<string | null>(null);
   lastLoadTime = signal<Date | null>(null);
 
-  // Computed para filtrar según búsqueda (con debounce)
+  // Paginación para estudiantes
+  paginaActualEstudiantes = signal<number>(1);
+  mostrarTodosEstudiantes = signal<boolean>(false);
+  
+  // Paginación para docentes
+  paginaActualDocentes = signal<number>(1);
+  mostrarTodosDocentes = signal<boolean>(false);
+  
+  // Paginación para administrativos
+  paginaActualAdministrativos = signal<number>(1);
+  mostrarTodosAdministrativos = signal<boolean>(false);
+  
+  itemsPorPagina = 10;
+
+  // Computed para filtrar, ordenar y paginar estudiantes
   estudiantesFiltrados = computed(() => {
     const estudiantes = this.estudiantes();
     const busqueda = this.busquedaDebounced().toLowerCase().trim();
     
-    // Log para debugging
-    console.log('🔄 estudiantesFiltrados - Total estudiantes:', estudiantes.length);
-    console.log('🔄 estudiantesFiltrados - Búsqueda:', busqueda);
-    if (estudiantes.length > 0) {
-      console.log('🔄 estudiantesFiltrados - Primer estudiante:', estudiantes[0]);
+    // Filtrar por búsqueda
+    let filtrados = estudiantes;
+    if (busqueda) {
+      filtrados = estudiantes.filter(e => 
+        e.nombreCompleto?.toLowerCase().includes(busqueda) ||
+        e.numeroCarnet?.toLowerCase().includes(busqueda) ||
+        e.correo?.toLowerCase().includes(busqueda)
+      );
     }
     
-    if (!busqueda) return estudiantes;
-    const filtrados = estudiantes.filter(e => 
-      e.nombreCompleto?.toLowerCase().includes(busqueda) ||
-      e.matricula?.toLowerCase().includes(busqueda) ||
-      e.correo?.toLowerCase().includes(busqueda)
-    );
-    console.log('🔄 estudiantesFiltrados - Filtrados:', filtrados.length);
+    // Ordenar alfabéticamente por nombre completo
+    filtrados = [...filtrados].sort((a, b) => {
+      const nombreA = (a.nombreCompleto || '').toLowerCase();
+      const nombreB = (b.nombreCompleto || '').toLowerCase();
+      return nombreA.localeCompare(nombreB);
+    });
+    
+    // Aplicar paginación si no está en modo "mostrar todos"
+    if (!this.mostrarTodosEstudiantes()) {
+      const inicio = (this.paginaActualEstudiantes() - 1) * this.itemsPorPagina;
+      const fin = inicio + this.itemsPorPagina;
+      return filtrados.slice(inicio, fin);
+    }
+    
     return filtrados;
   });
 
-  docentesFiltrados = computed(() => {
+  // Computed para obtener el total de estudiantes filtrados (sin paginación)
+  estudiantesFiltradosTotal = computed(() => {
+    const estudiantes = this.estudiantes();
     const busqueda = this.busquedaDebounced().toLowerCase().trim();
-    if (!busqueda) return this.docentes();
-    return this.docentes().filter(d => 
+    
+    if (!busqueda) return estudiantes.length;
+    return estudiantes.filter(e => 
+      e.nombreCompleto?.toLowerCase().includes(busqueda) ||
+      e.numeroCarnet?.toLowerCase().includes(busqueda) ||
+      e.correo?.toLowerCase().includes(busqueda)
+    ).length;
+  });
+
+  // Computed para el total de páginas
+  totalPaginasEstudiantes = computed(() => {
+    const total = this.estudiantesFiltradosTotal();
+    return Math.ceil(total / this.itemsPorPagina);
+  });
+
+  docentesFiltrados = computed(() => {
+    const docentes = this.docentes();
+    const busqueda = this.busquedaDebounced().toLowerCase().trim();
+    
+    // Filtrar por búsqueda
+    let filtrados = docentes;
+    if (busqueda) {
+      filtrados = docentes.filter(d => 
+        d.nombreCompleto?.toLowerCase().includes(busqueda) ||
+        d.correo?.toLowerCase().includes(busqueda)
+      );
+    }
+    
+    // Ordenar alfabéticamente por nombre completo
+    filtrados = [...filtrados].sort((a, b) => {
+      const nombreA = (a.nombreCompleto || '').toLowerCase();
+      const nombreB = (b.nombreCompleto || '').toLowerCase();
+      return nombreA.localeCompare(nombreB);
+    });
+    
+    // Aplicar paginación si no está en modo "mostrar todos"
+    if (!this.mostrarTodosDocentes()) {
+      const inicio = (this.paginaActualDocentes() - 1) * this.itemsPorPagina;
+      const fin = inicio + this.itemsPorPagina;
+      return filtrados.slice(inicio, fin);
+    }
+    
+    return filtrados;
+  });
+
+  // Computed para obtener el total de docentes filtrados (sin paginación)
+  docentesFiltradosTotal = computed(() => {
+    const docentes = this.docentes();
+    const busqueda = this.busquedaDebounced().toLowerCase().trim();
+    
+    if (!busqueda) return docentes.length;
+    return docentes.filter(d => 
       d.nombreCompleto?.toLowerCase().includes(busqueda) ||
       d.correo?.toLowerCase().includes(busqueda)
-    );
+    ).length;
+  });
+
+  // Computed para el total de páginas de docentes
+  totalPaginasDocentes = computed(() => {
+    const total = this.docentesFiltradosTotal();
+    return Math.ceil(total / this.itemsPorPagina);
   });
 
   administrativosFiltrados = computed(() => {
+    const administrativos = this.administrativos();
     const busqueda = this.busquedaDebounced().toLowerCase().trim();
-    if (!busqueda) return this.administrativos();
-    return this.administrativos().filter(a => 
+    
+    // Filtrar por búsqueda
+    let filtrados = administrativos;
+    if (busqueda) {
+      filtrados = administrativos.filter(a => 
+        a.nombreCompleto?.toLowerCase().includes(busqueda) ||
+        a.correo?.toLowerCase().includes(busqueda)
+      );
+    }
+    
+    // Ordenar alfabéticamente por nombre completo
+    filtrados = [...filtrados].sort((a, b) => {
+      const nombreA = (a.nombreCompleto || '').toLowerCase();
+      const nombreB = (b.nombreCompleto || '').toLowerCase();
+      return nombreA.localeCompare(nombreB);
+    });
+    
+    // Aplicar paginación si no está en modo "mostrar todos"
+    if (!this.mostrarTodosAdministrativos()) {
+      const inicio = (this.paginaActualAdministrativos() - 1) * this.itemsPorPagina;
+      const fin = inicio + this.itemsPorPagina;
+      return filtrados.slice(inicio, fin);
+    }
+    
+    return filtrados;
+  });
+
+  // Computed para obtener el total de administrativos filtrados (sin paginación)
+  administrativosFiltradosTotal = computed(() => {
+    const administrativos = this.administrativos();
+    const busqueda = this.busquedaDebounced().toLowerCase().trim();
+    
+    if (!busqueda) return administrativos.length;
+    return administrativos.filter(a => 
       a.nombreCompleto?.toLowerCase().includes(busqueda) ||
       a.correo?.toLowerCase().includes(busqueda)
-    );
+    ).length;
+  });
+
+  // Computed para el total de páginas de administrativos
+  totalPaginasAdministrativos = computed(() => {
+    const total = this.administrativosFiltradosTotal();
+    return Math.ceil(total / this.itemsPorPagina);
   });
 
   // Estadísticas
@@ -93,6 +215,13 @@ export class ListPersonasComponent implements OnInit {
   );
 
   ngOnInit() {
+    // Leer query params para establecer el tipo
+    this.route.queryParams.subscribe(params => {
+      if (params['tipo'] && ['estudiantes', 'docentes', 'administrativos'].includes(params['tipo'])) {
+        this.selectedTipo.set(params['tipo'] as 'estudiantes' | 'docentes' | 'administrativos');
+      }
+    });
+    
     this.loadAll();
   }
 
@@ -197,6 +326,13 @@ export class ListPersonasComponent implements OnInit {
     this.selectedTipo.set(tipo);
     this.busqueda.set(''); // Limpiar búsqueda al cambiar de tipo
     this.busquedaDebounced.set(''); // Limpiar también el debounced
+    // Resetear paginación
+    this.paginaActualEstudiantes.set(1);
+    this.mostrarTodosEstudiantes.set(false);
+    this.paginaActualDocentes.set(1);
+    this.mostrarTodosDocentes.set(false);
+    this.paginaActualAdministrativos.set(1);
+    this.mostrarTodosAdministrativos.set(false);
   }
 
   onAddNew() {
@@ -228,7 +364,69 @@ export class ListPersonasComponent implements OnInit {
     if (this.searchTimeout) clearTimeout(this.searchTimeout);
     this.searchTimeout = setTimeout(() => {
       this.busquedaDebounced.set(value);
+      // Resetear a primera página al buscar
+      if (this.selectedTipo() === 'estudiantes') {
+        this.paginaActualEstudiantes.set(1);
+      } else if (this.selectedTipo() === 'docentes') {
+        this.paginaActualDocentes.set(1);
+      } else if (this.selectedTipo() === 'administrativos') {
+        this.paginaActualAdministrativos.set(1);
+      }
     }, 300);
+  }
+
+  // Métodos de paginación para estudiantes
+  paginaAnteriorEstudiantes() {
+    if (this.paginaActualEstudiantes() > 1) {
+      this.paginaActualEstudiantes.set(this.paginaActualEstudiantes() - 1);
+    }
+  }
+
+  paginaSiguienteEstudiantes() {
+    if (this.paginaActualEstudiantes() < this.totalPaginasEstudiantes()) {
+      this.paginaActualEstudiantes.set(this.paginaActualEstudiantes() + 1);
+    }
+  }
+
+  toggleMostrarTodosEstudiantes() {
+    this.mostrarTodosEstudiantes.set(!this.mostrarTodosEstudiantes());
+    this.paginaActualEstudiantes.set(1);
+  }
+
+  // Métodos de paginación para docentes
+  paginaAnteriorDocentes() {
+    if (this.paginaActualDocentes() > 1) {
+      this.paginaActualDocentes.set(this.paginaActualDocentes() - 1);
+    }
+  }
+
+  paginaSiguienteDocentes() {
+    if (this.paginaActualDocentes() < this.totalPaginasDocentes()) {
+      this.paginaActualDocentes.set(this.paginaActualDocentes() + 1);
+    }
+  }
+
+  toggleMostrarTodosDocentes() {
+    this.mostrarTodosDocentes.set(!this.mostrarTodosDocentes());
+    this.paginaActualDocentes.set(1);
+  }
+
+  // Métodos de paginación para administrativos
+  paginaAnteriorAdministrativos() {
+    if (this.paginaActualAdministrativos() > 1) {
+      this.paginaActualAdministrativos.set(this.paginaActualAdministrativos() - 1);
+    }
+  }
+
+  paginaSiguienteAdministrativos() {
+    if (this.paginaActualAdministrativos() < this.totalPaginasAdministrativos()) {
+      this.paginaActualAdministrativos.set(this.paginaActualAdministrativos() + 1);
+    }
+  }
+
+  toggleMostrarTodosAdministrativos() {
+    this.mostrarTodosAdministrativos.set(!this.mostrarTodosAdministrativos());
+    this.paginaActualAdministrativos.set(1);
   }
 
   onDeleteEstudiante(id: number) {
@@ -327,5 +525,18 @@ export class ListPersonasComponent implements OnInit {
     if (diff < 60) return `hace ${diff} segundos`;
     if (diff < 3600) return `hace ${Math.floor(diff / 60)} minutos`;
     return `hace ${Math.floor(diff / 3600)} horas`;
+  }
+
+  // Métodos helper para el template
+  getMath() {
+    return Math;
+  }
+
+  getInicioPagina(): number {
+    return (this.paginaActualEstudiantes() - 1) * this.itemsPorPagina + 1;
+  }
+
+  getFinPagina(): number {
+    return Math.min(this.paginaActualEstudiantes() * this.itemsPorPagina, this.estudiantesFiltradosTotal());
   }
 }

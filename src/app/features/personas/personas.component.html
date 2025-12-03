@@ -222,13 +222,13 @@
                   </td>
                 </tr>
               } @else {
-                @for (estudiante of estudiantesFiltrados(); track $index; let i = $index) {
+                @for (estudiante of estudiantesFiltrados(); track estudiante.id || $index) {
                   <tr class="hover:bg-slate-50 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-slate-900">{{ estudiante.nombreCompleto }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm text-slate-600">{{ estudiante.matricula }}</div>
+                      <div class="text-sm text-slate-600">{{ estudiante.numeroCarnet }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm text-slate-600">{{ estudiante.correo }}</div>
@@ -267,6 +267,49 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Paginación para estudiantes -->
+        @if (estudiantesFiltradosTotal() > 0 && !mostrarTodosEstudiantes()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ getInicioPagina() }} - {{ getFinPagina() }} de {{ estudiantesFiltradosTotal() }} estudiantes
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorEstudiantes()"
+                [disabled]="paginaActualEstudiantes() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 px-3">
+                Página {{ paginaActualEstudiantes() }} de {{ totalPaginasEstudiantes() }}
+              </span>
+              <button
+                (click)="paginaSiguienteEstudiantes()"
+                [disabled]="paginaActualEstudiantes() >= totalPaginasEstudiantes()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        <!-- Opción de mostrar todos -->
+        @if (estudiantesFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-center">
+            <button
+              (click)="toggleMostrarTodosEstudiantes()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosEstudiantes() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + estudiantesFiltradosTotal() + ' estudiantes)' }}
+            </button>
+          </div>
+        }
       }
 
       <!-- Docentes -->
@@ -335,6 +378,48 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Paginación para docentes -->
+        @if (docentesFiltradosTotal() > 0 && !mostrarTodosDocentes()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ (paginaActualDocentes() - 1) * itemsPorPagina + 1 }} - {{ getMath().min(paginaActualDocentes() * itemsPorPagina, docentesFiltradosTotal()) }} de {{ docentesFiltradosTotal() }} docentes
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorDocentes()"
+                [disabled]="paginaActualDocentes() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 font-medium px-3">
+                Página {{ paginaActualDocentes() }} de {{ totalPaginasDocentes() }}
+              </span>
+              <button
+                (click)="paginaSiguienteDocentes()"
+                [disabled]="paginaActualDocentes() >= totalPaginasDocentes()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        @if (docentesFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-white text-center">
+            <button
+              (click)="toggleMostrarTodosDocentes()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosDocentes() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + docentesFiltradosTotal() + ' docentes)' }}
+            </button>
+          </div>
+        }
       }
 
       <!-- Administrativos -->
@@ -396,6 +481,48 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Paginación para administrativos -->
+        @if (administrativosFiltradosTotal() > 0 && !mostrarTodosAdministrativos()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ (paginaActualAdministrativos() - 1) * itemsPorPagina + 1 }} - {{ getMath().min(paginaActualAdministrativos() * itemsPorPagina, administrativosFiltradosTotal()) }} de {{ administrativosFiltradosTotal() }} administrativos
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorAdministrativos()"
+                [disabled]="paginaActualAdministrativos() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 font-medium px-3">
+                Página {{ paginaActualAdministrativos() }} de {{ totalPaginasAdministrativos() }}
+              </span>
+              <button
+                (click)="paginaSiguienteAdministrativos()"
+                [disabled]="paginaActualAdministrativos() >= totalPaginasAdministrativos()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        @if (administrativosFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-white text-center">
+            <button
+              (click)="toggleMostrarTodosAdministrativos()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosAdministrativos() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + administrativosFiltradosTotal() + ' administrativos)' }}
+            </button>
+          </div>
+        }
       }
     </div>
   }

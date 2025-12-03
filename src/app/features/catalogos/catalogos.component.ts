@@ -1775,10 +1775,22 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       return;
     }
 
+    // Validar que el archivo sea válido
+    if (!(this.importFile instanceof File)) {
+      alert('Error: El archivo seleccionado no es válido.');
+      return;
+    }
+
+    if (this.importFile.size === 0) {
+      alert('Error: El archivo seleccionado está vacío.');
+      return;
+    }
+
     console.log('🔄 IMPORTAR EXCEL - Iniciando importación');
     console.log('🔄 IMPORTAR EXCEL - Archivo:', this.importFile.name);
     console.log('🔄 IMPORTAR EXCEL - Tamaño:', this.importFile.size);
     console.log('🔄 IMPORTAR EXCEL - Tipo:', this.importFile.type);
+    console.log('🔄 IMPORTAR EXCEL - Archivo es instancia de File:', this.importFile instanceof File);
 
     // Obtener año destino (por defecto año actual si no se especifica)
     const anioDestino = this.importAnioDestino || this.getAnioActual();

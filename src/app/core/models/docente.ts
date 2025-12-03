@@ -2,10 +2,15 @@ export interface Docente {
   id: number;
   nombreCompleto: string;
   correo: string;
-  generoId: number; // Requerido según DocenteCreateDto
+  idGenero: number; // Cambiado de generoId a idGenero
   departamentoId: number;
   activo: boolean;
   numeroOrcid?: string; // Opcional
-  cedula?: string; // Opcional según DocenteDto
-  nivelAcademico?: string; // Opcional según DocenteDto
+  cedula?: string; // Opcional
+  numeroTelefono?: string; // Opcional, nuevo campo
+  idNivelAcademico?: number; // Opcional, cambiado de nivelAcademico (string) a idNivelAcademico (number)
+  // Campos calculados del backend (no se envían en create/update)
+  genero?: string; // Nombre del género (solo lectura)
+  departamento?: string; // Nombre del departamento (solo lectura)
+  nombreNivelAcademico?: string; // Nombre del nivel académico (solo lectura)
 }
