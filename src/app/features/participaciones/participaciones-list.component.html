@@ -17,7 +17,36 @@
 
   <!-- Filtros -->
   <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="mb-4">
+      <h2 class="text-lg font-semibold text-slate-900 mb-2">Filtros de Búsqueda</h2>
+      <p class="text-sm text-slate-600">Utiliza los filtros para encontrar participaciones específicas</p>
+    </div>
+    
+    <!-- Filtros principales -->
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Búsqueda por texto</label>
+        <input 
+          type="text"
+          [value]="busquedaTexto()"
+          (input)="onBusquedaTextoChange($any($event.target).value)"
+          placeholder="Buscar por nombre de actividad/participante..."
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Actividad</label>
+        <select 
+          [value]="filtroActividad() ?? ''"
+          (change)="filtroActividad.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todas</option>
+          @for (actividad of actividades(); track actividad.id) {
+            <option [value]="actividad.id">{{ actividad.nombre }}</option>
+          }
+        </select>
+      </div>
+
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Subactividad</label>
         <select 
@@ -29,6 +58,91 @@
             <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
           }
         </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Año</label>
+        <input 
+          type="number"
+          [value]="filtroAnio() ?? ''"
+          (input)="filtroAnio.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          placeholder="Ej: 2025"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+    </div>
+
+    <!-- Filtros de participantes -->
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Estudiante</label>
+        <select 
+          [value]="filtroEstudiante() ?? ''"
+          (change)="filtroEstudiante.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          @for (estudiante of estudiantes(); track estudiante.id) {
+            <option [value]="estudiante.id">{{ estudiante.nombreCompleto }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Docente</label>
+        <select 
+          [value]="filtroDocente() ?? ''"
+          (change)="filtroDocente.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          @for (docente of docentes(); track docente.id) {
+            <option [value]="docente.id">{{ docente.nombreCompleto }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Administrativo</label>
+        <select 
+          [value]="filtroAdmin() ?? ''"
+          (change)="filtroAdmin.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todos</option>
+          @for (admin of administrativos(); track admin.id) {
+            <option [value]="admin.id">{{ admin.nombreCompleto }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Participación</label>
+        <select 
+          [value]="esParticipacionSubactividad() === null ? '' : esParticipacionSubactividad() ? 'true' : 'false'"
+          (change)="esParticipacionSubactividad.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Todas</option>
+          <option value="true">Subactividades</option>
+          <option value="false">Actividades</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Filtros de fechas y adicionales -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Registro Desde</label>
+        <input 
+          type="date"
+          [value]="fechaRegistroDesde()"
+          (change)="fechaRegistroDesde.set($any($event.target).value); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Registro Hasta</label>
+        <input 
+          type="date"
+          [value]="fechaRegistroHasta()"
+          (change)="fechaRegistroHasta.set($any($event.target).value); onFiltroChange()"
+          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
       </div>
 
       <div>
@@ -44,20 +158,10 @@
         </select>
       </div>
 
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Grupo</label>
-        <input 
-          type="number"
-          [value]="filtroGrupo() ?? ''"
-          (input)="filtroGrupo.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-          placeholder="Número de grupo"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-      </div>
-
       <div class="flex items-end">
         <button 
           (click)="clearFilters()"
-          class="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+          class="w-full px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-gray-300 rounded-md text-gray-700 transition">
           Limpiar Filtros
         </button>
       </div>

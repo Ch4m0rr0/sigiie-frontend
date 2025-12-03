@@ -14,6 +14,8 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import { PersonasService } from '../../core/services/personas.service';
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { ImageStorageService } from '../../core/services/image-storage.service';
+import { ParticipacionService } from '../../core/services/participacion.service';
+import { ReportesService } from '../../core/services/reportes.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import type { Actividad } from '../../core/models/actividad';
 import type { ActividadResponsable } from '../../core/models/actividad-responsable';
@@ -26,6 +28,7 @@ import type { Edicion } from '../../core/models/edicion';
 import type { Docente } from '../../core/models/docente';
 import type { Estudiante } from '../../core/models/estudiante';
 import type { Administrativo } from '../../core/models/administrativo';
+import type { Participacion } from '../../core/models/participacion';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
@@ -46,6 +49,8 @@ export class ActividadDetailComponent implements OnInit {
   private personasService = inject(PersonasService);
   private evidenciaService = inject(EvidenciaService);
   private imageStorageService = inject(ImageStorageService);
+  private participacionService = inject(ParticipacionService);
+  private reportesService = inject(ReportesService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
@@ -73,7 +78,7 @@ export class ActividadDetailComponent implements OnInit {
   guardandoEstado = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
-  activeTab = signal<'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales' | 'evidencias'>('info');
+  activeTab = signal<'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales' | 'evidencias' | 'participantes'>('info');
   
   // Formulario para crear indicador
   formIndicador!: FormGroup;
@@ -1202,8 +1207,12 @@ export class ActividadDetailComponent implements OnInit {
     }
   }
 
-  setTab(tab: 'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales' | 'evidencias'): void {
+  setTab(tab: 'info' | 'departamentos' | 'responsables' | 'indicadores' | 'subactividades' | 'actividades-anuales' | 'evidencias' | 'participantes'): void {
     this.activeTab.set(tab);
+    // Cargar estadísticas cuando se cambia al tab
+    if (tab === 'participantes') {
+      this.loadEstadisticasParticipantes();
+    }
   }
 
   getActividadesMensualesPorAnual(idActividadAnual: number): ActividadMensualInst[] {
@@ -1813,5 +1822,146 @@ export class ActividadDetailComponent implements OnInit {
   getNombrePersona(persona: any): string {
     return persona.nombreCompleto || persona.nombre || 'Sin nombre';
   }
+
+  // ========== PARTICIPANTES ==========
+  estadisticasParticipantes = signal<any>(null);
+  loadingParticipantes = signal(false);
+  errorParticipantes = signal<string | null>(null);
+  loadingImportarParticipantes = signal(false);
+  importFileParticipantes = signal<File | null>(null);
+  anioParticipantes = signal<number>(new Date().getFullYear());
+
+  loadEstadisticasParticipantes(): void {
+    if (!this.actividad()?.id) return;
+    
+    this.loadingParticipantes.set(true);
+    this.errorParticipantes.set(null);
+    
+    // Usar año actual por defecto si no se especifica
+    const anio = this.anioParticipantes() || new Date().getFullYear();
+    
+    this.participacionService.getEstadisticas({
+      idActividad: this.actividad()!.id,
+      anio: anio
+    }).subscribe({
+      next: (data) => {
+        console.log('✅ Estadísticas recibidas:', data);
+        
+        // Obtener metaAlcanzada, metaCumplimiento y metaIndicador de la actividad si están disponibles
+        const actividad = this.actividad();
+        const metaAlcanzadaActividad = actividad?.metaAlcanzada;
+        const metaCumplimientoActividad = actividad?.metaCumplimiento;
+        const metaIndicadorActividad = actividad?.metaIndicador; // Meta del indicador (número entero)
+        
+        // Si no hay metaAlcanzada en la actividad, usar el total de participantes como meta alcanzada
+        const metaAlcanzada = metaAlcanzadaActividad !== undefined && metaAlcanzadaActividad !== null 
+          ? metaAlcanzadaActividad 
+          : (data?.total?.total || 0);
+        
+        // La meta de cumplimiento viene del indicador (metaIndicador) - es un número entero
+        const metaIndicador = metaIndicadorActividad !== undefined && metaIndicadorActividad !== null 
+          ? Math.round(metaIndicadorActividad) // Asegurar que sea entero
+          : null;
+        
+        // Transformar los datos anidados a la estructura plana esperada por el template
+        const estadisticasTransformadas = {
+          totalParticipantes: data?.total?.total || 0,
+          totalMasculino: data?.total?.masculino || 0,
+          totalFemenino: data?.total?.femenino || 0,
+          totalEstudiantes: data?.estudiantes?.total || 0,
+          totalDocentes: data?.docentes?.total || 0,
+          totalAdministrativos: data?.administrativos?.total || 0,
+          metaAlcanzada: metaAlcanzada,
+          metaIndicador: metaIndicador, // Meta del indicador (número entero)
+          metaCumplimiento: metaCumplimientoActividad !== undefined && metaCumplimientoActividad !== null 
+            ? metaCumplimientoActividad 
+            : (metaIndicador && metaAlcanzada > 0 ? (metaAlcanzada / metaIndicador * 100) : null),
+          // Mantener también los datos originales por si se necesitan
+          estudiantes: data?.estudiantes,
+          docentes: data?.docentes,
+          administrativos: data?.administrativos,
+          total: data?.total
+        };
+        console.log('📊 Estadísticas transformadas:', estadisticasTransformadas);
+        console.log('📊 Valor antes de set:', this.estadisticasParticipantes());
+        
+        // Primero establecer loading a false, luego actualizar los datos
+        // Esto asegura que el template evalúe la condición correctamente
+        this.loadingParticipantes.set(false);
+        
+        // Actualizar el signal con los datos transformados
+        this.estadisticasParticipantes.set(estadisticasTransformadas);
+        
+        console.log('📊 Valor después de set:', this.estadisticasParticipantes());
+        console.log('📊 Signal value check:', !!this.estadisticasParticipantes());
+        console.log('📊 totalParticipantes:', this.estadisticasParticipantes()?.totalParticipantes);
+        console.log('📊 loadingParticipantes:', this.loadingParticipantes());
+      },
+      error: (err) => {
+        console.error('❌ Error loading estadísticas:', err);
+        console.error('❌ Error completo:', JSON.stringify(err, null, 2));
+        this.errorParticipantes.set('Error al cargar las estadísticas');
+        this.loadingParticipantes.set(false);
+      }
+    });
+  }
+
+  navigateToParticipaciones(): void {
+    if (!this.actividad()?.id) return;
+    // Navegar a la tabla de participantes con filtro por actividad
+    this.router.navigate(['/participaciones'], {
+      queryParams: { idActividad: this.actividad()!.id }
+    });
+  }
+
+
+  onFileSelectedParticipantes(event: any): void {
+    const file = event.target.files?.[0];
+    if (file) {
+      this.importFileParticipantes.set(file);
+    }
+  }
+
+  removeFileParticipantes(): void {
+    this.importFileParticipantes.set(null);
+  }
+
+  importarParticipantesDesdeExcel(): void {
+    if (!this.importFileParticipantes() || !this.actividad()?.id) {
+      alert('Por favor selecciona un archivo Excel');
+      return;
+    }
+
+    this.loadingImportarParticipantes.set(true);
+    
+    // Usar año actual por defecto si no se especifica
+    const anio = this.anioParticipantes() || new Date().getFullYear();
+    
+    this.reportesService.importarParticipantesPorActividad(
+      this.actividad()!.id,
+      this.importFileParticipantes()!,
+      anio
+    ).subscribe({
+      next: (response) => {
+        console.log('✅ Participantes importados:', response);
+        alert('Participantes importados exitosamente');
+        this.importFileParticipantes.set(null);
+        this.loadingImportarParticipantes.set(false);
+        this.loadEstadisticasParticipantes(); // Recargar estadísticas
+      },
+      error: (err) => {
+        console.error('❌ Error importando participantes:', err);
+        let errorMessage = 'Error al importar participantes';
+        if (err.error?.message) {
+          errorMessage = err.error.message;
+        } else if (typeof err.error === 'string') {
+          errorMessage = err.error;
+        }
+        alert(errorMessage);
+        this.loadingImportarParticipantes.set(false);
+      }
+    });
+  }
+
 }
 

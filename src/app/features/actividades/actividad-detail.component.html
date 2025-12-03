@@ -64,8 +64,9 @@
 
       <!-- Tabs -->
       <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
-        <div class="border-b border-slate-200 overflow-x-auto">
-          <nav class="flex -mb-px">
+        <div class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+          <div class="overflow-x-auto">
+            <nav class="flex -mb-px min-w-max">
             <button
               (click)="setTab('info')"
               [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
@@ -152,7 +153,21 @@
                 </span>
               }
             </button>
+            <button
+              (click)="setTab('participantes')"
+              [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
+                (activeTab() === 'participantes' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
+              Participantes
+              @if (estadisticasParticipantes()?.totalParticipantes) {
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  {{ estadisticasParticipantes()!.totalParticipantes }}
+                </span>
+              }
+            </button>
           </nav>
+          </div>
         </div>
 
         <div class="p-6">
@@ -1608,6 +1623,156 @@
             </div>
           }
 
+          <!-- Tab: Participantes -->
+          @if (activeTab() === 'participantes') {
+            <div>
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                (change)="onFileSelectedParticipantes($event)"
+                class="hidden"
+                #fileInputParticipantes>
+              <button
+                (click)="fileInputParticipantes.click()"
+                class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition flex items-center gap-2 text-sm font-medium">
+                <app-icon icon="upload_file" size="sm"></app-icon>
+                Importar desde Excel
+              </button>
+              @if (importFileParticipantes()) {
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-slate-700">{{ importFileParticipantes()!.name }}</span>
+                  <button
+                    (click)="removeFileParticipantes()"
+                    class="text-red-600 hover:text-red-700">
+                    <app-icon icon="close" size="sm"></app-icon>
+                  </button>
+                  <button
+                    (click)="importarParticipantesDesdeExcel()"
+                    [disabled]="loadingImportarParticipantes()"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                    @if (loadingImportarParticipantes()) {
+                      <span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    } @else {
+                      Importar
+                    }
+                  </button>
+                </div>
+              }
+                </div>
+                <button
+                  (click)="navigateToParticipaciones()"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 text-sm font-medium">
+                  <app-icon icon="group" size="sm" color="white"></app-icon>
+                  Gestionar Participantes
+                </button>
+              </div>
+
+              <!-- Estadísticas Generales -->
+              <div class="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+                <h4 class="text-lg font-semibold text-slate-900 mb-4">Estadísticas Generales</h4>
+                
+                @if (loadingParticipantes()) {
+                  <div class="flex justify-center items-center h-64">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                } @else if (errorParticipantes()) {
+                  <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p class="text-red-800">{{ errorParticipantes() }}</p>
+                  </div>
+                } @else if (estadisticasParticipantes()) {
+                  <!-- Resumen General -->
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div class="text-sm font-medium text-blue-600 mb-1">Total de Participantes</div>
+                      <div class="text-2xl font-bold text-blue-900">{{ estadisticasParticipantes()!.totalParticipantes || 0 }}</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div class="text-sm font-medium text-green-600 mb-1">Meta Alcanzada</div>
+                      <div class="text-2xl font-bold text-green-900">{{ estadisticasParticipantes()!.metaAlcanzada || 0 }}</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                      <div class="text-sm font-medium text-purple-600 mb-1">Meta de Cumplimiento (Indicador)</div>
+                      <div class="text-2xl font-bold text-purple-900">
+                        {{ estadisticasParticipantes()!.metaIndicador ?? 0 }}
+                      </div>
+                    </div>
+                    <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                      <div class="text-sm font-medium text-orange-600 mb-1">% Cumplimiento</div>
+                      <div class="text-2xl font-bold text-orange-900">
+                        @if (estadisticasParticipantes()!.metaCumplimiento !== null && estadisticasParticipantes()!.metaCumplimiento !== undefined) {
+                          {{ estadisticasParticipantes()!.metaCumplimiento.toFixed(1) }}%
+                        } @else if (estadisticasParticipantes()!.metaIndicador && estadisticasParticipantes()!.metaIndicador > 0) {
+                          {{ ((estadisticasParticipantes()!.metaAlcanzada || 0) / estadisticasParticipantes()!.metaIndicador * 100).toFixed(1) }}%
+                        } @else {
+                          0%
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Desglose por Género -->
+                  <div class="mb-6">
+                    <h5 class="text-md font-semibold text-slate-900 mb-3">Participantes por Género</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <div class="text-sm font-medium text-slate-600 mb-1">Masculino</div>
+                            <div class="text-xl font-bold text-slate-900">{{ estadisticasParticipantes()!.totalMasculino || 0 }}</div>
+                          </div>
+                          <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span class="text-blue-600 font-bold">M</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <div class="text-sm font-medium text-slate-600 mb-1">Femenino</div>
+                            <div class="text-xl font-bold text-slate-900">{{ estadisticasParticipantes()!.totalFemenino || 0 }}</div>
+                          </div>
+                          <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+                            <span class="text-pink-600 font-bold">F</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Desglose por Tipo -->
+                  <div class="mb-6">
+                    <h5 class="text-md font-semibold text-slate-900 mb-3">Participantes por Tipo</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div class="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+                        <div class="text-sm font-medium text-emerald-600 mb-1">Estudiantes</div>
+                        <div class="text-xl font-bold text-emerald-900">{{ estadisticasParticipantes()!.totalEstudiantes || 0 }}</div>
+                      </div>
+                      <div class="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                        <div class="text-sm font-medium text-amber-600 mb-1">Docentes</div>
+                        <div class="text-xl font-bold text-amber-900">{{ estadisticasParticipantes()!.totalDocentes || 0 }}</div>
+                      </div>
+                      <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                        <div class="text-sm font-medium text-indigo-600 mb-1">Administrativos</div>
+                        <div class="text-xl font-bold text-indigo-900">{{ estadisticasParticipantes()!.totalAdministrativos || 0 }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Total General -->
+                  <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+                    <div class="text-sm font-medium text-blue-100 mb-2">Total General de Participantes</div>
+                    <div class="text-4xl font-bold">{{ estadisticasParticipantes()!.totalParticipantes || 0 }}</div>
+                  </div>
+                } @else {
+                  <div class="text-center py-8 text-slate-500">
+                    <p>No hay estadísticas disponibles para este año</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
