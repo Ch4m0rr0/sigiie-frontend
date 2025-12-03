@@ -58,9 +58,34 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   loading = signal(false);
   error = signal<string | null>(null);
   selectedFiles = signal<File[]>([]);
+  selectedImages = signal<File[]>([]);
+  selectedOfficeFiles = signal<File[]>([]);
   previewUrls = signal<string[]>([]);
   currentImageIndex = signal<number>(0);
   private objectUrls: string[] = [];
+  
+  // Helper para determinar si un archivo es imagen
+  private isImageFile(file: File): boolean {
+    return file.type.startsWith('image/');
+  }
+  
+  // Helper para determinar si un archivo es Office
+  private isOfficeFile(file: File): boolean {
+    const officeTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'application/msword', // .doc
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+      'application/vnd.ms-powerpoint', // .ppt
+      'application/pdf' // .pdf
+    ];
+    const officeExtensions = ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pdf'];
+    const fileName = file.name.toLowerCase();
+    
+    return officeTypes.includes(file.type) || 
+           officeExtensions.some(ext => fileName.endsWith(ext));
+  }
 
   ngOnInit(): void {
     this.initializeForm();
@@ -308,52 +333,76 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      const files = Array.from(input.files).filter(file => file.type.startsWith('image/'));
+      const allFiles = Array.from(input.files);
       
-      if (files.length === 0) {
-        this.error.set('Por favor seleccione al menos una imagen');
-        return;
+      // Separar archivos en imágenes y archivos Office
+      const imageFiles = allFiles.filter(file => this.isImageFile(file));
+      const officeFiles = allFiles.filter(file => this.isOfficeFile(file));
+      const invalidFiles = allFiles.filter(file => !this.isImageFile(file) && !this.isOfficeFile(file));
+      
+      if (invalidFiles.length > 0) {
+        this.error.set(`Los siguientes archivos no son válidos: ${invalidFiles.map(f => f.name).join(', ')}. Solo se permiten imágenes y archivos Office (Word, Excel, PowerPoint, PDF).`);
       }
+      
+      // Agregar imágenes a la lista existente
+      if (imageFiles.length > 0) {
+        const currentImages = this.selectedImages();
+        const newImages = [...currentImages, ...imageFiles];
+        this.selectedImages.set(newImages);
+        
+        // Leer todas las imágenes y crear previews
+        const newPreviews: string[] = [];
+        let loadedCount = 0;
 
-      // Agregar los nuevos archivos a la lista existente
-      const currentFiles = this.selectedFiles();
-      const newFiles = [...currentFiles, ...files];
-      this.selectedFiles.set(newFiles);
-
-      // Leer todas las imágenes y crear previews
-      const newPreviews: string[] = [];
-      let loadedCount = 0;
-
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          if (result) {
-            newPreviews.push(result);
-            loadedCount++;
-            
-            // Cuando todas las imágenes estén cargadas, actualizar los previews
-            if (loadedCount === files.length) {
-              const currentPreviews = this.previewUrls();
-              this.previewUrls.set([...currentPreviews, ...newPreviews]);
-              // Si es la primera imagen, mostrar la primera
-              if (this.previewUrls().length === newPreviews.length) {
-                this.currentImageIndex.set(0);
+        imageFiles.forEach((file) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const result = e.target?.result as string;
+            if (result) {
+              newPreviews.push(result);
+              loadedCount++;
+              
+              // Cuando todas las imágenes estén cargadas, actualizar los previews
+              if (loadedCount === imageFiles.length) {
+                const currentPreviews = this.previewUrls();
+                this.previewUrls.set([...currentPreviews, ...newPreviews]);
+                // Si es la primera imagen, mostrar la primera
+                if (this.previewUrls().length === newPreviews.length) {
+                  this.currentImageIndex.set(0);
+                }
               }
             }
-          }
-        };
-        reader.onerror = () => {
-          console.error('Error al leer el archivo:', file.name);
-        };
-        reader.readAsDataURL(file);
-      });
+          };
+          reader.onerror = () => {
+            console.error('Error al leer el archivo:', file.name);
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      
+      // Agregar archivos Office a la lista existente
+      if (officeFiles.length > 0) {
+        const currentOfficeFiles = this.selectedOfficeFiles();
+        const newOfficeFiles = [...currentOfficeFiles, ...officeFiles];
+        this.selectedOfficeFiles.set(newOfficeFiles);
+      }
+      
+      // Actualizar lista combinada para compatibilidad
+      const allSelectedFiles = [...this.selectedImages(), ...this.selectedOfficeFiles()];
+      this.selectedFiles.set(allSelectedFiles);
+      
+      // Limpiar error si todo está bien
+      if (invalidFiles.length === 0) {
+        this.error.set(null);
+      }
     } else {
       // Si no hay archivos seleccionados y estamos en modo edición, cargar desde almacenamiento
       if (this.isEditMode() && this.evidenciaId()) {
         this.loadStoredImages(this.evidenciaId()!);
       } else {
         this.selectedFiles.set([]);
+        this.selectedImages.set([]);
+        this.selectedOfficeFiles.set([]);
         this.previewUrls.set([]);
         this.currentImageIndex.set(0);
       }
@@ -372,21 +421,60 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   removeImage(index: number): void {
-    const files = this.selectedFiles();
+    const images = this.selectedImages();
     const previews = this.previewUrls();
     
-    // Si estamos en modo edición, solo podemos remover imágenes que aún no se han guardado
-    // Por simplicidad, permitimos remover cualquier imagen
-    files.splice(index, 1);
+    images.splice(index, 1);
     previews.splice(index, 1);
     
-    this.selectedFiles.set([...files]);
+    this.selectedImages.set([...images]);
     this.previewUrls.set([...previews]);
+    
+    // Actualizar lista combinada
+    const allSelectedFiles = [...this.selectedImages(), ...this.selectedOfficeFiles()];
+    this.selectedFiles.set(allSelectedFiles);
     
     // Ajustar el índice actual si es necesario
     if (this.currentImageIndex() >= previews.length) {
       this.currentImageIndex.set(Math.max(0, previews.length - 1));
     }
+  }
+  
+  removeOfficeFile(index: number): void {
+    const officeFiles = this.selectedOfficeFiles();
+    officeFiles.splice(index, 1);
+    this.selectedOfficeFiles.set([...officeFiles]);
+    
+    // Actualizar lista combinada
+    const allSelectedFiles = [...this.selectedImages(), ...this.selectedOfficeFiles()];
+    this.selectedFiles.set(allSelectedFiles);
+  }
+  
+  getFileIcon(fileName: string): string {
+    const ext = fileName.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'doc':
+      case 'docx':
+        return 'description'; // Word
+      case 'xls':
+      case 'xlsx':
+        return 'table_chart'; // Excel
+      case 'ppt':
+      case 'pptx':
+        return 'slideshow'; // PowerPoint
+      case 'pdf':
+        return 'picture_as_pdf'; // PDF
+      default:
+        return 'insert_drive_file';
+    }
+  }
+  
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   }
 
   previousImage(): void {
@@ -478,16 +566,20 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
           }
         });
       } else {
-        // Modo creación: requiere al menos una imagen
-        if (files.length === 0) {
-          this.error.set('Debe seleccionar al menos una imagen para guardar la evidencia');
+        // Modo creación: requiere al menos un archivo (imagen o Office)
+        const images = this.selectedImages();
+        const officeFiles = this.selectedOfficeFiles();
+        
+        if (images.length === 0 && officeFiles.length === 0) {
+          this.error.set('Debe seleccionar al menos una imagen o archivo Office para guardar la evidencia');
           this.loading.set(false);
           return;
         }
         
         // Crear una evidencia por cada tipo seleccionado
         // El backend solo acepta un tipo por evidencia, así que creamos múltiples evidencias
-        this.createMultipleEvidencias(tiposSeleccionados, baseData, files);
+        // Primero enviar imágenes, luego archivos Office
+        this.createMultipleEvidencias(tiposSeleccionados, baseData, images, officeFiles);
       }
     } else {
       this.form.markAllAsTouched();
@@ -530,63 +622,123 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   private createMultipleEvidencias(
     tiposIds: number[], 
     baseData: Omit<EvidenciaCreate, 'idTipoEvidencia'>, 
-    files: File[]
+    images: File[],
+    officeFiles: File[]
   ): void {
-    // Crear evidencias secuencialmente
-    let completed = 0;
-    let firstEvidenciaId: number | null = null;
-    const total = tiposIds.length;
-    const filesPerEvidencia = Math.ceil(files.length / total); // Distribuir archivos entre evidencias
+    // Crear UNA SOLA evidencia usando el primer tipo seleccionado
+    // Esta evidencia contendrá TODAS las imágenes y TODOS los archivos Office
+    if (images.length === 0 && officeFiles.length === 0) {
+      this.error.set('Debe seleccionar al menos una imagen o archivo Office');
+      this.loading.set(false);
+      return;
+    }
 
-    tiposIds.forEach((tipoId, tipoIndex) => {
-      const data: EvidenciaCreate = {
-        ...baseData,
-        idTipoEvidencia: tipoId
-      };
+    // Usar el primer tipo seleccionado para crear la evidencia
+    const tipoId = tiposIds[0];
+    if (!tipoId) {
+      this.error.set('Debe seleccionar al menos un tipo de evidencia');
+      this.loading.set(false);
+      return;
+    }
 
-      // Usar el primer archivo para crear la evidencia en el backend
-      const fileToUpload = files[0];
+    const data: EvidenciaCreate = {
+      ...baseData,
+      idTipoEvidencia: tipoId
+    };
 
-      this.evidenciaService.upload(fileToUpload, data).subscribe({
-        next: async (evidenciaCreada) => {
-          if (tipoIndex === 0) {
-            firstEvidenciaId = evidenciaCreada.idEvidencia;
-          }
+    // Estrategia: Enviar la primera imagen al backend (o el primer archivo Office si no hay imágenes)
+    // Guardar todas las imágenes y archivos Office restantes en IndexedDB
+    const fileToUpload = images.length > 0 ? images[0] : officeFiles[0];
+    
+    console.log(`📤 Creando UNA evidencia (tipo ${tipoId}) con ${images.length} imagen(es) y ${officeFiles.length} archivo(s) Office`);
+    
+    if (!fileToUpload) {
+      console.error('❌ No hay archivos para subir');
+      this.error.set('Debe seleccionar al menos un archivo');
+      this.loading.set(false);
+      return;
+    }
 
-          // Guardar todas las imágenes para esta evidencia
-          // Si hay múltiples tipos, guardamos todas las imágenes en la primera evidencia
-          // Si solo hay un tipo, guardamos todas las imágenes en esa evidencia
-          if (tipoIndex === 0 || total === 1) {
-            try {
-              // Guardar todas las imágenes en IndexedDB
-              for (let i = 0; i < files.length; i++) {
-                await this.imageStorageService.saveImage(evidenciaCreada.idEvidencia, files[i], i);
-              }
-              console.log(`✅ Evidencia ${tipoIndex + 1}/${total} creada con ${files.length} imagen(es) guardada(s)`);
-            } catch (error) {
-              console.error('❌ Error al guardar imágenes:', error);
+    // Usar upload (un solo archivo) para crear la evidencia en el backend
+    this.evidenciaService.upload(fileToUpload, data).subscribe({
+      next: async (evidenciaCreada) => {
+        try {
+          console.log(`✅ Evidencia creada con ID: ${evidenciaCreada.idEvidencia}`);
+          
+          // Guardar TODAS las imágenes en IndexedDB (incluyendo la primera que ya se subió al backend)
+          if (images.length > 0) {
+            console.log(`💾 Guardando ${images.length} imagen(es) en IndexedDB...`);
+            for (let i = 0; i < images.length; i++) {
+              await this.imageStorageService.saveImage(evidenciaCreada.idEvidencia, images[i], i);
             }
+            console.log(`✅ ${images.length} imagen(es) guardada(s) en IndexedDB`);
+          }
+          
+          // Guardar TODOS los archivos Office en IndexedDB
+          if (officeFiles.length > 0) {
+            console.log(`💾 Guardando ${officeFiles.length} archivo(s) Office en IndexedDB...`);
+            for (let i = 0; i < officeFiles.length; i++) {
+              await this.imageStorageService.saveOfficeFile(evidenciaCreada.idEvidencia, officeFiles[i], i);
+            }
+            console.log(`✅ ${officeFiles.length} archivo(s) Office guardado(s) en IndexedDB`);
+          }
+          
+          console.log(`🎉 Evidencia única creada exitosamente: ${images.length} imagen(es) y ${officeFiles.length} archivo(s) Office`);
+          
+          this.loading.set(false);
+          if (this.onSuccess) {
+            this.onSuccess();
           } else {
-            console.log(`✅ Evidencia ${tipoIndex + 1}/${total} creada`);
+            this.router.navigate(['/evidencias']);
           }
-
-          completed++;
-          if (completed === total) {
-            // Todas las evidencias fueron creadas
-            if (this.onSuccess) {
-              this.onSuccess();
-            } else {
-              this.router.navigate(['/evidencias']);
-            }
-          }
-        },
-        error: (err: any) => {
-          console.error(`Error creando evidencia ${tipoIndex + 1}/${total}:`, err);
-          const errorMessage = err.error?.message || `Error al crear la evidencia ${tipoIndex + 1}`;
-          this.error.set(errorMessage);
+        } catch (error) {
+          console.error('❌ Error al guardar archivos en IndexedDB:', error);
+          this.error.set('Error al guardar los archivos de la evidencia');
           this.loading.set(false);
         }
-      });
+      },
+      error: (err: any) => {
+        console.error(`❌ Error creando evidencia (tipo ${tipoId}):`, err);
+        console.error('❌ Detalles del error:', {
+          status: err.status,
+          statusText: err.statusText,
+          error: err.error,
+          message: err.message,
+          url: err.url,
+          headers: err.headers
+        });
+        
+        let errorMessage = 'Error al crear la evidencia';
+        
+        // Intentar extraer el mensaje de error del backend
+        if (err.error) {
+          if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          } else if (err.error.message) {
+            errorMessage = err.error.message;
+          } else if (err.error.Message) {
+            errorMessage = err.error.Message;
+          } else if (err.error.errors) {
+            const errors = Object.values(err.error.errors).flat();
+            errorMessage = errors.join(', ');
+          } else if (err.error.title) {
+            errorMessage = err.error.title;
+          } else if (err.error.detail) {
+            errorMessage = err.error.detail;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        // Agregar información adicional si está disponible
+        if (err.status) {
+          errorMessage += ` (Código: ${err.status})`;
+        }
+        
+        console.error('❌ Mensaje de error final:', errorMessage);
+        this.error.set(errorMessage);
+        this.loading.set(false);
+      }
     });
   }
 }

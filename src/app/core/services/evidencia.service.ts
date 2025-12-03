@@ -213,10 +213,22 @@ export class EvidenciaService {
   }
 
   upload(file: File, data: EvidenciaCreate): Observable<Evidencia> {
+    return this.uploadMultiple([file], data);
+  }
+  
+  uploadMultiple(files: File[], data: EvidenciaCreate): Observable<Evidencia> {
     const formData = new FormData();
 
     // El backend espera "Archivo" (y/o "Archivos") en EvidenciaCreateDto
-    formData.append('Archivo', file);
+    // Si hay múltiples archivos, usar "Archivos", si hay uno solo, usar "Archivo"
+    if (files.length === 1) {
+      formData.append('Archivo', files[0]);
+    } else if (files.length > 1) {
+      // Agregar todos los archivos con el mismo nombre "Archivos"
+      files.forEach((file) => {
+        formData.append('Archivos', file);
+      });
+    }
 
     // Mapear campos al DTO del backend (case-insensitive, pero usamos PascalCase por claridad)
     if (data.idProyecto !== undefined && data.idProyecto !== null) {

@@ -103,38 +103,46 @@
               placeholder="Descripción de la evidencia"></textarea>
           </div>
 
-          <!-- Upload de Archivo -->
+          <!-- Upload de Archivos -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Archivos (Imágenes)
+              Archivos (Imágenes y Documentos Office)
             </label>
             <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition">
               <div class="space-y-1 text-center">
                 <app-icon icon="cloud_upload" size="lg" color="slate-400"></app-icon>
                 <div class="flex text-sm text-gray-600">
                   <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                    <span>Seleccione una o más imágenes</span>
+                    <span>Seleccione imágenes o archivos Office</span>
                     <input 
                       id="file-upload" 
                       name="file-upload" 
                       type="file" 
                       class="sr-only"
                       (change)="onFileSelected($event)"
-                      accept="image/*"
+                      accept="image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf"
                       multiple>
                   </label>
-                  <p class="pl-1">o arrástrelas aquí</p>
+                  <p class="pl-1">o arrástrelos aquí</p>
                 </div>
-                @if (selectedFiles().length > 0) {
-                  <p class="text-xs text-gray-500">{{ selectedFiles().length }} imagen(es) seleccionada(s)</p>
+                <p class="text-xs text-gray-500">
+                  Formatos permitidos: Imágenes (JPG, PNG, GIF) y Documentos (Word, Excel, PowerPoint, PDF)
+                </p>
+                @if (selectedImages().length > 0 || selectedOfficeFiles().length > 0) {
+                  <p class="text-xs text-gray-500 mt-2">
+                    {{ selectedImages().length }} imagen(es) y {{ selectedOfficeFiles().length }} archivo(s) Office seleccionado(s)
+                  </p>
                 }
               </div>
             </div>
             
-            <!-- Vista Previa con Navegación -->
+            <!-- Sección de Imágenes -->
             @if (previewUrls().length > 0) {
               <div class="mt-4 bg-white rounded-lg border border-gray-300 p-4">
-                <h3 class="text-sm font-medium text-gray-700 mb-3">Vista Previa</h3>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <app-icon icon="image" size="sm" color="slate-600"></app-icon>
+                  Imágenes ({{ selectedImages().length }})
+                </h3>
                 
                 <!-- Imagen Actual -->
                 <div class="relative mb-4">
@@ -146,49 +154,84 @@
                 </div>
                 
                 <!-- Controles de Navegación -->
-                <div class="flex items-center justify-center gap-4">
-                  <button
-                    type="button"
-                    (click)="previousImage()"
-                    [disabled]="!canGoPrevious()"
-                    class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
-                    <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
-                    <span>Atrás</span>
-                  </button>
-                  
-                  <span class="text-sm font-medium text-gray-700">
-                    {{ currentImageNumber }}/{{ totalImages }}
-                  </span>
-                  
-                  <button
-                    type="button"
-                    (click)="nextImage()"
-                    [disabled]="!canGoNext()"
-                    class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
-                    <span>Adelante</span>
-                    <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
-                  </button>
-                </div>
-                
-                <!-- Lista de imágenes seleccionadas -->
-                @if (selectedFiles().length > 0) {
-                  <div class="mt-4 pt-4 border-t border-gray-200">
-                    <p class="text-xs text-gray-500 mb-2">Imágenes seleccionadas:</p>
-                    <div class="flex flex-wrap gap-2">
-                      @for (file of selectedFiles(); track $index) {
-                        <div class="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
-                          <span>{{ file.name }}</span>
-                          <button
-                            type="button"
-                            (click)="removeImage($index)"
-                            class="text-red-600 hover:text-red-800">
-                            <app-icon icon="close" size="xs" color="red-600"></app-icon>
-                          </button>
-                        </div>
-                      }
-                    </div>
+                @if (previewUrls().length > 1) {
+                  <div class="flex items-center justify-center gap-4 mb-4">
+                    <button
+                      type="button"
+                      (click)="previousImage()"
+                      [disabled]="!canGoPrevious()"
+                      class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                      <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
+                      <span>Atrás</span>
+                    </button>
+                    
+                    <span class="text-sm font-medium text-gray-700">
+                      {{ currentImageNumber }}/{{ totalImages }}
+                    </span>
+                    
+                    <button
+                      type="button"
+                      (click)="nextImage()"
+                      [disabled]="!canGoNext()"
+                      class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                      <span>Adelante</span>
+                      <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
+                    </button>
                   </div>
                 }
+                
+                <!-- Lista de imágenes seleccionadas -->
+                <div class="pt-4 border-t border-gray-200">
+                  <p class="text-xs text-gray-500 mb-2">Imágenes seleccionadas:</p>
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    @for (file of selectedImages(); track $index; let i = $index) {
+                      <div class="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
+                        <app-icon icon="image" size="xs" color="slate-600"></app-icon>
+                        <span class="truncate flex-1" [title]="file.name">{{ file.name }}</span>
+                        <button
+                          type="button"
+                          (click)="removeImage(i)"
+                          class="text-red-600 hover:text-red-800 flex-shrink-0">
+                          <app-icon icon="close" size="xs" color="red-600"></app-icon>
+                        </button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+            
+            <!-- Sección de Archivos Office -->
+            @if (selectedOfficeFiles().length > 0) {
+              <div class="mt-4 bg-white rounded-lg border border-gray-300 p-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <app-icon icon="insert_drive_file" size="sm" color="slate-600"></app-icon>
+                  Archivos Office ({{ selectedOfficeFiles().length }})
+                </h3>
+                
+                <div class="space-y-2">
+                  @for (file of selectedOfficeFiles(); track $index; let i = $index) {
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
+                      <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <app-icon [icon]="getFileIcon(file.name)" size="md" color="blue-600"></app-icon>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm font-medium text-gray-900 truncate" [title]="file.name">
+                            {{ file.name }}
+                          </p>
+                          <p class="text-xs text-gray-500">
+                            {{ formatFileSize(file.size) }}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        (click)="removeOfficeFile(i)"
+                        class="ml-2 text-red-600 hover:text-red-800 flex-shrink-0 p-1">
+                        <app-icon icon="close" size="sm" color="red-600"></app-icon>
+                      </button>
+                    </div>
+                  }
+                </div>
               </div>
             }
           </div>

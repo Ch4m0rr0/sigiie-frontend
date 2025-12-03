@@ -27,6 +27,7 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   imageUrls = signal<string[]>([]);
   currentImageIndex = signal<number>(0);
   imageError = signal(false);
+  officeFiles = signal<Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>>([]);
   private objectUrls: string[] = [];
 
   ngOnInit(): void {
@@ -65,6 +66,12 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
           this.currentImageIndex.set(0);
           console.log('⚠️ No se encontraron imágenes almacenadas');
         }
+        
+        // Cargar todos los archivos Office desde IndexedDB
+        const storedOfficeFiles = await this.imageStorageService.getAllOfficeFiles(data.idEvidencia);
+        console.log(`📄 Cargados ${storedOfficeFiles.length} archivo(s) Office para evidencia ${data.idEvidencia}`);
+        this.officeFiles.set(storedOfficeFiles);
+        
         this.loading.set(false);
       },
       error: (err) => {
@@ -190,6 +197,56 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
 
   canGoNext(): boolean {
     return this.currentImageIndex() < this.imageUrls().length - 1;
+  }
+
+  async downloadOfficeFile(fileIndex: number): Promise<void> {
+    const evidencia = this.evidencia();
+    if (!evidencia) {
+      alert('No se puede descargar: Sin evidencia');
+      return;
+    }
+
+    try {
+      const blob = await this.imageStorageService.getOfficeFileBlob(evidencia.idEvidencia, fileIndex);
+      if (!blob) {
+        alert('No se puede descargar: Archivo no encontrado');
+        return;
+      }
+
+      const officeFiles = this.officeFiles();
+      const file = officeFiles.find(f => f.fileIndex === fileIndex);
+      const fileName = file?.fileName || `archivo_${fileIndex}`;
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      
+      console.log(`✅ Archivo Office descargado: ${fileName}`);
+    } catch (error) {
+      console.error('Error al descargar archivo Office:', error);
+      alert('Error al descargar el archivo');
+    }
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  getFileIcon(mimeType: string): string {
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'description';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'table_chart';
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'slideshow';
+    if (mimeType.includes('pdf')) return 'picture_as_pdf';
+    return 'insert_drive_file';
   }
 }
 
