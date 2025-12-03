@@ -852,22 +852,31 @@ export class ParticipacionesListComponent implements OnInit {
 
   // Exportar plantilla para importar participantes
   exportarPlantillaParticipantes(): void {
-    const headers = ['Tipo Participante', 'ID Estudiante', 'ID Docente', 'ID Administrativo', 
-                     'Categoría Participación', 'Estado Participación', 'Fecha Participación',
-                     'Grupo Número', 'ID Rol Equipo', 'ID Tutor'];
-    
-    const csvContent = headers.join(',') + '\n' +
-      'Estudiante,12345,,,1,1,' + new Date().toISOString().split('T')[0] + ',,,\n';
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'plantilla_importar_participantes.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Descargar la plantilla directamente del backend (incluye dropdowns y validaciones)
+    this.reportesService.obtenerPlantillaParticipantesActividad().subscribe({
+      next: (blob: Blob) => {
+        console.log('✅ Plantilla descargada del backend, tamaño:', blob.size);
+        
+        // Crear URL del blob y descargar
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'plantilla_importar_participantes.xlsx'; // El backend devuelve Excel
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Liberar la URL del blob después de un tiempo
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 100);
+      },
+      error: (err: any) => {
+        console.error('❌ Error descargando plantilla:', err);
+        this.alertService.error('Error', 'No se pudo descargar la plantilla. Por favor intenta nuevamente.');
+      }
+    });
   }
 
   // Filtrar resumen por búsqueda

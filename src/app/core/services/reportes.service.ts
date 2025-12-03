@@ -304,6 +304,30 @@ export class ReportesService {
   }
 
   /**
+   * GET /api/exportar/plantillas/participantes-actividad
+   * Obtener plantilla de participantes para actividad (con dropdowns y validaciones)
+   */
+  obtenerPlantillaParticipantesActividad(): Observable<Blob> {
+    console.log('🔄 GET Plantilla Participantes Actividad - URL:', `${this.exportarUrl}/plantillas/participantes-actividad`);
+    
+    return this.http.get<Blob>(`${this.exportarUrl}/plantillas/participantes-actividad`, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }).pipe(
+      map(blob => {
+        console.log('✅ GET Plantilla Participantes Actividad - Archivo recibido, tamaño:', blob.size);
+        return blob;
+      }),
+      catchError(error => {
+        console.error('❌ GET Plantilla Participantes Actividad - Error:', error);
+        return this.handleBlobError(error);
+      })
+    );
+  }
+
+  /**
    * POST /api/exportar/importar/participantes?idSubactividad={id}
    * Importar participantes desde Excel para subactividad
    */
