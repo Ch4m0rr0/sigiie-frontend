@@ -963,24 +963,27 @@ export class PersonasService {
       throw new Error('Faltan campos requeridos para crear el responsable externo (nombre, institucion)');
     }
 
-    // Convertir a camelCase según la documentación del backend
+    // El backend espera PascalCase según la documentación
     const dto: any = {
-      nombre: responsable.nombre.trim(),
-      institucion: responsable.institucion.trim()
+      Nombre: responsable.nombre.trim(),
+      Institucion: responsable.institucion.trim()
     };
     
     // Campos opcionales - solo incluir si tienen valor
     if (responsable.cargo && responsable.cargo.trim()) {
-      dto.cargo = responsable.cargo.trim();
+      dto.Cargo = responsable.cargo.trim();
     }
     
     if (responsable.telefono && responsable.telefono.trim()) {
-      dto.telefono = responsable.telefono.trim();
+      dto.Telefono = responsable.telefono.trim();
     }
     
     if (responsable.correo && responsable.correo.trim()) {
-      dto.correo = responsable.correo.trim();
+      dto.Correo = responsable.correo.trim();
     }
+    
+    console.log('🔄 CREATE ResponsableExterno - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 CREATE ResponsableExterno - URL:', `${this.apiUrl}/responsable-externo`);
     
     return this.http.post<any>(`${this.apiUrl}/responsable-externo`, dto).pipe(
       map(item => {
@@ -995,29 +998,81 @@ export class PersonasService {
   }
 
   updateResponsableExterno(id: number, responsable: Partial<ResponsableExterno>): Observable<ResponsableExterno> {
+    // El backend espera PascalCase según la documentación
     const dto: any = {};
     
     if (responsable.nombre !== undefined && responsable.nombre && responsable.nombre.trim()) {
-      dto.nombre = responsable.nombre.trim();
+      dto.Nombre = responsable.nombre.trim();
     }
     if (responsable.institucion !== undefined && responsable.institucion && responsable.institucion.trim()) {
-      dto.institucion = responsable.institucion.trim();
+      dto.Institucion = responsable.institucion.trim();
     }
     if (responsable.cargo !== undefined && responsable.cargo && responsable.cargo.trim()) {
-      dto.cargo = responsable.cargo.trim();
+      dto.Cargo = responsable.cargo.trim();
     }
     if (responsable.telefono !== undefined && responsable.telefono && responsable.telefono.trim()) {
-      dto.telefono = responsable.telefono.trim();
+      dto.Telefono = responsable.telefono.trim();
     }
     if (responsable.correo !== undefined && responsable.correo && responsable.correo.trim()) {
-      dto.correo = responsable.correo.trim();
+      dto.Correo = responsable.correo.trim();
     }
     if (responsable.activo !== undefined) {
-      dto.activo = Boolean(responsable.activo);
+      dto.Activo = Boolean(responsable.activo);
     }
     
-    return this.http.put<any>(`${this.apiUrl}/responsable-externo/${id}`, dto).pipe(
-      map(item => this.mapResponsableExterno(item)),
+    console.log('🔄 UPDATE ResponsableExterno - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 UPDATE ResponsableExterno - ID:', id);
+    console.log('🔄 UPDATE ResponsableExterno - URL:', `${this.apiUrl}/responsable-externo/${id}`);
+    
+    return this.http.put<any>(`${this.apiUrl}/responsable-externo/${id}`, dto, { observe: 'response' }).pipe(
+      switchMap(response => {
+        console.log('✅ PUT ResponsableExterno - Status:', response.status);
+        console.log('✅ PUT ResponsableExterno - Respuesta recibida:', response.body);
+        
+        // Si el backend devuelve NoContent (204), obtener el responsable actualizado
+        if (response.status === 204 || !response.body || response.body === null || response.body === undefined) {
+          console.log('🔄 PUT ResponsableExterno - Respuesta NoContent (204), obteniendo responsable actualizado desde el servidor...');
+          return this.getResponsableExterno(id).pipe(
+            map(responsable => {
+              if (!responsable) {
+                throw new Error(`No se pudo obtener el responsable externo actualizado con ID ${id}`);
+              }
+              return responsable;
+            })
+          );
+        }
+        
+        // Extraer el item de la respuesta
+        const item = response.body?.data || response.body;
+        
+        // Si la respuesta es vacía, obtener el responsable actualizado
+        if (!item || item === null || item === undefined || (typeof item === 'object' && Object.keys(item).length === 0)) {
+          console.log('🔄 PUT ResponsableExterno - Respuesta vacía, obteniendo responsable actualizado desde el servidor...');
+          return this.getResponsableExterno(id).pipe(
+            map(responsable => {
+              if (!responsable) {
+                throw new Error(`No se pudo obtener el responsable externo actualizado con ID ${id}`);
+              }
+              return responsable;
+            })
+          );
+        }
+        
+        // Si tenemos un item válido, mapearlo
+        try {
+          return of(this.mapResponsableExterno(item));
+        } catch (error) {
+          console.error('❌ Error mapeando responsable externo, obteniendo desde el servidor...', error);
+          return this.getResponsableExterno(id).pipe(
+            map(responsable => {
+              if (!responsable) {
+                throw new Error(`No se pudo obtener el responsable externo actualizado con ID ${id}`);
+              }
+              return responsable;
+            })
+          );
+        }
+      }),
       catchError(error => {
         console.error('Error updating responsable externo:', error);
         throw error;
@@ -1026,10 +1081,20 @@ export class PersonasService {
   }
 
   deleteResponsableExterno(id: number): Observable<boolean> {
-    return this.http.delete<any>(`${this.apiUrl}/responsable-externo/${id}`).pipe(
-      map(() => true),
+    return this.http.delete<any>(`${this.apiUrl}/responsable-externo/${id}`, { observe: 'response' }).pipe(
+      map(response => {
+        // El backend devuelve NoContent (204) cuando se elimina exitosamente
+        if (response.status === 204 || response.status === 200) {
+          console.log('✅ DELETE ResponsableExterno - Eliminado exitosamente (Status:', response.status, ')');
+          return true;
+        }
+        return true;
+      }),
       catchError(error => {
-        console.error('Error deleting responsable externo:', error);
+        console.error('❌ Error deleting responsable externo:', error);
+        if (error.status === 404) {
+          console.warn('⚠️ Responsable externo no encontrado (404)');
+        }
         throw error;
       })
     );

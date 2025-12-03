@@ -144,7 +144,8 @@ export class PersonaFormComponent implements OnInit {
         institucion: ['', [Validators.required, Validators.minLength(3)]],
         cargo: [''], // Opcional
         telefono: [''], // Opcional
-        correo: ['', Validators.email] // Opcional pero con validación de email
+        correo: ['', Validators.email], // Opcional pero con validación de email
+        activo: [true] // Solo en update
       });
     }
   }
@@ -910,13 +911,25 @@ export class PersonaFormComponent implements OnInit {
           activo: formValue.activo ?? true
         };
         
+        console.log('🔄 UPDATE Responsable Externo - Datos del formulario:', formValue);
+        console.log('🔄 UPDATE Responsable Externo - Datos a enviar:', responsableData);
+        
         this.personasService.updateResponsableExterno(id, responsableData).subscribe({
-          next: () => {
-            this.router.navigate(['/personas']);
+          next: (responsableActualizado) => {
+            console.log('✅ Responsable Externo actualizado exitosamente:', responsableActualizado);
+            this.saving.set(false);
+            this.router.navigate(['/personas'], { queryParams: { tipo: 'responsables-externos' } });
           },
           error: (err: any) => {
-            console.error('Error updating responsable externo:', err);
-            this.error.set(err.error?.message || 'Error al actualizar. Por favor, intenta nuevamente.');
+            console.error('❌ Error updating responsable externo:', err);
+            console.error('❌ Error completo:', JSON.stringify(err, null, 2));
+            if (err.error) {
+              console.error('❌ Error body:', err.error);
+              if (err.error.errors) {
+                console.error('❌ Errores de validación:', err.error.errors);
+              }
+            }
+            this.error.set(err.error?.message || err.message || 'Error al actualizar. Por favor, intenta nuevamente.');
             this.saving.set(false);
           }
         });
@@ -1153,12 +1166,26 @@ export class PersonaFormComponent implements OnInit {
           activo: true // Por defecto activo (no se envía en POST, solo para el modelo)
         };
         
+        console.log('🔄 CREATE Responsable Externo - Datos del formulario:', formValue);
+        console.log('🔄 CREATE Responsable Externo - Datos a enviar:', responsableData);
+        
         this.personasService.createResponsableExterno(responsableData).subscribe({
-          next: () => {
-            this.router.navigate(['/personas']);
+          next: (responsableCreado) => {
+            console.log('✅ Responsable Externo creado exitosamente:', responsableCreado);
+            this.saving.set(false);
+            this.router.navigate(['/personas'], { queryParams: { tipo: 'responsables-externos' } });
           },
           error: (err: any) => {
+            console.error('❌ Error creating responsable externo:', err);
+            console.error('❌ Error completo:', JSON.stringify(err, null, 2));
+            if (err.error) {
+              console.error('❌ Error body:', err.error);
+              if (err.error.errors) {
+                console.error('❌ Errores de validación:', err.error.errors);
+              }
+            }
             this.handleCreateError(err);
+            this.saving.set(false);
           }
         });
       }
@@ -1252,7 +1279,8 @@ export class PersonaFormComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.router.navigate(['/personas']);
+    const tipo = this.tipoPersona();
+    this.router.navigate(['/personas'], { queryParams: { tipo: tipo } });
   }
 
   getTipoLabel(): string {
