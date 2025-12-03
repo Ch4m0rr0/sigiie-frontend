@@ -44,7 +44,7 @@ export class ParticipacionesListComponent implements OnInit {
 
   // Vista principal: Cards de actividades/subactividades
   resumenParticipantes = signal<any[]>([]);
-  loadingResumen = signal(false);
+  loadingResumen = signal(true); // Iniciar en true para mostrar loading inicial
   busquedaParticipantes = signal<string>('');
   vistaGestion = signal<{ tipo: 'actividad' | 'subactividad', id: number, nombre: string } | null>(null);
   
@@ -95,32 +95,53 @@ export class ParticipacionesListComponent implements OnInit {
   ngOnInit(): void {
     this.initializeFormParticipante();
     
+    // Primero cargar los catálogos, luego cargar el resumen
+    this.loadCatalogos();
+    
     // Leer query params para filtrar por actividad si viene desde el detalle
     this.route.queryParams.subscribe(params => {
       if (params['idActividad']) {
-        // Si viene con idActividad, abrir directamente la vista de gestión
+        // Si viene con idActividad, esperar a que los catálogos se carguen primero
+        // y luego abrir la vista de gestión
         const actividadId = +params['idActividad'];
-        this.actividadesService.getById(actividadId).subscribe({
-          next: (actividad) => {
-            if (actividad) {
-              this.abrirGestionParticipantes('actividad', actividadId, actividad.nombre);
-            } else {
-              this.loadResumenParticipantes();
-            }
-          },
-          error: () => {
-            this.loadResumenParticipantes();
+        // Esperar a que los catálogos estén cargados antes de abrir la vista
+        const checkCatalogos = () => {
+          if (this.actividades().length > 0 || this.subactividades().length > 0) {
+            this.actividadesService.getById(actividadId).subscribe({
+              next: (actividad) => {
+                if (actividad) {
+                  this.abrirGestionParticipantes('actividad', actividadId, actividad.nombre);
+                } else {
+                  this.loadResumenParticipantes();
+                }
+              },
+              error: () => {
+                this.loadResumenParticipantes();
+              }
+            });
+          } else {
+            // Si aún no están cargados, esperar un poco más
+            setTimeout(checkCatalogos, 200);
           }
-        });
+        };
+        checkCatalogos();
       } else {
-        this.loadResumenParticipantes();
+        // Para la vista principal, esperar a que los catálogos se carguen
+        const checkCatalogos = () => {
+          if (this.actividades().length > 0 || this.subactividades().length > 0) {
+            this.loadResumenParticipantes();
+          } else {
+            // Si aún no están cargados, esperar un poco más
+            setTimeout(checkCatalogos, 200);
+          }
+        };
+        checkCatalogos();
       }
     });
-    
-    this.loadCatalogos();
   }
 
   loadCatalogos(): void {
+    console.log('📚 Cargando catálogos...');
     forkJoin({
       estudiantes: this.personasService.listEstudiantes(),
       docentes: this.personasService.listDocentes(),
@@ -132,6 +153,13 @@ export class ParticipacionesListComponent implements OnInit {
       subactividades: this.subactividadService.getAll()
     }).subscribe({
       next: (data) => {
+        console.log('✅ Catálogos cargados:', {
+          estudiantes: data.estudiantes.length,
+          docentes: data.docentes.length,
+          administrativos: data.administrativos.length,
+          actividades: data.actividades.length,
+          subactividades: data.subactividades.length
+        });
         this.estudiantes.set(data.estudiantes);
         this.docentes.set(data.docentes);
         this.administrativos.set(data.administrativos);
@@ -140,10 +168,16 @@ export class ParticipacionesListComponent implements OnInit {
         this.ediciones.set(data.ediciones);
         this.actividades.set(data.actividades);
         this.subactividades.set(data.subactividades);
+        
+        // Una vez que los catálogos están cargados, cargar el resumen si no hay vista de gestión activa
+        if (!this.vistaGestion()) {
+          this.loadResumenParticipantes();
+        }
       },
       error: (err) => {
         console.error('Error loading catalogos:', err);
         this.errorParticipantes.set('Error al cargar los catálogos');
+        this.loadingResumen.set(false);
       }
     });
   }
@@ -153,21 +187,36 @@ export class ParticipacionesListComponent implements OnInit {
   
   // Cargar resumen de actividades/subactividades con participantes
   loadResumenParticipantes(): void {
+    // No cargar si ya hay una vista de gestión activa
+    if (this.vistaGestion()) {
+      return;
+    }
+    
     this.loadingResumen.set(true);
     this.errorParticipantes.set(null);
 
     // Verificar que las actividades y subactividades estén cargadas
     if (this.actividades().length === 0 && this.subactividades().length === 0) {
       console.log('⚠️ No hay actividades ni subactividades cargadas aún, esperando...');
+      // Mantener loading en true mientras esperamos
       // Esperar un poco y reintentar si los catálogos aún no están cargados
-      setTimeout(() => {
-        if (this.actividades().length === 0 && this.subactividades().length === 0) {
+      let intentos = 0;
+      const maxIntentos = 10; // Máximo 5 segundos (10 * 500ms)
+      const checkAndRetry = () => {
+        intentos++;
+        if (this.actividades().length > 0 || this.subactividades().length > 0) {
+          console.log('✅ Actividades/subactividades cargadas, cargando resumen...');
+          // Llamar recursivamente para cargar el resumen ahora que hay datos
+          this.loadResumenParticipantes();
+        } else if (intentos < maxIntentos) {
+          setTimeout(checkAndRetry, 500);
+        } else {
+          console.log('⚠️ No hay actividades ni subactividades después de varios intentos');
           this.errorParticipantes.set('No hay actividades o subactividades disponibles');
           this.loadingResumen.set(false);
-        } else {
-          this.loadResumenParticipantes();
         }
-      }, 1000);
+      };
+      setTimeout(checkAndRetry, 500);
       return;
     }
 
@@ -280,7 +329,13 @@ export class ParticipacionesListComponent implements OnInit {
 
   // Abrir vista de gestión para una actividad o subactividad
   abrirGestionParticipantes(tipo: 'actividad' | 'subactividad', id: number, nombre: string): void {
+    console.log('🔓 Abriendo vista de gestión:', { tipo, id, nombre });
     this.vistaGestion.set({ tipo, id, nombre });
+    // Limpiar datos anteriores
+    this.participantesLista.set([]);
+    this.participantesFiltrados.set([]);
+    this.errorParticipantes.set(null);
+    // Cargar participantes
     this.loadParticipantesPorItem(tipo, id);
   }
 
@@ -298,6 +353,8 @@ export class ParticipacionesListComponent implements OnInit {
     this.mostrarTodos.set(false);
     // Limpiar query params
     this.router.navigate(['/participaciones'], { replaceUrl: true });
+    // Recargar el resumen para actualizar las cards
+    this.loadResumenParticipantes();
   }
 
   // Cargar participantes de una actividad o subactividad
