@@ -26,7 +26,7 @@
             type="text"
             [value]="busqueda()"
             (input)="onBusquedaChange($any($event.target).value)"
-            [placeholder]="selectedTipo() === 'estudiantes' ? 'Buscar por nombre, matrícula o correo...' : 'Buscar por nombre o correo...'"
+            [placeholder]="selectedTipo() === 'estudiantes' ? 'Buscar por nombre...' : selectedTipo() === 'responsables-externos' ? 'Buscar por nombre...' : 'Buscar por nombre...'"
             class="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
           >
         </div>
@@ -43,7 +43,7 @@
 
   <!-- Estadísticas Rápidas -->
   @if (!isLoading()) {
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <div class="flex items-center justify-between">
           <div>
@@ -86,6 +86,20 @@
           </div>
         </div>
       </div>
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">Responsables Externos</p>
+            <p class="text-2xl font-bold text-slate-900">{{ estadisticas().totalResponsablesExternos }}</p>
+            <p class="text-xs text-slate-500 mt-1">
+              <span class="text-green-600 font-medium">{{ estadisticas().activosResponsablesExternos }}</span> activos
+            </p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center">
+            <app-icon icon="person" size="md" class="text-orange-600"></app-icon>
+          </div>
+        </div>
+      </div>
     </div>
   }
 
@@ -119,6 +133,14 @@
                 ? 'bg-blue-600 text-white shadow-sm' 
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200')">
             Administrativos
+          </button>
+          <button
+            (click)="onTipoChange('responsables-externos')"
+            [class]="'flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ' + 
+              (selectedTipo() === 'responsables-externos' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200')">
+            Responsables Externos
           </button>
         </div>
       </div>
@@ -222,21 +244,20 @@
                   </td>
                 </tr>
               } @else {
-                @for (estudiante of estudiantesFiltrados(); track $index; let i = $index) {
+                @for (estudiante of estudiantesFiltrados(); track estudiante.id || $index) {
                   <tr class="hover:bg-slate-50 transition-colors">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-slate-900">{{ estudiante.nombreCompleto }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm text-slate-600">{{ estudiante.matricula }}</div>
+                      <div class="text-sm text-slate-600">{{ estudiante.numeroCarnet }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm text-slate-600">{{ estudiante.correo }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span [class]="estudiante.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
-                        {{ estudiante.activo ? 'Activo' : 'Inactivo' }}
+                      <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {{ estudiante.estadoEstudiante || 'Sin estado' }}
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -267,6 +288,49 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Paginación para estudiantes -->
+        @if (estudiantesFiltradosTotal() > 0 && !mostrarTodosEstudiantes()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ getInicioPagina() }} - {{ getFinPagina() }} de {{ estudiantesFiltradosTotal() }} estudiantes
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorEstudiantes()"
+                [disabled]="paginaActualEstudiantes() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 px-3">
+                Página {{ paginaActualEstudiantes() }} de {{ totalPaginasEstudiantes() }}
+              </span>
+              <button
+                (click)="paginaSiguienteEstudiantes()"
+                [disabled]="paginaActualEstudiantes() >= totalPaginasEstudiantes()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        <!-- Opción de mostrar todos -->
+        @if (estudiantesFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-center">
+            <button
+              (click)="toggleMostrarTodosEstudiantes()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosEstudiantes() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + estudiantesFiltradosTotal() + ' estudiantes)' }}
+            </button>
+          </div>
+        }
       }
 
       <!-- Docentes -->
@@ -335,6 +399,48 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Paginación para docentes -->
+        @if (docentesFiltradosTotal() > 0 && !mostrarTodosDocentes()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ (paginaActualDocentes() - 1) * itemsPorPagina + 1 }} - {{ getMath().min(paginaActualDocentes() * itemsPorPagina, docentesFiltradosTotal()) }} de {{ docentesFiltradosTotal() }} docentes
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorDocentes()"
+                [disabled]="paginaActualDocentes() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 font-medium px-3">
+                Página {{ paginaActualDocentes() }} de {{ totalPaginasDocentes() }}
+              </span>
+              <button
+                (click)="paginaSiguienteDocentes()"
+                [disabled]="paginaActualDocentes() >= totalPaginasDocentes()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        @if (docentesFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-white text-center">
+            <button
+              (click)="toggleMostrarTodosDocentes()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosDocentes() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + docentesFiltradosTotal() + ' docentes)' }}
+            </button>
+          </div>
+        }
       }
 
       <!-- Administrativos -->
@@ -345,13 +451,14 @@
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nombre</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Correo</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-slate-200">
               @if (administrativosFiltrados().length === 0) {
                 <tr>
-                  <td colspan="3" class="px-6 py-12 text-center text-slate-500">
+                  <td colspan="4" class="px-6 py-12 text-center text-slate-500">
                     @if (busqueda()) {
                       No se encontraron administrativos que coincidan con la búsqueda.
                     } @else {
@@ -367,6 +474,12 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm text-slate-600">{{ administrativo.correo }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span [class]="administrativo.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                        {{ administrativo.activo ? 'Activo' : 'Inactivo' }}
+                      </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex items-center gap-3">
@@ -396,6 +509,166 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Paginación para administrativos -->
+        @if (administrativosFiltradosTotal() > 0 && !mostrarTodosAdministrativos()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ (paginaActualAdministrativos() - 1) * itemsPorPagina + 1 }} - {{ getMath().min(paginaActualAdministrativos() * itemsPorPagina, administrativosFiltradosTotal()) }} de {{ administrativosFiltradosTotal() }} administrativos
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorAdministrativos()"
+                [disabled]="paginaActualAdministrativos() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 font-medium px-3">
+                Página {{ paginaActualAdministrativos() }} de {{ totalPaginasAdministrativos() }}
+              </span>
+              <button
+                (click)="paginaSiguienteAdministrativos()"
+                [disabled]="paginaActualAdministrativos() >= totalPaginasAdministrativos()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        @if (administrativosFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-white text-center">
+            <button
+              (click)="toggleMostrarTodosAdministrativos()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosAdministrativos() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + administrativosFiltradosTotal() + ' administrativos)' }}
+            </button>
+          </div>
+        }
+      }
+
+      <!-- Responsables Externos -->
+      @if (selectedTipo() === 'responsables-externos') {
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nombre</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Institución</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cargo</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Correo</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-slate-200">
+              @if (responsablesExternosFiltrados().length === 0) {
+                <tr>
+                  <td colspan="6" class="px-6 py-12 text-center text-slate-500">
+                    @if (busqueda()) {
+                      No se encontraron responsables externos que coincidan con la búsqueda.
+                    } @else {
+                      No hay responsables externos registrados.
+                    }
+                  </td>
+                </tr>
+              } @else {
+                @for (responsable of responsablesExternosFiltrados(); track responsable.id) {
+                  <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm font-medium text-slate-900">{{ responsable.nombre }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-slate-600">{{ responsable.institucion }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-slate-600">{{ responsable.cargo || '-' }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-slate-600">{{ responsable.correo || '-' }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span [class]="responsable.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                        {{ responsable.activo ? 'Activo' : 'Inactivo' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div class="flex items-center gap-3">
+                        <button 
+                          (click)="onEdit(responsable.id)"
+                          class="text-blue-600 hover:text-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          [disabled]="isDeleting(responsable.id) || !responsable.id || responsable.id <= 0"
+                          title="Editar">
+                          <app-icon icon="edit" size="sm"></app-icon>
+                        </button>
+                        <button 
+                          (click)="onDeleteResponsableExterno(responsable.id)"
+                          [disabled]="isDeleting(responsable.id)"
+                          class="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Eliminar">
+                          @if (isDeleting(responsable.id)) {
+                            <span class="animate-spin inline-block w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full"></span>
+                          } @else {
+                            <app-icon icon="delete" size="sm"></app-icon>
+                          }
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Paginación para responsables externos -->
+        @if (responsablesExternosFiltradosTotal() > 0 && !mostrarTodosResponsablesExternos()) {
+          <div class="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div class="text-sm text-slate-600">
+              Mostrando {{ (paginaActualResponsablesExternos() - 1) * itemsPorPagina + 1 }} - {{ getMath().min(paginaActualResponsablesExternos() * itemsPorPagina, responsablesExternosFiltradosTotal()) }} de {{ responsablesExternosFiltradosTotal() }} responsables externos
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="paginaAnteriorResponsablesExternos()"
+                [disabled]="paginaActualResponsablesExternos() === 1"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página anterior">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+              </button>
+              <span class="text-sm text-slate-700 font-medium px-3">
+                Página {{ paginaActualResponsablesExternos() }} de {{ totalPaginasResponsablesExternos() }}
+              </span>
+              <button
+                (click)="paginaSiguienteResponsablesExternos()"
+                [disabled]="paginaActualResponsablesExternos() >= totalPaginasResponsablesExternos()"
+                class="p-2 text-slate-600 hover:text-slate-900 hover:bg-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Página siguiente">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        }
+        
+        @if (responsablesExternosFiltradosTotal() > itemsPorPagina) {
+          <div class="px-6 py-3 border-t border-slate-200 bg-white text-center">
+            <button
+              (click)="toggleMostrarTodosResponsablesExternos()"
+              class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+              {{ mostrarTodosResponsablesExternos() ? 'Mostrar paginado (10 por página)' : 'Mostrar todos (' + responsablesExternosFiltradosTotal() + ' responsables externos)' }}
+            </button>
+          </div>
+        }
       }
     </div>
   }

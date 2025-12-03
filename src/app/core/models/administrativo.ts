@@ -2,10 +2,16 @@ export interface Administrativo {
   id: number;
   nombreCompleto: string;
   correo: string;
-  generoId: number; // Requerido según AdministrativoCreateDto
+  idGenero: number; // Cambiado de generoId a idGenero
   departamentoId: number;
   activo: boolean;
-  cedula?: string; // Opcional según AdministrativoDto
-  numeroOrcid?: string; // Opcional según AdministrativoDto
-  puesto?: string; // Opcional según AdministrativoDto
+  cedula?: string; // Opcional
+  numeroOrcid?: string; // Opcional
+  numeroTelefono?: string; // Opcional, nuevo campo
+  idNivelAcademico?: number; // Opcional, nuevo campo
+  puesto?: string; // Opcional
+  // Campos calculados del backend (no se envían en create/update)
+  genero?: string; // Nombre del género (solo lectura)
+  departamento?: string; // Nombre del departamento (solo lectura)
+  nombreNivelAcademico?: string; // Nombre del nivel académico (solo lectura)
 }

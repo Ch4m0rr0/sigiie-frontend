@@ -1326,7 +1326,8 @@ export class CatalogosService {
             id: item.idEstadoActividad || item.IdEstadoActividad || item.Id || item.id || 0,
             idEstadoActividad: item.idEstadoActividad || item.IdEstadoActividad || item.Id || item.id || 0,
             nombre: item.nombre || item.Nombre || item.NombreEstado || item.nombreEstado || '',
-            descripcion: item.descripcion || item.Descripcion || item.descripcion || ''
+            descripcion: item.descripcion || item.Descripcion || item.descripcion || '',
+            color: item.color || item.Color || '#3B82F6'
           };
           console.log('🔍 getEstadosActividad - Item mapeado:', { original: item, mapped });
           return mapped;
@@ -1345,8 +1346,11 @@ export class CatalogosService {
     );
   }
 
-  createEstadoActividad(estado: Omit<EstadoActividad, 'id'>): Observable<EstadoActividad> {
-    const data = { NombreEstado: estado.nombre, Descripcion: estado.descripcion };
+  createEstadoActividad(estado: Omit<EstadoActividad, 'id'> & { color?: string }): Observable<EstadoActividad> {
+    const data: any = { NombreEstado: estado.nombre, Descripcion: estado.descripcion };
+    if ((estado as any).color) {
+      data.Color = (estado as any).color;
+    }
     console.log('🔄 createEstadoActividad - Enviando datos:', data);
     return this.http.post<any>(`${this.apiUrl}/estado-actividad`, data).pipe(
       map(response => {
@@ -1357,14 +1361,16 @@ export class CatalogosService {
           return {
             id: 0,
             nombre: estado.nombre,
-            descripcion: estado.descripcion || ''
-          };
+            descripcion: estado.descripcion || '',
+            color: (estado as any).color || '#3B82F6'
+          } as any;
         }
         const mapped = {
           id: item.idEstadoActividad || item.IdEstadoActividad || item.Id || item.id || 0,
           idEstadoActividad: item.idEstadoActividad || item.IdEstadoActividad || item.Id || item.id || 0,
           nombre: item.nombre || item.Nombre || item.NombreEstado || item.nombreEstado || estado.nombre,
-          descripcion: item.descripcion || item.Descripcion || estado.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || estado.descripcion || '',
+          color: item.color || item.Color || (estado as any).color || '#3B82F6'
         };
         console.log('✅ createEstadoActividad - Item mapeado:', { original: item, mapped });
         return mapped;
@@ -1376,8 +1382,11 @@ export class CatalogosService {
     );
   }
 
-  updateEstadoActividad(id: number, estado: Omit<EstadoActividad, 'id'>): Observable<EstadoActividad> {
-    const data = { NombreEstado: estado.nombre, Descripcion: estado.descripcion };
+  updateEstadoActividad(id: number, estado: Omit<EstadoActividad, 'id'> & { color?: string }): Observable<EstadoActividad> {
+    const data: any = { NombreEstado: estado.nombre, Descripcion: estado.descripcion };
+    if ((estado as any).color) {
+      data.Color = (estado as any).color;
+    }
     console.log('🔄 updateEstadoActividad - Enviando datos:', { id, data });
     return this.http.put<any>(`${this.apiUrl}/estado-actividad/${id}`, data).pipe(
       map(response => {
@@ -1388,8 +1397,9 @@ export class CatalogosService {
             id: id,
             idEstadoActividad: id,
             nombre: estado.nombre,
-            descripcion: estado.descripcion || ''
-          };
+            descripcion: estado.descripcion || '',
+            color: (estado as any).color || '#3B82F6'
+          } as any;
         }
         
         const item = response.data || response;
@@ -1399,15 +1409,17 @@ export class CatalogosService {
             id: id,
             idEstadoActividad: id,
             nombre: estado.nombre,
-            descripcion: estado.descripcion || ''
-          };
+            descripcion: estado.descripcion || '',
+            color: (estado as any).color || '#3B82F6'
+          } as any;
         }
         
         const mapped = {
           id: item.idEstadoActividad || item.IdEstadoActividad || item.Id || item.id || id,
           idEstadoActividad: item.idEstadoActividad || item.IdEstadoActividad || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || item.NombreEstado || item.nombreEstado || estado.nombre,
-          descripcion: item.descripcion || item.Descripcion || estado.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || estado.descripcion || '',
+          color: item.color || item.Color || (estado as any).color || '#3B82F6'
         };
         console.log('✅ updateEstadoActividad - Item mapeado:', { original: item, mapped });
         return mapped;
@@ -2000,5 +2012,157 @@ export class CatalogosService {
 
   deleteRolResponsable(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/rol-responsable/${id}`);
+  }
+
+  // Carreras - Endpoint: /api/carreras
+  getCarreras(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/carreras`).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => ({
+          idCarrera: item.idCarrera || item.IdCarrera || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          codigo: item.codigo || item.Codigo || '',
+          descripcion: item.descripcion || item.Descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId || 0,
+          departamento: item.departamento || item.Departamento || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+        })) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/carreras no encontrado (404)');
+        } else {
+          console.error('❌ Error fetching carreras:', error);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  getCarreraById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/carreras/${id}`).pipe(
+      map(response => {
+        const item = response.data || response;
+        return {
+          idCarrera: item.idCarrera || item.IdCarrera || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          codigo: item.codigo || item.Codigo || '',
+          descripcion: item.descripcion || item.Descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId || 0,
+          departamento: item.departamento || item.Departamento || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error fetching carrera:', error);
+        throw error;
+      })
+    );
+  }
+
+  createCarrera(carrera: { nombre: string, codigo?: string, descripcion?: string, departamentoId: number }): Observable<any> {
+    const data = {
+      nombre: carrera.nombre,
+      codigo: carrera.codigo || null,
+      descripcion: carrera.descripcion || null,
+      departamentoId: carrera.departamentoId
+    };
+    return this.http.post<any>(`${this.apiUrl}/carreras`, data).pipe(
+      map(response => {
+        const item = response.data || response;
+        return {
+          idCarrera: item.idCarrera || item.IdCarrera || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || carrera.nombre,
+          codigo: item.codigo || item.Codigo || carrera.codigo || '',
+          descripcion: item.descripcion || item.Descripcion || carrera.descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId || carrera.departamentoId,
+          departamento: item.departamento || item.Departamento || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
+        };
+      }),
+      catchError(error => {
+        console.error('❌ Error creating carrera:', error);
+        throw error;
+      })
+    );
+  }
+
+  updateCarrera(id: number, carrera: { nombre: string, codigo?: string, descripcion?: string, departamentoId: number, activo: boolean }): Observable<any> {
+    const data = {
+      nombre: carrera.nombre,
+      codigo: carrera.codigo || null,
+      descripcion: carrera.descripcion || null,
+      departamentoId: carrera.departamentoId,
+      activo: carrera.activo
+    };
+    return this.http.put<any>(`${this.apiUrl}/carreras/${id}`, data).pipe(
+      map(response => {
+        // Si la respuesta es 204 No Content, obtener la carrera actualizada
+        if (!response || (typeof response === 'object' && Object.keys(response).length === 0)) {
+          return this.getCarreraById(id).pipe(
+            map(updatedCarrera => updatedCarrera)
+          );
+        }
+        const item = response.data || response;
+        return {
+          idCarrera: item.idCarrera || item.IdCarrera || id,
+          nombre: item.nombre || item.Nombre || carrera.nombre,
+          codigo: item.codigo || item.Codigo || carrera.codigo || '',
+          descripcion: item.descripcion || item.Descripcion || carrera.descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId || carrera.departamentoId,
+          departamento: item.departamento || item.Departamento || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : carrera.activo)
+        };
+      }),
+      switchMap(result => {
+        if (result instanceof Observable) {
+          return result;
+        }
+        return of(result);
+      }),
+      catchError(error => {
+        console.error('❌ Error updating carrera:', error);
+        throw error;
+      })
+    );
+  }
+
+  deleteCarrera(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/carreras/${id}`).pipe(
+      catchError(error => {
+        console.error('❌ Error deleting carrera:', error);
+        throw error;
+      })
+    );
+  }
+
+  descargarPlantillaCarreras(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/carreras/plantilla-excel`, {
+      responseType: 'blob'
+    }).pipe(
+      catchError(error => {
+        console.error('❌ Error descargando plantilla de carreras:', error);
+        throw error;
+      })
+    );
+  }
+
+  importarCarrerasDesdeExcel(archivo: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('archivo', archivo, archivo.name);
+    
+    return this.http.post<any>(`${this.apiUrl}/carreras/importar-excel`, formData).pipe(
+      catchError(error => {
+        console.error('❌ Error importando carreras desde Excel:', error);
+        if (error.error) {
+          console.error('❌ Error body:', error.error);
+          if (error.error.errors) {
+            console.error('❌ Validation errors:', error.error.errors);
+          }
+        }
+        throw error;
+      })
+    );
   }
 }

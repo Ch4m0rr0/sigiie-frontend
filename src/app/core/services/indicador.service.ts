@@ -275,7 +275,7 @@ export class IndicadorService {
     console.log('🔄 IndicadorService.importarDesdeExcel - CrearNuevos:', crearNuevos);
     
     const formData = new FormData();
-    // El backend espera 'Archivo' con A mayúscula
+    // El backend espera 'Archivo' con A mayúscula - incluir el nombre del archivo como tercer parámetro
     formData.append('Archivo', file, file.name);
     
     // Agregar parámetros opcionales si están presentes
@@ -288,7 +288,17 @@ export class IndicadorService {
     formData.append('ActualizarExistentes', actualizarExistentes.toString());
     formData.append('CrearNuevos', crearNuevos.toString());
     
+    // Log del FormData para debugging
     console.log('🔄 IndicadorService.importarDesdeExcel - FormData creado');
+    console.log('🔄 IndicadorService.importarDesdeExcel - FormData keys:', Array.from(formData.keys()));
+    for (const key of formData.keys()) {
+      const value = formData.get(key);
+      if (value instanceof File) {
+        console.log(`🔄 IndicadorService.importarDesdeExcel - FormData[${key}]:`, value.name, value.size, value.type);
+      } else {
+        console.log(`🔄 IndicadorService.importarDesdeExcel - FormData[${key}]:`, value);
+      }
+    }
     
     return this.http.post(`${this.apiUrl}/importar-desde-excel`, formData, {
       reportProgress: true,

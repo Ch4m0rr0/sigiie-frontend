@@ -1,11 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import type { Estudiante } from '../models/estudiante';
 import type { Docente } from '../models/docente';
 import type { Administrativo } from '../models/administrativo';
+import type { ResponsableExterno } from '../models/responsable-externo';
 
 @Injectable({ providedIn: 'root' })
 export class PersonasService {
@@ -69,69 +70,58 @@ export class PersonasService {
   }
 
   private mapEstudiante(item: any, index?: number): Estudiante {
+    // Verificar que item no sea null o undefined
+    if (!item || item === null || item === undefined) {
+      console.error('❌ mapEstudiante - Item es null o undefined');
+      throw new Error('No se puede mapear un estudiante null o undefined');
+    }
+    
     // El backend devuelve IdEstudiante según EstudianteDto
-    // Intentar múltiples variantes de nombres de propiedades (case-insensitive)
     let id = item.id || item.Id || item.ID || 
              item.idEstudiante || item.IdEstudiante || item.IDEstudiante ||
              item.estudianteId || item.EstudianteId || item.EstudianteID;
     
-    // Si el ID es 0, null o undefined, intentar usar el índice como fallback temporal
-    // pero solo para listas (cuando index está definido)
     if ((!id || id === 0) && index !== undefined) {
-      // Usar un ID negativo temporal basado en el índice para evitar duplicados
-      id = -(index + 1000); // Usar números negativos grandes para evitar conflictos
+      id = -(index + 1000);
       console.warn('⚠️ mapEstudiante - ID no encontrado, usando ID temporal:', id, 'item:', item);
     } else if (!id || id === 0) {
-      // Para operaciones individuales (get, create, update), no podemos usar índice
-      // En este caso, lanzar un error o usar un valor que indique problema
       console.error('❌ mapEstudiante - ID no encontrado y no hay índice disponible. Item:', item);
-      id = -1; // ID inválido que será detectado por la validación
+      id = -1;
     }
     
     const finalId = id;
     
-    // El backend devuelve nombres (Genero, Departamento, EstadoEstudiante) pero necesitamos los IDs
-    // Por ahora, intentamos mapear desde diferentes posibles campos
-    // Si el backend incluye los IDs en la navegación, los usamos; si no, intentamos desde otros campos
-    // NOTA: Estos campos son opcionales - no necesarios para el contexto de actividades
-    const generoId = item.generoId || item.GeneroId || item.IdGenero || item.idGenero || undefined;
-    const departamentoId = item.departamentoId || item.DepartamentoId || undefined; // No existe en la tabla, obtener desde carrera si se necesita
-    const estadoId = item.estadoId || item.EstadoId || item.IdEstadoEstudiante || item.idEstadoEstudiante || undefined;
+    // Mapear IDs según la nueva estructura
+    // El backend puede enviar los IDs directamente o solo los nombres
+    let idGenero = item.idGenero || item.IdGenero || item.generoId || item.GeneroId || 0;
+    const idCarrera = item.idCarrera || item.IdCarrera || item.carreraId || item.CarreraId || 0;
+    let idEstadoEstudiante = item.idEstadoEstudiante || item.IdEstadoEstudiante || item.estadoId || item.EstadoId || 0;
     
-    // Log para debugging si el ID es inválido (podría indicar un problema de mapeo)
-    if (finalId <= 0) {
-      console.warn('⚠️ mapEstudiante - ID inválido o temporal:', finalId, 'item completo:', item);
-    }
+    // Si no viene el ID pero viene el nombre, dejamos 0 para que el componente lo busque
+    // El componente buscará el ID basándose en el nombre del género/estado
     
-    const mapped = {
+    return {
       id: finalId,
       nombreCompleto: item.nombreCompleto || item.NombreCompleto || '',
-      matricula: item.matricula || item.Matricula || item.numeroCarnet || item.NumeroCarnet || '',
+      numeroCarnet: item.numeroCarnet || item.NumeroCarnet || item.matricula || item.Matricula || '',
       correo: item.correo || item.Correo || '',
-      generoId: generoId,
-      departamentoId: departamentoId, // Opcional - no existe en la tabla, se obtiene desde carrera si se necesita
-      estadoId: estadoId,
-      fechaIngreso: item.fechaIngreso ? new Date(item.fechaIngreso) : (item.FechaIngreso ? new Date(item.FechaIngreso) : undefined),
+      idGenero: idGenero,
+      idCarrera: idCarrera,
+      idEstadoEstudiante: idEstadoEstudiante,
       activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
       numeroOrcid: item.numeroOrcid || item.NumeroOrcid || undefined,
       cedula: item.cedula || item.Cedula || undefined,
-      carrera: item.carrera || item.Carrera || undefined, // Opcional - no existe en la tabla
-      idCarrera: item.idCarrera || item.IdCarrera || item.id_carrera || undefined, // Columna real en la BD
+      numeroTelefono: item.numeroTelefono || item.NumeroTelefono || item.telefono || item.Telefono || undefined,
+      fechaIngreso: item.fechaIngreso ? new Date(item.fechaIngreso) : (item.FechaIngreso ? new Date(item.FechaIngreso) : undefined),
       idCategoriaParticipacion: item.idCategoriaParticipacion || item.IdCategoriaParticipacion || item.id_categoria_participacion || undefined,
-      nivelFormacion: item.nivelFormacion || item.NivelFormacion || item.nivel_formacion || undefined
+      nivelFormacion: item.nivelFormacion || item.NivelFormacion || item.nivel_formacion || undefined,
+      // Campos calculados del backend (solo lectura)
+      carrera: item.carrera || item.Carrera || undefined,
+      departamento: item.departamento || item.Departamento || undefined,
+      genero: item.genero || item.Genero || undefined,
+      estadoEstudiante: item.estadoEstudiante || item.EstadoEstudiante || undefined,
+      categoriaParticipacion: item.categoriaParticipacion || item.CategoriaParticipacion || undefined
     };
-    
-    // Log para debugging si algún campo crítico está vacío
-    if (!mapped.nombreCompleto || !mapped.matricula || !mapped.correo) {
-      console.warn('⚠️ mapEstudiante - Campos críticos vacíos:', {
-        nombreCompleto: mapped.nombreCompleto,
-        matricula: mapped.matricula,
-        correo: mapped.correo,
-        itemOriginal: item
-      });
-    }
-    
-    return mapped;
   }
 
   getEstudiante(id: number): Observable<Estudiante | null> {
@@ -146,69 +136,45 @@ export class PersonasService {
   }
 
   createEstudiante(estudiante: Omit<Estudiante, 'id'>): Observable<Estudiante> {
-    // Validar que todos los campos requeridos estén presentes
-    // NOTA: departamentoId no es requerido - se obtiene desde idCarrera si se necesita
-    if (!estudiante.nombreCompleto || !estudiante.matricula || !estudiante.correo) {
-      throw new Error('Faltan campos requeridos para crear el estudiante: nombreCompleto, matricula, correo');
+    // Validar que todos los campos requeridos estén presentes según la documentación
+    if (!estudiante.nombreCompleto || !estudiante.numeroCarnet || !estudiante.correo || 
+        !estudiante.idGenero || !estudiante.idCarrera || !estudiante.idEstadoEstudiante) {
+      throw new Error('Faltan campos requeridos para crear el estudiante (nombreCompleto, numeroCarnet, correo, idGenero, idCarrera, idEstadoEstudiante)');
     }
 
     // Convertir a PascalCase según EstudianteCreateDto del backend
-    // Campos requeridos: NombreCompleto, NumeroCarnet, Correo
-    // Campos opcionales: IdGenero, IdCarrera (no DepartamentoId), IdEstadoEstudiante, Cedula, NumeroOrcid, IdCategoriaParticipacion, NivelFormacion
-    // NOTA: El backend NO usa FechaIngreso en CreateAsync, solo lo usa internamente
-    // IMPORTANTE: No incluir campos opcionales (Cedula, NumeroOrcid) si no tienen valor
-    // para evitar violaciones de UNIQUE constraint cuando el backend asigna null
-    // NOTA: DepartamentoId no se envía - el backend lo obtiene desde IdCarrera si es necesario
     const dto: any = {
       NombreCompleto: estudiante.nombreCompleto.trim(),
-      NumeroCarnet: estudiante.matricula.trim(),
-      Correo: estudiante.correo.trim()
+      NumeroCarnet: estudiante.numeroCarnet.trim(),
+      Correo: estudiante.correo.trim(),
+      IdGenero: Number(estudiante.idGenero),
+      IdCarrera: Number(estudiante.idCarrera),
+      IdEstadoEstudiante: Number(estudiante.idEstadoEstudiante)
     };
     
     // Campos opcionales - solo incluir si tienen valor
-    if (estudiante.generoId) {
-      dto.IdGenero = Number(estudiante.generoId);
-    }
-    if (estudiante.idCarrera) {
-      dto.IdCarrera = Number(estudiante.idCarrera); // Usar IdCarrera en lugar de DepartamentoId
-    }
-    if (estudiante.estadoId) {
-      dto.IdEstadoEstudiante = Number(estudiante.estadoId);
-    }
-    
-    // Solo incluir NumeroOrcid si tiene valor (no null ni vacío)
-    // Si no se incluye, el backend no debería asignarlo como null
     if (estudiante.numeroOrcid && estudiante.numeroOrcid.trim()) {
       dto.NumeroOrcid = estudiante.numeroOrcid.trim();
-      console.log('✅ CREATE Estudiante - NumeroOrcid incluido:', dto.NumeroOrcid);
     }
     
-    // Solo incluir Cedula si tiene valor (no null ni vacío)
-    // Si no se incluye, el backend no debería asignarlo como null
     if (estudiante.cedula && estudiante.cedula.trim()) {
       dto.Cedula = estudiante.cedula.trim();
-      console.log('✅ CREATE Estudiante - Cedula incluida:', dto.Cedula);
     }
     
-    // Solo incluir IdCategoriaParticipacion si tiene valor
+    if (estudiante.numeroTelefono && estudiante.numeroTelefono.trim()) {
+      dto.NumeroTelefono = estudiante.numeroTelefono.trim();
+    }
+    
     if (estudiante.idCategoriaParticipacion && estudiante.idCategoriaParticipacion > 0) {
       dto.IdCategoriaParticipacion = Number(estudiante.idCategoriaParticipacion);
     }
     
-    // Solo incluir NivelFormacion si tiene valor
     if (estudiante.nivelFormacion && estudiante.nivelFormacion.trim()) {
       dto.NivelFormacion = estudiante.nivelFormacion.trim();
     }
     
     // Validar que los IDs sean números válidos
-    // Validar que los campos numéricos sean válidos si están presentes
-    if (dto.IdGenero !== undefined && isNaN(dto.IdGenero)) {
-      throw new Error('IdGenero debe ser un número válido');
-    }
-    if (dto.IdCarrera !== undefined && isNaN(dto.IdCarrera)) {
-      throw new Error('IdCarrera debe ser un número válido');
-    }
-    if (dto.IdEstadoEstudiante !== undefined && isNaN(dto.IdEstadoEstudiante)) {
+    if (isNaN(dto.IdGenero) || isNaN(dto.IdCarrera) || isNaN(dto.IdEstadoEstudiante)) {
       throw new Error('Los IDs deben ser números válidos');
     }
     
@@ -261,102 +227,186 @@ export class PersonasService {
   }
 
   updateEstudiante(id: number, estudiante: Partial<Estudiante>): Observable<Estudiante> {
-    // Convertir a PascalCase según EstudianteUpdateDto del backend
+    // Convertir a PascalCase según la documentación del backend
     const dto: any = {};
     
-    // Función auxiliar para validar y convertir números
+    // Función auxiliar para validar y convertir números - más estricta
     const toNumber = (value: any): number | null => {
       if (value === null || value === undefined || value === '') return null;
+      // Si es un string, verificar que no sea texto
+      if (typeof value === 'string' && value.trim() === '') return null;
+      // Intentar convertir a número
       const num = Number(value);
-      return !isNaN(num) && isFinite(num) && num > 0 ? num : null;
+      // Verificar que sea un número válido y positivo
+      if (isNaN(num) || !isFinite(num) || num <= 0) {
+        console.warn('⚠️ Valor no numérico detectado:', value, typeof value);
+        return null;
+      }
+      return num;
     };
     
-    // Campos requeridos o comunes
+    // Campos requeridos - validar que no sean null/undefined/vacíos
     if (estudiante.nombreCompleto !== undefined && estudiante.nombreCompleto && String(estudiante.nombreCompleto).trim()) {
       dto.NombreCompleto = String(estudiante.nombreCompleto).trim();
     }
-    if (estudiante.matricula !== undefined && estudiante.matricula && String(estudiante.matricula).trim()) {
-      dto.NumeroCarnet = String(estudiante.matricula).trim();
+    if (estudiante.numeroCarnet !== undefined && estudiante.numeroCarnet && String(estudiante.numeroCarnet).trim()) {
+      dto.NumeroCarnet = String(estudiante.numeroCarnet).trim();
     }
     if (estudiante.correo !== undefined && estudiante.correo && String(estudiante.correo).trim()) {
       dto.Correo = String(estudiante.correo).trim();
     }
     
-    // IDs numéricos - solo incluir si son válidos (> 0) y son números
-    const generoId = toNumber(estudiante.generoId);
-    if (generoId !== null) {
-      dto.IdGenero = generoId;
+    // IDs numéricos requeridos - validar estrictamente
+    const idGenero = toNumber(estudiante.idGenero);
+    if (idGenero === null) {
+      console.error('❌ IdGenero inválido:', estudiante.idGenero);
+      throw new Error('El género es requerido y debe ser un número válido');
     }
+    dto.IdGenero = idGenero;
     
-    // IdCarrera - usar en lugar de DepartamentoId (el departamento se obtiene desde la carrera)
     const idCarrera = toNumber(estudiante.idCarrera);
-    if (idCarrera !== null) {
-      dto.IdCarrera = idCarrera;
+    if (idCarrera === null) {
+      console.error('❌ IdCarrera inválido:', estudiante.idCarrera);
+      throw new Error('La carrera es requerida y debe ser un número válido');
     }
+    dto.IdCarrera = idCarrera;
     
-    const estadoId = toNumber(estudiante.estadoId);
-    if (estadoId !== null) {
-      dto.IdEstadoEstudiante = estadoId;
+    const idEstadoEstudiante = toNumber(estudiante.idEstadoEstudiante);
+    if (idEstadoEstudiante === null) {
+      console.error('❌ IdEstadoEstudiante inválido:', estudiante.idEstadoEstudiante);
+      throw new Error('El estado del estudiante es requerido y debe ser un número válido');
     }
+    dto.IdEstadoEstudiante = idEstadoEstudiante;
     
-    // Campo booleano
+    // Campo booleano requerido
     if (estudiante.activo !== undefined) {
       dto.Activo = Boolean(estudiante.activo);
+    } else {
+      dto.Activo = true; // Valor por defecto
     }
     
-    // Campos opcionales - solo incluir si tienen valor
-    if (estudiante.numeroOrcid !== undefined && estudiante.numeroOrcid && String(estudiante.numeroOrcid).trim()) {
-      dto.NumeroOrcid = String(estudiante.numeroOrcid).trim();
-    }
+    // Campos opcionales - solo incluir si tienen valor válido
     if (estudiante.cedula !== undefined && estudiante.cedula && String(estudiante.cedula).trim()) {
       dto.Cedula = String(estudiante.cedula).trim();
     }
+<<<<<<< HEAD
     
     const categoriaId = toNumber(estudiante.idCategoriaParticipacion);
     if (categoriaId !== null) {
       dto.IdCategoriaParticipacion = categoriaId;
+=======
+    if (estudiante.numeroOrcid !== undefined && estudiante.numeroOrcid && String(estudiante.numeroOrcid).trim()) {
+      dto.NumeroOrcid = String(estudiante.numeroOrcid).trim();
     }
-    
+    if (estudiante.numeroTelefono !== undefined && estudiante.numeroTelefono && String(estudiante.numeroTelefono).trim()) {
+      dto.NumeroTelefono = String(estudiante.numeroTelefono).trim();
+>>>>>>> 4ac6e97a522cd659ce55423a91b146af2054ffa5
+    }
     if (estudiante.nivelFormacion !== undefined && estudiante.nivelFormacion && String(estudiante.nivelFormacion).trim()) {
       dto.NivelFormacion = String(estudiante.nivelFormacion).trim();
     }
     
-    // Fecha de ingreso si está presente
-    if (estudiante.fechaIngreso !== undefined) {
-      if (estudiante.fechaIngreso instanceof Date) {
-        dto.FechaIngreso = estudiante.fechaIngreso.toISOString().split('T')[0];
-      } else {
-        const fechaStr = String(estudiante.fechaIngreso);
-        dto.FechaIngreso = fechaStr.split('T')[0];
+    // Asegurarse de que no haya campos adicionales no deseados
+    const allowedKeys = ['NombreCompleto', 'NumeroCarnet', 'Correo', 'IdGenero', 'IdCarrera', 'IdEstadoEstudiante', 'Activo', 'Cedula', 'NumeroOrcid', 'NumeroTelefono', 'NivelFormacion'];
+    const finalDto: any = {};
+    for (const key of allowedKeys) {
+      if (dto[key] !== undefined) {
+        finalDto[key] = dto[key];
       }
     }
     
-    console.log('🔄 PUT Estudiante - ID:', id);
-    console.log('🔄 PUT Estudiante - DTO enviado:', JSON.stringify(dto, null, 2));
-    console.log('🔄 PUT Estudiante - Datos originales:', estudiante);
+    console.log('🔄 PUT Estudiante - ID (ruta):', id, 'Tipo:', typeof id);
+    console.log('🔄 PUT Estudiante - DTO enviado:', JSON.stringify(finalDto, null, 2));
+    console.log('🔄 PUT Estudiante - Tipos de datos:', Object.keys(finalDto).reduce((acc, key) => {
+      acc[key] = typeof finalDto[key];
+      return acc;
+    }, {} as any));
+    console.log('🔄 PUT Estudiante - URL completa:', `${this.apiUrl}/estudiantes/${id}`);
     
-    return this.http.put<any>(`${this.apiUrl}/estudiantes/${id}`, dto).pipe(
-      map(item => {
-        console.log('✅ PUT Estudiante - Respuesta recibida:', item);
-        return this.mapEstudiante(item, 0);
+    // Validar que el ID de la ruta sea un número válido
+    const routeId = Number(id);
+    if (isNaN(routeId) || routeId <= 0) {
+      console.error('❌ ID de ruta inválido:', id, typeof id);
+      throw new Error(`ID de estudiante inválido: ${id}`);
+    }
+    
+    return this.http.put<any>(`${this.apiUrl}/estudiantes/${routeId}`, finalDto, { observe: 'response' }).pipe(
+      switchMap(response => {
+        console.log('✅ PUT Estudiante - Status:', response.status);
+        console.log('✅ PUT Estudiante - Respuesta recibida:', response.body);
+        
+        // Si el backend devuelve NoContent (204), obtener el estudiante actualizado
+        if (response.status === 204 || !response.body || response.body === null || response.body === undefined) {
+          console.log('🔄 PUT Estudiante - Respuesta NoContent (204), obteniendo estudiante actualizado desde el servidor...');
+          return this.getEstudiante(routeId).pipe(
+            map(estudiante => {
+              if (!estudiante) {
+                throw new Error(`No se pudo obtener el estudiante actualizado con ID ${routeId}`);
+              }
+              return estudiante;
+            })
+          );
+        }
+        
+        // Extraer el item de la respuesta (puede estar en response.data o ser response directamente)
+        const item = response.body?.data || response.body;
+        
+        // Si la respuesta es vacía, obtener el estudiante actualizado
+        if (!item || item === null || item === undefined || (typeof item === 'object' && Object.keys(item).length === 0)) {
+          console.log('🔄 PUT Estudiante - Respuesta vacía, obteniendo estudiante actualizado desde el servidor...');
+          return this.getEstudiante(routeId).pipe(
+            map(estudiante => {
+              if (!estudiante) {
+                throw new Error(`No se pudo obtener el estudiante actualizado con ID ${routeId}`);
+              }
+              return estudiante;
+            })
+          );
+        }
+        
+        // Si tenemos un item válido, mapearlo
+        try {
+          return of(this.mapEstudiante(item, 0));
+        } catch (error) {
+          console.error('❌ Error mapeando estudiante, obteniendo desde el servidor...', error);
+          // Si hay un error al mapear, obtener el estudiante desde el servidor
+          return this.getEstudiante(routeId).pipe(
+            map(estudiante => {
+              if (!estudiante) {
+                throw new Error(`No se pudo obtener el estudiante actualizado con ID ${routeId}`);
+              }
+              return estudiante;
+            })
+          );
+        }
       }),
       catchError(error => {
         console.error('❌ Error updating estudiante:', error);
         console.error('❌ Error status:', error.status);
-        console.error('❌ Error statusText:', error.statusText);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error error (body):', error.error);
-        console.error('❌ DTO que causó el error:', JSON.stringify(dto, null, 2));
+        console.error('❌ Error body:', error.error);
+        if (error.error?.errors) {
+          console.error('❌ Validation errors:', JSON.stringify(error.error.errors, null, 2));
+        }
         throw error;
       })
     );
   }
 
   deleteEstudiante(id: number): Observable<boolean> {
-    return this.http.delete<any>(`${this.apiUrl}/estudiantes/${id}`).pipe(
-      map(() => true),
+    return this.http.delete<any>(`${this.apiUrl}/estudiantes/${id}`, { observe: 'response' }).pipe(
+      map(response => {
+        // El backend devuelve NoContent (204) cuando se elimina exitosamente
+        if (response.status === 204 || response.status === 200) {
+          console.log('✅ DELETE Estudiante - Eliminado exitosamente (Status:', response.status, ')');
+          return true;
+        }
+        return true;
+      }),
       catchError(error => {
-        console.error('Error deleting estudiante:', error);
+        console.error('❌ Error deleting estudiante:', error);
+        if (error.status === 404) {
+          console.warn('⚠️ Estudiante no encontrado (404)');
+        }
         throw error;
       })
     );
@@ -388,20 +438,47 @@ export class PersonasService {
   }
 
   private mapDocente(item: any): Docente {
-    // El backend devuelve DocenteDto con Genero como string, pero necesitamos el ID
-    // Si el backend incluye IdGenero o generoId, lo usamos; si no, intentamos desde otros campos
-    const generoId = item.generoId || item.GeneroId || item.IdGenero || 0;
+    // Verificar que item no sea null o undefined
+    if (!item || item === null || item === undefined) {
+      console.error('❌ mapDocente - Item es null o undefined');
+      throw new Error('No se puede mapear un docente null o undefined');
+    }
+    
+    // Mapear según la nueva estructura
+    const idGenero = item.idGenero || item.IdGenero || item.generoId || item.GeneroId || 0;
+    const idNivelAcademico = item.idNivelAcademico || item.IdNivelAcademico || item.nivelAcademicoId || item.NivelAcademicoId || undefined;
+    
+    // Mapear departamentoId - puede venir como departamentoId, DepartamentoId, o solo el nombre
+    let departamentoId = item.departamentoId ?? item.DepartamentoId ?? item.idDepartamento ?? item.IdDepartamento;
+    // Si no viene el ID, dejar undefined para que el componente lo busque por nombre
+    if (departamentoId === undefined || departamentoId === null) {
+      departamentoId = undefined;
+    } else {
+      departamentoId = Number(departamentoId);
+      if (isNaN(departamentoId)) {
+        departamentoId = undefined;
+      }
+      // Si es 0, también dejarlo como undefined para que se busque por nombre
+      if (departamentoId === 0) {
+        departamentoId = undefined;
+      }
+    }
     
     return {
-      id: item.id || item.Id || item.IdDocente || 0,
+      id: item.id || item.Id || item.IdDocente || item.idDocente || 0,
       nombreCompleto: item.nombreCompleto || item.NombreCompleto || '',
       correo: item.correo || item.Correo || '',
-      generoId: generoId,
-      departamentoId: item.departamentoId || item.DepartamentoId || 0,
+      idGenero: idGenero,
+      departamentoId: departamentoId ?? 0, // Si es undefined, usar 0 para mantener compatibilidad
       activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
       numeroOrcid: item.numeroOrcid || item.NumeroOrcid || undefined,
       cedula: item.cedula || item.Cedula || undefined,
-      nivelAcademico: item.nivelAcademico || item.NivelAcademico || undefined
+      numeroTelefono: item.numeroTelefono || item.NumeroTelefono || item.telefono || item.Telefono || undefined,
+      idNivelAcademico: idNivelAcademico,
+      // Campos calculados del backend (solo lectura)
+      genero: item.genero || item.Genero || undefined,
+      departamento: item.departamento || item.Departamento || undefined,
+      nombreNivelAcademico: item.nombreNivelAcademico || item.NombreNivelAcademico || undefined
     };
   }
 
@@ -417,57 +494,43 @@ export class PersonasService {
   }
 
   createDocente(docente: Omit<Docente, 'id'>): Observable<Docente> {
-    // Validar que todos los campos requeridos estén presentes
-    if (!docente.nombreCompleto || !docente.correo || !docente.generoId || !docente.departamentoId) {
-      throw new Error('Faltan campos requeridos para crear el docente (nombreCompleto, correo, generoId, departamentoId)');
+    // Validar que todos los campos requeridos estén presentes según la documentación
+    if (!docente.nombreCompleto || !docente.correo || !docente.idGenero || !docente.departamentoId) {
+      throw new Error('Faltan campos requeridos para crear el docente (nombreCompleto, correo, idGenero, departamentoId)');
     }
 
+    // El backend espera PascalCase según la documentación
     const dto: any = {
       NombreCompleto: docente.nombreCompleto.trim(),
       Correo: docente.correo.trim(),
-      IdGenero: Number(docente.generoId), // Requerido según DocenteCreateDto
-      DepartamentoId: Number(docente.departamentoId),
-      Activo: docente.activo !== undefined ? docente.activo : true
+      IdGenero: Number(docente.idGenero),
+      DepartamentoId: Number(docente.departamentoId)
     };
     
-    // Solo incluir NumeroOrcid si tiene valor (no null ni vacío)
+    // Campos opcionales - solo incluir si tienen valor
     if (docente.numeroOrcid && docente.numeroOrcid.trim()) {
       dto.NumeroOrcid = docente.numeroOrcid.trim();
-      console.log('✅ CREATE Docente - NumeroOrcid incluido:', dto.NumeroOrcid);
     }
     
-    // Solo incluir Cedula si tiene valor
     if (docente.cedula && docente.cedula.trim()) {
       dto.Cedula = docente.cedula.trim();
-      console.log('✅ CREATE Docente - Cedula incluida:', dto.Cedula);
     }
     
-    // Solo incluir NivelAcademico si tiene valor
-    if (docente.nivelAcademico && docente.nivelAcademico.trim()) {
-      dto.NivelAcademico = docente.nivelAcademico.trim();
-      console.log('✅ CREATE Docente - NivelAcademico incluido:', dto.NivelAcademico);
+    if (docente.numeroTelefono && docente.numeroTelefono.trim()) {
+      dto.NumeroTelefono = docente.numeroTelefono.trim();
+    }
+    
+    if (docente.idNivelAcademico && docente.idNivelAcademico > 0) {
+      dto.IdNivelAcademico = Number(docente.idNivelAcademico);
     }
     
     // Validar que los IDs sean números válidos
     if (isNaN(dto.IdGenero) || isNaN(dto.DepartamentoId)) {
-      throw new Error('Los IDs (generoId, departamentoId) deben ser números válidos');
+      throw new Error('Los IDs (idGenero, departamentoId) deben ser números válidos');
     }
-    
-    // Verificar una vez más que GeneroId NO esté presente
-    const dtoKeys = Object.keys(dto);
-    const hasGeneroId = dtoKeys.includes('GeneroId') || dtoKeys.includes('generoId');
     
     console.log('🔄 CREATE Docente - DTO enviado:', JSON.stringify(dto, null, 2));
-    console.log('🔄 CREATE Docente - Keys del DTO:', dtoKeys);
-    console.log('🔄 CREATE Docente - ¿GeneroId presente?', hasGeneroId);
     console.log('🔄 CREATE Docente - URL:', `${this.apiUrl}/docentes`);
-    
-    if (hasGeneroId) {
-      console.error('❌ ERROR: GeneroId está presente en el DTO antes de enviar!');
-      delete dto.GeneroId;
-      delete dto.generoId;
-      console.log('🔄 CREATE Docente - DTO corregido (sin GeneroId):', JSON.stringify(dto, null, 2));
-    }
     
     return this.http.post<any>(`${this.apiUrl}/docentes`, dto).pipe(
       map(item => {
@@ -535,27 +598,70 @@ export class PersonasService {
   }
 
   updateDocente(id: number, docente: Partial<Docente>): Observable<Docente> {
+    // El backend espera PascalCase según la documentación
     const dto: any = {};
+    
+    // Campos requeridos
     if (docente.nombreCompleto !== undefined) dto.NombreCompleto = docente.nombreCompleto.trim();
     if (docente.correo !== undefined) dto.Correo = docente.correo.trim();
-    if (docente.generoId !== undefined) dto.IdGenero = Number(docente.generoId);
-    if (docente.departamentoId !== undefined) dto.DepartamentoId = Number(docente.departamentoId);
-    // Solo incluir NumeroOrcid si tiene valor (no null ni vacío)
+    if (docente.idGenero !== undefined && docente.idGenero != null) dto.IdGenero = Number(docente.idGenero);
+    if (docente.departamentoId !== undefined && docente.departamentoId != null) dto.DepartamentoId = Number(docente.departamentoId);
+    
+    // Campos opcionales - solo incluir si tienen valor
     if (docente.numeroOrcid !== undefined && docente.numeroOrcid && docente.numeroOrcid.trim()) {
       dto.NumeroOrcid = docente.numeroOrcid.trim();
     }
-    // Solo incluir Cedula si tiene valor
     if (docente.cedula !== undefined && docente.cedula && docente.cedula.trim()) {
       dto.Cedula = docente.cedula.trim();
     }
-    // Solo incluir NivelAcademico si tiene valor
-    if (docente.nivelAcademico !== undefined && docente.nivelAcademico && docente.nivelAcademico.trim()) {
-      dto.NivelAcademico = docente.nivelAcademico.trim();
+    if (docente.numeroTelefono !== undefined && docente.numeroTelefono && docente.numeroTelefono.trim()) {
+      dto.NumeroTelefono = docente.numeroTelefono.trim();
+    }
+    if (docente.idNivelAcademico !== undefined && docente.idNivelAcademico != null && docente.idNivelAcademico > 0) {
+      dto.IdNivelAcademico = Number(docente.idNivelAcademico);
     }
     if (docente.activo !== undefined) dto.Activo = docente.activo;
     
+    console.log('🔄 UPDATE Docente - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 UPDATE Docente - ID:', id);
+    console.log('🔄 UPDATE Docente - URL:', `${this.apiUrl}/docentes/${id}`);
+    
     return this.http.put<any>(`${this.apiUrl}/docentes/${id}`, dto).pipe(
-      map(item => this.mapDocente(item)),
+      switchMap(response => {
+        console.log('✅ PUT Docente - Respuesta recibida:', response);
+        
+        // Extraer el item de la respuesta (puede estar en response.data o ser response directamente)
+        const item = response?.data || response;
+        
+        // Si la respuesta es null, undefined o vacía, obtener el docente actualizado
+        if (!item || item === null || item === undefined || (typeof item === 'object' && Object.keys(item).length === 0)) {
+          console.log('🔄 PUT Docente - Respuesta vacía o null, obteniendo docente actualizado desde el servidor...');
+          return this.getDocente(id).pipe(
+            map(docente => {
+              if (!docente) {
+                throw new Error(`No se pudo obtener el docente actualizado con ID ${id}`);
+              }
+              return docente;
+            })
+          );
+        }
+        
+        // Si tenemos un item válido, mapearlo
+        try {
+          return of(this.mapDocente(item));
+        } catch (error) {
+          console.error('❌ Error mapeando docente, obteniendo desde el servidor...', error);
+          // Si hay un error al mapear, obtener el docente desde el servidor
+          return this.getDocente(id).pipe(
+            map(docente => {
+              if (!docente) {
+                throw new Error(`No se pudo obtener el docente actualizado con ID ${id}`);
+              }
+              return docente;
+            })
+          );
+        }
+      }),
       catchError(error => {
         console.error('Error updating docente:', error);
         throw error;
@@ -605,29 +711,48 @@ export class PersonasService {
   }
 
   private mapAdministrativo(item: any): Administrativo {
-    // El backend devuelve AdministrativoDto con Genero como string, pero necesitamos el ID
-    // Intentar obtener IdGenero directamente primero
-    let generoId = item.generoId || item.GeneroId || item.IdGenero;
+    // Verificar que item no sea null o undefined
+    if (!item || item === null || item === undefined) {
+      console.error('❌ mapAdministrativo - Item es null o undefined');
+      throw new Error('No se puede mapear un administrativo null o undefined');
+    }
     
-    // Si no tenemos el ID pero tenemos el string Genero, necesitamos buscarlo
-    // Por ahora, si no viene el ID, usamos 0 (se debería buscar en la lista de géneros en el componente)
-    if (!generoId || generoId === 0) {
-      // El backend devuelve Genero como string, pero no podemos mapearlo sin la lista de géneros
-      // El componente deberá buscar el género por su código/descripción
-      generoId = 0;
-      console.warn('⚠️ mapAdministrativo - No se encontró IdGenero, solo Genero como string:', item.genero || item.Genero);
+    // Mapear según la nueva estructura
+    const idGenero = item.idGenero || item.IdGenero || item.generoId || item.GeneroId || 0;
+    const idNivelAcademico = item.idNivelAcademico || item.IdNivelAcademico || item.nivelAcademicoId || item.NivelAcademicoId || undefined;
+    
+    // Mapear departamentoId - puede venir como departamentoId, DepartamentoId, o solo el nombre
+    let departamentoId = item.departamentoId ?? item.DepartamentoId ?? item.idDepartamento ?? item.IdDepartamento;
+    // Si no viene el ID, dejar undefined para que el componente lo busque por nombre
+    if (departamentoId === undefined || departamentoId === null) {
+      departamentoId = undefined;
+    } else {
+      departamentoId = Number(departamentoId);
+      if (isNaN(departamentoId)) {
+        departamentoId = undefined;
+      }
+      // Si es 0, también dejarlo como undefined para que se busque por nombre
+      if (departamentoId === 0) {
+        departamentoId = undefined;
+      }
     }
     
     return {
-      id: item.id || item.Id || item.IdAdmin || 0,
+      id: item.id || item.Id || item.IdAdmin || item.idAdmin || 0,
       nombreCompleto: item.nombreCompleto || item.NombreCompleto || '',
       correo: item.correo || item.Correo || '',
-      generoId: generoId,
-      departamentoId: item.departamentoId || item.DepartamentoId || 0,
+      idGenero: idGenero,
+      departamentoId: departamentoId ?? 0, // Si es undefined, usar 0 para mantener compatibilidad
       activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
       cedula: item.cedula || item.Cedula || undefined,
       numeroOrcid: item.numeroOrcid || item.NumeroOrcid || undefined,
-      puesto: item.puesto || item.Puesto || undefined
+      numeroTelefono: item.numeroTelefono || item.NumeroTelefono || item.telefono || item.Telefono || undefined,
+      idNivelAcademico: idNivelAcademico,
+      puesto: item.puesto || item.Puesto || undefined,
+      // Campos calculados del backend (solo lectura)
+      genero: item.genero || item.Genero || undefined,
+      departamento: item.departamento || item.Departamento || undefined,
+      nombreNivelAcademico: item.nombreNivelAcademico || item.NombreNivelAcademico || undefined
     };
   }
 
@@ -643,40 +768,43 @@ export class PersonasService {
   }
 
   createAdministrativo(administrativo: Omit<Administrativo, 'id'>): Observable<Administrativo> {
-    // Validar que todos los campos requeridos estén presentes
-    if (!administrativo.nombreCompleto || !administrativo.correo || !administrativo.generoId || !administrativo.departamentoId) {
-      throw new Error('Faltan campos requeridos para crear el administrativo (nombreCompleto, correo, generoId, departamentoId)');
+    // Validar que todos los campos requeridos estén presentes según la documentación
+    if (!administrativo.nombreCompleto || !administrativo.correo || !administrativo.idGenero || !administrativo.departamentoId) {
+      throw new Error('Faltan campos requeridos para crear el administrativo (nombreCompleto, correo, idGenero, departamentoId)');
     }
 
+    // El backend espera PascalCase según la documentación
     const dto: any = {
       NombreCompleto: administrativo.nombreCompleto.trim(),
       Correo: administrativo.correo.trim(),
-      IdGenero: Number(administrativo.generoId), // Requerido según AdministrativoCreateDto
-      DepartamentoId: Number(administrativo.departamentoId),
-      Activo: administrativo.activo !== undefined ? administrativo.activo : true
+      IdGenero: Number(administrativo.idGenero),
+      DepartamentoId: Number(administrativo.departamentoId)
     };
     
-    // Solo incluir NumeroOrcid si tiene valor
+    // Campos opcionales - solo incluir si tienen valor
     if (administrativo.numeroOrcid && administrativo.numeroOrcid.trim()) {
       dto.NumeroOrcid = administrativo.numeroOrcid.trim();
-      console.log('✅ CREATE Administrativo - NumeroOrcid incluido:', dto.NumeroOrcid);
     }
     
-    // Solo incluir Cedula si tiene valor
     if (administrativo.cedula && administrativo.cedula.trim()) {
       dto.Cedula = administrativo.cedula.trim();
-      console.log('✅ CREATE Administrativo - Cedula incluida:', dto.Cedula);
     }
     
-    // Solo incluir Puesto si tiene valor
+    if (administrativo.numeroTelefono && administrativo.numeroTelefono.trim()) {
+      dto.NumeroTelefono = administrativo.numeroTelefono.trim();
+    }
+    
+    if (administrativo.idNivelAcademico && administrativo.idNivelAcademico > 0) {
+      dto.IdNivelAcademico = Number(administrativo.idNivelAcademico);
+    }
+    
     if (administrativo.puesto && administrativo.puesto.trim()) {
       dto.Puesto = administrativo.puesto.trim();
-      console.log('✅ CREATE Administrativo - Puesto incluido:', dto.Puesto);
     }
     
     // Validar que los IDs sean números válidos
     if (isNaN(dto.IdGenero) || isNaN(dto.DepartamentoId)) {
-      throw new Error('Los IDs (generoId, departamentoId) deben ser números válidos');
+      throw new Error('Los IDs (idGenero, departamentoId) deben ser números válidos');
     }
     
     console.log('🔄 CREATE Administrativo - DTO enviado:', JSON.stringify(dto, null, 2));
@@ -697,27 +825,73 @@ export class PersonasService {
   }
 
   updateAdministrativo(id: number, administrativo: Partial<Administrativo>): Observable<Administrativo> {
+    // El backend espera PascalCase según la documentación
     const dto: any = {};
+    
+    // Campos requeridos
     if (administrativo.nombreCompleto !== undefined) dto.NombreCompleto = administrativo.nombreCompleto.trim();
     if (administrativo.correo !== undefined) dto.Correo = administrativo.correo.trim();
-    if (administrativo.generoId !== undefined) dto.IdGenero = Number(administrativo.generoId);
-    if (administrativo.departamentoId !== undefined) dto.DepartamentoId = Number(administrativo.departamentoId);
-    // Solo incluir NumeroOrcid si tiene valor
+    if (administrativo.idGenero !== undefined && administrativo.idGenero != null) dto.IdGenero = Number(administrativo.idGenero);
+    if (administrativo.departamentoId !== undefined && administrativo.departamentoId != null) dto.DepartamentoId = Number(administrativo.departamentoId);
+    
+    // Campos opcionales - solo incluir si tienen valor
     if (administrativo.numeroOrcid !== undefined && administrativo.numeroOrcid && administrativo.numeroOrcid.trim()) {
       dto.NumeroOrcid = administrativo.numeroOrcid.trim();
     }
-    // Solo incluir Cedula si tiene valor
     if (administrativo.cedula !== undefined && administrativo.cedula && administrativo.cedula.trim()) {
       dto.Cedula = administrativo.cedula.trim();
     }
-    // Solo incluir Puesto si tiene valor
+    if (administrativo.numeroTelefono !== undefined && administrativo.numeroTelefono && administrativo.numeroTelefono.trim()) {
+      dto.NumeroTelefono = administrativo.numeroTelefono.trim();
+    }
+    if (administrativo.idNivelAcademico !== undefined && administrativo.idNivelAcademico != null && administrativo.idNivelAcademico > 0) {
+      dto.IdNivelAcademico = Number(administrativo.idNivelAcademico);
+    }
     if (administrativo.puesto !== undefined && administrativo.puesto && administrativo.puesto.trim()) {
       dto.Puesto = administrativo.puesto.trim();
     }
     if (administrativo.activo !== undefined) dto.Activo = administrativo.activo;
     
+    console.log('🔄 UPDATE Administrativo - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 UPDATE Administrativo - ID:', id);
+    console.log('🔄 UPDATE Administrativo - URL:', `${this.apiUrl}/administrativos/${id}`);
+    
     return this.http.put<any>(`${this.apiUrl}/administrativos/${id}`, dto).pipe(
-      map(item => this.mapAdministrativo(item)),
+      switchMap(response => {
+        console.log('✅ PUT Administrativo - Respuesta recibida:', response);
+        
+        // Extraer el item de la respuesta (puede estar en response.data o ser response directamente)
+        const item = response?.data || response;
+        
+        // Si la respuesta es null, undefined o vacía, obtener el administrativo actualizado
+        if (!item || item === null || item === undefined || (typeof item === 'object' && Object.keys(item).length === 0)) {
+          console.log('🔄 PUT Administrativo - Respuesta vacía o null, obteniendo administrativo actualizado desde el servidor...');
+          return this.getAdministrativo(id).pipe(
+            map(administrativo => {
+              if (!administrativo) {
+                throw new Error(`No se pudo obtener el administrativo actualizado con ID ${id}`);
+              }
+              return administrativo;
+            })
+          );
+        }
+        
+        // Si tenemos un item válido, mapearlo
+        try {
+          return of(this.mapAdministrativo(item));
+        } catch (error) {
+          console.error('❌ Error mapeando administrativo, obteniendo desde el servidor...', error);
+          // Si hay un error al mapear, obtener el administrativo desde el servidor
+          return this.getAdministrativo(id).pipe(
+            map(administrativo => {
+              if (!administrativo) {
+                throw new Error(`No se pudo obtener el administrativo actualizado con ID ${id}`);
+              }
+              return administrativo;
+            })
+          );
+        }
+      }),
       catchError(error => {
         console.error('Error updating administrativo:', error);
         throw error;
@@ -754,5 +928,206 @@ export class PersonasService {
         throw error;
       })
     );
+  }
+
+  // Responsable Externo (Participante Externo)
+  listResponsablesExternos(filtros?: { nombre?: string, institucion?: string, activo?: boolean }): Observable<ResponsableExterno[]> {
+    let url = `${this.apiUrl}/responsable-externo`;
+    const params = new URLSearchParams();
+    
+    if (filtros) {
+      if (filtros.nombre) params.append('nombre', filtros.nombre);
+      if (filtros.institucion) params.append('institucion', filtros.institucion);
+      if (filtros.activo !== undefined) params.append('activo', filtros.activo.toString());
+    }
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    return this.http.get<any>(url).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => this.mapResponsableExterno(item)) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/responsable-externo no encontrado (404)');
+          return of([]);
+        }
+        console.error('Error fetching responsables externos:', error);
+        return of([]);
+      })
+    );
+  }
+
+  getResponsableExterno(id: number): Observable<ResponsableExterno | null> {
+    return this.http.get<any>(`${this.apiUrl}/responsable-externo/${id}`).pipe(
+      map(item => this.mapResponsableExterno(item)),
+      catchError(error => {
+        if (error.status === 404) return of(null);
+        console.error('Error fetching responsable externo:', error);
+        throw error;
+      })
+    );
+  }
+
+  createResponsableExterno(responsable: Omit<ResponsableExterno, 'id'>): Observable<ResponsableExterno> {
+    // Validar que todos los campos requeridos estén presentes
+    if (!responsable.nombre || !responsable.institucion) {
+      throw new Error('Faltan campos requeridos para crear el responsable externo (nombre, institucion)');
+    }
+
+    // El backend espera PascalCase según la documentación
+    const dto: any = {
+      Nombre: responsable.nombre.trim(),
+      Institucion: responsable.institucion.trim()
+    };
+    
+    // Campos opcionales - solo incluir si tienen valor
+    if (responsable.cargo && responsable.cargo.trim()) {
+      dto.Cargo = responsable.cargo.trim();
+    }
+    
+    if (responsable.telefono && responsable.telefono.trim()) {
+      dto.Telefono = responsable.telefono.trim();
+    }
+    
+    if (responsable.correo && responsable.correo.trim()) {
+      dto.Correo = responsable.correo.trim();
+    }
+    
+    console.log('🔄 CREATE ResponsableExterno - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 CREATE ResponsableExterno - URL:', `${this.apiUrl}/responsable-externo`);
+    
+    return this.http.post<any>(`${this.apiUrl}/responsable-externo`, dto).pipe(
+      map(item => {
+        console.log('✅ CREATE ResponsableExterno - Respuesta recibida:', item);
+        return this.mapResponsableExterno(item);
+      }),
+      catchError(error => {
+        console.error('❌ Error creating responsable externo:', error);
+        throw error;
+      })
+    );
+  }
+
+  updateResponsableExterno(id: number, responsable: Partial<ResponsableExterno>): Observable<ResponsableExterno> {
+    // El backend espera PascalCase según la documentación
+    const dto: any = {};
+    
+    if (responsable.nombre !== undefined && responsable.nombre && responsable.nombre.trim()) {
+      dto.Nombre = responsable.nombre.trim();
+    }
+    if (responsable.institucion !== undefined && responsable.institucion && responsable.institucion.trim()) {
+      dto.Institucion = responsable.institucion.trim();
+    }
+    if (responsable.cargo !== undefined && responsable.cargo && responsable.cargo.trim()) {
+      dto.Cargo = responsable.cargo.trim();
+    }
+    if (responsable.telefono !== undefined && responsable.telefono && responsable.telefono.trim()) {
+      dto.Telefono = responsable.telefono.trim();
+    }
+    if (responsable.correo !== undefined && responsable.correo && responsable.correo.trim()) {
+      dto.Correo = responsable.correo.trim();
+    }
+    if (responsable.activo !== undefined) {
+      dto.Activo = Boolean(responsable.activo);
+    }
+    
+    console.log('🔄 UPDATE ResponsableExterno - DTO enviado:', JSON.stringify(dto, null, 2));
+    console.log('🔄 UPDATE ResponsableExterno - ID:', id);
+    console.log('🔄 UPDATE ResponsableExterno - URL:', `${this.apiUrl}/responsable-externo/${id}`);
+    
+    return this.http.put<any>(`${this.apiUrl}/responsable-externo/${id}`, dto, { observe: 'response' }).pipe(
+      switchMap(response => {
+        console.log('✅ PUT ResponsableExterno - Status:', response.status);
+        console.log('✅ PUT ResponsableExterno - Respuesta recibida:', response.body);
+        
+        // Si el backend devuelve NoContent (204), obtener el responsable actualizado
+        if (response.status === 204 || !response.body || response.body === null || response.body === undefined) {
+          console.log('🔄 PUT ResponsableExterno - Respuesta NoContent (204), obteniendo responsable actualizado desde el servidor...');
+          return this.getResponsableExterno(id).pipe(
+            map(responsable => {
+              if (!responsable) {
+                throw new Error(`No se pudo obtener el responsable externo actualizado con ID ${id}`);
+              }
+              return responsable;
+            })
+          );
+        }
+        
+        // Extraer el item de la respuesta
+        const item = response.body?.data || response.body;
+        
+        // Si la respuesta es vacía, obtener el responsable actualizado
+        if (!item || item === null || item === undefined || (typeof item === 'object' && Object.keys(item).length === 0)) {
+          console.log('🔄 PUT ResponsableExterno - Respuesta vacía, obteniendo responsable actualizado desde el servidor...');
+          return this.getResponsableExterno(id).pipe(
+            map(responsable => {
+              if (!responsable) {
+                throw new Error(`No se pudo obtener el responsable externo actualizado con ID ${id}`);
+              }
+              return responsable;
+            })
+          );
+        }
+        
+        // Si tenemos un item válido, mapearlo
+        try {
+          return of(this.mapResponsableExterno(item));
+        } catch (error) {
+          console.error('❌ Error mapeando responsable externo, obteniendo desde el servidor...', error);
+          return this.getResponsableExterno(id).pipe(
+            map(responsable => {
+              if (!responsable) {
+                throw new Error(`No se pudo obtener el responsable externo actualizado con ID ${id}`);
+              }
+              return responsable;
+            })
+          );
+        }
+      }),
+      catchError(error => {
+        console.error('Error updating responsable externo:', error);
+        throw error;
+      })
+    );
+  }
+
+  deleteResponsableExterno(id: number): Observable<boolean> {
+    return this.http.delete<any>(`${this.apiUrl}/responsable-externo/${id}`, { observe: 'response' }).pipe(
+      map(response => {
+        // El backend devuelve NoContent (204) cuando se elimina exitosamente
+        if (response.status === 204 || response.status === 200) {
+          console.log('✅ DELETE ResponsableExterno - Eliminado exitosamente (Status:', response.status, ')');
+          return true;
+        }
+        return true;
+      }),
+      catchError(error => {
+        console.error('❌ Error deleting responsable externo:', error);
+        if (error.status === 404) {
+          console.warn('⚠️ Responsable externo no encontrado (404)');
+        }
+        throw error;
+      })
+    );
+  }
+
+  private mapResponsableExterno(item: any): ResponsableExterno {
+    return {
+      id: item.id || item.Id || item.idResponsableExterno || item.IdResponsableExterno || 0,
+      nombre: item.nombre || item.Nombre || '',
+      institucion: item.institucion || item.Institucion || '',
+      cargo: item.cargo || item.Cargo || undefined,
+      telefono: item.telefono || item.Telefono || undefined,
+      correo: item.correo || item.Correo || undefined,
+      activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
+      creadoPor: item.creadoPor || item.CreadoPor || undefined,
+      nombreCreador: item.nombreCreador || item.NombreCreador || undefined,
+      fechaCreacion: item.fechaCreacion ? new Date(item.fechaCreacion) : (item.FechaCreacion ? new Date(item.FechaCreacion) : undefined),
+      fechaModificacion: item.fechaModificacion ? new Date(item.fechaModificacion) : (item.FechaModificacion ? new Date(item.FechaModificacion) : null)
+    };
   }
 }

@@ -24,7 +24,7 @@ import type { Indicador } from '../../core/models/indicador';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
-type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores';
+type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras';
 
 interface CatalogoItem {
   id: number;
@@ -71,6 +71,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   paginaActualIndicadores = signal<number>(1);
   readonly itemsPorPagina = 10;
   mostrarTodosIndicadores = signal<boolean>(false);
+  
+  // Búsqueda y paginación para carreras
+  busquedaCarreras = signal<string>('');
+  paginaActualCarreras = signal<number>(1);
+  mostrarTodosCarreras = signal<boolean>(false);
 
   // Para importar indicadores
   showImportDialog = false;
@@ -97,6 +102,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     nombreJefe: new FormControl(''),
     correoJefe: new FormControl(''),
     telefonoJefe: new FormControl(''),
+    color: new FormControl('#3B82F6'), // Color por defecto (azul)
+    departamentoId: new FormControl<number | null>(null), // Para carreras
+    activo: new FormControl<boolean>(true), // Para carreras
   });
 
   // Signals for reactive data
@@ -123,6 +131,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   rolesresponsable = signal<any[]>([]);
   roles = signal<any[]>([]);
   indicadores = signal<Indicador[]>([]);
+  carreras = signal<any[]>([]);
   
   // Loading state
   isLoading = signal<boolean>(false);
@@ -188,6 +197,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       rolesresponsable: 'Rol Responsable',
       roles: 'Rol en el Sistema',
       indicadores: 'Indicadores',
+      carreras: 'Carreras',
     };
     return names[this.selectedCatalogo];
   }
@@ -217,6 +227,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       { value: 'rolesresponsable', label: 'Rol Responsable' },
       { value: 'roles', label: 'Rol en el Sistema' },
       { value: 'indicadores', label: 'Indicadores' },
+      { value: 'carreras', label: 'Carreras' },
     ];
     
     const searchTerm = this.searchCatalogo().toLowerCase().trim();
@@ -265,7 +276,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'estadosactividad': return this.estadosactividad().map(item => ({
         id: item.id,
         nombre: item.nombre || (item as any).NombreEstado || '',
-        descripcion: item.descripcion || ''
+        descripcion: item.descripcion || '',
+        color: (item as any).color || (item as any).Color || '#3B82F6'
       }));
       case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion}) => ({id: idNivel, nombre, descripcion}));
       case 'nivelesacademico': return this.nivelesacademico().map(({id, nombre}) => ({id, nombre}));
@@ -298,6 +310,35 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         const inicio = (paginaActual - 1) * this.itemsPorPagina;
         const fin = inicio + this.itemsPorPagina;
         return indicadores.slice(inicio, fin);
+      }
+      case 'carreras': {
+        let carreras = this.carreras().map(({idCarrera, nombre, codigo, descripcion, departamentoId, departamento, activo}) => ({
+          id: idCarrera,
+          nombre,
+          codigo,
+          descripcion,
+          departamentoId,
+          departamento,
+          activo
+        }));
+        
+        // Filtrar por búsqueda (nombre o código)
+        const busqueda = this.busquedaCarreras().trim().toLowerCase();
+        if (busqueda) {
+          carreras = carreras.filter(carr => 
+            (carr.nombre && carr.nombre.toLowerCase().includes(busqueda)) ||
+            (carr.codigo && carr.codigo.toLowerCase().includes(busqueda))
+          );
+        }
+        
+        // Aplicar paginación solo si no se está mostrando todos
+        if (this.mostrarTodosCarreras()) {
+          return carreras;
+        }
+        const paginaActual = this.paginaActualCarreras();
+        const inicio = (paginaActual - 1) * this.itemsPorPagina;
+        const fin = inicio + this.itemsPorPagina;
+        return carreras.slice(inicio, fin);
       }
       default: return [];
     }
@@ -336,6 +377,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     }
     if (this.selectedCatalogo === 'rolesequipo') {
       return item.id || (item as any).idRolEquipo;
+    }
+    if (this.selectedCatalogo === 'carreras') {
+      return item.id || (item as any).idCarrera;
     }
     return item.id;
   }
@@ -503,10 +547,21 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Indicadores cargados:', data);
         this.indicadores.set(data);
-        this.isLoading.set(false);
       },
       error: error => {
         console.error('❌ LOAD ALL CATALOGOS - Error cargando indicadores:', error);
+      }
+    });
+    
+    // Cargar carreras
+    this.catalogosService.getCarreras().subscribe({
+      next: data => {
+        console.log('✅ LOAD ALL CATALOGOS - Carreras cargadas:', data);
+        this.carreras.set(data);
+        this.isLoading.set(false);
+      },
+      error: error => {
+        console.error('❌ LOAD ALL CATALOGOS - Error cargando carreras:', error);
         this.isLoading.set(false);
       }
     });
@@ -518,6 +573,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.editingId = null;
     this.form.reset();
     this.updateFormValidation();
+    // Activar scroll automático al formulario
+    this.shouldScrollToForm = true;
   }
 
   editItem(item: CatalogoItem) {
@@ -550,6 +607,21 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       this.editingId = item.id || (item as any).idTipoEvidencia;
     } else if (this.selectedCatalogo === 'rolesequipo') {
       this.editingId = item.id || (item as any).idRolEquipo;
+    } else if (this.selectedCatalogo === 'carreras') {
+      this.editingId = item.id || (item as any).idCarrera;
+      // Obtener la carrera completa desde la lista para tener acceso a todos los campos
+      const carreraCompleta = this.carreras().find(c => c.idCarrera === this.editingId);
+      if (carreraCompleta) {
+        this.form.patchValue({ 
+          codigo: carreraCompleta.codigo || '', 
+          nombre: carreraCompleta.nombre || '', 
+          descripcion: carreraCompleta.descripcion || '',
+          departamentoId: carreraCompleta.departamentoId || null,
+          activo: carreraCompleta.activo !== undefined ? carreraCompleta.activo : true
+        });
+        this.updateFormValidation();
+        return;
+      }
     } else {
       this.editingId = item.id;
     }
@@ -565,7 +637,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       nombre: nombreValue || '', 
       descripcion: item.descripcion || '',
       anio: (item as any).anio !== undefined ? (item as any).anio : ((item as any).Anio !== undefined ? (item as any).Anio : null),
-      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null)
+      meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null),
+      color: (item as any).color || (item as any).Color || '#3B82F6'
     });
   }
 
@@ -614,6 +687,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'rolesresponsable': obs = this.catalogosService.deleteRolResponsable(id); break;
       case 'roles': obs = this.catalogosService.deleteRole(id); break;
       case 'indicadores': obs = this.indicadorService.delete(id); break;
+      case 'carreras': obs = this.catalogosService.deleteCarrera(id); break;
       default:
         console.error('Unknown catalog type for deletion:', this.selectedCatalogo);
         return;
@@ -666,6 +740,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const descripcion = this.form.value.descripcion as string;
     const anio = this.form.value.anio;
     const meta = this.form.value.meta;
+    const color = this.form.value.color as string;
     
     // Validar año antes de enviar
     if (this.selectedCatalogo === 'indicadores' && anio !== null && anio !== undefined) {
@@ -678,7 +753,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     }
     
-    console.log('Form values:', { codigo, nombre, descripcion, anio, meta });
+    console.log('Form values:', { codigo, nombre, descripcion, anio, meta, color });
     console.log('Selected catalog:', this.selectedCatalogo);
     
     let data: any;
@@ -693,6 +768,13 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         anio: anio !== null && anio !== undefined ? Number(anio) : undefined,
         meta: meta !== null && meta !== undefined ? Number(meta) : undefined
       };
+    } else if (this.selectedCatalogo === 'estadosactividad') {
+      // Para estadosactividad, incluir color
+      data = { nombre, descripcion, color: color || '#3B82F6' };
+    } else if (this.selectedCatalogo === 'carreras') {
+      // Para carreras, incluir código y departamentoId
+      const departamentoId = (this.form.get('departamentoId')?.value as number) || null;
+      data = { nombre, codigo, descripcion, departamentoId };
     } else {
       data = { nombre, descripcion };
     }
@@ -862,7 +944,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for estado actividad:', data);
           return;
         }
-        obs = this.catalogosService.createEstadoActividad({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        const colorValue = (data as any).color || '#3B82F6';
+        obs = this.catalogosService.createEstadoActividad({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          color: colorValue
+        }); 
         break;
         
         
@@ -918,6 +1005,21 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           anio: data.anio,
           meta: data.meta,
           activo: true
+        });
+        break;
+        
+      case 'carreras':
+        const departamentoId = (this.form.get('departamentoId')?.value as number) || null;
+        if (!data.nombre || !departamentoId) {
+          console.error('Invalid data for carrera:', data);
+          alert('El nombre y el departamento son requeridos');
+          return;
+        }
+        obs = this.catalogosService.createCarrera({ 
+          nombre: data.nombre.trim(), 
+          codigo: data.codigo?.trim() || undefined,
+          descripcion: data.descripcion?.trim() || undefined,
+          departamentoId: departamentoId
         });
         break;
         
@@ -1101,7 +1203,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for estado actividad:', data);
           return;
         }
-        obs = this.catalogosService.updateEstadoActividad(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        const updateColorValue = (data as any).color || '#3B82F6';
+        obs = this.catalogosService.updateEstadoActividad(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          color: updateColorValue
+        }); 
         break;
         
         
@@ -1197,6 +1304,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         obs = this.indicadorService.update(id, updateData);
         break;
         
+      case 'carreras':
+        const departamentoIdUpdate = (this.form.get('departamentoId')?.value as number) || null;
+        const activo = (this.form.get('activo')?.value as boolean) ?? true;
+        if (!data.nombre || !departamentoIdUpdate) {
+          console.error('Invalid data for carrera:', data);
+          alert('El nombre y el departamento son requeridos');
+          return;
+        }
+        obs = this.catalogosService.updateCarrera(id, { 
+          nombre: data.nombre.trim(), 
+          codigo: data.codigo?.trim() || undefined,
+          descripcion: data.descripcion?.trim() || undefined,
+          departamentoId: departamentoIdUpdate,
+          activo: activo
+        });
+        break;
+        
       default:
         console.error('Unknown catalog type:', this.selectedCatalogo);
         return;
@@ -1244,13 +1368,18 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
 
   abrirDialogoImportar() {
     this.showImportDialog = true;
-    this.showImportFromYear = false;
-    this.showImportFromFile = false;
-    // Año origen por defecto: año actual
-    this.importAnioOrigen = this.getAnioActual();
-    // Año destino por defecto: null (se mostrará el año actual con opacidad)
-    this.importAnioDestino = null;
-    this.importActualizarExistentes = false;
+    if (this.selectedCatalogo === 'indicadores') {
+      this.showImportFromYear = false;
+      this.showImportFromFile = false;
+      // Año origen por defecto: año actual
+      this.importAnioOrigen = this.getAnioActual();
+      // Año destino por defecto: null (se mostrará el año actual con opacidad)
+      this.importAnioDestino = null;
+      this.importActualizarExistentes = false;
+    } else if (this.selectedCatalogo === 'carreras') {
+      this.showImportFromYear = false;
+      this.showImportFromFile = false;
+    }
     this.importFile = null;
   }
 
@@ -1476,9 +1605,184 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     return Math.min(fin, total);
   }
 
+  // Métodos de búsqueda y paginación para carreras
+  onBusquedaCarrerasChange(termino: string) {
+    this.busquedaCarreras.set(termino);
+    // Resetear a la primera página cuando cambia la búsqueda
+    this.paginaActualCarreras.set(1);
+  }
+
+  getTotalCarrerasFiltradas(): number {
+    if (this.selectedCatalogo !== 'carreras') {
+      return 0;
+    }
+    let carreras = this.carreras().map(({idCarrera, nombre, codigo, descripcion, departamentoId, departamento, activo}) => ({
+      id: idCarrera,
+      nombre,
+      codigo,
+      descripcion,
+      departamentoId,
+      departamento,
+      activo
+    }));
+    
+    // Filtrar por búsqueda (nombre o código)
+    const busqueda = this.busquedaCarreras().trim().toLowerCase();
+    if (busqueda) {
+      carreras = carreras.filter(carr => 
+        (carr.nombre && carr.nombre.toLowerCase().includes(busqueda)) ||
+        (carr.codigo && carr.codigo.toLowerCase().includes(busqueda))
+      );
+    }
+    
+    return carreras.length;
+  }
+
+  getTotalPaginasCarreras(): number {
+    const total = this.getTotalCarrerasFiltradas();
+    return Math.ceil(total / this.itemsPorPagina);
+  }
+
+  irAPaginaCarreras(pagina: number) {
+    const totalPaginas = this.getTotalPaginasCarreras();
+    if (pagina >= 1 && pagina <= totalPaginas) {
+      this.paginaActualCarreras.set(pagina);
+    }
+  }
+
+  paginaAnteriorCarreras() {
+    const paginaActual = this.paginaActualCarreras();
+    if (paginaActual > 1) {
+      this.paginaActualCarreras.set(paginaActual - 1);
+    }
+  }
+
+  paginaSiguienteCarreras() {
+    const paginaActual = this.paginaActualCarreras();
+    const totalPaginas = this.getTotalPaginasCarreras();
+    if (paginaActual < totalPaginas) {
+      this.paginaActualCarreras.set(paginaActual + 1);
+    }
+  }
+
+  getArrayPaginasCarreras(): number[] {
+    const totalPaginas = this.getTotalPaginasCarreras();
+    const paginaActual = this.paginaActualCarreras();
+    const paginas: number[] = [];
+    
+    // Mostrar máximo 5 páginas a la vez
+    const maxPaginas = 5;
+    let inicio = Math.max(1, paginaActual - Math.floor(maxPaginas / 2));
+    let fin = Math.min(totalPaginas, inicio + maxPaginas - 1);
+    
+    // Ajustar inicio si estamos cerca del final
+    if (fin - inicio < maxPaginas - 1) {
+      inicio = Math.max(1, fin - maxPaginas + 1);
+    }
+    
+    for (let i = inicio; i <= fin; i++) {
+      paginas.push(i);
+    }
+    
+    return paginas;
+  }
+
+  getInicioPaginaCarreras(): number {
+    const total = this.getTotalCarrerasFiltradas();
+    if (total === 0) return 0;
+    return (this.paginaActualCarreras() - 1) * this.itemsPorPagina + 1;
+  }
+
+  getFinPaginaCarreras(): number {
+    const total = this.getTotalCarrerasFiltradas();
+    const fin = this.paginaActualCarreras() * this.itemsPorPagina;
+    return Math.min(fin, total);
+  }
+
+  descargarPlantillaCarreras() {
+    this.catalogosService.descargarPlantillaCarreras().subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Plantilla_Carreras_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err: any) => {
+        console.error('Error descargando plantilla de carreras:', err);
+        alert('Error al descargar la plantilla: ' + (err.error?.message || err.message || 'Error desconocido'));
+      }
+    });
+  }
+
+  importarCarrerasDesdeExcel() {
+    if (!this.importFile) {
+      alert('Por favor selecciona un archivo Excel');
+      return;
+    }
+
+    this.catalogosService.importarCarrerasDesdeExcel(this.importFile).subscribe({
+      next: (resultado: any) => {
+        console.log('✅ IMPORTAR CARRERAS EXCEL - Resultado:', resultado);
+        let mensaje = `Importación completada:\n`;
+        mensaje += `- Total procesados: ${resultado.totalProcesados || 0}\n`;
+        mensaje += `- Creados: ${resultado.creados || 0}\n`;
+        mensaje += `- Actualizados: ${resultado.actualizados || 0}\n`;
+        mensaje += `- Omitidos: ${resultado.omitidos || 0}\n`;
+        mensaje += `- Errores: ${resultado.totalErrores || 0}`;
+        
+        if (resultado.errores && resultado.errores.length > 0) {
+          mensaje += `\n\nErrores encontrados:\n${resultado.errores.join('\n')}`;
+        }
+        
+        alert(mensaje);
+        this.cerrarDialogoImportar();
+        this.loadAllCatalogos();
+      },
+      error: (err: any) => {
+        console.error('❌ IMPORTAR CARRERAS EXCEL - Error completo:', err);
+        console.error('❌ IMPORTAR CARRERAS EXCEL - Status:', err.status);
+        console.error('❌ IMPORTAR CARRERAS EXCEL - Status Text:', err.statusText);
+        console.error('❌ IMPORTAR CARRERAS EXCEL - Error body:', err.error);
+        console.error('❌ IMPORTAR CARRERAS EXCEL - URL:', err.url);
+        
+        let errorMessage = 'Error al importar carreras desde Excel';
+        if (err.error) {
+          if (err.error.errors) {
+            console.error('❌ IMPORTAR CARRERAS EXCEL - Errores de validación:', err.error.errors);
+            const validationErrors = Object.keys(err.error.errors).map(key => {
+              return `${key}: ${err.error.errors[key].join(', ')}`;
+            }).join('\n');
+            errorMessage += `\n\nErrores de validación:\n${validationErrors}`;
+          } else if (err.error.message) {
+            errorMessage += `: ${err.error.message}`;
+          }
+        } else if (err.message) {
+          errorMessage += `: ${err.message}`;
+        }
+        
+        alert(errorMessage);
+      }
+    });
+  }
+
   importarDesdeExcel() {
     if (!this.importFile) {
       alert('Por favor, seleccione un archivo Excel.');
+      return;
+    }
+
+    // Validar que el archivo sea válido
+    if (!(this.importFile instanceof File)) {
+      alert('Error: El archivo seleccionado no es válido.');
+      return;
+    }
+
+    if (this.importFile.size === 0) {
+      alert('Error: El archivo seleccionado está vacío.');
       return;
     }
 
@@ -1486,6 +1790,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     console.log('🔄 IMPORTAR EXCEL - Archivo:', this.importFile.name);
     console.log('🔄 IMPORTAR EXCEL - Tamaño:', this.importFile.size);
     console.log('🔄 IMPORTAR EXCEL - Tipo:', this.importFile.type);
+    console.log('🔄 IMPORTAR EXCEL - Archivo es instancia de File:', this.importFile instanceof File);
 
     // Obtener año destino (por defecto año actual si no se especifica)
     const anioDestino = this.importAnioDestino || this.getAnioActual();

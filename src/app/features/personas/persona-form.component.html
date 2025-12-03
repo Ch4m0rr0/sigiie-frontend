@@ -42,52 +42,101 @@
 
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
         
-        <!-- Nombre Completo -->
-        <div>
-          <label for="nombreCompleto" class="block text-sm font-medium text-gray-700 mb-2">
-            Nombre Completo <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="nombreCompleto"
-            type="text"
-            formControlName="nombreCompleto"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            [class.border-red-500]="form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched"
-            required
-          />
-          @if (form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched) {
-            <p class="mt-1.5 text-sm text-red-600">
-              @if (form.get('nombreCompleto')?.errors?.['required']) {
-                El nombre completo es requerido
-              } @else if (form.get('nombreCompleto')?.errors?.['minlength']) {
-                El nombre debe tener al menos 3 caracteres
-              }
-            </p>
-          }
-        </div>
+        <!-- Nombre Completo (estudiantes, docentes, administrativos) -->
+        @if (isEstudiante() || isDocente() || isAdministrativo()) {
+          <div>
+            <label for="nombreCompleto" class="block text-sm font-medium text-gray-700 mb-2">
+              Nombre Completo <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="nombreCompleto"
+              type="text"
+              formControlName="nombreCompleto"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched"
+              required
+            />
+            @if (form.get('nombreCompleto')?.invalid && form.get('nombreCompleto')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">
+                @if (form.get('nombreCompleto')?.errors?.['required']) {
+                  El nombre completo es requerido
+                } @else if (form.get('nombreCompleto')?.errors?.['minlength']) {
+                  El nombre debe tener al menos 3 caracteres
+                }
+              </p>
+            }
+          </div>
+        }
 
-        <!-- Matrícula (solo estudiantes) -->
+        <!-- Nombre (solo responsables externos) -->
+        @if (isResponsableExterno()) {
+          <div>
+            <label for="nombre" class="block text-sm font-medium text-gray-700 mb-2">
+              Nombre <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="nombre"
+              type="text"
+              formControlName="nombre"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('nombre')?.invalid && form.get('nombre')?.touched"
+              required
+            />
+            @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">
+                @if (form.get('nombre')?.errors?.['required']) {
+                  El nombre es requerido
+                } @else if (form.get('nombre')?.errors?.['minlength']) {
+                  El nombre debe tener al menos 3 caracteres
+                }
+              </p>
+            }
+          </div>
+        }
+
+        <!-- Número de Carnet (solo estudiantes) -->
         @if (isEstudiante()) {
           <div>
-            <label for="matricula" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="numeroCarnet" class="block text-sm font-medium text-gray-700 mb-2">
               Carnet <span class="text-red-500">*</span>
             </label>
             <input
-              id="matricula"
+              id="numeroCarnet"
               type="text"
-              formControlName="matricula"
+              formControlName="numeroCarnet"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              [class.border-red-500]="form.get('matricula')?.invalid && form.get('matricula')?.touched"
+              [class.border-red-500]="form.get('numeroCarnet')?.invalid && form.get('numeroCarnet')?.touched"
               required
             />
-            @if (form.get('matricula')?.invalid && form.get('matricula')?.touched) {
+            @if (form.get('numeroCarnet')?.invalid && form.get('numeroCarnet')?.touched) {
               <p class="mt-1.5 text-sm text-red-600">Número de carnet es requerido</p>
             }
           </div>
         }
 
-        <!-- Cédula (estudiantes, docentes y administrativos, opcional) -->
-        @if (isEstudiante() || isDocente() || isAdministrativo()) {
+        <!-- Cédula (estudiantes - obligatorio, docentes y administrativos - opcional) -->
+        @if (isEstudiante()) {
+          <div>
+            <label for="cedula" class="block text-sm font-medium text-gray-700 mb-2">
+              Cédula <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="cedula"
+              type="text"
+              formControlName="cedula"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('cedula')?.invalid && form.get('cedula')?.touched"
+              required
+            />
+            @if (form.get('cedula')?.invalid && form.get('cedula')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">La cédula es requerida</p>
+            }
+            <p class="mt-1.5 text-sm text-slate-500">
+              Número de identificación personal
+            </p>
+          </div>
+        }
+        @if (isDocente() || isAdministrativo()) {
           <div>
             <label for="cedula" class="block text-sm font-medium text-gray-700 mb-2">
               Cédula
@@ -104,72 +153,87 @@
           </div>
         }
 
-        <!-- Correo -->
-        <div>
-          <label for="correo" class="block text-sm font-medium text-gray-700 mb-2">
-            Correo Electrónico <span class="text-red-500">*</span>
-          </label>
-          <input
-            id="correo"
-            type="email"
-            formControlName="correo"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            [class.border-red-500]="form.get('correo')?.invalid && form.get('correo')?.touched"
-            required
-          />
-          @if (form.get('correo')?.invalid && form.get('correo')?.touched) {
-            <p class="mt-1.5 text-sm text-red-600">
-              @if (form.get('correo')?.errors?.['required']) {
-                El correo es requerido
-              } @else if (form.get('correo')?.errors?.['email']) {
-                Ingresa un correo electrónico válido
-              }
-            </p>
-          }
-        </div>
-
-        <!-- Departamento -->
-        <div>
-          <label for="departamentoId" class="block text-sm font-medium text-gray-700 mb-2">
-            Departamento <span class="text-red-500">*</span>
-          </label>
-          <select
-            id="departamentoId"
-            formControlName="departamentoId"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            [class.border-red-500]="form.get('departamentoId')?.invalid && form.get('departamentoId')?.touched"
-            required
-          >
-            <option value="">Seleccione un departamento...</option>
-            @for (dept of departamentos(); track dept.id) {
-              <option [value]="dept.id">{{ dept.nombre }}</option>
+        <!-- Correo (estudiantes, docentes, administrativos - requerido) -->
+        @if (isEstudiante() || isDocente() || isAdministrativo()) {
+          <div>
+            <label for="correo" class="block text-sm font-medium text-gray-700 mb-2">
+              Correo Electrónico <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="correo"
+              type="email"
+              formControlName="correo"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('correo')?.invalid && form.get('correo')?.touched"
+              required
+            />
+            @if (form.get('correo')?.invalid && form.get('correo')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">
+                @if (form.get('correo')?.errors?.['required']) {
+                  El correo es requerido
+                } @else if (form.get('correo')?.errors?.['email']) {
+                  Ingresa un correo electrónico válido
+                }
+              </p>
             }
-          </select>
-          @if (form.get('departamentoId')?.invalid && form.get('departamentoId')?.touched) {
-            <p class="mt-1.5 text-sm text-red-600">El departamento es requerido</p>
-          }
-        </div>
+          </div>
+        }
+
+        <!-- Institución (solo responsables externos - requerido) -->
+        @if (isResponsableExterno()) {
+          <div>
+            <label for="institucion" class="block text-sm font-medium text-gray-700 mb-2">
+              Institución <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="institucion"
+              type="text"
+              formControlName="institucion"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('institucion')?.invalid && form.get('institucion')?.touched"
+              required
+            />
+            @if (form.get('institucion')?.invalid && form.get('institucion')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">
+                @if (form.get('institucion')?.errors?.['required']) {
+                  La institución es requerida
+                } @else if (form.get('institucion')?.errors?.['minlength']) {
+                  La institución debe tener al menos 3 caracteres
+                }
+              </p>
+            }
+          </div>
+        }
 
         <!-- Género (estudiantes, docentes y administrativos) -->
         @if (isEstudiante() || isDocente() || isAdministrativo()) {
           <div>
-            <label for="generoId" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="idGenero" class="block text-sm font-medium text-gray-700 mb-2">
               Sexo <span class="text-red-500">*</span>
             </label>
             <select
-              id="generoId"
-              formControlName="generoId"
+              id="idGenero"
+              formControlName="idGenero"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              [class.border-red-500]="form.get('generoId')?.invalid && form.get('generoId')?.touched"
+              [class.border-red-500]="form.get('idGenero')?.invalid && form.get('idGenero')?.touched"
               required
             >
-              <option value="">Seleccione un género...</option>
+              <option [ngValue]="null">Seleccione un sexo...</option>
               @for (genero of generos(); track genero.id) {
-                <option [value]="genero.id">{{ genero.codigo }}</option>
+                <option [ngValue]="genero.id">{{ genero.codigo }}</option>
               }
             </select>
-            @if (form.get('generoId')?.invalid && form.get('generoId')?.touched) {
-              <p class="mt-1.5 text-sm text-red-600">El género es requerido</p>
+            @if (form.get('idGenero')?.invalid && form.get('idGenero')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">El sexo es requerido</p>
+            }
+            @if (isEditMode() && form.get('idGenero')?.value) {
+              @for (genero of generos(); track genero.id) {
+                @if (genero.id === form.get('idGenero')?.value) {
+                  <p class="mt-1.5 text-sm text-slate-500">
+                    Valor actual: <span class="font-medium">{{ genero.codigo }}</span>
+                  </p>
+                }
+              }
             }
           </div>
         }
@@ -177,43 +241,56 @@
         <!-- Estado (solo estudiantes) -->
         @if (isEstudiante()) {
           <div>
-            <label for="estadoId" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="idEstadoEstudiante" class="block text-sm font-medium text-gray-700 mb-2">
               Estado <span class="text-red-500">*</span>
             </label>
             <select
-              id="estadoId"
-              formControlName="estadoId"
+              id="idEstadoEstudiante"
+              formControlName="idEstadoEstudiante"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              [class.border-red-500]="form.get('estadoId')?.invalid && form.get('estadoId')?.touched"
+              [class.border-red-500]="form.get('idEstadoEstudiante')?.invalid && form.get('idEstadoEstudiante')?.touched"
               required
             >
-              <option value="">Seleccione un estado...</option>
+              <option [ngValue]="null">Seleccione un estado...</option>
               @for (estado of estadosEstudiante(); track estado.id) {
-                <option [value]="estado.id">{{ estado.nombre }}</option>
+                <option [ngValue]="estado.id">{{ estado.nombre }}</option>
               }
             </select>
-            @if (form.get('estadoId')?.invalid && form.get('estadoId')?.touched) {
+            @if (form.get('idEstadoEstudiante')?.invalid && form.get('idEstadoEstudiante')?.touched) {
               <p class="mt-1.5 text-sm text-red-600">El estado es requerido</p>
+            }
+            @if (isEditMode() && form.get('idEstadoEstudiante')?.value) {
+              @for (estado of estadosEstudiante(); track estado.id) {
+                @if (estado.id === form.get('idEstadoEstudiante')?.value) {
+                  <p class="mt-1.5 text-sm text-slate-500">
+                    Valor actual: <span class="font-medium">{{ estado.nombre }}</span>
+                  </p>
+                }
+              }
             }
           </div>
         }
-
-        <!-- Fecha Ingreso (solo estudiantes) -->
-        @if (isEstudiante()) {
+        
+        <!-- Departamento (solo docentes y administrativos) -->
+        @if (isDocente() || isAdministrativo()) {
           <div>
-            <label for="fechaIngreso" class="block text-sm font-medium text-gray-700 mb-2">
-              Fecha de Ingreso <span class="text-red-500">*</span>
+            <label for="departamentoId" class="block text-sm font-medium text-gray-700 mb-2">
+              Departamento <span class="text-red-500">*</span>
             </label>
-            <input
-              id="fechaIngreso"
-              type="date"
-              formControlName="fechaIngreso"
+            <select
+              id="departamentoId"
+              formControlName="departamentoId"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              [class.border-red-500]="form.get('fechaIngreso')?.invalid && form.get('fechaIngreso')?.touched"
+              [class.border-red-500]="form.get('departamentoId')?.invalid && form.get('departamentoId')?.touched"
               required
-            />
-            @if (form.get('fechaIngreso')?.invalid && form.get('fechaIngreso')?.touched) {
-              <p class="mt-1.5 text-sm text-red-600">La fecha de ingreso es requerida</p>
+            >
+              <option [ngValue]="null">Seleccione un departamento...</option>
+              @for (dept of departamentos(); track dept.id) {
+                <option [ngValue]="dept.id">{{ dept.nombre }}</option>
+              }
+            </select>
+            @if (form.get('departamentoId')?.invalid && form.get('departamentoId')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">El departamento es requerido</p>
             }
           </div>
         }
@@ -236,20 +313,24 @@
           </div>
         }
 
-        <!-- Nivel Académico (solo docentes, opcional) -->
-        @if (isDocente()) {
+        <!-- Nivel Académico (docentes y administrativos, opcional) -->
+        @if (isDocente() || isAdministrativo()) {
           <div>
-            <label for="nivelAcademico" class="block text-sm font-medium text-gray-700 mb-2">
+            <label for="idNivelAcademico" class="block text-sm font-medium text-gray-700 mb-2">
               Nivel Académico
             </label>
-            <input
-              id="nivelAcademico"
-              type="text"
-              formControlName="nivelAcademico"
+            <select
+              id="idNivelAcademico"
+              formControlName="idNivelAcademico"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+            >
+              <option [ngValue]="null">Seleccione un nivel académico...</option>
+              @for (nivel of nivelesAcademico(); track nivel.id) {
+                <option [ngValue]="nivel.id">{{ nivel.nombre }}</option>
+              }
+            </select>
             <p class="mt-1.5 text-sm text-slate-500">
-              Nivel académico del docente
+              Nivel académico (opcional)
             </p>
           </div>
         }
@@ -272,42 +353,31 @@
           </div>
         }
 
-        <!-- Carrera (solo estudiantes, opcional) -->
+        <!-- Carrera (solo estudiantes, obligatorio) -->
         @if (isEstudiante()) {
           <div>
-            <label for="carrera" class="block text-sm font-medium text-gray-700 mb-2">
-              Carrera
-            </label>
-            <input
-              id="carrera"
-              type="text"
-              formControlName="carrera"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            <p class="mt-1.5 text-sm text-slate-500">
-              Carrera o programa de estudios
-            </p>
-          </div>
-        }
-
-        <!-- Categoría Participación (solo estudiantes, opcional) -->
-        @if (isEstudiante()) {
-          <div>
-            <label for="idCategoriaParticipacion" class="block text-sm font-medium text-gray-700 mb-2">
-              Categoría Participación
+            <label for="idCarrera" class="block text-sm font-medium text-gray-700 mb-2">
+              Carrera <span class="text-red-500">*</span>
             </label>
             <select
-              id="idCategoriaParticipacion"
-              formControlName="idCategoriaParticipacion"
+              id="idCarrera"
+              formControlName="idCarrera"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('idCarrera')?.invalid && form.get('idCarrera')?.touched"
+              required
             >
-              <option value="">Seleccione una categoría...</option>
-              @for (categoria of categoriasParticipacion(); track categoria.id) {
-                <option [value]="categoria.id">{{ categoria.nombre }}</option>
+              <option [ngValue]="null">Seleccione una carrera...</option>
+              @for (carrera of carreras(); track carrera.idCarrera || carrera.id) {
+                <option [ngValue]="carrera.idCarrera || carrera.id">
+                  {{ carrera.codigo ? (carrera.codigo + ' - ') : '' }}{{ carrera.nombre }}
+                </option>
               }
             </select>
+            @if (form.get('idCarrera')?.invalid && form.get('idCarrera')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">La carrera es requerida</p>
+            }
             <p class="mt-1.5 text-sm text-slate-500">
-              Categoría de participación del estudiante (opcional)
+              Seleccione la carrera del estudiante
             </p>
           </div>
         }
@@ -318,30 +388,122 @@
             <label for="nivelFormacion" class="block text-sm font-medium text-gray-700 mb-2">
               Nivel Formación
             </label>
-            <input
+            <select
               id="nivelFormacion"
-              type="text"
               formControlName="nivelFormacion"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option [ngValue]="null">Seleccione un nivel...</option>
+              @for (nivel of nivelesFormacion; track nivel.value) {
+                <option [ngValue]="nivel.value">{{ nivel.label }}</option>
+              }
+            </select>
+            @if (isEditMode() && form.get('nivelFormacion')?.value) {
+              <p class="mt-1.5 text-sm text-slate-500">
+                Valor actual: <span class="font-medium">{{ form.get('nivelFormacion')?.value }}</span>
+              </p>
+            } @else {
+              <p class="mt-1.5 text-sm text-slate-500">
+                Nivel de formación académica 
+              </p>
+            }
+          </div>
+        }
+        
+        <!-- Número de Teléfono (estudiantes, docentes y administrativos, opcional) -->
+        @if (isEstudiante() || isDocente() || isAdministrativo()) {
+          <div>
+            <label for="numeroTelefono" class="block text-sm font-medium text-gray-700 mb-2">
+              Número de Teléfono
+            </label>
+            <input
+              id="numeroTelefono"
+              type="text"
+              formControlName="numeroTelefono"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <p class="mt-1.5 text-sm text-slate-500">
-              Nivel de formación académica
+              Número de teléfono de contacto
             </p>
           </div>
         }
 
-        <!-- Activo -->
-        <div class="flex items-center gap-3">
-          <input
-            id="activo"
-            type="checkbox"
-            formControlName="activo"
-            class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-          />
-          <label for="activo" class="text-sm font-medium text-slate-700">
-            Activo
-          </label>
-        </div>
+        <!-- Cargo (solo responsables externos, opcional) -->
+        @if (isResponsableExterno()) {
+          <div>
+            <label for="cargo" class="block text-sm font-medium text-gray-700 mb-2">
+              Cargo
+            </label>
+            <input
+              id="cargo"
+              type="text"
+              formControlName="cargo"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p class="mt-1.5 text-sm text-slate-500">
+              Cargo o puesto del responsable (opcional)
+            </p>
+          </div>
+        }
+
+        <!-- Teléfono (solo responsables externos, opcional) -->
+        @if (isResponsableExterno()) {
+          <div>
+            <label for="telefono" class="block text-sm font-medium text-gray-700 mb-2">
+              Teléfono
+            </label>
+            <input
+              id="telefono"
+              type="text"
+              formControlName="telefono"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p class="mt-1.5 text-sm text-slate-500">
+              Número de teléfono de contacto (opcional)
+            </p>
+          </div>
+        }
+
+        <!-- Correo (solo responsables externos, opcional) -->
+        @if (isResponsableExterno()) {
+          <div>
+            <label for="correo" class="block text-sm font-medium text-gray-700 mb-2">
+              Correo Electrónico
+            </label>
+            <input
+              id="correo"
+              type="email"
+              formControlName="correo"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              [class.border-red-500]="form.get('correo')?.invalid && form.get('correo')?.touched"
+            />
+            @if (form.get('correo')?.invalid && form.get('correo')?.touched) {
+              <p class="mt-1.5 text-sm text-red-600">
+                @if (form.get('correo')?.errors?.['email']) {
+                  Ingresa un correo electrónico válido
+                }
+              </p>
+            }
+            <p class="mt-1.5 text-sm text-slate-500">
+              Correo electrónico de contacto (opcional)
+            </p>
+          </div>
+        }
+
+        <!-- Activo (solo en modo edición, no para estudiantes) -->
+        @if (isEditMode() && !isEstudiante()) {
+          <div class="flex items-center gap-3">
+            <input
+              id="activo"
+              type="checkbox"
+              formControlName="activo"
+              class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+            />
+            <label for="activo" class="text-sm font-medium text-slate-700">
+              Activo
+            </label>
+          </div>
+        }
 
       </div>
 
