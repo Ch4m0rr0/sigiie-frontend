@@ -1908,7 +1908,7 @@ export class ActividadDetailComponent implements OnInit {
 
   navigateToParticipaciones(): void {
     if (!this.actividad()?.id) return;
-    // Navegar a la tabla de participantes con filtro por actividad
+    // Navegar a la vista de Participaciones con filtro por actividad
     this.router.navigate(['/participaciones'], {
       queryParams: { idActividad: this.actividad()!.id }
     });

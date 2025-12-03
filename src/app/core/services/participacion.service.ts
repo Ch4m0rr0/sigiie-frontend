@@ -720,5 +720,154 @@ export class ParticipacionService {
       })
     );
   }
+
+  /**
+   * Obtiene resumen de participaciones por actividad/subactividad
+   * GET /api/participaciones/resumen
+   */
+  getResumen(filtros?: { idActividad?: number; idSubactividad?: number; busquedaTexto?: string }): Observable<any> {
+    let params = new HttpParams();
+    
+    if (filtros?.idActividad !== undefined && filtros.idActividad !== null) {
+      params = params.set('idActividad', filtros.idActividad.toString());
+    }
+    if (filtros?.idSubactividad !== undefined && filtros.idSubactividad !== null) {
+      params = params.set('idSubactividad', filtros.idSubactividad.toString());
+    }
+    if (filtros?.busquedaTexto) {
+      params = params.set('busquedaTexto', filtros.busquedaTexto);
+    }
+
+    return this.http.get<any>(`${this.apiUrl}/resumen`, { params }).pipe(
+      map(response => response.data || response),
+      catchError(error => {
+        console.error('Error obteniendo resumen de participaciones:', error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Obtiene participaciones por actividad
+   * GET /api/participaciones?idActividad={id}
+   */
+  getByActividad(idActividad: number): Observable<Participacion[]> {
+    return this.http.get<any>(this.apiUrl, {
+      params: new HttpParams().set('idActividad', idActividad.toString())
+    }).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => this.mapParticipacion(item)) : [];
+      }),
+      catchError(error => {
+        console.error('Error obteniendo participaciones por actividad:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Crea una participación individual
+   * POST /api/participaciones/individual
+   */
+  createIndividual(data: ParticipacionCreate): Observable<Participacion> {
+    // Convertir a formato que espera el backend
+    const dto: any = {
+      EdicionId: data.edicionId,
+      IdCategoriaParticipacionParticipante: data.categoriaParticipacionId,
+      IdEstadoParticipacion: data.estadoParticipacionId,
+      FechaParticipacion: data.fechaParticipacion instanceof Date 
+        ? data.fechaParticipacion.toISOString() 
+        : data.fechaParticipacion
+    };
+
+    if (data.idSubactividad !== undefined) {
+      dto.IdSubactividad = data.idSubactividad;
+    }
+    if (data.grupoNumero !== undefined) {
+      dto.GrupoNumero = data.grupoNumero;
+    }
+    if (data.idRolEquipo !== undefined) {
+      dto.IdRolEquipo = data.idRolEquipo;
+    }
+    if (data.idTutor !== undefined) {
+      dto.IdTutor = data.idTutor;
+    }
+    if (data.estudianteId !== undefined) {
+      dto.EstudianteId = data.estudianteId;
+    }
+    if (data.docenteId !== undefined) {
+      dto.DocenteId = data.docenteId;
+    }
+    if (data.administrativoId !== undefined) {
+      dto.AdministrativoId = data.administrativoId;
+    }
+
+    return this.http.post<any>(`${this.apiUrl}/individual`, dto).pipe(
+      map(response => {
+        const item = response.data || response;
+        return this.mapParticipacion(item);
+      }),
+      catchError(error => {
+        console.error('Error creando participación individual:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Actualiza una participación individual
+   * PUT /api/participaciones/individual/{id}
+   */
+  updateIndividual(id: number, data: Partial<ParticipacionCreate>): Observable<Participacion> {
+    const dto: any = {};
+    
+    if (data.edicionId !== undefined) {
+      dto.EdicionId = data.edicionId;
+    }
+    if (data.idSubactividad !== undefined) {
+      dto.IdSubactividad = data.idSubactividad;
+    }
+    if (data.grupoNumero !== undefined) {
+      dto.GrupoNumero = data.grupoNumero;
+    }
+    if (data.idRolEquipo !== undefined) {
+      dto.IdRolEquipo = data.idRolEquipo;
+    }
+    if (data.idTutor !== undefined) {
+      dto.IdTutor = data.idTutor;
+    }
+    if (data.estudianteId !== undefined) {
+      dto.EstudianteId = data.estudianteId;
+    }
+    if (data.docenteId !== undefined) {
+      dto.DocenteId = data.docenteId;
+    }
+    if (data.administrativoId !== undefined) {
+      dto.AdministrativoId = data.administrativoId;
+    }
+    if (data.categoriaParticipacionId !== undefined) {
+      dto.IdCategoriaParticipacionParticipante = data.categoriaParticipacionId;
+    }
+    if (data.estadoParticipacionId !== undefined) {
+      dto.IdEstadoParticipacion = data.estadoParticipacionId;
+    }
+    if (data.fechaParticipacion !== undefined) {
+      dto.FechaParticipacion = data.fechaParticipacion instanceof Date 
+        ? data.fechaParticipacion.toISOString() 
+        : data.fechaParticipacion;
+    }
+
+    return this.http.put<any>(`${this.apiUrl}/individual/${id}`, dto).pipe(
+      map(response => {
+        const item = response.data || response;
+        return this.mapParticipacion(item);
+      }),
+      catchError(error => {
+        console.error('Error actualizando participación individual:', error);
+        throw error;
+      })
+    );
+  }
 }
 
