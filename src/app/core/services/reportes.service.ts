@@ -304,25 +304,95 @@ export class ReportesService {
   }
 
   /**
-   * POST /api/exportar/importar/participantes/{idSubactividad}
-   * Importar participantes desde Excel
+   * GET /api/exportar/plantillas/participantes-actividad
+   * Obtener plantilla de participantes para actividad (con dropdowns y validaciones)
    */
-  importarParticipantes(idSubactividad: number, archivo: File): Observable<any> {
-    console.log('🔄 POST Importar Participantes - URL:', `${this.exportarUrl}/importar/participantes/${idSubactividad}`);
+  obtenerPlantillaParticipantesActividad(): Observable<Blob> {
+    console.log('🔄 GET Plantilla Participantes Actividad - URL:', `${this.exportarUrl}/plantillas/participantes-actividad`);
+    
+    return this.http.get<Blob>(`${this.exportarUrl}/plantillas/participantes-actividad`, {
+      responseType: 'blob' as 'json',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      }
+    }).pipe(
+      map(blob => {
+        console.log('✅ GET Plantilla Participantes Actividad - Archivo recibido, tamaño:', blob.size);
+        return blob;
+      }),
+      catchError(error => {
+        console.error('❌ GET Plantilla Participantes Actividad - Error:', error);
+        return this.handleBlobError(error);
+      })
+    );
+  }
+
+  /**
+   * POST /api/exportar/importar/participantes?idSubactividad={id}
+   * Importar participantes desde Excel para subactividad
+   */
+  importarParticipantesPorSubactividad(idSubactividad: number, archivo: File, anio?: number): Observable<any> {
+    let url = `${this.exportarUrl}/importar/participantes`;
+    const params = new URLSearchParams();
+    params.append('idSubactividad', idSubactividad.toString());
+    if (anio) {
+      params.append('anio', anio.toString());
+    }
+    url += `?${params.toString()}`;
+    
+    console.log('🔄 POST Importar Participantes (Subactividad) - URL:', url);
     
     const formData = new FormData();
-    formData.append('archivo', archivo);
+    formData.append('archivo', archivo, archivo.name);
     
-    return this.http.post<any>(`${this.exportarUrl}/importar/participantes/${idSubactividad}`, formData).pipe(
+    return this.http.post<any>(url, formData).pipe(
       map(response => {
-        console.log('✅ POST Importar Participantes - Respuesta recibida:', response);
+        console.log('✅ POST Importar Participantes (Subactividad) - Respuesta recibida:', response);
         return response.data || response;
       }),
       catchError(error => {
-        console.error('❌ POST Importar Participantes - Error:', error);
+        console.error('❌ POST Importar Participantes (Subactividad) - Error:', error);
         throw error;
       })
     );
+  }
+
+  /**
+   * POST /api/exportar/importar/participantes?idActividad={id}&anio={anio}
+   * Importar participantes desde Excel para actividad
+   */
+  importarParticipantesPorActividad(idActividad: number, archivo: File, anio?: number): Observable<any> {
+    let url = `${this.exportarUrl}/importar/participantes`;
+    const params = new URLSearchParams();
+    params.append('idActividad', idActividad.toString());
+    if (anio) {
+      params.append('anio', anio.toString());
+    }
+    url += `?${params.toString()}`;
+    
+    console.log('🔄 POST Importar Participantes (Actividad) - URL:', url);
+    
+    const formData = new FormData();
+    formData.append('archivo', archivo, archivo.name);
+    
+    return this.http.post<any>(url, formData).pipe(
+      map(response => {
+        console.log('✅ POST Importar Participantes (Actividad) - Respuesta recibida:', response);
+        return response.data || response;
+      }),
+      catchError(error => {
+        console.error('❌ POST Importar Participantes (Actividad) - Error:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * POST /api/exportar/importar/participantes/{idSubactividad}
+   * Importar participantes desde Excel (método legacy - mantener para compatibilidad)
+   */
+  importarParticipantes(idSubactividad: number, archivo: File): Observable<any> {
+    return this.importarParticipantesPorSubactividad(idSubactividad, archivo);
   }
 
   /**

@@ -8,7 +8,8 @@ import { Injectable } from '@angular/core';
 export class ImageStorageService {
   private readonly DB_NAME = 'evidencias_images_db';
   private readonly STORE_NAME = 'images';
-  private readonly DB_VERSION = 2;
+  private readonly OFFICE_FILES_STORE_NAME = 'officeFiles';
+  private readonly DB_VERSION = 3; // Incrementar versión para agregar el nuevo store
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
 
@@ -51,6 +52,14 @@ export class ImageStorageService {
         if (!db.objectStoreNames.contains(this.STORE_NAME)) {
           const store = db.createObjectStore(this.STORE_NAME, { keyPath: ['evidenciaId', 'imageIndex'] });
           store.createIndex('evidenciaId', 'evidenciaId', { unique: false });
+        }
+        
+        // Agregar store para archivos Office en versión 3
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains(this.OFFICE_FILES_STORE_NAME)) {
+            const officeStore = db.createObjectStore(this.OFFICE_FILES_STORE_NAME, { keyPath: ['evidenciaId', 'fileIndex'] });
+            officeStore.createIndex('evidenciaId', 'evidenciaId', { unique: false });
+          }
         }
       };
     });
@@ -268,6 +277,127 @@ export class ImageStorageService {
       });
     } catch (error) {
       console.error('Error al obtener blob:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Guarda un archivo Office en IndexedDB
+   * @param evidenciaId ID de la evidencia
+   * @param file Archivo Office a guardar
+   * @param fileIndex Índice del archivo (0 para el primero, por defecto)
+   * @returns Promise que resuelve cuando el archivo se guarda
+   */
+  async saveOfficeFile(evidenciaId: number, file: File, fileIndex: number = 0): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await this.ensureDB();
+        
+        // Leer el archivo como ArrayBuffer
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          if (!arrayBuffer) {
+            reject(new Error('Error al leer el archivo'));
+            return;
+          }
+
+          try {
+            const store = db.transaction([this.OFFICE_FILES_STORE_NAME], 'readwrite').objectStore(this.OFFICE_FILES_STORE_NAME);
+            const data = {
+              evidenciaId: evidenciaId,
+              fileIndex: fileIndex,
+              arrayBuffer: arrayBuffer,
+              mimeType: file.type,
+              fileName: file.name,
+              fileSize: file.size
+            };
+            
+            const putRequest = store.put(data);
+            putRequest.onsuccess = () => {
+              resolve();
+            };
+            putRequest.onerror = () => {
+              console.error('Error al guardar archivo Office en IndexedDB:', putRequest.error);
+              reject(new Error('Error al guardar archivo Office en IndexedDB'));
+            };
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => {
+          reject(new Error('Error al leer el archivo'));
+        };
+        reader.readAsArrayBuffer(file);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Obtiene todos los archivos Office de una evidencia
+   * @param evidenciaId ID de la evidencia
+   * @returns Promise que resuelve con un array de objetos con información de los archivos
+   */
+  async getAllOfficeFiles(evidenciaId: number): Promise<Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>> {
+    try {
+      const db = await this.ensureDB();
+      const store = db.transaction([this.OFFICE_FILES_STORE_NAME], 'readonly').objectStore(this.OFFICE_FILES_STORE_NAME);
+      const index = store.index('evidenciaId');
+      
+      return new Promise((resolve) => {
+        const request = index.getAll(evidenciaId);
+        request.onsuccess = () => {
+          const results = request.result || [];
+          const files = results
+            .sort((a, b) => (a.fileIndex || 0) - (b.fileIndex || 0))
+            .map((item: any) => ({
+              fileName: item.fileName,
+              mimeType: item.mimeType,
+              fileSize: item.fileSize,
+              fileIndex: item.fileIndex
+            }));
+          resolve(files);
+        };
+        request.onerror = () => {
+          resolve([]);
+        };
+      });
+    } catch (error) {
+      console.error('Error al obtener archivos Office:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene un archivo Office como Blob desde IndexedDB
+   * @param evidenciaId ID de la evidencia
+   * @param fileIndex Índice del archivo (0 para el primero, por defecto)
+   * @returns Promise que resuelve con el Blob o null si no existe
+   */
+  async getOfficeFileBlob(evidenciaId: number, fileIndex: number = 0): Promise<Blob | null> {
+    try {
+      const db = await this.ensureDB();
+      const store = db.transaction([this.OFFICE_FILES_STORE_NAME], 'readonly').objectStore(this.OFFICE_FILES_STORE_NAME);
+      
+      return new Promise((resolve) => {
+        const request = store.get([evidenciaId, fileIndex]);
+        request.onsuccess = () => {
+          const result = request.result;
+          if (result && result.arrayBuffer) {
+            const blob = new Blob([result.arrayBuffer], { type: result.mimeType });
+            resolve(blob);
+          } else {
+            resolve(null);
+          }
+        };
+        request.onerror = () => {
+          resolve(null);
+        };
+      });
+    } catch (error) {
+      console.error('Error al obtener archivo Office:', error);
       return null;
     }
   }

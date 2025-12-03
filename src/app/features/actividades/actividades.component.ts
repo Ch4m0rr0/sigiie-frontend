@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, AfterViewInit, signal, HostListener, ElementRef, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, AfterViewInit, signal, computed, HostListener, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -26,6 +26,7 @@ import { CalendarModule, CalendarUtils, CalendarDateFormatter, CalendarA11y, Cal
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { es } from 'date-fns/locale';
 import { format, startOfWeek, addDays } from 'date-fns';
+import { EvidenciaFormComponent } from '../evidencias/evidencia-form.component';
 
 // Formateador personalizado para usar locale español
 class CustomCalendarDateFormatter extends CalendarDateFormatter {
@@ -64,7 +65,8 @@ class CustomCalendarDateFormatter extends CalendarDateFormatter {
     RouterModule, 
     ReactiveFormsModule, 
     IconComponent, 
-    CalendarModule
+    CalendarModule,
+    EvidenciaFormComponent
   ],
   providers: [
     CalendarUtils,
@@ -184,6 +186,52 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   // Tipos de responsables seleccionados
   tiposResponsableSeleccionados = signal<string[]>([]); // ['usuario', 'docente', 'estudiante', 'administrativo', 'externo']
 
+  // Modal de evidencia
+  showEvidenciaModal = signal(false);
+  actividadParaEvidencia = signal<Actividad | null>(null);
+  
+  // Signal computado para los tipos de evidencia de la actividad
+  tiposEvidenciaDeActividad = computed(() => {
+    const actividad = this.actividadParaEvidencia();
+    if (!actividad) {
+      return null;
+    }
+    
+    const tipos: any = actividad.idTipoEvidencias;
+    
+    // Si es undefined o null, retornar null
+    if (tipos === undefined || tipos === null) {
+      return null;
+    }
+    
+    // Si es un string, intentar parsearlo primero
+    if (typeof tipos === 'string' && tipos.trim() !== '') {
+      try {
+        const parsed = JSON.parse(tipos);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const tiposNumeros = parsed.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+          return tiposNumeros;
+        }
+      } catch (e) {
+        console.warn('⚠️ Error parseando tipos de evidencia desde string:', e);
+      }
+    }
+    
+    // Si es un array y tiene elementos
+    if (Array.isArray(tipos) && tipos.length > 0) {
+      // Asegurarse de que todos los valores sean números
+      const tiposNumeros = tipos.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+      return tiposNumeros;
+    }
+    
+    // Si es un número único, convertirlo a array
+    if (typeof tipos === 'number' && tipos > 0) {
+      return [tipos];
+    }
+    
+    return null;
+  });
+
   ngOnInit(): void {
     this.initializeFormIndicador();
     this.initializeFormImportarAnio();
@@ -231,8 +279,14 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.loading.set(true);
     
     // Helper para manejar errores individuales sin detener las demás llamadas
-    const handleError = (error: any, defaultValue: any[] = []) => {
-      console.error('Error en carga paralela:', error);
+    const handleError = (error: any, defaultValue: any[] = [], errorMessage: string = '') => {
+      console.error(`❌ Error en carga paralela${errorMessage ? ': ' + errorMessage : ''}:`, error);
+      if (error?.error) {
+        console.error('❌ Detalles del error:', JSON.stringify(error.error, null, 2));
+      }
+      if (error?.message) {
+        console.error('❌ Mensaje de error:', error.message);
+      }
       return of(defaultValue);
     };
     
@@ -245,7 +299,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         catchError(err => handleError(err, []))
       ),
       estadosActividad: this.catalogosService.getEstadosActividad().pipe(
-        catchError(err => handleError(err, []))
+        catchError(err => {
+          console.error('❌ Error al cargar estados de actividad:', err);
+          return handleError(err, [], 'estados de actividad');
+        })
       ),
       tiposActividad: this.catalogosService.getCategoriasActividad().pipe(
         catchError(err => handleError(err, []))
@@ -286,7 +343,21 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // Asignar catálogos
         this.departamentos.set(results.catalogos.departamentos);
         this.tiposIniciativa.set(results.catalogos.tiposIniciativa);
-        this.estadosActividad.set(results.catalogos.estadosActividad);
+        const estados = results.catalogos.estadosActividad || [];
+        console.log('📋 Estados de actividad cargados:', estados.length, 'estados');
+        console.log('📋 Datos completos de estados:', JSON.stringify(estados, null, 2));
+        if (estados.length > 0) {
+          console.log('📋 Lista de estados:', estados.map((e: any) => ({
+            id: e.idEstadoActividad || e.id,
+            nombre: e.nombre,
+            color: (e as any).color || 'sin color'
+          })));
+        } else {
+          console.warn('⚠️ No se cargaron estados de actividad o el array está vacío');
+          console.warn('⚠️ Respuesta completa de catalogos:', results.catalogos);
+        }
+        this.estadosActividad.set(estados);
+        console.log('✅ Signal estadosActividad actualizado con', this.estadosActividad().length, 'estados');
         this.tiposActividad.set(results.catalogos.tiposActividad);
         
         // Establecer estado por defecto después de cargar los catálogos
@@ -338,11 +409,36 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
     this.catalogosService.getEstadosActividad().subscribe({
       next: (data) => {
-        this.estadosActividad.set(data);
+        console.log('📋 Estados de actividad recargados:', data?.length || 0, 'estados');
+        if (data && data.length > 0) {
+          console.log('📋 Lista de estados:', data.map((e: any) => ({
+            id: e.idEstadoActividad || e.id,
+            nombre: e.nombre,
+            color: (e as any).color || 'sin color'
+          })));
+        } else {
+          console.warn('⚠️ No se recargaron estados de actividad o el array está vacío');
+        }
+        this.estadosActividad.set(data || []);
         // Establecer estado por defecto si el formulario existe y no tiene estado seleccionado
         this.establecerEstadoActividadPorDefecto();
       },
-      error: (err) => console.error('Error loading estados actividad:', err)
+      error: (err) => {
+        console.error('❌ Error loading estados actividad:', err);
+        if (err?.error) {
+          console.error('❌ Detalles del error:', JSON.stringify(err.error, null, 2));
+        }
+        if (err?.message) {
+          console.error('❌ Mensaje de error:', err.message);
+        }
+        if (err?.status) {
+          console.error('❌ Status del error:', err.status);
+        }
+        if (err?.statusText) {
+          console.error('❌ Status text:', err.statusText);
+        }
+        this.estadosActividad.set([]);
+      }
     });
 
     this.catalogosService.getCategoriasActividad().subscribe({
@@ -1788,24 +1884,50 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   navigateToCrearEvidencia(actividad: Actividad): void {
-    // Obtener los tipos de evidencia de la actividad
-    const tiposEvidencia = actividad.idTipoEvidencias || [];
-    console.log('🚀 Navegando a crear evidencia. Actividad:', actividad.id, 'Tipos de evidencia:', tiposEvidencia);
+    console.log('🔍 Actividad seleccionada para evidencia:', actividad);
+    console.log('🔍 Tipos de evidencia de la actividad (desde lista):', actividad.idTipoEvidencias);
+    console.log('🔍 Tipo de idTipoEvidencias:', typeof actividad.idTipoEvidencias, 'Es array:', Array.isArray(actividad.idTipoEvidencias));
     
-    // Construir query params
-    const queryParams: any = {
-      actividadId: actividad.id
-    };
+    // Ahora que el backend devuelve IdTipoEvidencias en la lista, usar directamente
+    // Solo hacer getById como fallback si realmente no tiene tipos (null, undefined, o array vacío)
+    const tieneTiposEvidencia = actividad.idTipoEvidencias && 
+                                  Array.isArray(actividad.idTipoEvidencias) && 
+                                  actividad.idTipoEvidencias.length > 0;
     
-    // Si hay tipos de evidencia, pasarlos como query param
-    if (tiposEvidencia.length > 0) {
-      queryParams.tiposEvidencia = tiposEvidencia.join(',');
-      console.log('📤 Query params con tipos:', queryParams);
+    if (tieneTiposEvidencia) {
+      console.log('✅ La actividad tiene tipos de evidencia en la lista, usando directamente');
+      this.actividadParaEvidencia.set(actividad);
+      this.showEvidenciaModal.set(true);
     } else {
-      console.warn('⚠️ La actividad no tiene tipos de evidencia definidos');
+      // Fallback: obtener la actividad completa con getById por si acaso
+      console.log('⚠️ La actividad no tiene tipos de evidencia en la lista, obteniendo actividad completa como fallback...');
+      this.actividadesService.getById(actividad.id).subscribe({
+        next: (actividadCompleta) => {
+          console.log('✅ Actividad completa obtenida:', actividadCompleta);
+          console.log('✅ Tipos de evidencia de la actividad completa:', actividadCompleta.idTipoEvidencias);
+          this.actividadParaEvidencia.set(actividadCompleta);
+          this.showEvidenciaModal.set(true);
+        },
+        error: (err) => {
+          console.error('❌ Error al obtener actividad completa:', err);
+          // Usar la actividad de la lista como fallback (aunque no tenga tipos)
+          console.log('⚠️ Usando actividad de la lista sin tipos de evidencia');
+          this.actividadParaEvidencia.set(actividad);
+          this.showEvidenciaModal.set(true);
+        }
+      });
     }
-    
-    this.router.navigate(['/evidencias/nueva'], { queryParams });
+  }
+
+  cerrarEvidenciaModal(): void {
+    this.showEvidenciaModal.set(false);
+    this.actividadParaEvidencia.set(null);
+  }
+
+  onEvidenciaCreada(): void {
+    this.cerrarEvidenciaModal();
+    // Recargar actividades para mostrar las nuevas evidencias
+    this.loadActividades();
   }
 
   crearNuevaActividadAnual(): void {
@@ -1886,16 +2008,51 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   actualizarEventosCalendario(actividades: Actividad[]): void {
     const eventos: CalendarEvent[] = actividades
-      .filter(actividad => actividad.fechaInicio || actividad.fechaCreacion)
+      .filter(actividad => actividad.fechaInicio || actividad.fechaEvento || actividad.fechaCreacion)
       .map(actividad => {
+        // Usar fechaInicio, fechaEvento o fechaCreacion como fecha del evento
         const fecha = actividad.fechaInicio 
           ? new Date(actividad.fechaInicio)
+          : actividad.fechaEvento
+          ? new Date(actividad.fechaEvento)
           : new Date(actividad.fechaCreacion);
         
-        // Color según el estado
-        const color = actividad.activo 
-          ? { primary: '#10b981', secondary: '#d1fae5' } // emerald
-          : { primary: '#64748b', secondary: '#f1f5f9' }; // slate
+        // Obtener el color del estado de la actividad
+        let colorEstado = '#3B82F6'; // Color por defecto (azul)
+        let nombreEstado = actividad.nombreEstadoActividad || 'Sin estado';
+        
+        if (actividad.idEstadoActividad) {
+          const estado = this.estadosActividad().find(
+            e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
+          );
+          if (estado) {
+            // El estado tiene un campo color que viene del backend
+            colorEstado = (estado as any).color || '#3B82F6';
+            nombreEstado = estado.nombre || nombreEstado;
+          }
+        }
+        
+        // Convertir color hex a RGB para crear variaciones más claras
+        const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+          } : null;
+        };
+        
+        const rgb = hexToRgb(colorEstado);
+        const colorPrimary = colorEstado;
+        // Crear un color secundario más claro (background) basado en el color del estado
+        const colorSecondary = rgb 
+          ? `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`
+          : '#d1fae5'; // fallback a emerald claro
+        
+        const color = {
+          primary: colorPrimary,
+          secondary: colorSecondary
+        };
         
         // Crear tooltip con información detallada
         let tooltip = actividad.nombre;
@@ -1908,14 +2065,18 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         if (actividad.horaRealizacion) {
           tooltip += `\nHora: ${actividad.horaRealizacion}`;
         }
+        if (nombreEstado) {
+          tooltip += `\nEstado: ${nombreEstado}`;
+        }
         
         return {
           id: actividad.id,
           start: fecha,
-          title: actividad.nombre,
+          title: actividad.nombre, // El nombre de la actividad se mostrará en la ficha
           color: color,
           meta: {
             actividad: actividad,
+            estado: nombreEstado,
             tooltip: tooltip
           }
         } as CalendarEvent;
@@ -1933,6 +2094,66 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     if (this.hoverTimeout) {
       clearTimeout(this.hoverTimeout);
     }
+  }
+
+  getEstadoColor(estado: any): string {
+    return estado?.color || '#3B82F6';
+  }
+
+  getTiposEvidenciaDeActividad(): number[] | null {
+    const actividad = this.actividadParaEvidencia();
+    if (!actividad) {
+      console.warn('⚠️ No hay actividad seleccionada');
+      return null;
+    }
+    
+    console.log('🔍 getTiposEvidenciaDeActividad - Actividad completa:', actividad);
+    console.log('🔍 getTiposEvidenciaDeActividad - Actividad nombre:', actividad.nombre);
+    console.log('🔍 getTiposEvidenciaDeActividad - idTipoEvidencias:', actividad.idTipoEvidencias);
+    console.log('🔍 getTiposEvidenciaDeActividad - Tipo de idTipoEvidencias:', typeof actividad.idTipoEvidencias);
+    console.log('🔍 getTiposEvidenciaDeActividad - Es array:', Array.isArray(actividad.idTipoEvidencias));
+    console.log('🔍 getTiposEvidenciaDeActividad - Es undefined:', actividad.idTipoEvidencias === undefined);
+    console.log('🔍 getTiposEvidenciaDeActividad - Es null:', actividad.idTipoEvidencias === null);
+    
+    const tipos: any = actividad.idTipoEvidencias;
+    
+    // Si es undefined o null, retornar null
+    if (tipos === undefined || tipos === null) {
+      console.warn('⚠️ idTipoEvidencias es undefined o null');
+      return null;
+    }
+    
+    // Si es un string, intentar parsearlo primero
+    if (typeof tipos === 'string' && tipos.trim() !== '') {
+      try {
+        const parsed = JSON.parse(tipos);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const tiposNumeros = parsed.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+          console.log('✅ Tipos de evidencia parseados desde string:', tiposNumeros);
+          return tiposNumeros;
+        }
+      } catch (e) {
+        console.warn('⚠️ Error parseando tipos de evidencia desde string:', e);
+      }
+    }
+    
+    // Si es un array y tiene elementos
+    if (Array.isArray(tipos) && tipos.length > 0) {
+      // Asegurarse de que todos los valores sean números
+      const tiposNumeros = tipos.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+      console.log('✅ Tipos de evidencia válidos (array):', tiposNumeros);
+      return tiposNumeros;
+    }
+    
+    // Si es un número único, convertirlo a array
+    if (typeof tipos === 'number' && tipos > 0) {
+      console.log('✅ Tipo de evidencia único (número):', tipos);
+      return [tipos];
+    }
+    
+    console.warn('⚠️ No se encontraron tipos de evidencia válidos en la actividad');
+    console.warn('⚠️ Valor recibido:', tipos, 'Tipo:', typeof tipos);
+    return null;
   }
 
   eventoClicked({ event }: { event: CalendarEvent }): void {

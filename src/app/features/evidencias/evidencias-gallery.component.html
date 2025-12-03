@@ -6,12 +6,53 @@
         <h1 class="text-3xl font-bold text-slate-900 mb-2">Galería de Evidencias</h1>
         <p class="text-sm text-slate-600">Vista de galería con imágenes de evidencias</p>
       </div>
-      <button 
-        [routerLink]="['/evidencias']"
-        class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
-        <app-icon icon="list" size="sm" color="white"></app-icon>
-        Vista de Lista
-      </button>
+      <div class="flex items-center gap-3">
+        @if (modoSeleccion()) {
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-600">
+              {{ totalSeleccionadas }} seleccionada(s)
+            </span>
+            @if (totalSeleccionadas > 0) {
+              <button 
+                (click)="eliminarSeleccionadas()"
+                [disabled]="eliminando()"
+                class="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+                <app-icon icon="delete" size="sm" color="white"></app-icon>
+                @if (eliminando()) {
+                  <span>Eliminando...</span>
+                } @else {
+                  <span>Eliminar ({{ totalSeleccionadas }})</span>
+                }
+              </button>
+            }
+            <button 
+              (click)="seleccionarTodas()"
+              class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+              Seleccionar Todas
+            </button>
+            <button 
+              (click)="deseleccionarTodas()"
+              class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+              Deseleccionar Todas
+            </button>
+          </div>
+        }
+        <button 
+          (click)="toggleModoSeleccion()"
+          [class]="modoSeleccion() ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'"
+          class="text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+          <app-icon [icon]="modoSeleccion() ? 'close' : 'check_box'" size="sm" color="white"></app-icon>
+          {{ modoSeleccion() ? 'Cancelar' : 'Seleccionar' }}
+        </button>
+        @if (!modoSeleccion()) {
+          <button 
+            [routerLink]="['/evidencias']"
+            class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+            <app-icon icon="list" size="sm" color="white"></app-icon>
+            Vista de Lista
+          </button>
+        }
+      </div>
     </div>
   </div>
 
@@ -82,8 +123,21 @@
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       @for (evidencia of evidencias(); track evidencia.idEvidencia) {
         <div 
-          (click)="navigateToDetail(evidencia.idEvidencia)"
-          class="bg-white rounded-xl shadow-lg border border-slate-200/50 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group">
+          (click)="navigateToDetail(evidencia.idEvidencia, $event)"
+          [class]="modoSeleccion() ? 'bg-white rounded-xl shadow-lg border-2 overflow-hidden transition-all duration-300 cursor-pointer group' : 'bg-white rounded-xl shadow-lg border border-slate-200/50 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group'"
+          [class.border-blue-500]="modoSeleccion() && isEvidenciaSeleccionada(evidencia.idEvidencia)"
+          [class.border-slate-200]="modoSeleccion() && !isEvidenciaSeleccionada(evidencia.idEvidencia)">
+          
+          @if (modoSeleccion()) {
+            <div class="absolute top-2 left-2 z-10">
+              <input 
+                type="checkbox"
+                [checked]="isEvidenciaSeleccionada(evidencia.idEvidencia)"
+                (change)="toggleSeleccionEvidencia(evidencia.idEvidencia, $event)"
+                (click)="$event.stopPropagation()"
+                class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer bg-white shadow-md">
+            </div>
+          }
           
           @if (evidencia.rutaArchivo && isImage(evidencia.rutaArchivo) && previewUrls().has(evidencia.idEvidencia)) {
             <div class="aspect-square relative overflow-hidden bg-gray-100">
@@ -91,10 +145,16 @@
                 [src]="previewUrls().get(evidencia.idEvidencia)!" 
                 alt="Evidencia"
                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
+              @if (modoSeleccion() && isEvidenciaSeleccionada(evidencia.idEvidencia)) {
+                <div class="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500"></div>
+              }
             </div>
           } @else {
-            <div class="aspect-square flex items-center justify-center bg-gray-100">
+            <div class="aspect-square flex items-center justify-center bg-gray-100 relative">
               <app-icon icon="description" size="xl" color="slate-400"></app-icon>
+              @if (modoSeleccion() && isEvidenciaSeleccionada(evidencia.idEvidencia)) {
+                <div class="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500"></div>
+              }
             </div>
           }
 

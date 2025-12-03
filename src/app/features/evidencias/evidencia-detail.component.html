@@ -90,13 +90,13 @@
 
           </dl>
 
-          @if (imageUrls().length > 0) {
+          @if (imageUrls().length > 0 || officeFiles().length > 0) {
             <div class="mt-6">
               <button 
                 (click)="downloadFile()"
                 class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
                 <app-icon icon="download" size="sm" color="white"></app-icon>
-                Descargar Archivo
+                Descargar Todo (ZIP)
               </button>
             </div>
           }
@@ -163,6 +163,32 @@
           </div>
         }
       </div>
+
+      <!-- Archivos Office -->
+      @if (officeFiles().length > 0) {
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mt-6">
+          <h2 class="text-xl font-semibold text-slate-900 mb-4">Archivos Office</h2>
+          <div class="space-y-3">
+            @for (file of officeFiles(); track file.fileIndex) {
+              <div class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                <div class="flex items-center gap-3 flex-1">
+                  <app-icon [icon]="getFileIcon(file.mimeType)" size="md" color="slate-600"></app-icon>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-slate-900 truncate">{{ file.fileName }}</p>
+                    <p class="text-xs text-slate-500">{{ formatFileSize(file.fileSize) }}</p>
+                  </div>
+                </div>
+                <button
+                  (click)="downloadOfficeFile(file.fileIndex)"
+                  class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                  <app-icon icon="download" size="sm" color="white"></app-icon>
+                  Descargar
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
     </div>
   }
 </div>

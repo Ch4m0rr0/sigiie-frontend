@@ -6,12 +6,53 @@
         <h1 class="text-3xl font-bold text-slate-900 mb-2">Evidencias</h1>
         <p class="text-sm text-slate-600">Gestiona las evidencias de actividades y subactividades</p>
       </div>
-      <button 
-        (click)="navigateToCreate()"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
-        <app-icon icon="add" size="sm" color="white"></app-icon>
-        Nueva Evidencia
-      </button>
+      <div class="flex items-center gap-3">
+        @if (modoSeleccion()) {
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-slate-600">
+              {{ totalSeleccionadas }} seleccionada(s)
+            </span>
+            @if (totalSeleccionadas > 0) {
+              <button 
+                (click)="eliminarSeleccionadas()"
+                [disabled]="eliminando()"
+                class="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+                <app-icon icon="delete" size="sm" color="white"></app-icon>
+                @if (eliminando()) {
+                  <span>Eliminando...</span>
+                } @else {
+                  <span>Eliminar ({{ totalSeleccionadas }})</span>
+                }
+              </button>
+            }
+            <button 
+              (click)="seleccionarTodas()"
+              class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+              Seleccionar Todas
+            </button>
+            <button 
+              (click)="deseleccionarTodas()"
+              class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+              Deseleccionar Todas
+            </button>
+          </div>
+        }
+        <button 
+          (click)="toggleModoSeleccion()"
+          [class]="modoSeleccion() ? 'bg-gray-600 hover:bg-gray-700' : 'bg-blue-600 hover:bg-blue-700'"
+          class="text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+          <app-icon [icon]="modoSeleccion() ? 'close' : 'check_box'" size="sm" color="white"></app-icon>
+          {{ modoSeleccion() ? 'Cancelar' : 'Seleccionar' }}
+        </button>
+        @if (!modoSeleccion()) {
+          <button 
+            (click)="navigateToCreate()"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+            <app-icon icon="add" size="sm" color="white"></app-icon>
+            Nueva Evidencia
+          </button>
+        }
+      </div>
     </div>
   </div>
 
@@ -82,12 +123,27 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       @for (evidencia of evidencias(); track evidencia.idEvidencia) {
         <div 
-          (click)="navigateToDetail(evidencia.idEvidencia)"
-          class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+          (click)="navigateToDetail(evidencia.idEvidencia, $event)"
+          [class]="modoSeleccion() ? 'bg-white rounded-2xl shadow-lg border-2 p-6 transition-all duration-300 cursor-pointer group' : 'bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group'"
+          [class.border-blue-500]="modoSeleccion() && isEvidenciaSeleccionada(evidencia.idEvidencia)"
+          [class.border-slate-200]="modoSeleccion() && !isEvidenciaSeleccionada(evidencia.idEvidencia)">
           
           <!-- Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
+              @if (modoSeleccion()) {
+                <div class="flex items-center gap-3 mb-2">
+                  <input 
+                    type="checkbox"
+                    [checked]="isEvidenciaSeleccionada(evidencia.idEvidencia)"
+                    (change)="toggleSeleccionEvidencia(evidencia.idEvidencia, $event)"
+                    (click)="$event.stopPropagation()"
+                    class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                  <span class="text-sm font-medium text-slate-700">
+                    Seleccionar
+                  </span>
+                </div>
+              }
               @if (evidencia.nombreTipoEvidencia) {
                 <span class="inline-block px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full mb-2">
                   {{ evidencia.nombreTipoEvidencia }}

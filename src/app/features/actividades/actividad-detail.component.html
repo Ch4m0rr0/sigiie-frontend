@@ -1,24 +1,198 @@
 <div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
-  <!-- Loading State -->
-  @if (loading()) {
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-    </div>
-  }
+  <!-- Vista de Detalle de Evidencia -->
+  @if (mostrarEvidenciaDetalle()) {
+    <div class="max-w-4xl mx-auto">
+      <!-- Loading State -->
+      @if (evidenciaDetalleLoading()) {
+        <div class="flex justify-center items-center h-64">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }
 
-  <!-- Error State -->
-  @if (error() && !loading()) {
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-      <app-icon icon="error" size="md" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-      <div class="flex-1">
-        <h3 class="text-sm font-bold text-red-800 mb-1">Error</h3>
-        <p class="text-red-700 text-sm whitespace-pre-line">{{ error() }}</p>
+      <!-- Error State -->
+      @if (evidenciaDetalleError() && !evidenciaDetalleLoading()) {
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p class="text-red-800">{{ evidenciaDetalleError() }}</p>
+        </div>
+      }
+
+      <!-- Content -->
+      @if (evidenciaDetalle() && !evidenciaDetalleLoading()) {
+        <!-- Header -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-2">
+                <button 
+                  (click)="cerrarEvidenciaDetalle()"
+                  class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
+                  title="Regresar a detalles de actividad">
+                  <app-icon icon="arrow_back" size="sm"></app-icon>
+                </button>
+                <h1 class="text-3xl font-bold text-slate-900">
+                  Evidencia #{{ evidenciaDetalle()!.idEvidencia }}
+                </h1>
+                @if (evidenciaDetalle()!.nombreTipoEvidencia) {
+                  <span class="px-3 py-1 text-sm font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                    {{ evidenciaDetalle()!.nombreTipoEvidencia }}
+                  </span>
+                }
+                @if (evidenciaDetalle()!.seleccionadaParaReporte) {
+                  <span class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                    Para Reporte
+                  </span>
+                }
+              </div>
+              @if (evidenciaDetalle()!.descripcion) {
+                <p class="text-slate-600">{{ evidenciaDetalle()!.descripcion }}</p>
+              }
+            </div>
+            <div class="flex gap-2">
+              <button 
+                (click)="navigateToEditEvidencia()"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+                <app-icon icon="edit" size="sm" color="white"></app-icon>
+                Editar
+              </button>
+              <button 
+                (click)="onDeleteEvidencia()"
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2">
+                <app-icon icon="delete" size="sm" color="white"></app-icon>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Información y Preview -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Información -->
+          <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+            <h2 class="text-xl font-semibold text-slate-900 mb-4">Información</h2>
+            
+            <dl class="space-y-4">
+              @if (evidenciaDetalle()!.nombreSubactividad) {
+                <div>
+                  <dt class="text-sm font-medium text-slate-500 mb-1">Subactividad</dt>
+                  <dd class="text-sm text-slate-900">{{ evidenciaDetalle()!.nombreSubactividad }}</dd>
+                </div>
+              }
+
+              @if (evidenciaDetalle()!.fechaEvidencia) {
+                <div>
+                  <dt class="text-sm font-medium text-slate-500 mb-1">Fecha de Evidencia</dt>
+                  <dd class="text-sm text-slate-900">
+                    {{ evidenciaDetalle()!.fechaEvidencia | date:'short' }}
+                  </dd>
+                </div>
+              }
+
+              @if (evidenciaDetalle()!.fechaSubida) {
+                <div>
+                  <dt class="text-sm font-medium text-slate-500 mb-1">Fecha de Subida</dt>
+                  <dd class="text-sm text-slate-900">
+                    {{ evidenciaDetalle()!.fechaSubida | date:'short' }}
+                  </dd>
+                </div>
+              }
+            </dl>
+
+            @if (evidenciaDetalleImageUrls().length > 0) {
+              <div class="mt-6">
+                <button 
+                  (click)="downloadEvidenciaDetalleFile()"
+                  class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                  <app-icon icon="download" size="sm" color="white"></app-icon>
+                  Descargar Archivo
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Preview -->
+          @if (evidenciaDetalleImageUrls().length > 0) {
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+              <h2 class="text-xl font-semibold text-slate-900 mb-4">Vista Previa</h2>
+              
+              <!-- Imagen Actual -->
+              <div class="relative mb-4">
+                @if (getEvidenciaDetalleCurrentImageUrl() && !evidenciaDetalleImageError()) {
+                  <img 
+                    [src]="getEvidenciaDetalleCurrentImageUrl()!" 
+                    alt="Preview" 
+                    class="w-full h-auto rounded-lg border border-gray-300 max-h-96 object-contain mx-auto"
+                    (error)="onEvidenciaDetalleImageError($event)"
+                    (load)="evidenciaDetalleImageError.set(false)">
+                } @else if (evidenciaDetalleImageError()) {
+                  <div class="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border border-gray-300">
+                    <app-icon icon="image" size="xl" color="slate-400" class="mb-2"></app-icon>
+                    <p class="text-gray-500 text-sm">No se pudo cargar la imagen</p>
+                  </div>
+                } @else {
+                  <div class="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
+                    <p class="text-gray-500">Cargando imagen...</p>
+                  </div>
+                }
+              </div>
+              
+              <!-- Controles de Navegación -->
+              @if (evidenciaDetalleTotalImages > 1) {
+                <div class="flex items-center justify-center gap-4">
+                  <button
+                    (click)="evidenciaDetallePreviousImage()"
+                    [disabled]="!evidenciaDetalleCanGoPrevious()"
+                    class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                    <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
+                    <span>Atrás</span>
+                  </button>
+                  
+                  <span class="text-sm font-medium text-gray-700">
+                    {{ evidenciaDetalleCurrentImageNumber }}/{{ evidenciaDetalleTotalImages }}
+                  </span>
+                  
+                  <button
+                    (click)="evidenciaDetalleNextImage()"
+                    [disabled]="!evidenciaDetalleCanGoNext()"
+                    class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
+                    <span>Adelante</span>
+                    <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
+              <h2 class="text-xl font-semibold text-slate-900 mb-4">Vista Previa</h2>
+              <div class="flex flex-col items-center justify-center h-64 bg-gray-100 rounded-lg border border-gray-300">
+                <app-icon icon="image" size="xl" color="slate-400" class="mb-2"></app-icon>
+                <p class="text-gray-500 text-sm">No hay imágenes disponibles</p>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- Loading State -->
+    @if (loading()) {
+      <div class="flex justify-center items-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
-    </div>
-  }
+    }
 
-  <!-- Content -->
-  @if (actividad() && !loading()) {
+    <!-- Error State -->
+    @if (error() && !loading()) {
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+        <app-icon icon="error" size="md" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+        <div class="flex-1">
+          <h3 class="text-sm font-bold text-red-800 mb-1">Error</h3>
+          <p class="text-red-700 text-sm whitespace-pre-line">{{ error() }}</p>
+        </div>
+      </div>
+    }
+
+    <!-- Content -->
+    @if (actividad() && !loading()) {
     <div class="max-w-6xl mx-auto">
       <!-- Header -->
       <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
@@ -68,8 +242,9 @@
 
       <!-- Tabs -->
       <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
-        <div class="border-b border-slate-200 overflow-x-auto">
-          <nav class="flex -mb-px">
+        <div class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+          <div class="overflow-x-auto">
+            <nav class="flex -mb-px min-w-max">
             <button
               (click)="setTab('info')"
               [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
@@ -156,7 +331,21 @@
                 </span>
               }
             </button>
+            <button
+              (click)="setTab('participantes')"
+              [class]="'px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ' + 
+                (activeTab() === 'participantes' 
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
+              Participantes
+              @if (estadisticasParticipantes()?.totalParticipantes) {
+                <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  {{ estadisticasParticipantes()!.totalParticipantes }}
+                </span>
+              }
+            </button>
           </nav>
+          </div>
         </div>
 
         <div class="p-6">
@@ -1632,9 +1821,160 @@
             </div>
           }
 
+          <!-- Tab: Participantes -->
+          @if (activeTab() === 'participantes') {
+            <div>
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                (change)="onFileSelectedParticipantes($event)"
+                class="hidden"
+                #fileInputParticipantes>
+              <button
+                (click)="fileInputParticipantes.click()"
+                class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition flex items-center gap-2 text-sm font-medium">
+                <app-icon icon="upload_file" size="sm"></app-icon>
+                Importar desde Excel
+              </button>
+              @if (importFileParticipantes()) {
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-slate-700">{{ importFileParticipantes()!.name }}</span>
+                  <button
+                    (click)="removeFileParticipantes()"
+                    class="text-red-600 hover:text-red-700">
+                    <app-icon icon="close" size="sm"></app-icon>
+                  </button>
+                  <button
+                    (click)="importarParticipantesDesdeExcel()"
+                    [disabled]="loadingImportarParticipantes()"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                    @if (loadingImportarParticipantes()) {
+                      <span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                    } @else {
+                      Importar
+                    }
+                  </button>
+                </div>
+              }
+                </div>
+                <button
+                  (click)="navigateToParticipaciones()"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 text-sm font-medium">
+                  <app-icon icon="group" size="sm" color="white"></app-icon>
+                  Gestionar Participantes
+                </button>
+              </div>
+
+              <!-- Estadísticas Generales -->
+              <div class="bg-white rounded-lg border border-slate-200 p-6 shadow-sm">
+                <h4 class="text-lg font-semibold text-slate-900 mb-4">Estadísticas Generales</h4>
+                
+                @if (loadingParticipantes()) {
+                  <div class="flex justify-center items-center h-64">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  </div>
+                } @else if (errorParticipantes()) {
+                  <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p class="text-red-800">{{ errorParticipantes() }}</p>
+                  </div>
+                } @else if (estadisticasParticipantes()) {
+                  <!-- Resumen General -->
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div class="text-sm font-medium text-blue-600 mb-1">Total de Participantes</div>
+                      <div class="text-2xl font-bold text-blue-900">{{ estadisticasParticipantes()!.totalParticipantes || 0 }}</div>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <div class="text-sm font-medium text-green-600 mb-1">Meta Alcanzada</div>
+                      <div class="text-2xl font-bold text-green-900">{{ estadisticasParticipantes()!.metaAlcanzada || 0 }}</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                      <div class="text-sm font-medium text-purple-600 mb-1">Meta de Cumplimiento (Indicador)</div>
+                      <div class="text-2xl font-bold text-purple-900">
+                        {{ estadisticasParticipantes()!.metaIndicador ?? 0 }}
+                      </div>
+                    </div>
+                    <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                      <div class="text-sm font-medium text-orange-600 mb-1">% Cumplimiento</div>
+                      <div class="text-2xl font-bold text-orange-900">
+                        @if (estadisticasParticipantes()!.metaCumplimiento !== null && estadisticasParticipantes()!.metaCumplimiento !== undefined) {
+                          {{ estadisticasParticipantes()!.metaCumplimiento.toFixed(1) }}%
+                        } @else if (estadisticasParticipantes()!.metaIndicador && estadisticasParticipantes()!.metaIndicador > 0) {
+                          {{ ((estadisticasParticipantes()!.metaAlcanzada || 0) / estadisticasParticipantes()!.metaIndicador * 100).toFixed(1) }}%
+                        } @else {
+                          0%
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Desglose por Género -->
+                  <div class="mb-6">
+                    <h5 class="text-md font-semibold text-slate-900 mb-3">Participantes por Género</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <div class="text-sm font-medium text-slate-600 mb-1">Masculino</div>
+                            <div class="text-xl font-bold text-slate-900">{{ estadisticasParticipantes()!.totalMasculino || 0 }}</div>
+                          </div>
+                          <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span class="text-blue-600 font-bold">M</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div class="flex items-center justify-between">
+                          <div>
+                            <div class="text-sm font-medium text-slate-600 mb-1">Femenino</div>
+                            <div class="text-xl font-bold text-slate-900">{{ estadisticasParticipantes()!.totalFemenino || 0 }}</div>
+                          </div>
+                          <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+                            <span class="text-pink-600 font-bold">F</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Desglose por Tipo -->
+                  <div class="mb-6">
+                    <h5 class="text-md font-semibold text-slate-900 mb-3">Participantes por Tipo</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div class="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+                        <div class="text-sm font-medium text-emerald-600 mb-1">Estudiantes</div>
+                        <div class="text-xl font-bold text-emerald-900">{{ estadisticasParticipantes()!.totalEstudiantes || 0 }}</div>
+                      </div>
+                      <div class="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                        <div class="text-sm font-medium text-amber-600 mb-1">Docentes</div>
+                        <div class="text-xl font-bold text-amber-900">{{ estadisticasParticipantes()!.totalDocentes || 0 }}</div>
+                      </div>
+                      <div class="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                        <div class="text-sm font-medium text-indigo-600 mb-1">Administrativos</div>
+                        <div class="text-xl font-bold text-indigo-900">{{ estadisticasParticipantes()!.totalAdministrativos || 0 }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Total General -->
+                  <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+                    <div class="text-sm font-medium text-blue-100 mb-2">Total General de Participantes</div>
+                    <div class="text-4xl font-bold">{{ estadisticasParticipantes()!.totalParticipantes || 0 }}</div>
+                  </div>
+                } @else {
+                  <div class="text-center py-8 text-slate-500">
+                    <p>No hay estadísticas disponibles para este año</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
+  }
   }
 </div>
 

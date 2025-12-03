@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
@@ -33,6 +34,11 @@ export class EvidenciasListComponent implements OnInit {
   filtroSubactividad = signal<number | null>(null);
   filtroTipo = signal<number[]>([]);
   filtroSeleccionadas = signal<boolean | null>(null);
+  
+  // Modo selección múltiple
+  modoSeleccion = signal(false);
+  evidenciasSeleccionadas = signal<Set<number>>(new Set());
+  eliminando = signal(false);
 
   ngOnInit(): void {
     this.loadSubactividades();
@@ -100,10 +106,6 @@ export class EvidenciasListComponent implements OnInit {
     }
   }
 
-  navigateToDetail(id: number): void {
-    this.router.navigate(['/evidencias', id]);
-  }
-
   navigateToCreate(): void {
     this.router.navigate(['/evidencias/nueva']);
   }
@@ -124,6 +126,98 @@ export class EvidenciasListComponent implements OnInit {
       id: tipo.idTipoEvidencia,
       label: tipo.nombre
     }));
+  }
+
+  toggleModoSeleccion(): void {
+    this.modoSeleccion.set(!this.modoSeleccion());
+    if (!this.modoSeleccion()) {
+      // Si se desactiva el modo selección, limpiar selección
+      this.evidenciasSeleccionadas.set(new Set());
+    }
+  }
+
+  toggleSeleccionEvidencia(evidenciaId: number, event?: Event): void {
+    if (event) {
+      event.stopPropagation(); // Evitar que se active el click en la card
+    }
+    
+    const seleccionadas = new Set(this.evidenciasSeleccionadas());
+    if (seleccionadas.has(evidenciaId)) {
+      seleccionadas.delete(evidenciaId);
+    } else {
+      seleccionadas.add(evidenciaId);
+    }
+    this.evidenciasSeleccionadas.set(seleccionadas);
+  }
+
+  isEvidenciaSeleccionada(evidenciaId: number): boolean {
+    return this.evidenciasSeleccionadas().has(evidenciaId);
+  }
+
+  seleccionarTodas(): void {
+    const todas = new Set(this.evidencias().map(e => e.idEvidencia));
+    this.evidenciasSeleccionadas.set(todas);
+  }
+
+  deseleccionarTodas(): void {
+    this.evidenciasSeleccionadas.set(new Set());
+  }
+
+  get totalSeleccionadas(): number {
+    return this.evidenciasSeleccionadas().size;
+  }
+
+  eliminarSeleccionadas(): void {
+    const seleccionadas = Array.from(this.evidenciasSeleccionadas());
+    if (seleccionadas.length === 0) {
+      return;
+    }
+
+    const mensaje = seleccionadas.length === 1
+      ? '¿Está seguro de que desea eliminar esta evidencia?'
+      : `¿Está seguro de que desea eliminar las ${seleccionadas.length} evidencias seleccionadas?`;
+
+    if (!confirm(mensaje)) {
+      return;
+    }
+
+    this.eliminando.set(true);
+    this.error.set(null);
+
+    // Eliminar evidencias en paralelo
+    const deleteObservables = seleccionadas.map(id => 
+      this.evidenciaService.delete(id)
+    );
+
+    // Usar forkJoin para esperar todas las eliminaciones
+    forkJoin(deleteObservables).subscribe({
+      next: () => {
+        console.log(`✅ ${seleccionadas.length} evidencia(s) eliminada(s) correctamente`);
+        this.evidenciasSeleccionadas.set(new Set());
+        this.modoSeleccion.set(false);
+        this.eliminando.set(false);
+        this.loadEvidencias(); // Recargar la lista
+      },
+      error: (err) => {
+        console.error('Error eliminando evidencias:', err);
+        this.error.set('Error al eliminar algunas evidencias');
+        this.eliminando.set(false);
+        this.loadEvidencias(); // Recargar de todas formas para actualizar
+      }
+    });
+  }
+
+  navigateToDetail(id: number, event?: Event): void {
+    if (this.modoSeleccion()) {
+      // Si está en modo selección, no navegar, solo seleccionar
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      this.toggleSeleccionEvidencia(id, event);
+    } else {
+      this.router.navigate(['/evidencias', id]);
+    }
   }
 
 }

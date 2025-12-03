@@ -28,7 +28,8 @@ export interface Participacion {
 
 export interface ParticipacionCreate {
   edicionId: number;
-  idSubactividad?: number;
+  idActividad?: number; // ID de actividad (requerido si no hay idSubactividad)
+  idSubactividad?: number; // ID de subactividad (requerido si no hay idActividad)
   grupoNumero?: number;
   idRolEquipo?: number;
   idTutor?: number;

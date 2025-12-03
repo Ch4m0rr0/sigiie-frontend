@@ -1369,7 +1369,22 @@ export class ActividadesService {
             return tipos;
           }
         }
-        console.warn('⚠️ No se encontró IdTipoEvidencias en la respuesta del backend');
+        // Si el campo es null o array vacío, retornar array vacío
+        if (item.IdTipoEvidencias === null || item.idTipoEvidencias === null) {
+          console.log('ℹ️ IdTipoEvidencias es null (actividad sin tipos asignados)');
+          return [];
+        }
+        // Si es un array vacío, retornarlo
+        if (Array.isArray(item.IdTipoEvidencias) && item.IdTipoEvidencias.length === 0) {
+          console.log('ℹ️ IdTipoEvidencias es un array vacío (actividad sin tipos asignados)');
+          return [];
+        }
+        if (Array.isArray(item.idTipoEvidencias) && item.idTipoEvidencias.length === 0) {
+          console.log('ℹ️ idTipoEvidencias es un array vacío (actividad sin tipos asignados)');
+          return [];
+        }
+        // Si no está presente, retornar undefined (campo opcional)
+        console.log('⚠️ IdTipoEvidencias no encontrado en la respuesta del backend');
         return undefined;
       })(),
       
