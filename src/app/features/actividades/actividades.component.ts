@@ -630,7 +630,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         
         // Filtrar por actividad mensual institucional
         if (this.filtroActividadMensualInst()) {
-          filtered = filtered.filter(a => a.idActividadMensualInst === this.filtroActividadMensualInst()!);
+          const filtroId = this.filtroActividadMensualInst()!;
+          filtered = filtered.filter(a => {
+            if (Array.isArray(a.idActividadMensualInst)) {
+              return a.idActividadMensualInst.includes(filtroId);
+            }
+            return a.idActividadMensualInst === filtroId;
+          });
         }
         
         // Filtrar por actividad anual (a través de actividad mensual institucional)
@@ -641,9 +647,15 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
             .filter(m => m.idActividadAnual === this.filtroActividadAnual()!)
             .map(m => m.idActividadMensualInst);
           
-          filtered = filtered.filter(a => 
-            a.idActividadMensualInst && mensualesPorAnual.includes(a.idActividadMensualInst)
-          );
+          filtered = filtered.filter(a => {
+            if (!a.idActividadMensualInst) return false;
+            if (Array.isArray(a.idActividadMensualInst)) {
+              // Si es un array, verificar si alguno de los IDs está en mensualesPorAnual
+              return a.idActividadMensualInst.some(id => mensualesPorAnual.includes(id));
+            }
+            // Si es un solo número, verificar si está en mensualesPorAnual
+            return mensualesPorAnual.includes(a.idActividadMensualInst);
+          });
         }
         
         console.log('✅ Actividades cargadas:', filtered.length, 'de', data.length, 'totales');

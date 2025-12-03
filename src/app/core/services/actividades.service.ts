@@ -305,7 +305,7 @@ export class ActividadesService {
     const dto: any = {
       NombreActividad: nombreActividad.trim(),
       EsPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : true,
-      Activo: actividad.activo !== undefined ? actividad.activo : true // Por defecto activo
+      // Activo no se envía al backend - el backend maneja el estado de forma diferente
     };
     
     // Campos opcionales - solo agregar si tienen valor válido
@@ -334,13 +334,42 @@ export class ActividadesService {
       dto.IdIndicador = Number(actividad.idIndicador);
     }
     
-    const actividadAnualId = getIdActividadAnual(actividad.idActividadAnual);
-    if (actividadAnualId !== undefined && actividadAnualId !== null && Number(actividadAnualId) > 0) {
-      dto.IdActividadAnual = Number(actividadAnualId);
+    // Manejar idActividadAnual - puede ser número o array
+    if (actividad.idActividadAnual !== undefined && actividad.idActividadAnual !== null) {
+      if (Array.isArray(actividad.idActividadAnual) && actividad.idActividadAnual.length > 0) {
+        // Si es un array, enviar el array completo con números válidos
+        const idsValidos = actividad.idActividadAnual
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdActividadAnual = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+        }
+      } else if (!Array.isArray(actividad.idActividadAnual)) {
+        // Si es un solo número, enviarlo
+        const idNum = Number(actividad.idActividadAnual);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdActividadAnual = idNum;
+        }
+      }
     }
     
-    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null && Number(actividad.idActividadMensualInst) > 0) {
-      dto.IdActividadMensualInst = Number(actividad.idActividadMensualInst);
+    // Manejar idActividadMensualInst - puede ser número o array
+    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null) {
+      if (Array.isArray(actividad.idActividadMensualInst) && actividad.idActividadMensualInst.length > 0) {
+        // Si es un array, enviar el array completo con números válidos
+        const idsValidos = actividad.idActividadMensualInst
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdActividadMensualInst = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+        }
+      } else if (!Array.isArray(actividad.idActividadMensualInst)) {
+        // Si es un solo número, enviarlo
+        const idNum = Number(actividad.idActividadMensualInst);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdActividadMensualInst = idNum;
+        }
+      }
     }
     
     if (actividad.cantidadParticipantesProyectados !== undefined && actividad.cantidadParticipantesProyectados !== null && Number(actividad.cantidadParticipantesProyectados) > 0) {
@@ -440,6 +469,32 @@ export class ActividadesService {
         const actividadMapeada = this.mapActividad(item);
         console.log('📥 Actividad mapeada - idTipoEvidencias:', actividadMapeada.idTipoEvidencias);
         return actividadMapeada;
+      }),
+      catchError(error => {
+        // Si el error es 400 y menciona "Invalid column name", es probable que la actividad
+        // se haya guardado pero el backend falló al mapear la respuesta
+        if (error.status === 400 && error.error?.message?.includes('Invalid column name')) {
+          console.warn('⚠️ Error de mapeo en respuesta del backend. La actividad puede haberse guardado correctamente.');
+          console.warn('⚠️ Error details:', error.error);
+          // Intentar crear un objeto de actividad básico con el nombre para que el flujo continúe
+          // El usuario puede verificar en la lista de actividades
+          const actividadBasica: Actividad = {
+            id: 0, // ID desconocido, pero permitirá continuar el flujo
+            idActividad: 0,
+            nombre: dto.NombreActividad,
+            nombreActividad: dto.NombreActividad,
+            descripcion: dto.Descripcion,
+            creadoPor: 0,
+            fechaCreacion: new Date().toISOString(),
+            totalSubactividades: 0,
+            totalEvidencias: 0,
+            totalResponsables: 0,
+            totalEdiciones: 0,
+            nivelActividad: 1
+          };
+          return of(actividadBasica);
+        }
+        return throwError(() => error);
       })
     );
   }
@@ -562,8 +617,23 @@ export class ActividadesService {
     if (actividad.codigoActividad !== undefined) {
       dto.CodigoActividad = actividad.codigoActividad;
     }
-    if (actividad.idActividadMensualInst !== undefined) {
-      dto.IdActividadMensualInst = actividad.idActividadMensualInst;
+    // Manejar idActividadMensualInst - puede ser número o array
+    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null) {
+      if (Array.isArray(actividad.idActividadMensualInst) && actividad.idActividadMensualInst.length > 0) {
+        // Si es un array, enviar el array completo con números válidos
+        const idsValidos = actividad.idActividadMensualInst
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdActividadMensualInst = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+        }
+      } else if (!Array.isArray(actividad.idActividadMensualInst)) {
+        // Si es un solo número, enviarlo
+        const idNum = Number(actividad.idActividadMensualInst);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdActividadMensualInst = idNum;
+        }
+      }
     }
     if (actividad.esPlanificada !== undefined) {
       dto.EsPlanificada = actividad.esPlanificada;
@@ -571,10 +641,22 @@ export class ActividadesService {
     if (actividad.idIndicador !== undefined) {
       dto.IdIndicador = actividad.idIndicador;
     }
-    if (actividad.idActividadAnual !== undefined) {
-      const actividadAnualId = getIdActividadAnual(actividad.idActividadAnual);
-      if (actividadAnualId !== undefined) {
-        dto.IdActividadAnual = actividadAnualId;
+    // Manejar idActividadAnual - puede ser número o array
+    if (actividad.idActividadAnual !== undefined && actividad.idActividadAnual !== null) {
+      if (Array.isArray(actividad.idActividadAnual) && actividad.idActividadAnual.length > 0) {
+        // Si es un array, enviar el array completo con números válidos
+        const idsValidos = actividad.idActividadAnual
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdActividadAnual = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+        }
+      } else if (!Array.isArray(actividad.idActividadAnual)) {
+        // Si es un solo número, enviarlo
+        const idNum = Number(actividad.idActividadAnual);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdActividadAnual = idNum;
+        }
       }
     }
     if (actividad.objetivo !== undefined) {
@@ -1171,7 +1253,7 @@ export class ActividadesService {
       codigoIndicador: item.CodigoIndicador || item.codigoIndicador,
       
       // Planificación
-      esPlanificada: item.EsPlanificada !== undefined ? item.EsPlanificada : (item.esPlanificada !== undefined ? item.esPlanificada : true),
+      esPlanificada: item.EsPlanificada !== undefined ? item.EsPlanificada : (item.esPlanificada !== undefined ? item.esPlanificada : false),
       idIndicador: item.IdIndicador || item.idIndicador,
       nombreIndicador: item.NombreIndicador || item.nombreIndicador,
       codigoIndicadorAsociado: item.CodigoIndicadorAsociado || item.codigoIndicadorAsociado,

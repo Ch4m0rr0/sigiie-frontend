@@ -56,7 +56,7 @@ export interface Actividad {
   // Campos adicionales
   semanaMes?: number;
   codigoActividad?: string;
-  idActividadMensualInst?: number;
+  idActividadMensualInst?: number | number[]; // Puede ser un número o un array de números
   nombreActividadMensualInst?: string;
   codigoIndicador?: string;
   
@@ -78,7 +78,7 @@ export interface Actividad {
   metaCumplimiento?: number;
   valoracionIndicadorEstrategico?: string;
   brechaEstrategica?: string;
-  anio?: number;
+  anio?: string;
   horaRealizacion?: string; // TimeOnly del backend
   cantidadParticipantesProyectados?: number;
   cantidadParticipantesEstudiantesProyectados?: number;
@@ -155,7 +155,7 @@ export interface ActividadCreate {
   nivelActividad?: number; // Default: 1
   semanaMes?: number;
   codigoActividad?: string;
-  idActividadMensualInst?: number;
+  idActividadMensualInst?: number | number[]; // Puede ser un número o un array de números
   esPlanificada?: boolean;
   idIndicador?: number;
   idActividadAnual?: number | number[]; // Puede ser un número o un array de números
@@ -167,7 +167,7 @@ export interface ActividadCreate {
   metaCumplimiento?: number;
   valoracionIndicadorEstrategico?: string;
   brechaEstrategica?: string;
-  anio?: number;
+  anio?: string;
   horaRealizacion?: string; // TimeOnly en formato string (HH:mm:ss)
   cantidadParticipantesProyectados?: number;
   cantidadParticipantesEstudiantesProyectados?: number;

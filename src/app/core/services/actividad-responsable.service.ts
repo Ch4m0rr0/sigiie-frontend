@@ -75,7 +75,10 @@ export class ActividadResponsableService {
    * Obtiene responsables por actividad
    */
   getByActividad(idActividad: number): Observable<ActividadResponsable[]> {
-    return this.http.get<any>(`${this.apiUrl}/actividad/${idActividad}`).pipe(
+    const url = `${this.apiUrl}/actividad/${idActividad}`;
+    console.log(`🔄 GET Responsables por Actividad - URL: ${url}`);
+    console.log(`🔄 GET Responsables por Actividad - ID Actividad: ${idActividad}`);
+    return this.http.get<any>(url).pipe(
       map(response => {
         const items = response.data || response;
         console.log('📥 Respuesta del backend para responsables:', items);

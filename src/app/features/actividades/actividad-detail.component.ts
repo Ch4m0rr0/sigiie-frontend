@@ -466,8 +466,10 @@ export class ActividadDetailComponent implements OnInit {
             evidenciaResumen: undefined
           };
           this.indicadores.set([indicadorData]);
-          
-          // Cargar actividades anuales relacionadas
+        }
+        
+        // Cargar actividades anuales y mensuales relacionadas (siempre que haya IDs asociados)
+        if (data.idActividadAnual || data.idActividadMensualInst) {
           this.loadActividadesAnuales();
         }
         
@@ -496,7 +498,48 @@ export class ActividadDetailComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading actividad:', err);
-        this.error.set('Error al cargar la actividad');
+        console.error('Error details:', err.error);
+        console.error('Error status:', err.status);
+        
+        let errorMessage = 'Error al cargar la actividad';
+        
+        if (err.status === 500) {
+          const errorText = typeof err.error === 'string' ? err.error : (err.error?.details || JSON.stringify(err.error || {}));
+          
+          if (errorText.includes('Invalid column name')) {
+            // Extraer las columnas problemáticas del mensaje de error
+            const columnMatches = errorText.match(/Invalid column name '([^']+)'/g);
+            const problematicColumns: string[] = [];
+            
+            if (columnMatches) {
+              columnMatches.forEach((match: string) => {
+                const columnName = match.match(/'([^']+)'/)?.[1];
+                if (columnName && !problematicColumns.includes(columnName)) {
+                  problematicColumns.push(columnName);
+                }
+              });
+            }
+            
+            let columnsList = '';
+            if (problematicColumns.length > 0) {
+              columnsList = '\n\nColumnas problemáticas:\n' + problematicColumns.map(col => `• ${col}`).join('\n');
+            }
+            
+            errorMessage = '❌ Error del servidor: El backend está intentando acceder a columnas que no existen en la base de datos.' +
+                          columnsList +
+                          '\n\nPor favor, contacta al administrador del backend para corregir el problema.\n' +
+                          'El backend necesita actualizar su código para eliminar las referencias a estas columnas.';
+          } else {
+            errorMessage = 'Error interno del servidor al cargar la actividad.\n\n' +
+                          'Por favor, intenta nuevamente o contacta al administrador.';
+          }
+        } else if (err.status === 404) {
+          errorMessage = 'La actividad no fue encontrada.';
+        } else if (err.error?.message) {
+          errorMessage = `Error: ${err.error.message}`;
+        }
+        
+        this.error.set(errorMessage);
         this.loading.set(false);
       }
     });
@@ -1030,35 +1073,82 @@ export class ActividadDetailComponent implements OnInit {
       return;
     }
 
-    // Si hay una actividad anual asociada, cargarla
+    // Cargar actividades anuales seleccionadas por ID
     if (actividad.idActividadAnual) {
       // Manejar array o número único
       const idsActividadesAnuales = Array.isArray(actividad.idActividadAnual) 
         ? actividad.idActividadAnual 
         : [actividad.idActividadAnual];
       
-      if (idsActividadesAnuales.length > 0) {
-        // Cargar todas las actividades anuales
-        const requests = idsActividadesAnuales.map(id => 
+      // Filtrar valores válidos y eliminar duplicados
+      const idsUnicos = [...new Set(idsActividadesAnuales.filter(id => id !== null && id !== undefined && id > 0))];
+      
+      if (idsUnicos.length > 0) {
+        console.log('🔄 Cargando actividades anuales por IDs:', idsUnicos);
+        
+        // Cargar solo las actividades anuales seleccionadas por ID
+        const requests = idsUnicos.map(id => 
           this.actividadAnualService.getById(id)
         );
         
         Promise.all(requests.map(req => firstValueFrom(req))).then(actividadesAnuales => {
           const actividadesValidas = actividadesAnuales.filter(a => a !== null && a !== undefined);
+          console.log('✅ Actividades anuales cargadas:', actividadesValidas.length);
           this.actividadesAnuales.set(actividadesValidas);
           
-          // Cargar actividades mensuales relacionadas a todas las actividades anuales
-          const requestsMensuales = actividadesValidas
+          // Cargar actividades mensuales relacionadas
+          // Priorizar búsqueda por ID de actividad anual (más confiable)
+          const requestsMensualesPorId = actividadesValidas
             .filter(a => a.idActividadAnual)
             .map(a => this.actividadMensualInstService.getByActividadAnual(a.idActividadAnual!));
           
-          if (requestsMensuales.length > 0) {
-            Promise.all(requestsMensuales.map(req => firstValueFrom(req))).then(arraysMensuales => {
+          // Solo usar búsqueda por nombre si no hay IDs disponibles y el nombre es razonable
+          const actividadesSinId = actividadesValidas.filter(a => !a.idActividadAnual);
+          const requestsMensualesPorNombre = actividadesSinId
+            .filter(a => {
+              const nombre = a.nombre || a.nombreIndicador || '';
+              // Solo buscar por nombre si el nombre existe, no está vacío y no es demasiado largo
+              return nombre.trim().length > 0 && nombre.length <= 200;
+            })
+            .map(a => {
+              const nombre = a.nombre || a.nombreIndicador || '';
+              return this.actividadMensualInstService.getByNombreActividadAnual(nombre);
+            });
+          
+          // Combinar ambas estrategias (priorizar por ID)
+          const todasLasRequestsMensuales = [...requestsMensualesPorId, ...requestsMensualesPorNombre];
+          
+          if (todasLasRequestsMensuales.length > 0) {
+            Promise.all(todasLasRequestsMensuales.map(req => firstValueFrom(req))).then(arraysMensuales => {
+              // Eliminar duplicados de actividades mensuales
               const todasMensuales = arraysMensuales.flat();
-              this.actividadesMensuales.set(todasMensuales);
+              const mensualesUnicos = todasMensuales.filter((mensual, index, self) => 
+                index === self.findIndex(m => 
+                  m.idActividadMensualInst === mensual.idActividadMensualInst
+                )
+              );
+              console.log('✅ Actividades mensuales cargadas:', mensualesUnicos.length);
+              this.actividadesMensuales.set(mensualesUnicos);
             }).catch(err => {
-              console.error('Error loading actividades mensuales:', err);
-              this.actividadesMensuales.set([]);
+              console.warn('⚠️ Error al cargar algunas actividades mensuales (esto no es crítico):', err);
+              // Intentar cargar solo las que se pudieron obtener por ID
+              if (requestsMensualesPorId.length > 0) {
+                Promise.all(requestsMensualesPorId.map(req => firstValueFrom(req))).then(arraysPorId => {
+                  const todasPorId = arraysPorId.flat();
+                  const mensualesUnicosPorId = todasPorId.filter((mensual, index, self) => 
+                    index === self.findIndex(m => 
+                      m.idActividadMensualInst === mensual.idActividadMensualInst
+                    )
+                  );
+                  console.log('✅ Actividades mensuales cargadas (solo por ID):', mensualesUnicosPorId.length);
+                  this.actividadesMensuales.set(mensualesUnicosPorId);
+                }).catch(errId => {
+                  console.error('Error loading actividades mensuales por ID:', errId);
+                  this.actividadesMensuales.set([]);
+                });
+              } else {
+                this.actividadesMensuales.set([]);
+              }
             });
           } else {
             this.actividadesMensuales.set([]);
@@ -1073,48 +1163,42 @@ export class ActividadDetailComponent implements OnInit {
         this.actividadesMensuales.set([]);
       }
     } else {
-      // Si no hay actividad anual asociada, intentar cargar desde indicadores
-      const indicadores = this.indicadores();
-      if (indicadores.length === 0) {
-        this.actividadesAnuales.set([]);
-        this.actividadesMensuales.set([]);
-        return;
-      }
+      // Si no hay actividad anual asociada, no cargar nada
+      this.actividadesAnuales.set([]);
+      this.actividadesMensuales.set([]);
+    }
 
-      // Obtener IDs únicos de indicadores
-      const indicadorIds = [...new Set(indicadores.map(ind => ind.idIndicador).filter(id => id !== undefined && id !== null))];
+    // También cargar actividades mensuales seleccionadas directamente por ID
+    if (actividad.idActividadMensualInst) {
+      const idsMensuales = Array.isArray(actividad.idActividadMensualInst) 
+        ? actividad.idActividadMensualInst 
+        : [actividad.idActividadMensualInst];
       
-      if (indicadorIds.length === 0) {
-        this.actividadesAnuales.set([]);
-        this.actividadesMensuales.set([]);
-        return;
-      }
-
-      // Cargar actividades anuales para cada indicador
-      const actividadesAnualesPromises = indicadorIds.map(idIndicador => 
-        firstValueFrom(this.actividadAnualService.getByIndicador(idIndicador))
-      );
-
-      Promise.all(actividadesAnualesPromises).then(results => {
-        const todasActividadesAnuales = results.flat().filter(item => item !== null && item !== undefined);
-        this.actividadesAnuales.set(todasActividadesAnuales);
-
-        // Cargar actividades mensuales para cada actividad anual
-        const actividadesMensualesPromises = todasActividadesAnuales.map(anual => 
-          anual.idActividadAnual 
-            ? firstValueFrom(this.actividadMensualInstService.getByActividadAnual(anual.idActividadAnual))
-            : Promise.resolve([])
+      const idsMensualesUnicos = [...new Set(idsMensuales.filter(id => id !== null && id !== undefined && id > 0))];
+      
+      if (idsMensualesUnicos.length > 0) {
+        console.log('🔄 Cargando actividades mensuales por IDs:', idsMensualesUnicos);
+        
+        const requestsMensuales = idsMensualesUnicos.map(id => 
+          firstValueFrom(this.actividadMensualInstService.getById(id))
         );
-
-        Promise.all(actividadesMensualesPromises).then(mensualesResults => {
-          const todasActividadesMensuales = mensualesResults.flat().filter(item => item !== null && item !== undefined);
-          this.actividadesMensuales.set(todasActividadesMensuales);
+        
+        Promise.all(requestsMensuales).then(actividadesMensuales => {
+          const mensualesValidas = actividadesMensuales.filter(m => m !== null && m !== undefined);
+          
+          // Combinar con las actividades mensuales ya cargadas (si hay)
+          const mensualesActuales = this.actividadesMensuales();
+          const idsActuales = new Set(mensualesActuales.map(m => m.idActividadMensualInst));
+          const nuevasMensuales = mensualesValidas.filter(m => !idsActuales.has(m.idActividadMensualInst));
+          
+          if (nuevasMensuales.length > 0) {
+            console.log('✅ Actividades mensuales adicionales cargadas:', nuevasMensuales.length);
+            this.actividadesMensuales.set([...mensualesActuales, ...nuevasMensuales]);
+          }
         }).catch(err => {
-          console.error('Error loading actividades mensuales:', err);
+          console.error('Error loading actividades mensuales por ID:', err);
         });
-      }).catch(err => {
-        console.error('Error loading actividades anuales:', err);
-      });
+      }
     }
   }
 
@@ -1123,7 +1207,13 @@ export class ActividadDetailComponent implements OnInit {
   }
 
   getActividadesMensualesPorAnual(idActividadAnual: number): ActividadMensualInst[] {
-    return this.actividadesMensuales().filter(m => m.idActividadAnual === idActividadAnual);
+    // Filtrar y eliminar duplicados
+    const mensuales = this.actividadesMensuales().filter(m => m.idActividadAnual === idActividadAnual);
+    return mensuales.filter((mensual, index, self) => 
+      index === self.findIndex(m => 
+        m.idActividadMensualInst === mensual.idActividadMensualInst
+      )
+    );
   }
 
   tieneActividadesMensuales(idActividadAnual: number): boolean {

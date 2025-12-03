@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
 import { IndicadorService } from '../../core/services/indicador.service';
+import { AlertService } from '../../core/services/alert.service';
 import type { ActividadMensualInstCreate } from '../../core/models/actividad-mensual-inst';
 import type { ActividadAnual } from '../../core/models/actividad-anual';
 import type { Indicador } from '../../core/models/indicador';
@@ -32,6 +33,7 @@ export class ActividadMensualFormComponent implements OnInit {
   private indicadorService = inject(IndicadorService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private alertService = inject(AlertService);
 
   form!: FormGroup;
   indicadores = signal<Indicador[]>([]);
@@ -40,6 +42,8 @@ export class ActividadMensualFormComponent implements OnInit {
   actividadMensualId = signal<number | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
+  seccionInformacionExpandida = signal(true);
+  seccionEstadoExpandida = signal(true);
 
   readonly meses = [
     { value: 1, nombre: 'Enero' },
@@ -279,7 +283,7 @@ export class ActividadMensualFormComponent implements OnInit {
       if (this.isEditMode()) {
         this.actividadMensualInstService.update(this.actividadMensualId()!, data).subscribe({
           next: () => {
-            this.router.navigate(['/actividades']);
+            this.mostrarAlertaExito();
           },
           error: (err: any) => {
             console.error('Error saving actividad mensual:', err);
@@ -296,13 +300,8 @@ export class ActividadMensualFormComponent implements OnInit {
             console.log('✅ Actividad mensual creada exitosamente:', response);
             console.log('📊 ID de actividad mensual creada:', response.idActividadMensualInst);
             
-            // Navegar a la lista de actividades con un parámetro para recargar
-            this.router.navigate(['/actividades'], { 
-              queryParams: { 
-                recargar: 'true',
-                actividadMensualCreada: response.idActividadMensualInst 
-              } 
-            });
+            // Mostrar alerta de éxito
+            this.mostrarAlertaExito();
           },
           error: (err: any) => {
             console.error('❌ Error saving actividad mensual:', err);
@@ -345,5 +344,27 @@ export class ActividadMensualFormComponent implements OnInit {
   get idIndicador() { return this.form.get('idIndicador'); }
   get idActividadAnual() { return this.form.get('idActividadAnual'); }
   get mes() { return this.form.get('mes'); }
+
+  private mostrarAlertaExito(): void {
+    const nombreActividad = this.form.get('nombre')?.value || 'la actividad mensual';
+    
+    if (this.isEditMode()) {
+      // Mensaje para actividad mensual actualizada
+      this.alertService.success(
+        '¡Actividad mensual actualizada!',
+        `La actividad mensual "${nombreActividad}" ha sido actualizada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    } else {
+      // Mensaje para actividad mensual creada
+      this.alertService.success(
+        '¡Actividad mensual creada exitosamente!',
+        `La actividad mensual "${nombreActividad}" ha sido creada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    }
+  }
 }
 

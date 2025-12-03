@@ -3,7 +3,7 @@
     
     <div class="mb-8 animate-fade-in">
       <div class="flex items-center gap-3 mb-2">
-        <button [routerLink]="['/actividades']" class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+        <button (click)="onCancel()" class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
             <app-icon icon="arrow_back" size="sm"></app-icon>
         </button>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
@@ -13,7 +13,7 @@
       <p class="text-slate-500 text-sm ml-10">
         {{ isEditMode() ? 'Modifica los detalles operativos de la actividad planificada.' : 'Registra una nueva actividad planificada con todos sus detalles.' }}
       </p>
-    </div>
+    </div> 
 
     @if (loading()) {
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8 animate-pulse">
@@ -841,13 +841,10 @@
                             </label>
                             <div class="relative">
                                 <input 
-                                    type="number"
+                                    type="text"
                                     formControlName="anio"
-                                    min="2000"
-                                    max="2100"
-                                    placeholder=""
-                                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    style="appearance: textfield; -moz-appearance: textfield;">
+                                    placeholder="Ej: 2024"
+                                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                                 <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                                     <app-icon icon="calendar_today" size="xs"></app-icon>
                                 </span>
@@ -1080,7 +1077,7 @@
                             @if (!tieneAlMenosUnResponsable() && form.get('nombreActividad')?.touched) {
                                 <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                     <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                                    <p class="text-xs text-red-800">Debe seleccionar al menos un tipo de responsable</p>
+                                    <p class="text-xs text-red-800">Debe agregar al menos una persona válida como responsable.</p>
                                 </div>
                             }
                         </div>
@@ -1650,7 +1647,7 @@
             <div class="pt-6 flex flex-col-reverse md:flex-row md:justify-end gap-3">
                 <button 
                     type="button"
-                    [routerLink]="['/actividades']"
+                    (click)="onCancel()"
                     class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 font-medium text-sm hover:bg-slate-50 hover:text-slate-900 transition-all">
                     Cancelar
                 </button>

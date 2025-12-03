@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
-  <div class="max-w-3xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     
     <div class="mb-8 animate-fade-in">
       <div class="flex items-center gap-3 mb-2">
@@ -11,7 +11,7 @@
         </h1>
       </div>
       <p class="text-slate-500 text-sm ml-10">
-        {{ isEditMode() ? 'Modifica los detalles de la actividad mensual institucional.' : 'Registra una nueva actividad mensual institucional.' }}
+        {{ isEditMode() ? 'Modifica los detalles de la actividad mensual institucional.' : 'Registra una nueva actividad mensual institucional con todos sus detalles.' }}
       </p>
     </div>
 
@@ -21,6 +21,12 @@
             <div class="h-4 w-1/4 bg-slate-200 rounded"></div>
             <div class="h-10 bg-slate-100 rounded-lg"></div>
             <div class="h-24 bg-slate-100 rounded-lg"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
         </div>
       </div>
     }
@@ -38,159 +44,237 @@
     @if (!loading()) {
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200" style="position: relative;">
         
-        <div class="p-6 md:p-8 space-y-8" style="position: relative;">
+        <div class="p-6 md:p-8 space-y-6" style="position: relative;">
             
-            <!-- Información Básica -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="edit_note" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Información Básica</h3>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="idIndicador">
-                        Indicador <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <select 
-                            formControlName="idIndicador"
-                            id="idIndicador"
-                            class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
-                            [class.border-red-500]="idIndicador?.invalid && idIndicador?.touched">
-                            <option [value]="null">Seleccione un indicador...</option>
-                            @for (indicador of indicadores(); track indicador.idIndicador) {
-                                <option [value]="indicador.idIndicador">
-                                    {{ indicador.codigo }} - {{ indicador.nombre }}
-                                </option>
-                            }
-                        </select>
-                        <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                    </div>
-                    @if (idIndicador?.invalid && idIndicador?.touched) {
-                        <p class="mt-1.5 text-xs text-red-600">El indicador es obligatorio.</p>
-                    }
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-sm font-medium text-slate-700" for="idActividadAnual">
-                                Actividad Anual <span class="text-red-500">*</span>
-                            </label>
-                            <a 
-                                [routerLink]="['/actividades-anuales/nueva']"
-                                class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
-                                <app-icon icon="add" size="xs"></app-icon>
-                                Crear nueva
-                            </a>
+            <!-- Sección 1: Información Básica -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <!-- Header del acordeón -->
+                <button
+                    type="button"
+                    (click)="seccionInformacionExpandida.set(!seccionInformacionExpandida())"
+                    class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <app-icon icon="edit_note" size="sm"></app-icon>
                         </div>
-                        <div class="relative">
-                            <select 
-                                formControlName="idActividadAnual"
-                                id="idActividadAnual"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
-                                [class.border-red-500]="idActividadAnual?.invalid && idActividadAnual?.touched"
-                                [disabled]="!idIndicador?.value">
-                                <option [value]="null">Seleccione una actividad anual...</option>
-                                @if (idIndicador?.value) {
-                                    @for (anual of actividadesAnuales(); track anual.idActividadAnual) {
-                                        <option [value]="anual.idActividadAnual">
-                                            {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-slate-900">Información Básica</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Complete los datos principales de la actividad mensual</p>
+                        </div>
+                    </div>
+                    <app-icon 
+                        [icon]="seccionInformacionExpandida() ? 'expand_less' : 'expand_more'" 
+                        size="md" 
+                        class="text-emerald-600 transition-transform duration-200"
+                        [class.rotate-180]="!seccionInformacionExpandida()"></app-icon>
+                </button>
+                
+                <!-- Contenido del acordeón -->
+                @if (seccionInformacionExpandida()) {
+                    <div class="p-6 space-y-8 border-t border-slate-200 animate-fade-in">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="idIndicador">
+                                <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
+                                Indicador <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <select 
+                                    formControlName="idIndicador"
+                                    id="idIndicador"
+                                    class="w-full pl-3 pr-10 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
+                                    [class.border-red-500]="idIndicador?.invalid && idIndicador?.touched">
+                                    <option [value]="null">Seleccione un indicador...</option>
+                                    @for (indicador of indicadores(); track indicador.idIndicador) {
+                                        <option [value]="indicador.idIndicador">
+                                            {{ indicador.codigo }} - {{ indicador.nombre }}
                                         </option>
                                     }
+                                </select>
+                                <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                                @if (idIndicador?.valid && idIndicador?.touched) {
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
+                                        <app-icon icon="check_circle" size="xs"></app-icon>
+                                    </span>
                                 }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
-                        </div>
-                        @if (idActividadAnual?.invalid && idActividadAnual?.touched) {
-                            <p class="mt-1.5 text-xs text-red-600">La actividad anual es obligatoria.</p>
-                        }
-                        @if (!idIndicador?.value) {
-                            <p class="mt-1.5 text-xs text-slate-500">
-                                Seleccione un indicador primero para ver las actividades anuales disponibles
-                            </p>
-                        } @else if (actividadesAnuales().length === 0) {
-                            <div class="mt-1.5 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <p class="text-xs text-yellow-800 font-medium mb-1">
-                                    No hay actividades anuales disponibles para este indicador
-                                </p>
-                                <p class="text-xs text-yellow-700">
-                                    Para crear una actividad mensual, primero debe existir una actividad anual para el indicador seleccionado. 
-                                    Puede crear una nueva actividad anual haciendo clic en "Crear nueva" arriba.
-                                </p>
                             </div>
-                        } @else {
-                            <p class="mt-1.5 text-xs text-slate-500">
-                                {{ actividadesAnuales().length }} actividad(es) anual(es) disponible(s). 
-                                Si no existe la actividad anual que necesita, puede crear una nueva haciendo clic en "Crear nueva".
-                            </p>
-                        }
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1.5" for="mes">
-                            Mes <span class="text-red-500">*</span>
-                        </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="mes"
-                                id="mes"
-                                class="w-full pl-3 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
-                                [class.border-red-500]="mes?.invalid && mes?.touched">
-                                <option [value]="null">Seleccione un mes...</option>
-                                @for (mesItem of meses; track mesItem.value) {
-                                    <option [value]="mesItem.value">{{ mesItem.nombre }}</option>
-                                }
-                            </select>
-                            <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                            @if (idIndicador?.invalid && idIndicador?.touched) {
+                                <p class="mt-1 text-xs text-red-600">El indicador es obligatorio.</p>
+                            }
                         </div>
-                        @if (mes?.invalid && mes?.touched) {
-                            <p class="mt-1.5 text-xs text-red-600">El mes es obligatorio.</p>
-                        }
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-sm font-medium text-slate-700 flex items-center gap-2" for="idActividadAnual">
+                                        <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                                        Actividad Anual <span class="text-red-500">*</span>
+                                    </label>
+                                    <a 
+                                        [routerLink]="['/actividades-anuales/nueva']"
+                                        [queryParams]="idIndicador?.value ? { idIndicador: idIndicador?.value } : {}"
+                                        class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1">
+                                        <app-icon icon="add" size="xs"></app-icon>
+                                        Crear nueva
+                                    </a>
+                                </div>
+                                <div class="relative">
+                                    <select 
+                                        formControlName="idActividadAnual"
+                                        id="idActividadAnual"
+                                        class="w-full pl-3 pr-10 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        [class.border-red-500]="idActividadAnual?.invalid && idActividadAnual?.touched"
+                                        [disabled]="!idIndicador?.value">
+                                        <option [value]="null">Seleccione una actividad anual...</option>
+                                        @if (idIndicador?.value) {
+                                            @for (anual of actividadesAnuales(); track anual.idActividadAnual) {
+                                                <option [value]="anual.idActividadAnual">
+                                                    {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
+                                                </option>
+                                            }
+                                        }
+                                    </select>
+                                    <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                                    @if (idActividadAnual?.valid && idActividadAnual?.touched) {
+                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
+                                            <app-icon icon="check_circle" size="xs"></app-icon>
+                                        </span>
+                                    }
+                                </div>
+                                @if (idActividadAnual?.invalid && idActividadAnual?.touched) {
+                                    <p class="mt-1 text-xs text-red-600">La actividad anual es obligatoria.</p>
+                                }
+                                @if (!idIndicador?.value) {
+                                    <p class="mt-1.5 text-xs text-slate-500">
+                                        <app-icon icon="info" size="xs" class="inline-block mr-1"></app-icon>
+                                        Seleccione un indicador primero para ver las actividades anuales disponibles
+                                    </p>
+                                } @else if (actividadesAnuales().length === 0) {
+                                    <div class="mt-1.5 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <div class="flex items-start gap-2">
+                                            <app-icon icon="warning" size="sm" class="text-yellow-600 mt-0.5 flex-shrink-0"></app-icon>
+                                            <div class="flex-1">
+                                                <p class="text-xs font-medium text-yellow-800 mb-1">
+                                                    No hay actividades anuales disponibles para este indicador
+                                                </p>
+                                                <p class="text-xs text-yellow-700">
+                                                    Para crear una actividad mensual, primero debe existir una actividad anual para el indicador seleccionado. 
+                                                    Puede crear una nueva actividad anual haciendo clic en "Crear nueva" arriba.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                } @else {
+                                    <p class="mt-1.5 text-xs text-slate-500">
+                                        <app-icon icon="info" size="xs" class="inline-block mr-1"></app-icon>
+                                        {{ actividadesAnuales().length }} actividad(es) anual(es) disponible(s). 
+                                        Si no existe la actividad anual que necesita, puede crear una nueva haciendo clic en "Crear nueva".
+                                    </p>
+                                }
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="mes">
+                                    <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
+                                    Mes <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <select 
+                                        formControlName="mes"
+                                        id="mes"
+                                        class="w-full pl-3 pr-10 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all appearance-none cursor-pointer"
+                                        [class.border-red-500]="mes?.invalid && mes?.touched">
+                                        <option [value]="null">Seleccione un mes...</option>
+                                        @for (mesItem of meses; track mesItem.value) {
+                                            <option [value]="mesItem.value">{{ mesItem.nombre }}</option>
+                                        }
+                                    </select>
+                                    <app-icon icon="expand_more" size="sm" class="absolute right-3 top-2.5 text-slate-400 pointer-events-none"></app-icon>
+                                    @if (mes?.valid && mes?.touched) {
+                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
+                                            <app-icon icon="check_circle" size="xs"></app-icon>
+                                        </span>
+                                    }
+                                </div>
+                                @if (mes?.invalid && mes?.touched) {
+                                    <p class="mt-1 text-xs text-red-600">El mes es obligatorio.</p>
+                                }
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="nombre">
+                                <app-icon icon="title" size="xs" class="text-emerald-600"></app-icon>
+                                Nombre
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    formControlName="nombre"
+                                    id="nombre"
+                                    placeholder="Nombre de la actividad mensual"
+                                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                                @if (form.get('nombre')?.valid && form.get('nombre')?.touched && form.get('nombre')?.value) {
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-emerald-600">
+                                        <app-icon icon="check_circle" size="xs"></app-icon>
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="descripcion">
+                                <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                                Descripción
+                            </label>
+                            <textarea 
+                                formControlName="descripcion"
+                                id="descripcion"
+                                rows="4"
+                                placeholder="Descripción detallada de la actividad mensual institucional..."
+                                class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none"></textarea>
+                        </div>
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="nombre">
-                        Nombre
-                    </label>
-                    <input 
-                        type="text" 
-                        formControlName="nombre"
-                        id="nombre"
-                        placeholder="Nombre de la actividad mensual"
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5" for="descripcion">
-                        Descripción
-                    </label>
-                    <textarea 
-                        formControlName="descripcion"
-                        id="descripcion"
-                        rows="4"
-                        placeholder="Descripción detallada de la actividad mensual institucional..."
-                        class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all resize-none"></textarea>
-                </div>
+                }
             </div>
 
-            <!-- Estado -->
-            <div class="space-y-6">
-                <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                    <app-icon icon="toggle_on" size="sm"></app-icon>
-                    <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
-                </div>
-
-                <div class="pt-2">
-                    <label class="inline-flex items-center cursor-pointer group">
-                        <input type="checkbox" formControlName="activo" class="sr-only peer">
-                        <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                        <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
-                    </label>
-                </div>
+            <!-- Sección 2: Estado -->
+            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <!-- Header del acordeón -->
+                <button
+                    type="button"
+                    (click)="seccionEstadoExpandida.set(!seccionEstadoExpandida())"
+                    class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <app-icon icon="toggle_on" size="sm"></app-icon>
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-slate-900">Estado</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Configure el estado de la actividad mensual</p>
+                        </div>
+                    </div>
+                    <app-icon 
+                        [icon]="seccionEstadoExpandida() ? 'expand_less' : 'expand_more'" 
+                        size="md" 
+                        class="text-emerald-600 transition-transform duration-200"
+                        [class.rotate-180]="!seccionEstadoExpandida()"></app-icon>
+                </button>
+                
+                <!-- Contenido del acordeón -->
+                @if (seccionEstadoExpandida()) {
+                    <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
+                        <div class="pt-2">
+                            <label class="inline-flex items-center cursor-pointer group">
+                                <input type="checkbox" formControlName="activo" class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                                <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
+                            </label>
+                        </div>
+                    </div>
+                }
             </div>
 
+            <!-- Botones de acción -->
             <div class="pt-6 flex flex-col-reverse md:flex-row md:justify-end gap-3">
                 <button 
                     type="button"
@@ -217,4 +301,3 @@
     }
   </div>
 </div>
-

@@ -51,16 +51,18 @@ export class PersonasService {
           console.warn('⚠️ Endpoint /api/estudiantes no encontrado (404)');
           return of([]);
         } else if (error.status === 500) {
-          console.error('❌ Error 500 del servidor al obtener estudiantes:', error);
-          console.error('❌ Error status:', error.status);
-          console.error('❌ Error message:', error.message);
-          console.error('❌ Error body:', error.error);
+          // Error del backend: columnas faltantes en la base de datos
+          // El servicio retorna un array vacío para que el frontend pueda continuar
+          const errorText = typeof error.error === 'string' ? error.error : JSON.stringify(error.error || {});
+          if (errorText.includes('departamento_id') || errorText.includes('carrera')) {
+            console.warn('⚠️ Error 500 del servidor al obtener estudiantes. El backend está intentando acceder a columnas que no existen en la base de datos: "departamento_id" y/o "carrera".');
+            console.warn('⚠️ El formulario continuará funcionando, pero no se mostrarán estudiantes en la lista de responsables.');
+          } else {
+            console.warn('⚠️ Error 500 del servidor al obtener estudiantes:', errorText);
+          }
           return of([]);
         }
-        console.error('❌ Error fetching estudiantes:', error);
-        console.error('❌ Error status:', error.status);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Error body:', error.error);
+        console.warn('⚠️ Error al obtener estudiantes:', error.status, error.message);
         return of([]);
       })
     );
@@ -91,9 +93,10 @@ export class PersonasService {
     // El backend devuelve nombres (Genero, Departamento, EstadoEstudiante) pero necesitamos los IDs
     // Por ahora, intentamos mapear desde diferentes posibles campos
     // Si el backend incluye los IDs en la navegación, los usamos; si no, intentamos desde otros campos
-    const generoId = item.generoId || item.GeneroId || item.IdGenero || 0;
-    const departamentoId = item.departamentoId || item.DepartamentoId || 0;
-    const estadoId = item.estadoId || item.EstadoId || item.IdEstadoEstudiante || 0;
+    // NOTA: Estos campos son opcionales - no necesarios para el contexto de actividades
+    const generoId = item.generoId || item.GeneroId || item.IdGenero || item.idGenero || undefined;
+    const departamentoId = item.departamentoId || item.DepartamentoId || undefined; // No existe en la tabla, obtener desde carrera si se necesita
+    const estadoId = item.estadoId || item.EstadoId || item.IdEstadoEstudiante || item.idEstadoEstudiante || undefined;
     
     // Log para debugging si el ID es inválido (podría indicar un problema de mapeo)
     if (finalId <= 0) {
@@ -106,15 +109,16 @@ export class PersonasService {
       matricula: item.matricula || item.Matricula || item.numeroCarnet || item.NumeroCarnet || '',
       correo: item.correo || item.Correo || '',
       generoId: generoId,
-      departamentoId: departamentoId,
+      departamentoId: departamentoId, // Opcional - no existe en la tabla, se obtiene desde carrera si se necesita
       estadoId: estadoId,
-      fechaIngreso: item.fechaIngreso ? new Date(item.fechaIngreso) : (item.FechaIngreso ? new Date(item.FechaIngreso) : new Date()),
+      fechaIngreso: item.fechaIngreso ? new Date(item.fechaIngreso) : (item.FechaIngreso ? new Date(item.FechaIngreso) : undefined),
       activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
       numeroOrcid: item.numeroOrcid || item.NumeroOrcid || undefined,
       cedula: item.cedula || item.Cedula || undefined,
-      carrera: item.carrera || item.Carrera || undefined,
-      idCategoriaParticipacion: item.idCategoriaParticipacion || item.IdCategoriaParticipacion || undefined,
-      nivelFormacion: item.nivelFormacion || item.NivelFormacion || undefined
+      carrera: item.carrera || item.Carrera || undefined, // Opcional - no existe en la tabla
+      idCarrera: item.idCarrera || item.IdCarrera || item.id_carrera || undefined, // Columna real en la BD
+      idCategoriaParticipacion: item.idCategoriaParticipacion || item.IdCategoriaParticipacion || item.id_categoria_participacion || undefined,
+      nivelFormacion: item.nivelFormacion || item.NivelFormacion || item.nivel_formacion || undefined
     };
     
     // Log para debugging si algún campo crítico está vacío
@@ -143,25 +147,34 @@ export class PersonasService {
 
   createEstudiante(estudiante: Omit<Estudiante, 'id'>): Observable<Estudiante> {
     // Validar que todos los campos requeridos estén presentes
-    if (!estudiante.nombreCompleto || !estudiante.matricula || !estudiante.correo || 
-        !estudiante.generoId || !estudiante.departamentoId || !estudiante.estadoId) {
-      throw new Error('Faltan campos requeridos para crear el estudiante');
+    // NOTA: departamentoId no es requerido - se obtiene desde idCarrera si se necesita
+    if (!estudiante.nombreCompleto || !estudiante.matricula || !estudiante.correo) {
+      throw new Error('Faltan campos requeridos para crear el estudiante: nombreCompleto, matricula, correo');
     }
 
     // Convertir a PascalCase según EstudianteCreateDto del backend
-    // Campos requeridos: NombreCompleto, NumeroCarnet, Correo, IdGenero, DepartamentoId, IdEstadoEstudiante
-    // Campos opcionales: Cedula, NumeroOrcid, Carrera, IdCategoriaParticipacion, NivelFormacion
+    // Campos requeridos: NombreCompleto, NumeroCarnet, Correo
+    // Campos opcionales: IdGenero, IdCarrera (no DepartamentoId), IdEstadoEstudiante, Cedula, NumeroOrcid, IdCategoriaParticipacion, NivelFormacion
     // NOTA: El backend NO usa FechaIngreso en CreateAsync, solo lo usa internamente
     // IMPORTANTE: No incluir campos opcionales (Cedula, NumeroOrcid) si no tienen valor
     // para evitar violaciones de UNIQUE constraint cuando el backend asigna null
+    // NOTA: DepartamentoId no se envía - el backend lo obtiene desde IdCarrera si es necesario
     const dto: any = {
       NombreCompleto: estudiante.nombreCompleto.trim(),
       NumeroCarnet: estudiante.matricula.trim(),
-      Correo: estudiante.correo.trim(),
-      IdGenero: Number(estudiante.generoId),
-      DepartamentoId: Number(estudiante.departamentoId),
-      IdEstadoEstudiante: Number(estudiante.estadoId)
+      Correo: estudiante.correo.trim()
     };
+    
+    // Campos opcionales - solo incluir si tienen valor
+    if (estudiante.generoId) {
+      dto.IdGenero = Number(estudiante.generoId);
+    }
+    if (estudiante.idCarrera) {
+      dto.IdCarrera = Number(estudiante.idCarrera); // Usar IdCarrera en lugar de DepartamentoId
+    }
+    if (estudiante.estadoId) {
+      dto.IdEstadoEstudiante = Number(estudiante.estadoId);
+    }
     
     // Solo incluir NumeroOrcid si tiene valor (no null ni vacío)
     // Si no se incluye, el backend no debería asignarlo como null
@@ -177,11 +190,6 @@ export class PersonasService {
       console.log('✅ CREATE Estudiante - Cedula incluida:', dto.Cedula);
     }
     
-    // Solo incluir Carrera si tiene valor
-    if (estudiante.carrera && estudiante.carrera.trim()) {
-      dto.Carrera = estudiante.carrera.trim();
-    }
-    
     // Solo incluir IdCategoriaParticipacion si tiene valor
     if (estudiante.idCategoriaParticipacion && estudiante.idCategoriaParticipacion > 0) {
       dto.IdCategoriaParticipacion = Number(estudiante.idCategoriaParticipacion);
@@ -193,7 +201,14 @@ export class PersonasService {
     }
     
     // Validar que los IDs sean números válidos
-    if (isNaN(dto.IdGenero) || isNaN(dto.DepartamentoId) || isNaN(dto.IdEstadoEstudiante)) {
+    // Validar que los campos numéricos sean válidos si están presentes
+    if (dto.IdGenero !== undefined && isNaN(dto.IdGenero)) {
+      throw new Error('IdGenero debe ser un número válido');
+    }
+    if (dto.IdCarrera !== undefined && isNaN(dto.IdCarrera)) {
+      throw new Error('IdCarrera debe ser un número válido');
+    }
+    if (dto.IdEstadoEstudiante !== undefined && isNaN(dto.IdEstadoEstudiante)) {
       throw new Error('Los IDs deben ser números válidos');
     }
     
@@ -273,9 +288,10 @@ export class PersonasService {
       dto.IdGenero = generoId;
     }
     
-    const departamentoId = toNumber(estudiante.departamentoId);
-    if (departamentoId !== null) {
-      dto.DepartamentoId = departamentoId;
+    // IdCarrera - usar en lugar de DepartamentoId (el departamento se obtiene desde la carrera)
+    const idCarrera = toNumber(estudiante.idCarrera);
+    if (idCarrera !== null) {
+      dto.IdCarrera = idCarrera;
     }
     
     const estadoId = toNumber(estudiante.estadoId);
@@ -294,9 +310,6 @@ export class PersonasService {
     }
     if (estudiante.cedula !== undefined && estudiante.cedula && String(estudiante.cedula).trim()) {
       dto.Cedula = String(estudiante.cedula).trim();
-    }
-    if (estudiante.carrera !== undefined && estudiante.carrera && String(estudiante.carrera).trim()) {
-      dto.Carrera = String(estudiante.carrera).trim();
     }
     
     const categoriaId = toNumber(estudiante.idCategoriaParticipacion);

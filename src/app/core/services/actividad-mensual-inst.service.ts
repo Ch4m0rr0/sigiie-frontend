@@ -191,6 +191,46 @@ export class ActividadMensualInstService {
     return this.getAll({ mes, anio });
   }
 
+  getByNombreActividadAnual(nombreActividadAnual: string): Observable<ActividadMensualInst[]> {
+    // Validar que el nombre no esté vacío
+    if (!nombreActividadAnual || nombreActividadAnual.trim().length === 0) {
+      console.warn('⚠️ Nombre de actividad anual vacío, no se puede buscar actividades mensuales');
+      return of([]);
+    }
+
+    // Validar que el nombre no sea demasiado largo (evitar problemas con URLs muy largas)
+    if (nombreActividadAnual.length > 500) {
+      console.warn('⚠️ Nombre de actividad anual demasiado largo, truncando para la búsqueda');
+      nombreActividadAnual = nombreActividadAnual.substring(0, 500);
+    }
+
+    const params = new HttpParams().set('nombreActividadAnual', nombreActividadAnual.trim());
+    console.log('🔍 Buscando actividades mensuales por nombre de actividad anual:', nombreActividadAnual.substring(0, 100) + (nombreActividadAnual.length > 100 ? '...' : ''));
+    
+    return this.http.get<any>(`${this.apiUrl}/por-nombre-actividad-anual`, { params }).pipe(
+      map(response => {
+        const items = response.data || response;
+        return Array.isArray(items) ? items.map(item => this.mapActividadMensualInst(item)) : [];
+      }),
+      catchError(error => {
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/actividades-mensuales-institucionales/por-nombre-actividad-anual no encontrado (404)');
+          return of([]);
+        } else if (error.status === 400) {
+          console.warn('⚠️ Error 400 (Bad Request) al buscar actividades mensuales por nombre. El backend puede no aceptar este formato de parámetro o el nombre puede ser inválido.');
+          console.warn('⚠️ Nombre enviado:', nombreActividadAnual.substring(0, 100) + (nombreActividadAnual.length > 100 ? '...' : ''));
+          return of([]);
+        } else if (error.status === 500) {
+          console.error('❌ Error 500 del servidor al obtener actividades mensuales por nombre:', error);
+          return of([]);
+        } else {
+          console.error('❌ Error fetching actividades mensuales por nombre:', error);
+          return of([]);
+        }
+      })
+    );
+  }
+
   private mapActividadMensualInst(item: any): ActividadMensualInst {
     const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const mes = item.mes || item.Mes || 0;

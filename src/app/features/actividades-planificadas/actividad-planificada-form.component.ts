@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -24,6 +24,7 @@ import type { Usuario } from '../../core/models/usuario';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
+import { AlertService } from '../../core/services/alert.service';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -39,7 +40,7 @@ import { forkJoin } from 'rxjs';
   ],
   templateUrl: './actividad-planificada-form.component.html',
 })
-export class ActividadPlanificadaFormComponent implements OnInit {
+export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private actividadesService = inject(ActividadesService);
   private catalogosService = inject(CatalogosService);
@@ -52,6 +53,7 @@ export class ActividadPlanificadaFormComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private alertService = inject(AlertService);
 
   form!: FormGroup;
   departamentos = signal<Departamento[]>([]);
@@ -70,6 +72,9 @@ export class ActividadPlanificadaFormComponent implements OnInit {
   error = signal<string | null>(null);
   private cargandoRelaciones = false;
   private actividadesAnualesAnteriores: number[] = [];
+  private formStateKey = 'actividad-planificada-form-state';
+  private formSubscription: any;
+  private isCancelling = false; // Bandera para evitar guardar estado al cancelar
   mostrarDropdownAnuales = signal(true);
   mostrarDropdownMensuales = signal(true);
   mostrarDropdownActividadAnual = signal(true);
@@ -127,6 +132,40 @@ export class ActividadPlanificadaFormComponent implements OnInit {
     if (idIndicador) {
       this.indicadorIdFromQuery.set(+idIndicador);
     }
+
+    // Suscribirse a cambios del formulario para guardar automáticamente (solo después de inicializar)
+    if (!this.isEditMode()) {
+      // Esperar a que todo esté cargado antes de restaurar
+      // Usar un delay más largo para asegurar que todos los datos estén listos
+      setTimeout(() => {
+        this.restoreFormState();
+        // Configurar auto-guardado después de restaurar
+        this.setupFormAutoSave();
+      }, 500);
+    } else {
+      this.setupFormAutoSave();
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Guardar estado antes de destruir el componente (cuando el usuario navega)
+    // Solo si no se está cancelando explícitamente
+    if (!this.isEditMode() && this.form && !this.isCancelling) {
+      this.saveFormState();
+    }
+    
+    // Limpiar suscripción
+    if (this.formSubscription) {
+      this.formSubscription.unsubscribe();
+    }
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  beforeUnloadHandler(event: BeforeUnloadEvent): void {
+    // Guardar estado antes de cerrar la página
+    if (!this.isEditMode() && this.form) {
+      this.saveFormState();
+    }
   }
 
   initializeForm(): void {
@@ -155,7 +194,7 @@ export class ActividadPlanificadaFormComponent implements OnInit {
       cantidadParticipantesEstudiantesProyectados: [null],
       cantidadTotalParticipantesProtagonistas: [null],
       idTipoEvidencias: [[]],
-      anio: [null],
+      anio: [String(new Date().getFullYear())],
       horaInicioPrevista: [''],
       horaRealizacion: [''],
       idTipoProtagonista: [[]],
@@ -549,7 +588,7 @@ export class ActividadPlanificadaFormComponent implements OnInit {
           idIndicador: data.idIndicador || null,
           idActividadAnual: idActividadAnualArray,
           objetivo: data.objetivo || '',
-          anio: data.anio ? Number(data.anio) : null,
+          anio: data.anio ? String(data.anio) : String(new Date().getFullYear()),
           horaRealizacion: horaRealizacionFormatted,
           cantidadParticipantesProyectados: data.cantidadParticipantesProyectados || null,
           cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados || null,
@@ -597,6 +636,13 @@ export class ActividadPlanificadaFormComponent implements OnInit {
     }
     if (nombreValue && !this.form.get('nombre')?.value) {
       this.form.patchValue({ nombre: nombreValue });
+    }
+
+    // Validar que haya al menos un responsable
+    if (!this.tieneAlMenosUnResponsable()) {
+      this.error.set('Debe agregar al menos una persona válida como responsable.');
+      this.form.markAllAsTouched();
+      return;
     }
 
     if (this.form.valid) {
@@ -650,7 +696,7 @@ export class ActividadPlanificadaFormComponent implements OnInit {
         idIndicador: formValue.idIndicador || undefined,
         idActividadAnual: Array.isArray(formValue.idActividadAnual) && formValue.idActividadAnual.length > 0 ? formValue.idActividadAnual : undefined,
         objetivo: formValue.objetivo || undefined,
-        anio: formValue.anio ? Number(formValue.anio) : undefined,
+        anio: formValue.anio ? String(formValue.anio) : undefined,
         horaRealizacion: horaRealizacion,
         cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados || undefined,
         cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados || undefined,
@@ -1419,13 +1465,18 @@ export class ActividadPlanificadaFormComponent implements OnInit {
   crearResponsablesParaActividad(idActividad: number, responsableActividad?: string): void {
     const responsables: ActividadResponsableCreate[] = [];
     const formValue = this.formResponsable.value;
+    const fechaAsignacion = formValue.fechaAsignacion || new Date().toISOString().split('T')[0];
+
+    console.log('🔄 Creando responsables para actividad:', idActividad);
+    console.log('📋 FormResponsable value:', formValue);
 
     // Agregar responsable de actividad si existe
     if (responsableActividad) {
       responsables.push({
         idActividad,
         idTipoResponsable: 1, // Tipo por defecto
-        rolResponsable: responsableActividad
+        rolResponsable: responsableActividad,
+        fechaAsignacion: fechaAsignacion
       });
     }
 
@@ -1436,8 +1487,10 @@ export class ActividadPlanificadaFormComponent implements OnInit {
         responsables.push({
           idActividad,
           idUsuario,
-          idTipoResponsable: 1 // Usuarios no requieren idRolResponsable según ejemplos
+          idTipoResponsable: 1, // Usuarios no requieren idRolResponsable según ejemplos
+          fechaAsignacion: fechaAsignacion
         });
+        console.log('✅ Usuario agregado a responsables:', idUsuario);
       }
     });
 
@@ -1450,8 +1503,10 @@ export class ActividadPlanificadaFormComponent implements OnInit {
           idActividad,
           idDocente,
           idTipoResponsable: 2, // Tipo docente
-          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined
+          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
+          fechaAsignacion: fechaAsignacion
         });
+        console.log('✅ Docente agregado a responsables:', idDocente, 'Rol:', idRolResponsable);
       }
     });
 
@@ -1464,8 +1519,10 @@ export class ActividadPlanificadaFormComponent implements OnInit {
           idActividad,
           idDocente,
           idTipoResponsable: 3, // Tipo estudiante
-          rolResponsable: this.getNombreRolResponsable(idRolResponsable)
+          rolResponsable: this.getNombreRolResponsable(idRolResponsable),
+          fechaAsignacion: fechaAsignacion
         });
+        console.log('✅ Estudiante agregado a responsables:', idDocente, 'Rol:', idRolResponsable);
       }
     });
 
@@ -1478,8 +1535,10 @@ export class ActividadPlanificadaFormComponent implements OnInit {
           idActividad,
           idAdmin,
           idTipoResponsable: 4, // Tipo administrativo
-          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined
+          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
+          fechaAsignacion: fechaAsignacion
         });
+        console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol:', idRolResponsable);
       }
     });
 
@@ -1492,21 +1551,270 @@ export class ActividadPlanificadaFormComponent implements OnInit {
     // });
 
     // Crear todos los responsables en paralelo
+    console.log('📊 Total de responsables a crear:', responsables.length);
+    console.log('📋 Responsables a crear:', JSON.stringify(responsables, null, 2));
+    
     if (responsables.length > 0) {
       forkJoin(
         responsables.map(responsable => this.responsableService.create(responsable))
       ).subscribe({
-        next: () => {
-          this.router.navigate(['/actividades']);
+        next: (responsablesCreados) => {
+          console.log('✅ Responsables creados exitosamente:', responsablesCreados);
+          console.log('📊 Total de responsables creados:', responsablesCreados.length);
+          this.mostrarAlertaExito();
         },
         error: (err) => {
-          console.error('Error creando responsables:', err);
-          this.router.navigate(['/actividades']);
+          console.error('❌ Error creando responsables:', err);
+          console.error('❌ Error details:', err.error);
+          console.error('❌ Error status:', err.status);
+          // Mostrar alerta de éxito aunque haya error con responsables
+          this.mostrarAlertaExito();
         }
       });
     } else {
-      this.router.navigate(['/actividades']);
+      console.warn('⚠️ No hay responsables para crear');
+      this.mostrarAlertaExito();
     }
+  }
+
+  private mostrarAlertaExito(): void {
+    const nombreActividad = this.form.get('nombreActividad')?.value || 'la actividad';
+    // Limpiar el estado guardado del formulario al guardar exitosamente
+    this.clearFormState();
+    
+    if (this.isEditMode()) {
+      // Mensaje para actividad actualizada
+      this.alertService.success(
+        '¡Actividad actualizada!',
+        `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    } else {
+      // Mensaje para actividad creada
+      this.alertService.success(
+        '¡Actividad creada exitosamente!',
+        `La actividad "${nombreActividad}" ha sido creada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    }
+  }
+
+  /**
+   * Guarda el estado del formulario en sessionStorage
+   */
+  private saveFormState(): void {
+    if (!this.form || this.isEditMode() || this.isCancelling) {
+      return; // No guardar en modo edición o cuando se está cancelando
+    }
+
+    try {
+      const formValue = this.form.value;
+      const formState = {
+        formValue,
+        // Estado visual del formulario
+        uiState: {
+          seccionPlanificacionExpandida: this.seccionPlanificacionExpandida(),
+          seccionInformacionExpandida: this.seccionInformacionExpandida(),
+          seccionResponsablesExpandida: this.seccionResponsablesExpandida(),
+          mostrarDropdownAnuales: this.mostrarDropdownAnuales(),
+          mostrarDropdownMensuales: this.mostrarDropdownMensuales(),
+          mostrarDropdownActividadAnual: this.mostrarDropdownActividadAnual(),
+          mostrarDropdownActividadMensual: this.mostrarDropdownActividadMensual(),
+          mostrarDropdownTipoEvidencia: this.mostrarDropdownTipoEvidencia(),
+          mostrarDropdownDepartamentos: this.mostrarDropdownDepartamentos(),
+          mostrarDropdownTipoActividad: this.mostrarDropdownTipoActividad(),
+          mostrarDropdownProtagonista: this.mostrarDropdownProtagonista(),
+          mostrarDropdownEstadoActividad: this.mostrarDropdownEstadoActividad(),
+          mostrarDropdownModalidad: this.mostrarDropdownModalidad(),
+          mostrarDropdownLocal: this.mostrarDropdownLocal(),
+          localSeleccionado: this.localSeleccionado()
+        },
+        timestamp: new Date().toISOString()
+      };
+      sessionStorage.setItem(this.formStateKey, JSON.stringify(formState));
+      console.log('💾 Estado del formulario guardado');
+    } catch (error) {
+      console.warn('Error guardando estado del formulario:', error);
+    }
+  }
+
+  /**
+   * Restaura el estado del formulario desde sessionStorage
+   */
+  private restoreFormState(): void {
+    if (this.isEditMode()) {
+      return; // No restaurar en modo edición
+    }
+
+    try {
+      const savedState = sessionStorage.getItem(this.formStateKey);
+      if (!savedState) {
+        console.log('ℹ️ No hay estado guardado para restaurar');
+        return;
+      }
+
+      const formState = JSON.parse(savedState);
+      console.log('📦 Estado encontrado en sessionStorage:', formState);
+      
+      // Verificar que el estado no sea muy antiguo (máximo 24 horas)
+      const timestamp = new Date(formState.timestamp);
+      const now = new Date();
+      const hoursDiff = (now.getTime() - timestamp.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursDiff > 24) {
+        // El estado es muy antiguo, eliminarlo
+        console.log('⏰ Estado muy antiguo, eliminando');
+        sessionStorage.removeItem(this.formStateKey);
+        return;
+      }
+
+      // Restaurar estado visual del formulario primero (inmediatamente)
+      if (formState.uiState) {
+        const uiState = formState.uiState;
+        if (uiState.seccionPlanificacionExpandida !== undefined) {
+          this.seccionPlanificacionExpandida.set(uiState.seccionPlanificacionExpandida);
+        }
+        if (uiState.seccionInformacionExpandida !== undefined) {
+          this.seccionInformacionExpandida.set(uiState.seccionInformacionExpandida);
+        }
+        if (uiState.seccionResponsablesExpandida !== undefined) {
+          this.seccionResponsablesExpandida.set(uiState.seccionResponsablesExpandida);
+        }
+        if (uiState.mostrarDropdownAnuales !== undefined) {
+          this.mostrarDropdownAnuales.set(uiState.mostrarDropdownAnuales);
+        }
+        if (uiState.mostrarDropdownMensuales !== undefined) {
+          this.mostrarDropdownMensuales.set(uiState.mostrarDropdownMensuales);
+        }
+        if (uiState.mostrarDropdownActividadAnual !== undefined) {
+          this.mostrarDropdownActividadAnual.set(uiState.mostrarDropdownActividadAnual);
+        }
+        if (uiState.mostrarDropdownActividadMensual !== undefined) {
+          this.mostrarDropdownActividadMensual.set(uiState.mostrarDropdownActividadMensual);
+        }
+        if (uiState.mostrarDropdownTipoEvidencia !== undefined) {
+          this.mostrarDropdownTipoEvidencia.set(uiState.mostrarDropdownTipoEvidencia);
+        }
+        if (uiState.mostrarDropdownDepartamentos !== undefined) {
+          this.mostrarDropdownDepartamentos.set(uiState.mostrarDropdownDepartamentos);
+        }
+        if (uiState.mostrarDropdownTipoActividad !== undefined) {
+          this.mostrarDropdownTipoActividad.set(uiState.mostrarDropdownTipoActividad);
+        }
+        if (uiState.mostrarDropdownProtagonista !== undefined) {
+          this.mostrarDropdownProtagonista.set(uiState.mostrarDropdownProtagonista);
+        }
+        if (uiState.mostrarDropdownEstadoActividad !== undefined) {
+          this.mostrarDropdownEstadoActividad.set(uiState.mostrarDropdownEstadoActividad);
+        }
+        if (uiState.mostrarDropdownModalidad !== undefined) {
+          this.mostrarDropdownModalidad.set(uiState.mostrarDropdownModalidad);
+        }
+        if (uiState.mostrarDropdownLocal !== undefined) {
+          this.mostrarDropdownLocal.set(uiState.mostrarDropdownLocal);
+        }
+        if (uiState.localSeleccionado !== undefined && uiState.localSeleccionado !== null) {
+          this.localSeleccionado.set(uiState.localSeleccionado);
+        }
+        console.log('✅ Estado visual del formulario restaurado');
+      }
+
+      // Restaurar valores del formulario después de asegurar que el formulario esté listo
+      if (formState.formValue && this.form) {
+        // Esperar un poco más para asegurar que todos los datos estén cargados
+        setTimeout(() => {
+          try {
+            this.form.patchValue(formState.formValue, { emitEvent: false });
+            console.log('✅ Valores del formulario restaurados');
+          } catch (error) {
+            console.warn('Error al restaurar valores del formulario:', error);
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.warn('Error restaurando estado del formulario:', error);
+      sessionStorage.removeItem(this.formStateKey);
+    }
+  }
+
+  /**
+   * Limpia el estado guardado del formulario
+   */
+  private clearFormState(): void {
+    try {
+      sessionStorage.removeItem(this.formStateKey);
+      console.log('🗑️ Estado del formulario limpiado');
+    } catch (error) {
+      console.warn('Error limpiando estado del formulario:', error);
+    }
+  }
+
+  /**
+   * Maneja el clic en el botón de cancelar
+   * Limpia el estado guardado y navega a la lista de actividades
+   */
+  onCancel(): void {
+    // Marcar que se está cancelando para evitar guardar en ngOnDestroy
+    this.isCancelling = true;
+    
+    // Limpiar el estado guardado del formulario
+    this.clearFormState();
+    
+    // Limpiar también el formulario actual
+    if (this.form) {
+      this.form.reset();
+      // Restablecer valores por defecto
+      this.form.patchValue({
+        esPlanificada: true,
+        activo: true
+      });
+    }
+    
+    // Resetear estado visual
+    this.seccionPlanificacionExpandida.set(false);
+    this.seccionInformacionExpandida.set(false);
+    this.seccionResponsablesExpandida.set(false);
+    this.localSeleccionado.set(null);
+    
+    // Navegar a la lista de actividades
+    this.router.navigate(['/actividades']);
+  }
+
+  /**
+   * Configura el guardado automático del formulario
+   */
+  private setupFormAutoSave(): void {
+    if (this.isEditMode() || this.isCancelling) {
+      return; // No guardar automáticamente en modo edición o cuando se está cancelando
+    }
+
+    // Limpiar suscripción anterior si existe
+    if (this.formSubscription) {
+      this.formSubscription.unsubscribe();
+    }
+
+    // Guardar estado cada vez que el formulario cambie (con debounce)
+    let saveTimeout: any;
+    this.formSubscription = this.form.valueChanges.subscribe(() => {
+      // No guardar si se está cancelando
+      if (this.isCancelling) {
+        return;
+      }
+      
+      // Limpiar timeout anterior
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+      
+      // Guardar después de 1 segundo de inactividad
+      saveTimeout = setTimeout(() => {
+        if (!this.isCancelling) {
+          this.saveFormState();
+        }
+      }, 1000);
+    });
   }
 
   private getNombreRolResponsable(idRolResponsable: number): string | undefined {

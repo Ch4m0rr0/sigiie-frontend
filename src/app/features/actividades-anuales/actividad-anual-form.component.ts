@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
 import { IndicadorService } from '../../core/services/indicador.service';
+import { AlertService } from '../../core/services/alert.service';
 import type { ActividadAnualCreate } from '../../core/models/actividad-anual';
 import type { Indicador } from '../../core/models/indicador';
 import { IconComponent } from '../../shared/icon/icon.component';
@@ -29,6 +30,7 @@ export class ActividadAnualFormComponent implements OnInit {
   private indicadorService = inject(IndicadorService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private alertService = inject(AlertService);
 
   form!: FormGroup;
   indicadores = signal<Indicador[]>([]);
@@ -36,6 +38,8 @@ export class ActividadAnualFormComponent implements OnInit {
   actividadAnualId = signal<number | null>(null);
   loading = signal(false);
   error = signal<string | null>(null);
+  seccionInformacionExpandida = signal(true);
+  seccionEstadoExpandida = signal(true);
   showYearWarning = signal(false);
   yearWarningConfirmed = signal(false);
 
@@ -210,7 +214,7 @@ export class ActividadAnualFormComponent implements OnInit {
       if (this.isEditMode()) {
         this.actividadAnualService.update(this.actividadAnualId()!, data).subscribe({
           next: () => {
-            this.router.navigate(['/actividades']);
+            this.mostrarAlertaExito();
           },
           error: (err: any) => {
             console.error('Error saving actividad anual:', err);
@@ -243,7 +247,7 @@ export class ActividadAnualFormComponent implements OnInit {
       } else {
         this.actividadAnualService.create(data).subscribe({
           next: () => {
-            this.router.navigate(['/actividades']);
+            this.mostrarAlertaExito();
           },
           error: (err: any) => {
             console.error('Error saving actividad anual:', err);
@@ -290,6 +294,28 @@ export class ActividadAnualFormComponent implements OnInit {
 
   getNextYear(): number {
     return new Date().getFullYear() + 1;
+  }
+
+  private mostrarAlertaExito(): void {
+    const nombreActividad = this.form.get('nombre')?.value || 'la actividad anual';
+    
+    if (this.isEditMode()) {
+      // Mensaje para actividad anual actualizada
+      this.alertService.success(
+        '¡Actividad anual actualizada!',
+        `La actividad anual "${nombreActividad}" ha sido actualizada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    } else {
+      // Mensaje para actividad anual creada
+      this.alertService.success(
+        '¡Actividad anual creada exitosamente!',
+        `La actividad anual "${nombreActividad}" ha sido creada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    }
   }
 }
 

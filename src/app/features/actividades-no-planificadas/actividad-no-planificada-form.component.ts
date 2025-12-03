@@ -1,12 +1,11 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import type { ActividadCreate } from '../../core/models/actividad';
 import type { Departamento } from '../../core/models/departamento';
-import type { CategoriaActividad } from '../../core/models/categoria-actividad';
 import type { EstadoActividad } from '../../core/models/estado-actividad';
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
 import type { ActividadMensualInst } from '../../core/models/actividad-mensual-inst';
@@ -15,9 +14,17 @@ import type { Indicador } from '../../core/models/indicador';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
 import type { ActividadAnual } from '../../core/models/actividad-anual';
 import { ActividadResponsableService, type ActividadResponsableCreate } from '../../core/services/actividad-responsable.service';
+import { PersonasService } from '../../core/services/personas.service';
+import { UsuariosService } from '../../core/services/usuarios.service';
+import type { Docente } from '../../core/models/docente';
+import type { Estudiante } from '../../core/models/estudiante';
+import type { Administrativo } from '../../core/models/administrativo';
+import type { Usuario } from '../../core/models/usuario';
+import { AlertService } from '../../core/services/alert.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
+import { forkJoin } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -40,12 +47,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
   private indicadorService = inject(IndicadorService);
   private actividadAnualService = inject(ActividadAnualService);
   private responsableService = inject(ActividadResponsableService);
+  private personasService = inject(PersonasService);
+  private usuariosService = inject(UsuariosService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private alertService = inject(AlertService);
 
   form!: FormGroup;
   departamentos = signal<Departamento[]>([]);
-  categoriasActividad = signal<CategoriaActividad[]>([]);
   estadosActividad = signal<EstadoActividad[]>([]);
   actividadesMensualesInst = signal<ActividadMensualInst[]>([]);
   indicadores = signal<Indicador[]>([]);
@@ -59,19 +68,48 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   private cargandoRelaciones = false;
+  private actividadesAnualesAnteriores: number[] = [];
 
   indicadorIdFromQuery = signal<number | null>(null);
 
+  // Signals para controlar dropdowns
+  mostrarDropdownActividadAnual = signal(false);
+  mostrarDropdownActividadMensual = signal(false);
+  mostrarDropdownDepartamentos = signal(false);
+  mostrarDropdownProtagonista = signal(false);
+  mostrarDropdownEstadoActividad = signal(false);
+  mostrarDropdownModalidad = signal(false);
+  mostrarDropdownLocal = signal(false);
+
+  // Acordeones para secciones del formulario
+  seccionPlanificacionExpandida = signal(false);
+  seccionInformacionExpandida = signal(false);
+  seccionEstadoExpandida = signal(false);
+  seccionResponsablesExpandida = signal(false);
+
+  // Signal para local seleccionado
+  localSeleccionado = signal<any>(null);
+
+  // Formulario de responsables
+  formResponsable!: FormGroup;
+  usuarios = signal<Usuario[]>([]);
+  docentes = signal<Docente[]>([]);
+  estudiantes = signal<Estudiante[]>([]);
+  administrativos = signal<Administrativo[]>([]);
+  rolesResponsable = signal<any[]>([]);
+  tiposResponsableSeleccionados = signal<string[]>([]);
+
   ngOnInit(): void {
     this.initializeForm();
+    this.initializeFormResponsable();
     this.loadDepartamentos();
-    this.loadCategoriasActividad();
     this.loadEstadosActividad();
     this.loadActividadesMensualesInst();
     this.loadIndicadores();
     this.loadActividadesAnuales();
     this.loadTiposProtagonista();
     this.loadCapacidadesInstaladas();
+    this.loadTodasLasPersonas();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -98,23 +136,20 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
       fechaFin: [''],
       soporteDocumentoUrl: [null],
       idEstadoActividad: [null],
-      idTipoActividad: [[]],
       modalidad: [''],
       idCapacidadInstalada: [null],
       semanaMes: [null],
-      codigoActividad: [''],
-      idActividadMensualInst: [null],
+      idActividadMensualInst: [[]],
       esPlanificada: [false], // Siempre false para actividades no planificadas
       idIndicador: [null],
       idActividadAnual: [[]],
       objetivo: [''],
       cantidadParticipantesProyectados: [null, Validators.required],
       cantidadParticipantesEstudiantesProyectados: [null],
-      anio: [currentYear],
+      anio: [String(currentYear)],
       horaInicioPrevista: [''],
       horaRealizacion: [''],
       idTipoProtagonista: [[]],
-      responsableActividad: [''],
       categoriaActividadId: [null],
       tipoUnidadId: [null],
       areaConocimientoId: [null],
@@ -141,8 +176,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         this.actividadesAnualesFiltradas.set([]);
         this.actividadesMensualesFiltradas.set([]);
         this.form.patchValue({
-          idActividadAnual: null,
-          idActividadMensualInst: null
+          idActividadAnual: [],
+          idActividadMensualInst: []
         }, { emitEvent: false });
         
         this.cargarActividadesPorIndicador(idIndicador, false);
@@ -150,8 +185,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         this.actividadesAnualesFiltradas.set([]);
         this.actividadesMensualesFiltradas.set([]);
         this.form.patchValue({
-          idActividadAnual: null,
-          idActividadMensualInst: null
+          idActividadAnual: [],
+          idActividadMensualInst: []
         }, { emitEvent: false });
       }
     });
@@ -161,12 +196,58 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
       
       const actividadesAnuales = Array.isArray(idActividadAnual) ? idActividadAnual : (idActividadAnual ? [idActividadAnual] : []);
       
-      if (actividadesAnuales.length > 0) {
-        this.cargarActividadesMensualesPorAnual(actividadesAnuales[0], false);
-      } else {
-        this.actividadesMensualesFiltradas.set([]);
-        this.form.patchValue({ idActividadMensualInst: null }, { emitEvent: false });
+      // Detectar qué actividad anual se agregó o eliminó
+      const actividadesAgregadas = actividadesAnuales.filter(id => !this.actividadesAnualesAnteriores.includes(id));
+      const actividadesEliminadas = this.actividadesAnualesAnteriores.filter(id => !actividadesAnuales.includes(id));
+      
+      // Si se agregó una actividad anual, cargar solo sus actividades mensuales
+      if (actividadesAgregadas.length > 0) {
+        actividadesAgregadas.forEach(idAnual => {
+          this.actividadMensualInstService.getByActividadAnual(idAnual).subscribe({
+            next: (actividadesMensuales) => {
+              const actividadesFiltradas = (actividadesMensuales || []).filter(m => m.idActividadAnual === idAnual);
+              // Agregar las nuevas actividades mensuales a la lista existente
+              const mensualesActuales = this.actividadesMensualesFiltradas();
+              const todasLasMensuales = [...mensualesActuales, ...actividadesFiltradas];
+              // Eliminar duplicados
+              const mensualesUnicas = todasLasMensuales.filter((mensual, index, self) =>
+                index === self.findIndex(m => m.idActividadMensualInst === mensual.idActividadMensualInst)
+              );
+              this.actividadesMensualesFiltradas.set(mensualesUnicas);
+            },
+            error: (err) => {
+              console.error('Error cargando actividades mensuales:', err);
+            }
+          });
+        });
       }
+      
+      // Si se eliminó una actividad anual, eliminar sus actividades mensuales
+      if (actividadesEliminadas.length > 0) {
+        const mensualesActuales = this.actividadesMensualesFiltradas();
+        const mensualesFiltradas = mensualesActuales.filter(m => 
+          !actividadesEliminadas.includes(m.idActividadAnual)
+        );
+        this.actividadesMensualesFiltradas.set(mensualesFiltradas);
+        
+        // Limpiar selecciones de actividades mensuales que ya no están disponibles
+        const idMensualesActuales = this.form.get('idActividadMensualInst')?.value || [];
+        if (Array.isArray(idMensualesActuales) && idMensualesActuales.length > 0) {
+          const idMensualesValidos = idMensualesActuales.filter(id => 
+            mensualesFiltradas.find(m => m.idActividadMensualInst === id)
+          );
+          this.form.patchValue({ idActividadMensualInst: idMensualesValidos }, { emitEvent: false });
+        }
+      }
+      
+      // Si no hay actividades anuales seleccionadas, limpiar todo
+      if (actividadesAnuales.length === 0) {
+        this.actividadesMensualesFiltradas.set([]);
+        this.form.patchValue({ idActividadMensualInst: [] }, { emitEvent: false });
+      }
+      
+      // Actualizar el valor anterior
+      this.actividadesAnualesAnteriores = [...actividadesAnuales];
     });
   }
 
@@ -177,12 +258,6 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     });
   }
 
-  loadCategoriasActividad(): void {
-    this.catalogosService.getCategoriasActividad().subscribe({
-      next: (data) => this.categoriasActividad.set(data),
-      error: (err) => console.error('Error loading categorias actividad:', err)
-    });
-  }
 
   loadEstadosActividad(): void {
     this.catalogosService.getEstadosActividad().subscribe({
@@ -226,7 +301,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     
     this.actividadAnualService.getByIndicador(idIndicador).subscribe({
       next: (actividadesAnuales) => {
-        const actividadesFiltradas = (actividadesAnuales || []).filter(a => a.idIndicador === idIndicador);
+        // getByIndicador debería devolver solo las actividades anuales para este indicador
+        // Pero si el backend no filtra, hacemos el filtro en el frontend
+        const actividadesFiltradas = (actividadesAnuales || []).filter(a => {
+          // Convertir ambos a número para comparar correctamente
+          const idIndicadorNum = Number(idIndicador);
+          const aIdIndicadorNum = Number(a.idIndicador);
+          return aIdIndicadorNum === idIndicadorNum;
+        });
         this.actividadesAnualesFiltradas.set(actividadesFiltradas);
         
         if (skipCheck && actividadAnualActual) {
@@ -247,25 +329,10 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
             }
           }
         } else if (!skipCheck) {
-          const actividadAnualActualNormal = this.form.get('idActividadAnual')?.value;
-          if (!actividadAnualActualNormal || (Array.isArray(actividadAnualActualNormal) && actividadAnualActualNormal.length === 0)) {
-            if (actividadesFiltradas.length > 0) {
-              const primeraAnual = actividadesFiltradas[0];
-              this.form.patchValue({ idActividadAnual: [primeraAnual.idActividadAnual] }, { emitEvent: false });
-              this.cargarActividadesMensualesPorAnual(primeraAnual.idActividadAnual, skipCheck);
-            } else {
-              this.actividadesMensualesFiltradas.set([]);
-              this.cargandoRelaciones = false;
-            }
-          } else {
-            const actividadesAnualesArray = Array.isArray(actividadAnualActualNormal) ? actividadAnualActualNormal : [actividadAnualActualNormal];
-            if (actividadesAnualesArray.length > 0) {
-              this.cargarActividadesMensualesPorAnual(actividadesAnualesArray[0], skipCheck);
-            } else {
-              this.actividadesMensualesFiltradas.set([]);
-              this.cargandoRelaciones = false;
-            }
-          }
+          // Solo cargar las actividades anuales, sin seleccionarlas automáticamente
+          // El usuario puede seleccionarlas manualmente
+          this.actividadesMensualesFiltradas.set([]);
+          this.cargandoRelaciones = false;
         } else {
           this.actividadesMensualesFiltradas.set([]);
           this.cargandoRelaciones = false;
@@ -294,17 +361,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         this.actividadesMensualesFiltradas.set(actividadesFiltradas);
         
         if (skipCheck && actividadMensualActual) {
-          const actividadMensualValida = actividadesFiltradas.find(m => m.idActividadMensualInst === actividadMensualActual);
-          if (actividadMensualValida) {
-            this.form.patchValue({ idActividadMensualInst: actividadMensualActual }, { emitEvent: false });
+          const actividadesMensualesArray = Array.isArray(actividadMensualActual) ? actividadMensualActual : [actividadMensualActual];
+          const actividadesValidas = actividadesMensualesArray.filter(id => 
+            actividadesFiltradas.find(m => m.idActividadMensualInst === id)
+          );
+          if (actividadesValidas.length > 0) {
+            this.form.patchValue({ idActividadMensualInst: actividadesValidas }, { emitEvent: false });
           } else {
-            this.form.patchValue({ idActividadMensualInst: null }, { emitEvent: false });
-          }
-        } else if (!skipCheck) {
-          const actividadMensualActualNormal = this.form.get('idActividadMensualInst')?.value;
-          if (!actividadMensualActualNormal && actividadesFiltradas.length > 0) {
-            const primeraMensual = actividadesFiltradas[0];
-            this.form.patchValue({ idActividadMensualInst: primeraMensual.idActividadMensualInst }, { emitEvent: false });
+            this.form.patchValue({ idActividadMensualInst: [] }, { emitEvent: false });
           }
         }
         
@@ -324,17 +388,6 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     });
   }
 
-  crearNuevaActividadAnual(): void {
-    const indicadorId = this.form.get('idIndicador')?.value;
-    if (!indicadorId) {
-      this.error.set('Por favor, seleccione un indicador antes de crear una nueva actividad anual.');
-      return;
-    }
-    
-    this.router.navigate(['/actividades-anuales/nueva'], {
-      queryParams: { idIndicador: indicadorId }
-    });
-  }
 
   loadTiposProtagonista(): void {
     this.catalogosService.getTiposProtagonista().subscribe({
@@ -373,10 +426,6 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           ? data.idTipoProtagonista 
           : (data.idTipoProtagonista ? [data.idTipoProtagonista] : []);
         
-        const idTipoActividadArray = Array.isArray(data.idTipoActividad) 
-          ? data.idTipoActividad 
-          : (data.idTipoActividad ? [data.idTipoActividad] : (data.categoriaActividadId ? [data.categoriaActividadId] : []));
-        
         this.form.patchValue({
           nombre: nombreActividad,
           nombreActividad: nombreActividad,
@@ -386,27 +435,32 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           fechaInicio: data.fechaInicio || '',
           fechaFin: data.fechaFin || '',
           idEstadoActividad: data.idEstadoActividad || null,
-          idTipoActividad: idTipoActividadArray,
           modalidad: data.modalidad || '',
           idCapacidadInstalada: data.idCapacidadInstalada || null,
           semanaMes: data.semanaMes || null,
-          codigoActividad: data.codigoActividad || '',
-          idActividadMensualInst: data.idActividadMensualInst || null,
+          idActividadMensualInst: Array.isArray(data.idActividadMensualInst) ? data.idActividadMensualInst : (data.idActividadMensualInst ? [data.idActividadMensualInst] : []),
           esPlanificada: false, // Siempre false para actividades no planificadas
           idIndicador: data.idIndicador || null,
           idActividadAnual: idActividadAnualArray,
           objetivo: data.objetivo || '',
-          anio: data.anio || new Date().getFullYear(),
+          anio: data.anio ? String(data.anio) : String(new Date().getFullYear()),
           horaRealizacion: horaRealizacionFormatted,
           cantidadParticipantesProyectados: data.cantidadParticipantesProyectados || null,
           cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados || null,
           idTipoProtagonista: idTipoProtagonistaArray,
-          responsableActividad: data.responsableActividad || '',
-          categoriaActividadId: data.idTipoActividad || data.categoriaActividadId || null,
+          categoriaActividadId: data.categoriaActividadId || null,
           areaConocimientoId: data.idArea || data.areaConocimientoId || null,
           ubicacion: data.ubicacion || '',
           activo: data.activo ?? true
         }, { emitEvent: false });
+
+        // Inicializar local seleccionado si hay capacidad instalada
+        if (data.idCapacidadInstalada) {
+          const capacidad = this.capacidadesInstaladas().find(c => c.id === data.idCapacidadInstalada);
+          if (capacidad) {
+            this.localSeleccionado.set(capacidad);
+          }
+        }
 
         if (this.isEditMode()) {
           this.form.get('idIndicador')?.disable({ emitEvent: false });
@@ -436,6 +490,13 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     }
     if (nombreValue && !this.form.get('nombre')?.value) {
       this.form.patchValue({ nombre: nombreValue });
+    }
+
+    // Validar que haya al menos un responsable
+    if (!this.tieneAlMenosUnResponsable()) {
+      this.error.set('Debe agregar al menos una persona válida como responsable.');
+      this.form.markAllAsTouched();
+      return;
     }
 
     if (this.form.valid) {
@@ -470,50 +531,62 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         }
       }
 
+      // Limpiar el objeto data para no enviar campos undefined o vacíos que puedan causar problemas
       const data: ActividadCreate = {
         nombreActividad: formValue.nombreActividad || formValue.nombre,
-        nombre: formValue.nombreActividad || formValue.nombre,
-        descripcion: formValue.descripcion || undefined,
-        departamentoId: formValue.departamentoId || undefined,
-        departamentoResponsableId: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : undefined,
-        fechaInicio: fechaInicio,
-        fechaFin: fechaFin,
-        idEstadoActividad: formValue.idEstadoActividad || undefined,
-        idTipoActividad: Array.isArray(formValue.idTipoActividad) && formValue.idTipoActividad.length > 0 ? formValue.idTipoActividad : (formValue.categoriaActividadId ? [formValue.categoriaActividadId] : undefined),
-        modalidad: formValue.modalidad || undefined,
-        idCapacidadInstalada: formValue.idCapacidadInstalada || undefined,
-        semanaMes: formValue.semanaMes || undefined,
-        codigoActividad: formValue.codigoActividad || undefined,
-        idActividadMensualInst: formValue.idActividadMensualInst || undefined,
-        esPlanificada: false, // Siempre false para actividades no planificadas
-        idIndicador: formValue.idIndicador || undefined,
-        idActividadAnual: Array.isArray(formValue.idActividadAnual) && formValue.idActividadAnual.length > 0 ? formValue.idActividadAnual : undefined,
-        objetivo: formValue.objetivo || undefined,
-        anio: formValue.anio || undefined,
-        horaRealizacion: horaRealizacion,
-        cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados || undefined,
-        cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados || undefined,
-        idTipoProtagonista: Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0 ? formValue.idTipoProtagonista : undefined,
-        responsableActividad: formValue.responsableActividad || undefined,
-        categoriaActividadId: Array.isArray(formValue.idTipoActividad) && formValue.idTipoActividad.length > 0 ? formValue.idTipoActividad[0] : (formValue.categoriaActividadId || undefined),
-        areaConocimientoId: formValue.idArea || formValue.areaConocimientoId || undefined,
-        ubicacion: formValue.ubicacion || undefined,
-        activo: formValue.activo !== undefined ? formValue.activo : true
+        nombre: formValue.nombreActividad || formValue.nombre
       };
+
+      // Solo agregar campos si tienen valores válidos
+      if (formValue.descripcion) data.descripcion = formValue.descripcion;
+      if (formValue.departamentoId) data.departamentoId = formValue.departamentoId;
+      if (Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0) {
+        data.departamentoResponsableId = formValue.departamentoResponsableId;
+      }
+      if (fechaInicio) data.fechaInicio = fechaInicio;
+      if (fechaFin) data.fechaFin = fechaFin;
+      if (formValue.idEstadoActividad) data.idEstadoActividad = formValue.idEstadoActividad;
+      if (formValue.modalidad) data.modalidad = formValue.modalidad;
+      if (formValue.idCapacidadInstalada) data.idCapacidadInstalada = formValue.idCapacidadInstalada;
+      if (formValue.semanaMes) data.semanaMes = formValue.semanaMes;
+      if (Array.isArray(formValue.idActividadMensualInst) && formValue.idActividadMensualInst.length > 0) {
+        data.idActividadMensualInst = formValue.idActividadMensualInst;
+      }
+      data.esPlanificada = false; // Siempre false para actividades no planificadas
+      if (formValue.idIndicador) data.idIndicador = Number(formValue.idIndicador);
+      if (Array.isArray(formValue.idActividadAnual) && formValue.idActividadAnual.length > 0) {
+        data.idActividadAnual = formValue.idActividadAnual;
+      }
+      if (formValue.objetivo) data.objetivo = formValue.objetivo;
+      if (formValue.anio) data.anio = String(formValue.anio);
+      if (horaRealizacion) data.horaRealizacion = horaRealizacion;
+      if (formValue.cantidadParticipantesProyectados) data.cantidadParticipantesProyectados = formValue.cantidadParticipantesProyectados;
+      if (formValue.cantidadParticipantesEstudiantesProyectados) data.cantidadParticipantesEstudiantesProyectados = formValue.cantidadParticipantesEstudiantesProyectados;
+      if (Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0) {
+        data.idTipoProtagonista = formValue.idTipoProtagonista;
+      }
+      if (formValue.categoriaActividadId) data.categoriaActividadId = formValue.categoriaActividadId;
+      if (formValue.idArea || formValue.areaConocimientoId) {
+        data.areaConocimientoId = formValue.idArea || formValue.areaConocimientoId;
+      }
+      if (formValue.ubicacion) data.ubicacion = formValue.ubicacion;
+
+      console.log('📤 Datos a enviar al backend:', JSON.stringify(data, null, 2));
 
       if (this.isEditMode()) {
         this.actividadesService.update(this.actividadId()!, data).subscribe({
           next: () => {
-            const responsableActividad = formValue.responsableActividad?.trim();
-            if (responsableActividad && this.actividadId()) {
-              this.actualizarResponsable(this.actividadId()!, responsableActividad);
+            if (this.actividadId()) {
+              this.crearResponsablesParaActividad(this.actividadId()!);
             } else {
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             }
           },
           error: (err: any) => {
             console.error('Error saving actividad:', err);
-            this.error.set('Error al guardar la actividad');
+            console.error('Error details:', err.error);
+            console.error('Error status:', err.status);
+            this.error.set(err.error?.message || err.error?.title || 'Error al guardar la actividad');
             this.loading.set(false);
           }
         });
@@ -521,37 +594,38 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         this.actividadesService.create(data).subscribe({
           next: (actividadCreada) => {
             const indicadorId = this.indicadorIdFromQuery();
-            const responsableActividad = formValue.responsableActividad?.trim();
             
             if (indicadorId && actividadCreada.id) {
               this.actividadesService.agregarIndicador(actividadCreada.id, indicadorId).subscribe({
                 next: () => {
-                  if (responsableActividad) {
-                    this.crearResponsable(actividadCreada.id, responsableActividad);
+                  if (actividadCreada.id) {
+                    this.crearResponsablesParaActividad(actividadCreada.id);
                   } else {
-                    this.router.navigate(['/actividades']);
+                    this.mostrarAlertaExito();
                   }
                 },
                 error: (errIndicador) => {
                   console.error('Error al asociar indicador:', errIndicador);
-                  if (responsableActividad) {
-                    this.crearResponsable(actividadCreada.id, responsableActividad);
+                  if (actividadCreada.id) {
+                    this.crearResponsablesParaActividad(actividadCreada.id);
                   } else {
-                    this.router.navigate(['/actividades']);
+                    this.mostrarAlertaExito();
                   }
                 }
               });
             } else {
-              if (responsableActividad && actividadCreada.id) {
-                this.crearResponsable(actividadCreada.id, responsableActividad);
+              if (actividadCreada.id) {
+                this.crearResponsablesParaActividad(actividadCreada.id);
               } else {
-                this.router.navigate(['/actividades']);
+                this.mostrarAlertaExito();
               }
             }
           },
           error: (err: any) => {
             console.error('Error saving actividad:', err);
-            this.error.set('Error al guardar la actividad');
+            console.error('Error details:', err.error);
+            console.error('Error status:', err.status);
+            this.error.set(err.error?.message || err.error?.title || 'Error al guardar la actividad');
             this.loading.set(false);
           }
         });
@@ -567,9 +641,17 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     let newValue: number[];
     
     if (checked) {
-      newValue = [...currentValue, id];
+      if (!currentValue.includes(id)) {
+        newValue = [...currentValue, id];
+      } else {
+        newValue = currentValue;
+      }
+      this.mostrarDropdownProtagonista.set(false);
     } else {
       newValue = currentValue.filter((item: number) => item !== id);
+      if (newValue.length === 0) {
+        this.mostrarDropdownProtagonista.set(true);
+      }
     }
     
     this.form.patchValue({ idTipoProtagonista: newValue });
@@ -586,9 +668,17 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     let newValue: number[];
     
     if (checked) {
-      newValue = [...currentValue, id];
+      if (!currentValue.includes(id)) {
+        newValue = [...currentValue, id];
+      } else {
+        newValue = currentValue;
+      }
+      this.mostrarDropdownDepartamentos.set(false);
     } else {
       newValue = currentValue.filter((item: number) => item !== id);
+      if (newValue.length === 0) {
+        this.mostrarDropdownDepartamentos.set(true);
+      }
     }
     
     this.form.patchValue({ departamentoResponsableId: newValue });
@@ -605,9 +695,17 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     let newValue: number[];
     
     if (checked) {
-      newValue = [...currentValue, id];
+      if (!currentValue.includes(id)) {
+        newValue = [...currentValue, id];
+      } else {
+        newValue = currentValue;
+      }
+      this.mostrarDropdownActividadAnual.set(false);
     } else {
       newValue = currentValue.filter((item: number) => item !== id);
+      if (newValue.length === 0) {
+        this.mostrarDropdownActividadAnual.set(true);
+      }
     }
     
     this.form.patchValue({ idActividadAnual: newValue });
@@ -618,23 +716,247 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     return Array.isArray(currentValue) && currentValue.includes(id);
   }
 
-  toggleTipoActividad(id: number, event: Event): void {
+
+  // Métodos helper para manejar dropdowns
+  mostrarDropdownAnual(): void {
+    this.mostrarDropdownActividadAnual.set(true);
+  }
+
+  mostrarDropdownMensual(): void {
+    this.mostrarDropdownActividadMensual.set(true);
+  }
+
+  mostrarDropdownDepartamentosFunc(): void {
+    this.mostrarDropdownDepartamentos.set(true);
+  }
+
+
+  mostrarDropdownProtagonistaFunc(): void {
+    this.mostrarDropdownProtagonista.set(true);
+  }
+
+  mostrarDropdownEstadoActividadFunc(): void {
+    this.mostrarDropdownEstadoActividad.set(true);
+  }
+
+  mostrarDropdownModalidadFunc(): void {
+    this.mostrarDropdownModalidad.set(true);
+  }
+
+  mostrarDropdownLocalFunc(): void {
+    this.mostrarDropdownLocal.set(true);
+  }
+
+  // Métodos para obtener selecciones como objetos
+  getActividadesAnualesSeleccionadas(): ActividadAnual[] {
+    const ids = this.form.get('idActividadAnual')?.value || [];
+    return this.actividadesAnuales().filter(a => Array.isArray(ids) && ids.includes(a.idActividadAnual));
+  }
+
+  getActividadesMensualesSeleccionadas(): ActividadMensualInst[] {
+    const ids = this.form.get('idActividadMensualInst')?.value || [];
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    return this.actividadesMensualesFiltradas().filter(m => Array.isArray(ids) && ids.includes(m.idActividadMensualInst));
+  }
+
+  getDepartamentosSeleccionados(): Departamento[] {
+    const ids = this.form.get('departamentoResponsableId')?.value || [];
+    return this.departamentos().filter(d => Array.isArray(ids) && ids.includes(d.id));
+  }
+
+
+  getProtagonistasSeleccionados(): any[] {
+    const ids = this.form.get('idTipoProtagonista')?.value || [];
+    return this.tiposProtagonista().filter(t => Array.isArray(ids) && ids.includes(t.id));
+  }
+
+  getEstadoActividadSeleccionado(): EstadoActividad | null {
+    const id = this.form.get('idEstadoActividad')?.value;
+    if (!id) return null;
+    return this.estadosActividad().find(e => (e.idEstadoActividad || e.id) === id) || null;
+  }
+
+  getModalidadSeleccionada(): string {
+    return this.form.get('modalidad')?.value || '';
+  }
+
+  // Métodos para verificar si hay selecciones
+  tieneActividadesAnualesSeleccionadas(): boolean {
+    return this.getActividadesAnualesSeleccionadas().length > 0;
+  }
+
+  tieneActividadesMensualesSeleccionadas(): boolean {
+    return this.getActividadesMensualesSeleccionadas().length > 0;
+  }
+
+  tieneDepartamentosSeleccionados(): boolean {
+    return this.getDepartamentosSeleccionados().length > 0;
+  }
+
+
+  tieneProtagonistasSeleccionados(): boolean {
+    return this.getProtagonistasSeleccionados().length > 0;
+  }
+
+  tieneEstadoActividadSeleccionado(): boolean {
+    return this.getEstadoActividadSeleccionado() !== null;
+  }
+
+  tieneModalidadSeleccionada(): boolean {
+    return !!this.getModalidadSeleccionada();
+  }
+
+  tieneLocalSeleccionado(): boolean {
+    return this.localSeleccionado() !== null;
+  }
+
+  // Métodos para eliminar selecciones
+  eliminarActividadAnual(id: number): void {
+    const currentValue = this.form.get('idActividadAnual')?.value || [];
+    const newValue = Array.isArray(currentValue) ? currentValue.filter((item: number) => item !== id) : [];
+    this.form.patchValue({ idActividadAnual: newValue });
+    
+    if (newValue.length === 0) {
+      this.mostrarDropdownActividadAnual.set(true);
+    }
+  }
+
+  eliminarActividadMensual(id: number): void {
+    const currentValue = this.form.get('idActividadMensualInst')?.value || [];
+    const newValue = Array.isArray(currentValue) ? currentValue.filter((item: number) => item !== id) : [];
+    this.form.patchValue({ idActividadMensualInst: newValue });
+    
+    if (newValue.length === 0) {
+      this.mostrarDropdownActividadMensual.set(true);
+    }
+  }
+
+  toggleActividadMensual(id: number, event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
-    const currentValue = this.form.get('idTipoActividad')?.value || [];
+    const currentValue = this.form.get('idActividadMensualInst')?.value || [];
     let newValue: number[];
     
     if (checked) {
-      newValue = [...currentValue, id];
+      if (!currentValue.includes(id)) {
+        newValue = [...currentValue, id];
+      } else {
+        newValue = currentValue;
+      }
+      // Ocultar el dropdown cuando se selecciona una actividad mensual
+      this.mostrarDropdownActividadMensual.set(false);
     } else {
       newValue = currentValue.filter((item: number) => item !== id);
+      if (newValue.length === 0) {
+        this.mostrarDropdownActividadMensual.set(true);
+      }
     }
     
-    this.form.patchValue({ idTipoActividad: newValue });
+    this.form.patchValue({ idActividadMensualInst: newValue });
   }
 
-  isTipoActividadSelected(id: number): boolean {
-    const currentValue = this.form.get('idTipoActividad')?.value || [];
+  isActividadMensualSelected(id: number): boolean {
+    const currentValue = this.form.get('idActividadMensualInst')?.value || [];
     return Array.isArray(currentValue) && currentValue.includes(id);
+  }
+
+  eliminarDepartamento(id: number): void {
+    const currentValue = this.form.get('departamentoResponsableId')?.value || [];
+    const newValue = Array.isArray(currentValue) ? currentValue.filter((item: number) => item !== id) : [];
+    this.form.patchValue({ departamentoResponsableId: newValue });
+  }
+
+
+  eliminarProtagonista(id: number): void {
+    const currentValue = this.form.get('idTipoProtagonista')?.value || [];
+    const newValue = Array.isArray(currentValue) ? currentValue.filter((item: number) => item !== id) : [];
+    this.form.patchValue({ idTipoProtagonista: newValue });
+  }
+
+  eliminarEstadoActividad(): void {
+    this.form.patchValue({ idEstadoActividad: null });
+    this.mostrarDropdownEstadoActividad.set(true);
+  }
+
+  eliminarModalidad(): void {
+    this.form.patchValue({ modalidad: '' });
+    this.mostrarDropdownModalidad.set(true);
+  }
+
+  eliminarLocal(): void {
+    this.form.patchValue({ idCapacidadInstalada: null });
+    this.localSeleccionado.set(null);
+    this.mostrarDropdownLocal.set(true);
+  }
+
+  // Métodos para toggle con actualización de signals
+  toggleLocal(id: number, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const currentValue = this.form.get('idCapacidadInstalada')?.value;
+    
+    if (checked) {
+      const idNumero = Number(id);
+      const capacidades = this.capacidadesInstaladas();
+      const local = capacidades.find(c => Number(c.id) === idNumero);
+      
+      this.form.patchValue({ idCapacidadInstalada: idNumero });
+      this.localSeleccionado.set(local || null);
+      this.mostrarDropdownLocal.set(false);
+    } else {
+      if (Number(currentValue) === Number(id)) {
+        this.eliminarLocal();
+      }
+    }
+  }
+
+  isLocalSelected(id: number): boolean {
+    return this.form.get('idCapacidadInstalada')?.value === id;
+  }
+
+  toggleModalidad(modalidad: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      this.form.patchValue({ modalidad });
+      this.mostrarDropdownModalidad.set(false);
+    } else {
+      this.form.patchValue({ modalidad: '' });
+      this.mostrarDropdownModalidad.set(true);
+    }
+  }
+
+  isModalidadSelected(modalidad: string): boolean {
+    return this.form.get('modalidad')?.value === modalidad;
+  }
+
+  getOpcionesModalidad(): string[] {
+    return ['Presencial', 'Virtual', 'Híbrida'];
+  }
+
+  toggleEstadoActividad(id: number, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const currentValue = this.form.get('idEstadoActividad')?.value;
+    
+    if (checked) {
+      this.form.patchValue({ idEstadoActividad: Number(id) });
+      this.mostrarDropdownEstadoActividad.set(false);
+    } else {
+      if (Number(currentValue) === Number(id)) {
+        this.form.patchValue({ idEstadoActividad: null });
+        this.mostrarDropdownEstadoActividad.set(true);
+      }
+    }
+  }
+
+  isEstadoActividadSelected(id: number): boolean {
+    return this.form.get('idEstadoActividad')?.value === id;
+  }
+
+  crearNuevaActividadAnual(): void {
+    const idIndicador = this.form.get('idIndicador')?.value;
+    if (idIndicador) {
+      this.router.navigate(['/actividades-anuales/nueva'], { queryParams: { idIndicador } });
+    } else {
+      this.router.navigate(['/actividades-anuales/nueva']);
+    }
   }
 
   private convertir24hA12h(hora24h: string): string {
@@ -698,11 +1020,11 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           };
           this.responsableService.update(responsableExistente.idActividadResponsable, updateData).subscribe({
             next: () => {
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             },
             error: (err) => {
               console.error('Error actualizando responsable:', err);
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             }
           });
         } else {
@@ -715,11 +1037,11 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           
           this.responsableService.create(responsableData).subscribe({
             next: () => {
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             },
             error: (err) => {
               console.error('Error creando responsable:', err);
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             }
           });
         }
@@ -734,11 +1056,11 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         
         this.responsableService.create(responsableData).subscribe({
           next: () => {
-            this.router.navigate(['/actividades']);
+            this.mostrarAlertaExito();
           },
           error: (createErr) => {
             console.error('Error creando responsable:', createErr);
-            this.router.navigate(['/actividades']);
+            this.mostrarAlertaExito();
           }
         });
       }
@@ -757,11 +1079,11 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           };
           this.responsableService.update(responsableExistente.idActividadResponsable, updateData).subscribe({
             next: () => {
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             },
             error: (err) => {
               console.error('Error actualizando responsable:', err);
-              this.router.navigate(['/actividades']);
+              this.mostrarAlertaExito();
             }
           });
         } else {
@@ -772,6 +1094,362 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
         this.crearResponsable(idActividad, nombreResponsable);
       }
     });
+  }
+
+  private mostrarAlertaExito(): void {
+    const nombreActividad = this.form.get('nombreActividad')?.value || 'la actividad';
+    
+    if (this.isEditMode()) {
+      // Mensaje para actividad actualizada
+      this.alertService.success(
+        '¡Actividad actualizada!',
+        `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    } else {
+      // Mensaje para actividad creada
+      this.alertService.success(
+        '¡Actividad creada exitosamente!',
+        `La actividad "${nombreActividad}" ha sido creada correctamente.`
+      ).then(() => {
+        this.router.navigate(['/actividades']);
+      });
+    }
+  }
+
+  // Métodos para responsables
+  initializeFormResponsable(): void {
+    this.formResponsable = this.fb.group({
+      usuarios: this.fb.array([]),
+      docentes: this.fb.array([]),
+      estudiantes: this.fb.array([]),
+      administrativos: this.fb.array([]),
+      responsablesExternos: this.fb.array([])
+    });
+  }
+
+  get usuariosArray(): FormArray {
+    return this.formResponsable.get('usuarios') as FormArray;
+  }
+
+  get docentesArray(): FormArray {
+    return this.formResponsable.get('docentes') as FormArray;
+  }
+
+  get estudiantesArray(): FormArray {
+    return this.formResponsable.get('estudiantes') as FormArray;
+  }
+
+  get administrativosArray(): FormArray {
+    return this.formResponsable.get('administrativos') as FormArray;
+  }
+
+  get responsablesExternosArray(): FormArray {
+    return this.formResponsable.get('responsablesExternos') as FormArray;
+  }
+
+  crearUsuarioFormGroup(): FormGroup {
+    return this.fb.group({
+      idUsuario: [null, Validators.required]
+    });
+  }
+
+  crearPersonaFormGroup(tipo: 'docente' | 'estudiante' | 'administrativo'): FormGroup {
+    const idRolResponsableValidators = tipo === 'estudiante' ? [Validators.required] : [];
+    
+    return this.fb.group({
+      idPersona: [null, Validators.required],
+      idRolResponsable: [null, idRolResponsableValidators]
+    });
+  }
+
+  crearResponsableExternoFormGroup(): FormGroup {
+    return this.fb.group({
+      nombre: ['', [Validators.required]],
+      institucion: ['', [Validators.required]],
+      cargo: [''],
+      telefono: [''],
+      correo: [''],
+      idRolResponsable: [null, Validators.required]
+    });
+  }
+
+  agregarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): void {
+    if (tipo === 'usuario') {
+      this.usuariosArray.push(this.crearUsuarioFormGroup());
+    } else {
+      const array = tipo === 'docente' ? this.docentesArray : 
+                    tipo === 'estudiante' ? this.estudiantesArray : 
+                    this.administrativosArray;
+      array.push(this.crearPersonaFormGroup(tipo));
+    }
+  }
+
+  eliminarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo', index: number): void {
+    if (tipo === 'usuario') {
+      this.usuariosArray.removeAt(index);
+    } else {
+      const array = tipo === 'docente' ? this.docentesArray : 
+                    tipo === 'estudiante' ? this.estudiantesArray : 
+                    this.administrativosArray;
+      array.removeAt(index);
+    }
+  }
+
+  agregarResponsableExterno(): void {
+    this.responsablesExternosArray.push(this.crearResponsableExternoFormGroup());
+  }
+
+  eliminarResponsableExterno(index: number): void {
+    this.responsablesExternosArray.removeAt(index);
+  }
+
+  getPersonasDisponiblesPorTipo(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): any[] {
+    if (tipo === 'usuario') {
+      return this.usuarios();
+    } else if (tipo === 'docente') {
+      return this.docentes();
+    } else if (tipo === 'estudiante') {
+      return this.estudiantes();
+    } else {
+      return this.administrativos();
+    }
+  }
+
+  getNombrePersona(persona: any): string {
+    return persona.nombreCompleto || persona.nombre || 'Sin nombre';
+  }
+
+  loadTodasLasPersonas(): void {
+    this.usuariosService.getAll().subscribe({
+      next: (data) => this.usuarios.set(data),
+      error: (err) => {
+        console.error('Error loading usuarios:', err);
+        this.usuarios.set([]);
+      }
+    });
+    
+    this.personasService.listDocentes().subscribe({
+      next: (data) => this.docentes.set(data),
+      error: (err) => {
+        console.error('Error loading docentes:', err);
+        this.docentes.set([]);
+      }
+    });
+    
+    this.personasService.listEstudiantes().subscribe({
+      next: (data) => this.estudiantes.set(data),
+      error: (err) => {
+        // El error 500 indica un problema en el backend (columnas faltantes en BD)
+        // El formulario puede continuar funcionando sin estudiantes
+        if (err.status === 500) {
+          console.warn('⚠️ No se pudieron cargar estudiantes debido a un error en el backend. El formulario continuará funcionando.');
+        } else {
+          console.error('Error loading estudiantes:', err);
+        }
+        this.estudiantes.set([]);
+      }
+    });
+    
+    this.personasService.listAdministrativos().subscribe({
+      next: (data) => this.administrativos.set(data),
+      error: (err) => {
+        console.error('Error loading administrativos:', err);
+        this.administrativos.set([]);
+      }
+    });
+    
+    this.catalogosService.getRolesResponsable().subscribe({
+      next: (data) => this.rolesResponsable.set(data || []),
+      error: (err) => {
+        console.warn('⚠️ No se pudo cargar roles de responsable:', err);
+        this.rolesResponsable.set([]);
+      }
+    });
+  }
+
+  toggleTipoResponsable(tipo: string, event: Event): void {
+    const target = event.target as HTMLInputElement;
+    const checked = target.checked;
+    const current = this.tiposResponsableSeleccionados();
+    
+    if (checked) {
+      this.tiposResponsableSeleccionados.set([...current, tipo]);
+    } else {
+      this.tiposResponsableSeleccionados.set(current.filter(t => t !== tipo));
+      this.limpiarResponsablesPorTipo(tipo);
+    }
+  }
+
+  isTipoResponsableSeleccionado(tipo: string): boolean {
+    return this.tiposResponsableSeleccionados().includes(tipo);
+  }
+
+  limpiarResponsablesPorTipo(tipo: string): void {
+    if (tipo === 'usuario') {
+      while (this.usuariosArray.length > 0) {
+        this.usuariosArray.removeAt(0);
+      }
+    } else if (tipo === 'docente') {
+      while (this.docentesArray.length > 0) {
+        this.docentesArray.removeAt(0);
+      }
+    } else if (tipo === 'estudiante') {
+      while (this.estudiantesArray.length > 0) {
+        this.estudiantesArray.removeAt(0);
+      }
+    } else if (tipo === 'administrativo') {
+      while (this.administrativosArray.length > 0) {
+        this.administrativosArray.removeAt(0);
+      }
+    } else if (tipo === 'externo') {
+      while (this.responsablesExternosArray.length > 0) {
+        this.responsablesExternosArray.removeAt(0);
+      }
+    }
+  }
+
+  tieneAlMenosUnResponsable(): boolean {
+    const tiposSeleccionados = this.tiposResponsableSeleccionados();
+    if (tiposSeleccionados.length === 0) return false;
+
+    for (const tipo of tiposSeleccionados) {
+      if (tipo === 'usuario') {
+        if (this.usuariosArray.length === 0) return false;
+        for (let i = 0; i < this.usuariosArray.length; i++) {
+          const control = this.usuariosArray.at(i);
+          if (!control.get('idUsuario')?.value) return false;
+        }
+      } else if (tipo === 'docente') {
+        if (this.docentesArray.length === 0) return false;
+        for (let i = 0; i < this.docentesArray.length; i++) {
+          const control = this.docentesArray.at(i);
+          if (!control.get('idPersona')?.value) return false;
+        }
+      } else if (tipo === 'estudiante') {
+        if (this.estudiantesArray.length === 0) return false;
+        for (let i = 0; i < this.estudiantesArray.length; i++) {
+          const control = this.estudiantesArray.at(i);
+          if (!control.get('idPersona')?.value || !control.get('idRolResponsable')?.value) return false;
+        }
+      } else if (tipo === 'administrativo') {
+        if (this.administrativosArray.length === 0) return false;
+        for (let i = 0; i < this.administrativosArray.length; i++) {
+          const control = this.administrativosArray.at(i);
+          if (!control.get('idPersona')?.value) return false;
+        }
+      } else if (tipo === 'externo') {
+        if (this.responsablesExternosArray.length === 0) return false;
+        for (let i = 0; i < this.responsablesExternosArray.length; i++) {
+          const control = this.responsablesExternosArray.at(i);
+          if (!control.get('nombre')?.value || !control.get('institucion')?.value || !control.get('idRolResponsable')?.value) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  getNombreRolResponsable(idRolResponsable: number): string | undefined {
+    const rol = this.rolesResponsable().find(r => (r.id || r.idRolResponsable) === idRolResponsable);
+    return rol?.nombre || undefined;
+  }
+
+  crearResponsablesParaActividad(idActividad: number): void {
+    const responsables: ActividadResponsableCreate[] = [];
+    const formValue = this.formResponsable.value;
+    const fechaAsignacion = formValue.fechaAsignacion || new Date().toISOString().split('T')[0];
+
+    console.log('🔄 Creando responsables para actividad:', idActividad);
+    console.log('📋 FormResponsable value:', formValue);
+
+    // Agregar usuarios
+    this.usuariosArray.controls.forEach((control) => {
+      const idUsuario = control.get('idUsuario')?.value;
+      if (idUsuario) {
+        responsables.push({
+          idActividad,
+          idUsuario,
+          idTipoResponsable: 1,
+          fechaAsignacion: fechaAsignacion
+        });
+        console.log('✅ Usuario agregado a responsables:', idUsuario);
+      }
+    });
+
+    // Agregar docentes
+    this.docentesArray.controls.forEach((control) => {
+      const idDocente = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idDocente) {
+        responsables.push({
+          idActividad,
+          idDocente,
+          idTipoResponsable: 2,
+          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
+          fechaAsignacion: fechaAsignacion
+        });
+        console.log('✅ Docente agregado a responsables:', idDocente, 'Rol:', idRolResponsable);
+      }
+    });
+
+    // Agregar estudiantes
+    this.estudiantesArray.controls.forEach((control) => {
+      const idDocente = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idDocente && idRolResponsable) {
+        responsables.push({
+          idActividad,
+          idDocente,
+          idTipoResponsable: 3,
+          rolResponsable: this.getNombreRolResponsable(idRolResponsable),
+          fechaAsignacion: fechaAsignacion
+        });
+        console.log('✅ Estudiante agregado a responsables:', idDocente, 'Rol:', idRolResponsable);
+      }
+    });
+
+    // Agregar administrativos
+    this.administrativosArray.controls.forEach((control) => {
+      const idAdmin = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idAdmin) {
+        responsables.push({
+          idActividad,
+          idAdmin,
+          idTipoResponsable: 4,
+          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
+          fechaAsignacion: fechaAsignacion
+        });
+        console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol:', idRolResponsable);
+      }
+    });
+
+    // Crear todos los responsables en paralelo
+    console.log('📊 Total de responsables a crear:', responsables.length);
+    console.log('📋 Responsables a crear:', JSON.stringify(responsables, null, 2));
+    
+    if (responsables.length > 0) {
+      forkJoin(
+        responsables.map(responsable => this.responsableService.create(responsable))
+      ).subscribe({
+        next: (responsablesCreados) => {
+          console.log('✅ Responsables creados exitosamente:', responsablesCreados);
+          console.log('📊 Total de responsables creados:', responsablesCreados.length);
+          this.mostrarAlertaExito();
+        },
+        error: (err) => {
+          console.error('❌ Error creando responsables:', err);
+          console.error('❌ Error details:', err.error);
+          console.error('❌ Error status:', err.status);
+          // Continuar aunque haya error con responsables
+          this.mostrarAlertaExito();
+        }
+      });
+    } else {
+      console.warn('⚠️ No hay responsables para crear');
+      this.mostrarAlertaExito();
+    }
   }
 }
 

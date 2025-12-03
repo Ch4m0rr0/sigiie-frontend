@@ -183,7 +183,7 @@ export class PersonaFormComponent implements OnInit {
               estadoId: estudiante.estadoId,
               fechaIngreso: estudiante.fechaIngreso instanceof Date 
                 ? estudiante.fechaIngreso.toISOString().split('T')[0]
-                : new Date(estudiante.fechaIngreso).toISOString().split('T')[0],
+                : (estudiante.fechaIngreso ? new Date(estudiante.fechaIngreso).toISOString().split('T')[0] : ''),
               numeroOrcid: estudiante.numeroOrcid || '',
               cedula: estudiante.cedula || '',
               carrera: estudiante.carrera || '',
