@@ -68,6 +68,16 @@ export class ActividadDetailComponent implements OnInit {
   evidenciasLoading = signal(false);
   evidenciasError = signal<string | null>(null);
   evidenciasImageUrls = signal<Map<number, string[]>>(new Map());
+  
+  // Vista de evidencia dentro de actividad
+  evidenciaDetalle = signal<Evidencia | null>(null);
+  evidenciaDetalleLoading = signal(false);
+  evidenciaDetalleError = signal<string | null>(null);
+  evidenciaDetalleImageUrls = signal<string[]>([]);
+  evidenciaDetalleCurrentImageIndex = signal<number>(0);
+  evidenciaDetalleImageError = signal(false);
+  mostrarEvidenciaDetalle = signal(false);
+  private evidenciaDetalleObjectUrls: string[] = [];
   todosLosDepartamentos = signal<any[]>([]);
   categoriasActividad = signal<any[]>([]);
   tiposProtagonista = signal<any[]>([]);
@@ -442,7 +452,148 @@ export class ActividadDetailComponent implements OnInit {
   }
 
   navigateToEvidenciaDetail(evidenciaId: number): void {
-    this.router.navigate(['/evidencias', evidenciaId]);
+    // En lugar de redirigir, cargar la evidencia y mostrarla dentro de la vista
+    this.loadEvidenciaDetalle(evidenciaId);
+  }
+  
+  async loadEvidenciaDetalle(evidenciaId: number): Promise<void> {
+    this.evidenciaDetalleLoading.set(true);
+    this.evidenciaDetalleError.set(null);
+    this.evidenciaDetalleImageError.set(false);
+    this.mostrarEvidenciaDetalle.set(true);
+    
+    // Limpiar URLs anteriores
+    this.evidenciaDetalleObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.evidenciaDetalleObjectUrls = [];
+    
+    this.evidenciaService.getById(evidenciaId).subscribe({
+      next: async (data) => {
+        this.evidenciaDetalle.set(data);
+        
+        // Cargar todas las imágenes desde almacenamiento local del frontend (IndexedDB)
+        const storedImages = await this.imageStorageService.getAllImages(data.idEvidencia);
+        console.log(`📸 Cargadas ${storedImages.length} imagen(es) para evidencia ${data.idEvidencia}`);
+        
+        if (storedImages.length > 0) {
+          this.evidenciaDetalleImageUrls.set(storedImages);
+          this.evidenciaDetalleCurrentImageIndex.set(0);
+          this.evidenciaDetalleImageError.set(false);
+          console.log('✅ Imágenes cargadas correctamente, mostrando primera imagen');
+        } else {
+          this.evidenciaDetalleImageUrls.set([]);
+          this.evidenciaDetalleCurrentImageIndex.set(0);
+          console.log('⚠️ No se encontraron imágenes almacenadas');
+        }
+        this.evidenciaDetalleLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading evidencia:', err);
+        this.evidenciaDetalleError.set('Error al cargar la evidencia');
+        this.evidenciaDetalleLoading.set(false);
+      }
+    });
+  }
+  
+  cerrarEvidenciaDetalle(): void {
+    this.mostrarEvidenciaDetalle.set(false);
+    this.evidenciaDetalle.set(null);
+    // Limpiar object URLs
+    this.evidenciaDetalleObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.evidenciaDetalleObjectUrls = [];
+    this.evidenciaDetalleImageUrls.set([]);
+    this.evidenciaDetalleCurrentImageIndex.set(0);
+  }
+  
+  getEvidenciaDetalleCurrentImageUrl(): string | null {
+    const urls = this.evidenciaDetalleImageUrls();
+    const index = this.evidenciaDetalleCurrentImageIndex();
+    return urls.length > 0 && index >= 0 && index < urls.length ? urls[index] : null;
+  }
+  
+  get evidenciaDetalleTotalImages(): number {
+    return this.evidenciaDetalleImageUrls().length;
+  }
+  
+  get evidenciaDetalleCurrentImageNumber(): number {
+    return this.evidenciaDetalleCurrentImageIndex() + 1;
+  }
+  
+  evidenciaDetalleCanGoPrevious(): boolean {
+    return this.evidenciaDetalleCurrentImageIndex() > 0;
+  }
+  
+  evidenciaDetalleCanGoNext(): boolean {
+    return this.evidenciaDetalleCurrentImageIndex() < this.evidenciaDetalleTotalImages - 1;
+  }
+  
+  evidenciaDetallePreviousImage(): void {
+    if (this.evidenciaDetalleCanGoPrevious()) {
+      this.evidenciaDetalleCurrentImageIndex.set(this.evidenciaDetalleCurrentImageIndex() - 1);
+    }
+  }
+  
+  evidenciaDetalleNextImage(): void {
+    if (this.evidenciaDetalleCanGoNext()) {
+      this.evidenciaDetalleCurrentImageIndex.set(this.evidenciaDetalleCurrentImageIndex() + 1);
+    }
+  }
+  
+  onEvidenciaDetalleImageError(event: Event): void {
+    console.error('❌ Error cargando imagen:', event);
+    this.evidenciaDetalleImageError.set(true);
+  }
+  
+  async downloadEvidenciaDetalleFile(): Promise<void> {
+    const evidencia = this.evidenciaDetalle();
+    if (!evidencia) return;
+    
+    const urls = this.evidenciaDetalleImageUrls();
+    if (urls.length === 0) {
+      alert('No hay archivos disponibles para descargar');
+      return;
+    }
+    
+    try {
+      const currentUrl = this.getEvidenciaDetalleCurrentImageUrl();
+      if (currentUrl) {
+        const link = document.createElement('a');
+        link.href = currentUrl;
+        link.download = `evidencia-${evidencia.idEvidencia}-${this.evidenciaDetalleCurrentImageIndex() + 1}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Error descargando archivo:', error);
+      alert('Error al descargar el archivo');
+    }
+  }
+  
+  navigateToEditEvidencia(): void {
+    const id = this.evidenciaDetalle()?.idEvidencia;
+    if (id) {
+      this.router.navigate(['/evidencias', id, 'editar']);
+    }
+  }
+  
+  onDeleteEvidencia(): void {
+    const id = this.evidenciaDetalle()?.idEvidencia;
+    if (id && confirm('¿Está seguro de que desea eliminar esta evidencia?')) {
+      this.evidenciaService.delete(id).subscribe({
+        next: () => {
+          this.cerrarEvidenciaDetalle();
+          // Recargar evidencias
+          const actividadId = this.actividad()?.id;
+          if (actividadId) {
+            this.loadEvidencias(actividadId);
+          }
+        },
+        error: (err) => {
+          console.error('Error deleting evidencia:', err);
+          this.evidenciaDetalleError.set('Error al eliminar la evidencia');
+        }
+      });
+    }
   }
 
   loadActividad(id: number): void {

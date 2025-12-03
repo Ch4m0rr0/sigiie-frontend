@@ -7,6 +7,7 @@ import { ImageStorageService } from '../../core/services/image-storage.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
+import JSZip from 'jszip';
 
 @Component({
   standalone: true,
@@ -27,6 +28,7 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   imageUrls = signal<string[]>([]);
   currentImageIndex = signal<number>(0);
   imageError = signal(false);
+  officeFiles = signal<Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>>([]);
   private objectUrls: string[] = [];
 
   ngOnInit(): void {
@@ -65,6 +67,12 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
           this.currentImageIndex.set(0);
           console.log('⚠️ No se encontraron imágenes almacenadas');
         }
+        
+        // Cargar todos los archivos Office desde IndexedDB
+        const storedOfficeFiles = await this.imageStorageService.getAllOfficeFiles(data.idEvidencia);
+        console.log(`📄 Cargados ${storedOfficeFiles.length} archivo(s) Office para evidencia ${data.idEvidencia}`);
+        this.officeFiles.set(storedOfficeFiles);
+        
         this.loading.set(false);
       },
       error: (err) => {
@@ -121,31 +129,76 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const currentIndex = this.currentImageIndex();
-    const hasImage = await this.imageStorageService.hasImage(evidencia.idEvidencia, currentIndex);
-    if (!hasImage) {
-      alert('No se puede descargar: No hay imagen almacenada');
-      return;
-    }
-
-    // Obtener el nombre del archivo de rutaArchivo o usar un nombre por defecto
-    const baseFileName = evidencia.rutaArchivo 
-      ? (evidencia.rutaArchivo.split('/').pop() || evidencia.rutaArchivo.split('\\').pop() || 'evidencia')
-      : `evidencia_${evidencia.idEvidencia}`;
-    
-    // Si hay múltiples imágenes, agregar el índice al nombre
-    const totalImages = this.imageUrls().length;
-    const fileName = totalImages > 1 
-      ? `${baseFileName}_${currentIndex + 1}.jpg`
-      : `${baseFileName}.jpg`;
-
     try {
-      // Descargar usando el servicio de almacenamiento de imágenes (IndexedDB)
-      await this.imageStorageService.downloadImage(evidencia.idEvidencia, fileName, currentIndex);
-      console.log('✅ Descarga iniciada desde almacenamiento local');
+      console.log('📦 Iniciando creación de archivo ZIP...');
+      const zip = new JSZip();
+      
+      // Obtener todas las imágenes
+      const images = this.imageUrls();
+      console.log(`📸 Agregando ${images.length} imagen(es) al ZIP...`);
+      
+      for (let i = 0; i < images.length; i++) {
+        const imageBlob = await this.imageStorageService.getImageBlob(evidencia.idEvidencia, i);
+        if (imageBlob) {
+          // Determinar la extensión del archivo basado en el tipo MIME
+          const mimeType = imageBlob.type || 'image/jpeg';
+          let extension = 'jpg';
+          if (mimeType.includes('png')) extension = 'png';
+          else if (mimeType.includes('gif')) extension = 'gif';
+          else if (mimeType.includes('webp')) extension = 'webp';
+          
+          const fileName = images.length > 1 
+            ? `imagen_${i + 1}.${extension}`
+            : `imagen.${extension}`;
+          
+          zip.file(fileName, imageBlob);
+          console.log(`✅ Imagen ${i + 1} agregada: ${fileName}`);
+        }
+      }
+      
+      // Obtener todos los archivos Office
+      const officeFiles = this.officeFiles();
+      console.log(`📄 Agregando ${officeFiles.length} archivo(s) Office al ZIP...`);
+      
+      for (const file of officeFiles) {
+        const fileBlob = await this.imageStorageService.getOfficeFileBlob(evidencia.idEvidencia, file.fileIndex);
+        if (fileBlob) {
+          zip.file(file.fileName, fileBlob);
+          console.log(`✅ Archivo Office agregado: ${file.fileName}`);
+        }
+      }
+      
+      // Verificar que hay al menos un archivo en el ZIP
+      const fileCount = images.length + officeFiles.length;
+      if (fileCount === 0) {
+        alert('No hay archivos para descargar');
+        return;
+      }
+      
+      // Generar el archivo ZIP
+      console.log('📦 Generando archivo ZIP...');
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Crear el nombre del archivo ZIP
+      const baseFileName = evidencia.rutaArchivo 
+        ? (evidencia.rutaArchivo.split('/').pop() || evidencia.rutaArchivo.split('\\').pop() || 'evidencia')
+        : `evidencia_${evidencia.idEvidencia}`;
+      const zipFileName = `${baseFileName}_completo.zip`;
+      
+      // Descargar el ZIP
+      const blobUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = zipFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      
+      console.log(`✅ Archivo ZIP descargado: ${zipFileName} (${images.length} imagen(es) + ${officeFiles.length} archivo(s) Office)`);
     } catch (error) {
-      console.error('Error al descargar:', error);
-      alert('Error al descargar la imagen');
+      console.error('❌ Error al crear el archivo ZIP:', error);
+      alert('Error al crear el archivo ZIP. Por favor, intente nuevamente.');
     }
   }
 
@@ -190,6 +243,56 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
 
   canGoNext(): boolean {
     return this.currentImageIndex() < this.imageUrls().length - 1;
+  }
+
+  async downloadOfficeFile(fileIndex: number): Promise<void> {
+    const evidencia = this.evidencia();
+    if (!evidencia) {
+      alert('No se puede descargar: Sin evidencia');
+      return;
+    }
+
+    try {
+      const blob = await this.imageStorageService.getOfficeFileBlob(evidencia.idEvidencia, fileIndex);
+      if (!blob) {
+        alert('No se puede descargar: Archivo no encontrado');
+        return;
+      }
+
+      const officeFiles = this.officeFiles();
+      const file = officeFiles.find(f => f.fileIndex === fileIndex);
+      const fileName = file?.fileName || `archivo_${fileIndex}`;
+
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      
+      console.log(`✅ Archivo Office descargado: ${fileName}`);
+    } catch (error) {
+      console.error('Error al descargar archivo Office:', error);
+      alert('Error al descargar el archivo');
+    }
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  getFileIcon(mimeType: string): string {
+    if (mimeType.includes('word') || mimeType.includes('document')) return 'description';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'table_chart';
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'slideshow';
+    if (mimeType.includes('pdf')) return 'picture_as_pdf';
+    return 'insert_drive_file';
   }
 }
 

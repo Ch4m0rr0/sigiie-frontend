@@ -3,6 +3,7 @@ export interface EstadoActividad {
   idEstadoActividad?: number; // Alias para compatibilidad
   nombre: string;
   descripcion?: string;
+  color?: string; // Color del estado (hex)
 }
 
 export interface EstadoActividadCreate {
