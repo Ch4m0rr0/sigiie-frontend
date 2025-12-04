@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -39,13 +39,11 @@ export class ActividadAnualFormComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   seccionInformacionExpandida = signal(true);
-  seccionEstadoExpandida = signal(true);
-  showYearWarning = signal(false);
-  yearWarningConfirmed = signal(false);
   
   // Dropdown de indicador
   mostrarDropdownIndicador = signal(false);
   indicadorSeleccionado = signal<Indicador | null>(null);
+  terminoBusquedaIndicador = signal<string>('');
 
   ngOnInit(): void {
     this.initializeForm();
@@ -70,17 +68,9 @@ export class ActividadAnualFormComponent implements OnInit {
   initializeForm(): void {
     this.form = this.fb.group({
       idIndicador: [null, Validators.required],
-      anio: [null, [Validators.required, Validators.min(2000), Validators.max(2100)]],
-      nombre: [''],
-      descripcion: [''],
-      activo: [true]
-    });
-
-    // Escuchar cambios en el campo año para mostrar advertencia
-    this.form.get('anio')?.valueChanges.subscribe(() => {
-      this.checkYearWarning();
-      // Resetear la confirmación cuando cambia el año
-      this.yearWarningConfirmed.set(false);
+      nombre: ['', Validators.required],
+      descripcion: ['']
+      // activo se establece automáticamente como true al crear
     });
 
     // Escuchar cambios en el indicador para actualizar el signal
@@ -94,38 +84,6 @@ export class ActividadAnualFormComponent implements OnInit {
     });
   }
 
-  checkYearWarning(): void {
-    const anioValue = this.form.get('anio')?.value;
-    if (!anioValue) {
-      this.showYearWarning.set(false);
-      return;
-    }
-
-    const year = Number(anioValue);
-    if (isNaN(year)) {
-      this.showYearWarning.set(false);
-      return;
-    }
-
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-
-    // Mostrar advertencia si el año no es el actual ni el siguiente
-    this.showYearWarning.set(year !== currentYear && year !== nextYear);
-  }
-
-  isYearInRange(): boolean {
-    const anioValue = this.form.get('anio')?.value;
-    if (!anioValue) return false;
-
-    const year = Number(anioValue);
-    if (isNaN(year)) return false;
-
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-
-    return year === currentYear || year === nextYear;
-  }
 
   loadIndicadores(): void {
     this.indicadorService.getAll().subscribe({
@@ -164,10 +122,8 @@ export class ActividadAnualFormComponent implements OnInit {
         if (data) {
           this.form.patchValue({
             idIndicador: data.idIndicador || null,
-            anio: data.anio || new Date().getFullYear(),
             nombre: data.nombre || '',
-            descripcion: data.descripcion || '',
-            activo: data.activo ?? true
+            descripcion: data.descripcion || ''
           });
           
           // Actualizar el indicador seleccionado
@@ -193,49 +149,21 @@ export class ActividadAnualFormComponent implements OnInit {
 
   onSubmit(): void {
     if (this.form.valid) {
-      // Verificar si el año requiere confirmación
-      const anioValueForCheck = this.form.get('anio')?.value;
-      if (anioValueForCheck && this.showYearWarning() && !this.yearWarningConfirmed()) {
-        const year = Number(anioValueForCheck);
-        const confirmMessage = `¿Está seguro de que el año "${year}" es correcto para crear esta actividad anual?\n\nNormalmente las actividades anuales se planifican para el año en curso (${new Date().getFullYear()}) o para el año siguiente (${new Date().getFullYear() + 1}).\n\nPor favor, verifique que el año ingresado sea correcto antes de continuar.`;
-        
-        if (!confirm(confirmMessage)) {
-          // El usuario canceló, no hacer nada
-          return;
-        }
-        
-        // El usuario confirmó
-        this.yearWarningConfirmed.set(true);
-      }
-
       this.loading.set(true);
       this.error.set(null);
 
       const formValue = this.form.value;
       const currentYear = new Date().getFullYear();
 
-      // Asegurar que anio siempre tenga un valor válido
-      let anioValue: number;
-      if (formValue.anio === null || formValue.anio === undefined || formValue.anio === '') {
-        anioValue = currentYear;
-      } else {
-        anioValue = Number(formValue.anio);
-        // Si la conversión falla o es NaN, usar el año actual
-        if (isNaN(anioValue) || anioValue < 2000 || anioValue > 2100) {
-          anioValue = currentYear;
-        }
-      }
-
       const data: ActividadAnualCreate = {
         idIndicador: Number(formValue.idIndicador), // Asegurar que sea número
-        anio: anioValue, // Asegurar que siempre sea un número válido
+        anio: currentYear, // El año se establece automáticamente como el año actual
         nombre: formValue.nombre?.trim() || undefined,
-        descripcion: formValue.descripcion?.trim() || undefined,
-        activo: formValue.activo ?? true
+        descripcion: formValue.descripcion?.trim() || undefined
+        // activo se establece automáticamente como true en el backend
       };
 
       console.log('🔄 FormComponent - Datos a enviar:', JSON.stringify(data, null, 2));
-      console.log('🔄 FormComponent - anioValue:', anioValue, 'tipo:', typeof anioValue);
 
       if (this.isEditMode()) {
         this.actividadAnualService.update(this.actividadAnualId()!, data).subscribe({
@@ -312,7 +240,6 @@ export class ActividadAnualFormComponent implements OnInit {
   }
 
   get idIndicador() { return this.form.get('idIndicador'); }
-  get anio() { return this.form.get('anio'); }
 
   // Métodos para el dropdown de indicador
   mostrarDropdownIndicadorFunc(): void {
@@ -342,17 +269,23 @@ export class ActividadAnualFormComponent implements OnInit {
     this.indicadorSeleccionado.set(null);
   }
 
+  // Indicadores filtrados por búsqueda
+  indicadoresFiltrados = computed(() => {
+    const termino = this.terminoBusquedaIndicador().toLowerCase().trim();
+    if (!termino) {
+      return this.indicadores();
+    }
+    return this.indicadores().filter(indicador => {
+      const nombre = (indicador.nombre || '').toLowerCase();
+      const codigo = (indicador.codigo || '').toLowerCase();
+      return nombre.includes(termino) || codigo.includes(termino);
+    });
+  });
+
   getIndicadoresFiltrados(): Indicador[] {
-    return this.indicadores();
+    return this.indicadoresFiltrados();
   }
 
-  getCurrentYear(): number {
-    return new Date().getFullYear();
-  }
-
-  getNextYear(): number {
-    return new Date().getFullYear() + 1;
-  }
 
   private mostrarAlertaExito(): void {
     const nombreActividad = this.form.get('nombre')?.value || 'la actividad anual';

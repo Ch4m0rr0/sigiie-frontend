@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, HostListener, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, HostListener, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
 import { CommonModule, NgIf } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { Observable } from 'rxjs';
@@ -6,6 +6,7 @@ import { CatalogosService } from '../../core/services/catalogos.service';
 import { IndicadorService } from '../../core/services/indicador.service';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
+import { AlertService } from '../../core/services/alert.service';
 import type { Departamento } from '../../core/models/departamento';
 import type { Genero } from '../../core/models/genero';
 import type { EstadoEstudiante } from '../../core/models/estado-estudiante';
@@ -59,6 +60,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   private indicadorService = inject(IndicadorService);
   private actividadAnualService = inject(ActividadAnualService);
   private actividadMensualInstService = inject(ActividadMensualInstService);
+  private alertService = inject(AlertService);
   private elementRef = inject(ElementRef);
 
   @ViewChild('formContainer', { static: false }) formContainer!: ElementRef;
@@ -93,6 +95,14 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   busquedaActividadesMensuales = signal<string>('');
   paginaActualActividadesMensuales = signal<number>(1);
   mostrarTodosActividadesMensuales = signal<boolean>(false);
+  
+  // Dropdown de indicador en formulario de actividad anual
+  mostrarDropdownIndicadorForm = signal<boolean>(false);
+  terminoBusquedaIndicadorForm = signal<string>('');
+  
+  // Dropdown de actividad anual en formulario de actividad mensual
+  mostrarDropdownActividadAnualForm = signal<boolean>(false);
+  terminoBusquedaActividadAnualForm = signal<string>('');
 
   // Para importar indicadores
   showImportDialog = false;
@@ -107,6 +117,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   onDocumentClick(event: MouseEvent) {
     if (!this.elementRef.nativeElement.contains(event.target)) {
       this.closeDropdown();
+      this.mostrarDropdownIndicadorForm.set(false);
+      this.mostrarDropdownActividadAnualForm.set(false);
     }
   }
 
@@ -155,6 +167,37 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   actividadesAnuales = signal<ActividadAnual[]>([]);
   actividadesMensuales = signal<ActividadMensualInst[]>([]);
   
+  // Indicadores filtrados para el formulario de actividad anual
+  indicadoresFiltradosForm = computed(() => {
+    const termino = this.terminoBusquedaIndicadorForm().toLowerCase().trim();
+    if (!termino) {
+      return this.indicadores();
+    }
+    return this.indicadores().filter(indicador => {
+      const nombre = (indicador.nombre || '').toLowerCase();
+      const codigo = (indicador.codigo || '').toLowerCase();
+      return nombre.includes(termino) || codigo.includes(termino);
+    });
+  });
+  
+  // Actividades anuales filtradas para el formulario de actividad mensual
+  actividadesAnualesFiltradasForm = computed(() => {
+    const termino = this.terminoBusquedaActividadAnualForm().toLowerCase().trim();
+    if (!termino) {
+      return this.actividadesAnuales();
+    }
+    return this.actividadesAnuales().filter(anual => {
+      const nombre = (anual.nombre || '').toLowerCase();
+      const nombreIndicador = (anual.nombreIndicador || '').toLowerCase();
+      const codigoIndicador = (anual.codigoIndicador || '').toLowerCase();
+      const anio = (anual.anio || '').toString();
+      return nombre.includes(termino) || 
+             nombreIndicador.includes(termino) || 
+             codigoIndicador.includes(termino) ||
+             anio.includes(termino);
+    });
+  });
+  
   // Loading state
   isLoading = signal<boolean>(false);
 
@@ -173,6 +216,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.busquedaIndicadores.set('');
     this.paginaActualIndicadores.set(1);
     this.mostrarTodosIndicadores.set(false);
+    // Resetear dropdowns en formularios
+    this.mostrarDropdownIndicadorForm.set(false);
+    this.terminoBusquedaIndicadorForm.set('');
+    this.mostrarDropdownActividadAnualForm.set(false);
+    this.terminoBusquedaActividadAnualForm.set('');
     
     // Resetear filtros y paginación para actividades anuales
     this.filtroAnioActividadesAnuales.set(null);
@@ -280,6 +328,47 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
 
   toggleDropdown() {
     this.isDropdownOpen = !this.isDropdownOpen;
+  }
+
+  // Métodos para el dropdown de indicador en formulario de actividad anual
+  toggleDropdownIndicadorForm(): void {
+    this.mostrarDropdownIndicadorForm.set(!this.mostrarDropdownIndicadorForm());
+    if (!this.mostrarDropdownIndicadorForm()) {
+      this.terminoBusquedaIndicadorForm.set('');
+    }
+  }
+
+  seleccionarIndicadorForm(idIndicador: number): void {
+    this.form.patchValue({ idIndicador: idIndicador });
+    this.mostrarDropdownIndicadorForm.set(false);
+    this.terminoBusquedaIndicadorForm.set('');
+  }
+
+  getIndicadorSeleccionadoForm(): Indicador | null {
+    const idIndicador = this.form.get('idIndicador')?.value;
+    if (!idIndicador) return null;
+    return this.indicadores().find(ind => ind.idIndicador === idIndicador) || null;
+  }
+
+  // Métodos para el dropdown de actividad anual en formulario de actividad mensual
+  toggleDropdownActividadAnualForm(): void {
+    const nuevoEstado = !this.mostrarDropdownActividadAnualForm();
+    this.mostrarDropdownActividadAnualForm.set(nuevoEstado);
+    if (!nuevoEstado) {
+      this.terminoBusquedaActividadAnualForm.set('');
+    }
+  }
+
+  seleccionarActividadAnualForm(idActividadAnual: number): void {
+    this.form.patchValue({ idActividadAnual: idActividadAnual });
+    this.mostrarDropdownActividadAnualForm.set(false);
+    this.terminoBusquedaActividadAnualForm.set('');
+  }
+
+  getActividadAnualSeleccionadaForm(): ActividadAnual | null {
+    const idActividadAnual = this.form.get('idActividadAnual')?.value;
+    if (!idActividadAnual) return null;
+    return this.actividadesAnuales().find(a => a.idActividadAnual === idActividadAnual) || null;
   }
 
   closeDropdown() {
@@ -813,45 +902,218 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     
     if (!id) {
       console.error('❌ DELETE ITEM - ID inválido:', id);
+      this.alertService.error('Error', 'ID inválido para eliminar');
       return;
     }
-    if (!confirm('¿Estás seguro de que quieres eliminar este elemento?')) return;
 
-    let obs: Observable<unknown>;
-    switch (this.selectedCatalogo) {
-      case 'departamentos': obs = this.catalogosService.deleteDepartamento(id); break;
-      case 'generos': obs = this.catalogosService.deleteGenero(id); break;
-      case 'estadoestudiantes': obs = this.catalogosService.deleteEstadoEstudiante(id); break;
-      case 'estadoparticipaciones': obs = this.catalogosService.deleteEstadoParticipacion(id); break;
-      case 'estadosproyecto': obs = this.catalogosService.deleteEstadoProyecto(id); break;
-      case 'categoriaparticipaciones': obs = this.catalogosService.deleteCategoriaParticipacion(id); break;
-      case 'categoriaactividades': obs = this.catalogosService.deleteCategoriaActividad(id); break;
-      case 'tiposactividad': obs = this.catalogosService.deleteTipoActividad(id); break;
-      case 'tiposunidad': obs = this.catalogosService.deleteTipoUnidad(id); break;
-      case 'tiposiniciativas': obs = this.catalogosService.deleteTipoIniciativa(id); break;
-      case 'tiposinvestigaciones': obs = this.catalogosService.deleteTipoInvestigacion(id); break;
-      case 'tiposdocumentos': obs = this.catalogosService.deleteTipoDocumento(id); break;
-      case 'tiposdocumentosdivulgados': obs = this.catalogosService.deleteTipoDocumentoDivulgado(id); break;
-      case 'tiposevidencia': obs = this.catalogosService.deleteTipoEvidencia(id); break;
-      case 'tiposprotagonista': obs = this.catalogosService.deleteTipoProtagonista(id); break;
-      case 'areasconocimiento': obs = this.catalogosService.deleteAreaConocimiento(id); break;
-      case 'estadosactividad': obs = this.catalogosService.deleteEstadoActividad(id); break;
-      case 'nivelesactividad': obs = this.catalogosService.deleteNivelActividad(id); break;
-      case 'nivelesacademico': obs = this.catalogosService.deleteNivelAcademico(id); break;
-      case 'rolesequipo': obs = this.catalogosService.deleteRolEquipo(id); break;
-      case 'rolesresponsable': obs = this.catalogosService.deleteRolResponsable(id); break;
-      case 'roles': obs = this.catalogosService.deleteRole(id); break;
-      case 'indicadores': obs = this.indicadorService.delete(id); break;
-      case 'carreras': obs = this.catalogosService.deleteCarrera(id); break;
-      case 'actividades-anuales': obs = this.actividadAnualService.delete(id); break;
-      case 'actividades-mensuales': obs = this.actividadMensualInstService.delete(id); break;
-      default:
-        console.error('Unknown catalog type for deletion:', this.selectedCatalogo);
-        return;
+    // Obtener el nombre del elemento antes de eliminarlo
+    let nombreElemento = 'el elemento';
+    try {
+      switch (this.selectedCatalogo) {
+        case 'departamentos': {
+          const item = this.departamentos().find(d => d.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'generos': {
+          const item = this.generos().find(g => g.id === id);
+          nombreElemento = item?.codigo || item?.descripcion || nombreElemento;
+          break;
+        }
+        case 'estadoestudiantes': {
+          const item = this.estadoestudiantes().find(e => e.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'estadoparticipaciones': {
+          const item = this.estadoparticipaciones().find(e => e.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'estadosproyecto': {
+          const item = this.estadosproyecto().find(e => e.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'categoriaparticipaciones': {
+          const item = this.categoriaparticipaciones().find(c => c.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'categoriaactividades': {
+          const item = this.categoriaactividades().find(c => c.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposactividad': {
+          const item = this.tiposactividad().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposunidad': {
+          const item = this.tiposunidad().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposiniciativas': {
+          const item = this.tiposiniciativas().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposinvestigaciones': {
+          const item = this.tiposinvestigaciones().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposdocumentos': {
+          const item = this.tiposdocumentos().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposdocumentosdivulgados': {
+          const item = this.tiposdocumentosdivulgados().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposevidencia': {
+          const item = this.tiposevidencia().find(t => t.idTipoEvidencia === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'tiposprotagonista': {
+          const item = this.tiposprotagonista().find(t => t.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'areasconocimiento': {
+          const item = this.areasconocimiento().find(a => a.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'estadosactividad': {
+          const item = this.estadosactividad().find(e => e.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'nivelesactividad': {
+          const item = this.nivelesactividad().find(n => n.idNivel === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'nivelesacademico': {
+          const item = this.nivelesacademico().find(n => n.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'rolesequipo': {
+          const item = this.rolesequipo().find(r => r.idRolEquipo === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'rolesresponsable': {
+          const item = this.rolesresponsable().find(r => r.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'roles': {
+          const item = this.roles().find(r => r.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'indicadores': {
+          const item = this.indicadores().find(i => i.idIndicador === id);
+          nombreElemento = item?.codigo || item?.nombre || nombreElemento;
+          break;
+        }
+        case 'carreras': {
+          const item = this.carreras().find(c => c.idCarrera === id);
+          nombreElemento = item?.nombre || item?.codigo || nombreElemento;
+          break;
+        }
+        case 'actividades-anuales': {
+          const item = this.actividadesAnuales().find(a => a.idActividadAnual === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+        case 'actividades-mensuales': {
+          const item = this.actividadesMensuales().find(a => a.idActividadMensualInst === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
+      }
+    } catch (error) {
+      console.error('Error obteniendo nombre del elemento:', error);
     }
-    obs.subscribe({
-      next: () => this.loadAllCatalogos(),
-      error: (err: any) => console.error('Error deleting item:', err)
+
+    // Mostrar confirmación
+    this.alertService.confirmDelete(
+      nombreElemento !== 'el elemento' ? nombreElemento : undefined,
+      'Esta acción no se puede deshacer.'
+    ).then((result) => {
+      if (result.isConfirmed) {
+        let obs: Observable<unknown>;
+        switch (this.selectedCatalogo) {
+          case 'departamentos': obs = this.catalogosService.deleteDepartamento(id); break;
+          case 'generos': obs = this.catalogosService.deleteGenero(id); break;
+          case 'estadoestudiantes': obs = this.catalogosService.deleteEstadoEstudiante(id); break;
+          case 'estadoparticipaciones': obs = this.catalogosService.deleteEstadoParticipacion(id); break;
+          case 'estadosproyecto': obs = this.catalogosService.deleteEstadoProyecto(id); break;
+          case 'categoriaparticipaciones': obs = this.catalogosService.deleteCategoriaParticipacion(id); break;
+          case 'categoriaactividades': obs = this.catalogosService.deleteCategoriaActividad(id); break;
+          case 'tiposactividad': obs = this.catalogosService.deleteTipoActividad(id); break;
+          case 'tiposunidad': obs = this.catalogosService.deleteTipoUnidad(id); break;
+          case 'tiposiniciativas': obs = this.catalogosService.deleteTipoIniciativa(id); break;
+          case 'tiposinvestigaciones': obs = this.catalogosService.deleteTipoInvestigacion(id); break;
+          case 'tiposdocumentos': obs = this.catalogosService.deleteTipoDocumento(id); break;
+          case 'tiposdocumentosdivulgados': obs = this.catalogosService.deleteTipoDocumentoDivulgado(id); break;
+          case 'tiposevidencia': obs = this.catalogosService.deleteTipoEvidencia(id); break;
+          case 'tiposprotagonista': obs = this.catalogosService.deleteTipoProtagonista(id); break;
+          case 'areasconocimiento': obs = this.catalogosService.deleteAreaConocimiento(id); break;
+          case 'estadosactividad': obs = this.catalogosService.deleteEstadoActividad(id); break;
+          case 'nivelesactividad': obs = this.catalogosService.deleteNivelActividad(id); break;
+          case 'nivelesacademico': obs = this.catalogosService.deleteNivelAcademico(id); break;
+          case 'rolesequipo': obs = this.catalogosService.deleteRolEquipo(id); break;
+          case 'rolesresponsable': obs = this.catalogosService.deleteRolResponsable(id); break;
+          case 'roles': obs = this.catalogosService.deleteRole(id); break;
+          case 'indicadores': obs = this.indicadorService.delete(id); break;
+          case 'carreras': obs = this.catalogosService.deleteCarrera(id); break;
+          case 'actividades-anuales': obs = this.actividadAnualService.delete(id); break;
+          case 'actividades-mensuales': obs = this.actividadMensualInstService.delete(id); break;
+          default:
+            console.error('Unknown catalog type for deletion:', this.selectedCatalogo);
+            this.alertService.error('Error', 'Tipo de catálogo desconocido');
+            return;
+        }
+        
+        obs.subscribe({
+          next: () => {
+            this.loadAllCatalogos();
+            // Mostrar alerta de éxito
+            this.alertService.success(
+              '¡Elemento eliminado exitosamente!',
+              `"${nombreElemento}" ha sido eliminado correctamente.`
+            );
+          },
+          error: (err: any) => {
+            console.error('Error deleting item:', err);
+            let errorMessage = 'Error desconocido';
+            if (err.error) {
+              if (err.error.message) {
+                errorMessage = err.error.message;
+              } else if (typeof err.error === 'string') {
+                errorMessage = err.error;
+              }
+            } else if (err.message) {
+              errorMessage = err.message;
+            }
+            // Mostrar alerta de error
+            this.alertService.error(
+              'Error al eliminar el elemento',
+              `No se pudo eliminar "${nombreElemento}". ${errorMessage}`
+            );
+          }
+        });
+      }
     });
   }
 
@@ -872,16 +1134,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const anioIngresado = Number(anio);
     
     if (anioIngresado < anioActual) {
-      alert(`El año no puede ser menor al año actual (${anioActual}). Por favor, ingrese un año válido.`);
+      this.alertService.error(
+        'Año inválido',
+        `El año no puede ser menor al año actual (${anioActual}). Por favor, ingrese un año válido.`
+      );
       this.form.patchValue({ anio: null });
       return;
     }
     
     if (anioIngresado > anioActual) {
-      const confirmar = confirm(`¿Está seguro de que el año ${anioIngresado} es correcto? El año actual es ${anioActual}.`);
-      if (!confirmar) {
-        this.form.patchValue({ anio: null });
-      }
+      this.alertService.confirm(
+        'Confirmar año',
+        `¿Está seguro de que el año ${anioIngresado} es correcto? El año actual es ${anioActual}.`
+      ).then((result) => {
+        if (!result.isConfirmed) {
+          this.form.patchValue({ anio: null });
+        }
+      });
     }
   }
 
@@ -1169,7 +1438,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         const departamentoId = (this.form.get('departamentoId')?.value as number) || null;
         if (!data.nombre || !departamentoId) {
           console.error('Invalid data for carrera:', data);
-          alert('El nombre y el departamento son requeridos');
+          this.alertService.error('Error de validación', 'El nombre y el departamento son requeridos');
           return;
         }
         obs = this.catalogosService.createCarrera({ 
@@ -1182,7 +1451,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'actividades-anuales':
         const idIndicador = (this.form.get('idIndicador')?.value as number) || null;
         if (!idIndicador || !data.nombre) {
-          alert('El indicador y el nombre son requeridos');
+          this.alertService.error('Error de validación', 'El indicador y el nombre son requeridos');
           return;
         }
         obs = this.actividadAnualService.create({
@@ -1196,7 +1465,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'actividades-mensuales':
         const idActividadAnual = (this.form.get('idActividadAnual')?.value as number) || null;
         if (!idActividadAnual || !data.nombre) {
-          alert('La actividad anual y el nombre son requeridos');
+          this.alertService.error('Error de validación', 'La actividad anual y el nombre son requeridos');
           return;
         }
         obs = this.actividadMensualInstService.create({
@@ -1211,11 +1480,19 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         return;
     }
     
+    // Obtener el nombre del elemento para la alerta
+    const nombreElemento = data.nombre || data.codigo || 'el elemento';
+    
     obs.subscribe({
       next: () => {
         // Recargar todos los catálogos
         this.loadAllCatalogos();
         this.cancelEdit();
+        // Mostrar alerta de éxito
+        this.alertService.success(
+          '¡Elemento creado exitosamente!',
+          `"${nombreElemento}" ha sido creado correctamente.`
+        );
       },
       error: (err: any) => {
         console.error('Error creating item:', err);
@@ -1224,8 +1501,33 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         console.error('Error message:', err.message);
         console.error('Validation errors:', err.error?.errors);
         console.error('Full error object:', JSON.stringify(err, null, 2));
-        // Mostrar mensaje de error al usuario
-        alert('Error al crear el elemento: ' + (err.error?.message || err.message || 'Error desconocido'));
+        
+        // Construir mensaje de error
+        let errorMessage = 'Error desconocido';
+        if (err.error) {
+          if (err.error.errors) {
+            const validationErrors = err.error.errors;
+            const errorMessages = Object.keys(validationErrors).map(key => {
+              const messages = Array.isArray(validationErrors[key])
+                ? validationErrors[key].join(', ')
+                : validationErrors[key];
+              return `${key}: ${messages}`;
+            });
+            errorMessage = `Errores de validación:\n${errorMessages.join('\n')}`;
+          } else if (err.error.message) {
+            errorMessage = err.error.message;
+          } else if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        // Mostrar alerta de error
+        this.alertService.error(
+          'Error al crear el elemento',
+          `No se pudo crear "${nombreElemento}". ${errorMessage}`
+        );
       }
     });
   }
@@ -1261,7 +1563,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'estadoestudiantes': 
         if (!data.nombre || !id) {
           console.error('Invalid data for estado estudiante:', { data, id });
-          alert('Datos inválidos para actualizar estado de estudiante');
+          this.alertService.error('Error de validación', 'Datos inválidos para actualizar estado de estudiante');
           return;
         }
         obs = this.catalogosService.updateEstadoEstudiante(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
@@ -1521,7 +1823,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       case 'actividades-mensuales':
         const idActividadAnualUpdate = (this.form.get('idActividadAnual')?.value as number) || null;
         if (!idActividadAnualUpdate || !data.nombre) {
-          alert('La actividad anual y el nombre son requeridos');
+          this.alertService.error('Error de validación', 'La actividad anual y el nombre son requeridos');
           return;
         }
         // Obtener la actividad actual para mantener el estado activo
@@ -1539,17 +1841,25 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         return;
     }
     
+    // Obtener el nombre del elemento para la alerta
+    const nombreElemento = data.nombre || data.codigo || 'el elemento';
+    
     obs.subscribe({
       next: () => {
         this.loadAllCatalogos();
         this.cancelEdit();
+        // Mostrar alerta de éxito
+        this.alertService.success(
+          '¡Elemento actualizado exitosamente!',
+          `"${nombreElemento}" ha sido actualizado correctamente.`
+        );
       },
       error: (err: any) => {
         console.error('Error updating item:', err);
         console.error('Error details:', err.error);
         console.error('Error status:', err.status);
         
-        let errorMessage = 'Error al actualizar el elemento';
+        let errorMessage = 'Error desconocido';
         if (err.error) {
           if (err.error.errors) {
             const validationErrors = err.error.errors;
@@ -1569,7 +1879,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           errorMessage = err.message;
         }
         
-        alert(errorMessage);
+        // Mostrar alerta de error
+        this.alertService.error(
+          'Error al actualizar el elemento',
+          `No se pudo actualizar "${nombreElemento}". ${errorMessage}`
+        );
       }
     });
   }
