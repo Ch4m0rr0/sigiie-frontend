@@ -110,6 +110,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   mostrarDropdownModalidad = signal(true);
   mostrarDropdownLocal = signal(true);
   mostrarDropdownIndicador = signal(false);
+  terminoBusquedaIndicador = signal<string>('');
   
   // Acordeones para secciones del formulario
   seccionPlanificacionExpandida = signal(false);
@@ -129,6 +130,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   administrativos = signal<Administrativo[]>([]);
   rolesResponsable = signal<any[]>([]);
   tiposResponsableSeleccionados = signal<string[]>([]);
+  ordenTiposResponsables = signal<string[]>([]); // Orden de selección (el más reciente primero)
 
   indicadorIdFromQuery = signal<number | null>(null);
 
@@ -227,18 +229,18 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       nombreActividad: ['', [Validators.required, Validators.minLength(3)]],
       descripcion: [''],
       departamentoId: [null],
-      departamentoResponsableId: [[]],
-      fechaInicio: [''],
-      fechaFin: ['', [this.fechaFinValidator.bind(this)]],
+      departamentoResponsableId: [[], Validators.required],
+      fechaInicio: ['', Validators.required],
+      fechaFin: ['', [Validators.required, this.fechaFinValidator.bind(this)]],
       horaRealizacion: [''], // Campo oculto que se actualiza desde los selects
-      horaRealizacionHora: [''],
-      horaRealizacionMinuto: [''],
-      horaRealizacionAmPm: [''],
+      horaRealizacionHora: ['', Validators.required],
+      horaRealizacionMinuto: ['', Validators.required],
+      horaRealizacionAmPm: ['', Validators.required],
       soporteDocumentoUrl: [null],
-      idEstadoActividad: [null],
+      idEstadoActividad: [null, Validators.required],
       idTipoActividad: [[]],
-      modalidad: [''],
-      idCapacidadInstalada: [null],
+      modalidad: ['', Validators.required],
+      idCapacidadInstalada: [null, Validators.required],
       semanaMes: [null],
       codigoActividad: [''],
       idActividadMensualInst: [[]], // Array para múltiples selecciones
@@ -252,7 +254,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       idTipoEvidencias: [[]],
       anio: [String(new Date().getFullYear())],
       horaInicioPrevista: [''],
-      idTipoProtagonista: [[]],
+      idTipoProtagonista: [[], Validators.required],
       responsableActividad: [''],
       categoriaActividadId: [null],
       tipoUnidadId: [null],
@@ -760,9 +762,9 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       this.form.patchValue({ nombre: nombreValue });
     }
 
-    // Validar que haya al menos un responsable
-    if (!this.tieneAlMenosUnResponsable()) {
-      this.error.set('Debe agregar al menos una persona válida como responsable.');
+    // Validar que haya al menos un tipo de responsable seleccionado
+    if (!this.tieneAlMenosUnTipoResponsable()) {
+      this.error.set('Debe seleccionar al menos un tipo de responsable.');
       this.form.markAllAsTouched();
       return;
     }
@@ -1440,22 +1442,31 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   crearUsuarioFormGroup(): FormGroup {
-    return this.fb.group({
+    const formGroup = this.fb.group({
       idUsuario: [null, Validators.required]
     });
+    // Forzar reset para asegurar que esté completamente limpio
+    formGroup.reset({ idUsuario: null }, { emitEvent: false });
+    return formGroup;
   }
 
   crearPersonaFormGroup(tipo: 'docente' | 'estudiante' | 'administrativo'): FormGroup {
     const idRolResponsableValidators = tipo === 'estudiante' ? [Validators.required] : [];
     
-    return this.fb.group({
+    const formGroup = this.fb.group({
       idPersona: [null, Validators.required],
       idRolResponsable: [null, idRolResponsableValidators]
     });
+    // Forzar reset para asegurar que esté completamente limpio
+    formGroup.reset({ 
+      idPersona: null, 
+      idRolResponsable: null 
+    }, { emitEvent: false });
+    return formGroup;
   }
 
   crearResponsableExternoFormGroup(): FormGroup {
-    return this.fb.group({
+    const formGroup = this.fb.group({
       nombre: ['', [Validators.required]],
       institucion: ['', [Validators.required]],
       cargo: [''],
@@ -1463,17 +1474,49 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       correo: [''],
       idRolResponsable: [null, Validators.required]
     });
+    // Forzar reset para asegurar que esté completamente limpio
+    formGroup.reset({ 
+      nombre: '', 
+      institucion: '', 
+      cargo: '', 
+      telefono: '', 
+      correo: '', 
+      idRolResponsable: null 
+    }, { emitEvent: false });
+    return formGroup;
   }
 
   agregarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): void {
     if (tipo === 'usuario') {
-      this.usuariosArray.push(this.crearUsuarioFormGroup());
+      // Agregar al principio del array para que aparezca arriba
+      this.usuariosArray.insert(0, this.crearUsuarioFormGroup());
     } else {
       const array = tipo === 'docente' ? this.docentesArray : 
                     tipo === 'estudiante' ? this.estudiantesArray : 
                     this.administrativosArray;
-      array.push(this.crearPersonaFormGroup(tipo));
+      // Agregar al principio del array para que aparezca arriba
+      array.insert(0, this.crearPersonaFormGroup(tipo));
     }
+    
+    // Hacer scroll a la sección y al primer formulario después de un pequeño delay
+    setTimeout(() => {
+      this.scrollToSeccionResponsable(tipo);
+      // Hacer scroll al primer formulario del tipo (el nuevo que acabamos de agregar)
+      setTimeout(() => {
+        const seccionId = `seccion-${tipo}`;
+        const elemento = document.getElementById(seccionId);
+        if (elemento) {
+          // Buscar el primer formulario dentro de la sección
+          const primerFormulario = elemento.querySelector('[formGroupName="0"]') as HTMLElement;
+          if (primerFormulario) {
+            primerFormulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            // Si no encuentra el formulario, hacer scroll a la sección
+            elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 50);
+    }, 100);
   }
 
   eliminarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo', index: number): void {
@@ -1488,7 +1531,25 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   agregarResponsableExterno(): void {
-    this.responsablesExternosArray.push(this.crearResponsableExternoFormGroup());
+    // Agregar al principio del array para que aparezca arriba
+    const formGroup = this.crearResponsableExternoFormGroup();
+    this.responsablesExternosArray.insert(0, formGroup);
+    
+    // Hacer scroll a la sección después de un pequeño delay
+    setTimeout(() => {
+      this.scrollToSeccionResponsable('externo');
+      setTimeout(() => {
+        const elemento = document.getElementById('seccion-externos');
+        if (elemento) {
+          const primerFormulario = elemento.querySelector('[formGroupName="0"]') as HTMLElement;
+          if (primerFormulario) {
+            primerFormulario.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }, 50);
+    }, 100);
   }
 
   eliminarResponsableExterno(index: number): void {
@@ -1557,12 +1618,40 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     const target = event.target as HTMLInputElement;
     const checked = target.checked;
     const current = this.tiposResponsableSeleccionados();
+    const ordenActual = this.ordenTiposResponsables();
     
     if (checked) {
+      // Agregar el tipo a la lista de seleccionados
       this.tiposResponsableSeleccionados.set([...current, tipo]);
+      
+      // Mover el tipo al principio del orden (más reciente primero)
+      const nuevoOrden = [tipo, ...ordenActual.filter(t => t !== tipo)];
+      this.ordenTiposResponsables.set(nuevoOrden);
+      
+      // Hacer scroll a la sección del tipo seleccionado después de un pequeño delay para que el DOM se actualice
+      setTimeout(() => {
+        this.scrollToSeccionResponsable(tipo);
+      }, 150);
     } else {
       this.tiposResponsableSeleccionados.set(current.filter(t => t !== tipo));
+      this.ordenTiposResponsables.set(ordenActual.filter(t => t !== tipo));
       this.limpiarResponsablesPorTipo(tipo);
+    }
+  }
+
+  // Computed para obtener los tipos ordenados (más reciente primero)
+  tiposResponsablesOrdenados = computed(() => {
+    const orden = this.ordenTiposResponsables();
+    const seleccionados = this.tiposResponsableSeleccionados();
+    // Devolver en el orden de selección, con los más recientes primero
+    return orden.filter(t => seleccionados.includes(t));
+  });
+
+  scrollToSeccionResponsable(tipo: string): void {
+    const seccionId = `seccion-${tipo}`;
+    const elemento = document.getElementById(seccionId);
+    if (elemento) {
+      elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 
@@ -2265,10 +2354,53 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   eliminarIndicador(): void {
     this.form.patchValue({ idIndicador: null });
     this.indicadorSeleccionado.set(null);
+    this.terminoBusquedaIndicador.set('');
   }
 
   getIndicadoresFiltrados(): Indicador[] {
-    return this.indicadores();
+    const termino = this.terminoBusquedaIndicador().toLowerCase().trim();
+    if (!termino) {
+      return this.indicadores();
+    }
+    return this.indicadores().filter(indicador => {
+      const codigo = (indicador.codigo || '').toLowerCase();
+      const nombre = (indicador.nombre || '').toLowerCase();
+      return codigo.includes(termino) || nombre.includes(termino);
+    });
+  }
+
+  tieneAlMenosUnTipoResponsable(): boolean {
+    return this.tiposResponsableSeleccionados().length > 0;
+  }
+
+  toggleSeccionPlanificacion(): void {
+    const nuevoEstado = !this.seccionPlanificacionExpandida();
+    this.seccionPlanificacionExpandida.set(nuevoEstado);
+    // Si se expande la sección de planificación, ocultar las otras
+    if (nuevoEstado) {
+      this.seccionInformacionExpandida.set(false);
+      this.seccionResponsablesExpandida.set(false);
+    }
+  }
+
+  toggleSeccionInformacion(): void {
+    const nuevoEstado = !this.seccionInformacionExpandida();
+    this.seccionInformacionExpandida.set(nuevoEstado);
+    // Si se expande la sección de información, ocultar las otras
+    if (nuevoEstado) {
+      this.seccionPlanificacionExpandida.set(false);
+      this.seccionResponsablesExpandida.set(false);
+    }
+  }
+
+  toggleSeccionResponsables(): void {
+    const nuevoEstado = !this.seccionResponsablesExpandida();
+    this.seccionResponsablesExpandida.set(nuevoEstado);
+    // Si se expande la sección de responsables, ocultar las otras
+    if (nuevoEstado) {
+      this.seccionPlanificacionExpandida.set(false);
+      this.seccionInformacionExpandida.set(false);
+    }
   }
 }
 

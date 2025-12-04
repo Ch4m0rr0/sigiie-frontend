@@ -50,7 +50,7 @@
                 <!-- Header del acordeón -->
                 <button
                     type="button"
-                    (click)="seccionPlanificacionExpandida.set(!seccionPlanificacionExpandida())"
+                    (click)="toggleSeccionPlanificacion()"
                     class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
@@ -61,24 +61,22 @@
                             <p class="text-xs text-slate-500 mt-0.5">Seleccione el indicador y las actividades relacionadas</p>
                         </div>
                     </div>
-                    <app-icon 
-                        [icon]="seccionPlanificacionExpandida() ? 'expand_less' : 'expand_more'" 
-                        size="md" 
-                        class="text-emerald-600 transition-transform duration-200"
-                        [class.rotate-180]="!seccionPlanificacionExpandida()"></app-icon>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionPlanificacionExpandida()" [class.text-slate-400]="!seccionPlanificacionExpandida()">
+                            {{ seccionPlanificacionExpandida() ? 'Abierta' : 'Cerrada' }}
+                        </span>
+                        <app-icon 
+                            [icon]="seccionPlanificacionExpandida() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
+                            size="md" 
+                            class="transition-all duration-200"
+                            [class.text-emerald-600]="seccionPlanificacionExpandida()"
+                            [class.text-slate-400]="!seccionPlanificacionExpandida()"></app-icon>
+                    </div>
                 </button>
                 
                 <!-- Contenido del acordeón -->
                 @if (seccionPlanificacionExpandida()) {
                     <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
-                        <div class="pt-2">
-                            <label class="inline-flex items-center cursor-pointer group">
-                                <input type="checkbox" formControlName="esPlanificada" class="sr-only peer">
-                                <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                                <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Planificada</span>
-                            </label>
-                        </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="idIndicador">
@@ -114,7 +112,35 @@
                         <!-- Dropdown de Indicador -->
                         @if (!form.get('idIndicador')?.disabled) {
                             @if (mostrarDropdownIndicador()) {
-                                <div class="bg-white border-2 border-emerald-200 rounded-lg p-2.5 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
+                                <div class="bg-white border-2 border-emerald-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
+                                    <!-- Buscador -->
+                                    <div class="p-3 border-b border-gray-200">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <app-icon icon="search" size="xs" class="text-gray-400"></app-icon>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                [value]="terminoBusquedaIndicador()"
+                                                (input)="terminoBusquedaIndicador.set($any($event.target).value)"
+                                                placeholder="Buscar por código o nombre..."
+                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                                (click)="$event.stopPropagation()"
+                                            />
+                                            @if (terminoBusquedaIndicador()) {
+                                                <button
+                                                    type="button"
+                                                    (click)="terminoBusquedaIndicador.set(''); $event.stopPropagation()"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                                    title="Limpiar búsqueda">
+                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Lista de indicadores -->
+                                    <div class="p-2.5 max-h-48 overflow-y-auto">
                                     @if (getIndicadoresFiltrados().length > 0) {
                                         <div class="space-y-0.5">
                                             @for (indicador of getIndicadoresFiltrados(); track indicador.idIndicador) {
@@ -140,6 +166,7 @@
                                             <p class="text-sm font-medium text-slate-600">No hay indicadores disponibles</p>
                                         </div>
                                     }
+                                    </div>
                                 </div>
                             } @else if (tieneIndicadorSeleccionado()) {
                                 <button
@@ -365,7 +392,7 @@
                 <!-- Header del acordeón -->
                 <button
                     type="button"
-                    (click)="seccionInformacionExpandida.set(!seccionInformacionExpandida())"
+                    (click)="toggleSeccionInformacion()"
                     class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
@@ -376,11 +403,17 @@
                             <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad planificada</p>
                         </div>
                     </div>
-                    <app-icon 
-                        [icon]="seccionInformacionExpandida() ? 'expand_less' : 'expand_more'" 
-                        size="md" 
-                        class="text-emerald-600 transition-transform duration-200"
-                        [class.rotate-180]="!seccionInformacionExpandida()"></app-icon>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionInformacionExpandida()" [class.text-slate-400]="!seccionInformacionExpandida()">
+                            {{ seccionInformacionExpandida() ? 'Abierta' : 'Cerrada' }}
+                        </span>
+                        <app-icon 
+                            [icon]="seccionInformacionExpandida() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
+                            size="md" 
+                            class="transition-all duration-200"
+                            [class.text-emerald-600]="seccionInformacionExpandida()"
+                            [class.text-slate-400]="!seccionInformacionExpandida()"></app-icon>
+                    </div>
                 </button>
                 
                 <!-- Contenido del acordeón -->
@@ -440,9 +473,9 @@
                 <!-- Fechas y Horas -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                            <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
-                            Fecha de realización de la actividad
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+                            Fecha de realización de la actividad <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
                             <input 
@@ -453,9 +486,9 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
-                            Hora de realización
+                            Hora de realización <span class="text-red-500">*</span>
                         </label>
                         <div class="flex items-center gap-2">
                             <select 
@@ -490,7 +523,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
-                            Fecha de Fin
+                            Fecha de Fin <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
                             <input 
@@ -513,7 +546,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
-                            Departamentos Responsables
+                            Departamentos Responsables <span class="text-red-500">*</span>
                         </label>
                         
                         <!-- Departamentos Seleccionados (Chips) -->
@@ -584,7 +617,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                             <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
-                            Estado de Actividad
+                            Estado de Actividad <span class="text-red-500">*</span>
                         </label>
                         
                         <!-- Estado Seleccionado (Chip) -->
@@ -659,7 +692,7 @@
                         <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                         <app-icon icon="video_call" size="xs" class="text-emerald-600"></app-icon>
-                        Modalidad
+                        Modalidad <span class="text-red-500">*</span>
                     </label>
                     
                     <!-- Modalidad Seleccionada (Chip) -->
@@ -720,7 +753,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                         <app-icon icon="location_on" size="xs" class="text-emerald-600"></app-icon>
-                        Local principal
+                        Local principal <span class="text-red-500">*</span>
                     </label>
                     
                     <!-- Local Seleccionado (Chip) -->
@@ -795,7 +828,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                     <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
-                            Protagonista principal
+                            Protagonista principal <span class="text-red-500">*</span>
                         </label>
                         
                         <!-- Protagonistas Seleccionados (Chips) -->
@@ -891,7 +924,7 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                                 <app-icon icon="people_outline" size="xs" class="text-emerald-600"></app-icon>
-                                Total participantes protagonistas
+                                Total participantes protagonistas proyectados
                             </label>
                             <div class="relative">
                                 <input 
@@ -1001,24 +1034,6 @@
                         }
                     </div>
 
-                    <!-- Estado -->
-                    <div class="space-y-6">
-                        <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                            <app-icon icon="toggle_on" size="sm"></app-icon>
-                            <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
-                        </div>
-
-                        <div class="pt-2 pb-6">
-                            <label class="inline-flex items-center cursor-pointer group">
-                                <input 
-                                    type="checkbox" 
-                                    formControlName="activo"
-                                    class="sr-only peer">
-                                <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                                <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Actividad Activa</span>
-                            </label>
-                        </div>
-                    </div>
                     </div>
                 }
             </div>
@@ -1028,7 +1043,7 @@
                 <!-- Header del acordeón -->
                 <button
                     type="button"
-                    (click)="seccionResponsablesExpandida.set(!seccionResponsablesExpandida())"
+                    (click)="toggleSeccionResponsables()"
                     class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
@@ -1039,11 +1054,17 @@
                             <p class="text-xs text-slate-500 mt-0.5">Seleccione al menos un tipo de responsable y complete la información</p>
                         </div>
                     </div>
-                    <app-icon 
-                        [icon]="seccionResponsablesExpandida() ? 'expand_less' : 'expand_more'" 
-                        size="md" 
-                        class="text-emerald-600 transition-transform duration-200"
-                        [class.rotate-180]="!seccionResponsablesExpandida()"></app-icon>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionResponsablesExpandida()" [class.text-slate-400]="!seccionResponsablesExpandida()">
+                            {{ seccionResponsablesExpandida() ? 'Abierta' : 'Cerrada' }}
+                        </span>
+                        <app-icon 
+                            [icon]="seccionResponsablesExpandida() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
+                            size="md" 
+                            class="transition-all duration-200"
+                            [class.text-emerald-600]="seccionResponsablesExpandida()"
+                            [class.text-slate-400]="!seccionResponsablesExpandida()"></app-icon>
+                    </div>
                 </button>
                 
                 <!-- Contenido del acordeón -->
@@ -1149,17 +1170,19 @@
                                         [class.text-teal-900]="isTipoResponsableSeleccionado('externo')">Externos</span>
                                 </label>
                             </div>
-                            @if (!tieneAlMenosUnResponsable() && form.get('nombreActividad')?.touched) {
+                            @if (!tieneAlMenosUnTipoResponsable() && form.get('nombreActividad')?.touched) {
                                 <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                     <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                                    <p class="text-xs text-red-800">Debe agregar al menos una persona válida como responsable.</p>
+                                    <p class="text-xs text-red-800">Debe seleccionar al menos un tipo de responsable.</p>
                                 </div>
                             }
                         </div>
                         
-                        <!-- Sección de Usuarios -->
-                        @if (isTipoResponsableSeleccionado('usuario')) {
-                        <div class="border-2 border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                        <!-- Secciones de Responsables (ordenadas por selección) -->
+                        @for (tipo of tiposResponsablesOrdenados(); track tipo) {
+                            @if (tipo === 'usuario') {
+                            <!-- Sección de Usuarios -->
+                            <div id="seccion-usuarios" class="border-2 border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -1189,7 +1212,7 @@
                                         <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Usuario" para comenzar</p>
                                     </div>
                                 } @else {
-                                    @for (usuarioControl of usuariosArray.controls; track $index) {
+                                    @for (usuarioControl of usuariosArray.controls; track usuarioControl) {
                                         <div class="bg-white border-2 border-indigo-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
                                             <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
                                                 <div class="flex items-center gap-2">
@@ -1243,12 +1266,11 @@
                                     }
                                 }
                             </div>
-                        </div>
-                        }
-                        
-                        <!-- Sección de Docentes -->
-                        @if (isTipoResponsableSeleccionado('docente')) {
-                        <div class="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-br from-blue-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            </div>
+                            }
+                            @if (tipo === 'docente') {
+                            <!-- Sección de Docentes -->
+                            <div id="seccion-docentes" class="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-br from-blue-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -1278,7 +1300,7 @@
                                         <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Docente" para comenzar</p>
                                     </div>
                                 } @else {
-                                    @for (docenteControl of docentesArray.controls; track $index) {
+                                    @for (docenteControl of docentesArray.controls; track docenteControl) {
                                         <div class="bg-white border-2 border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
                                             <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
                                                 <div class="flex items-center gap-2">
@@ -1345,12 +1367,11 @@
                                     }
                                 }
                             </div>
-                        </div>
-                        }
-                        
-                        <!-- Sección de Estudiantes -->
-                        @if (isTipoResponsableSeleccionado('estudiante')) {
-                        <div class="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            </div>
+                            }
+                            @if (tipo === 'estudiante') {
+                            <!-- Sección de Estudiantes -->
+                            <div id="seccion-estudiantes" class="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
@@ -1380,7 +1401,7 @@
                                         <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Estudiante" para comenzar</p>
                                     </div>
                                 } @else {
-                                    @for (estudianteControl of estudiantesArray.controls; track $index) {
+                                    @for (estudianteControl of estudiantesArray.controls; track estudianteControl) {
                                         <div class="bg-white border-2 border-purple-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
                                             <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
                                                 <div class="flex items-center gap-2">
@@ -1453,12 +1474,11 @@
                                     }
                                 }
                             </div>
-                        </div>
-                        }
-                        
-                        <!-- Sección de Administrativos -->
-                        @if (isTipoResponsableSeleccionado('administrativo')) {
-                        <div class="border-2 border-amber-200 rounded-xl p-5 bg-gradient-to-br from-amber-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            </div>
+                            }
+                            @if (tipo === 'administrativo') {
+                            <!-- Sección de Administrativos -->
+                            <div id="seccion-administrativos" class="border-2 border-amber-200 rounded-xl p-5 bg-gradient-to-br from-amber-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
@@ -1488,7 +1508,7 @@
                                         <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Administrativo" para comenzar</p>
                                     </div>
                                 } @else {
-                                    @for (adminControl of administrativosArray.controls; track $index) {
+                                    @for (adminControl of administrativosArray.controls; track adminControl) {
                                         <div class="bg-white border-2 border-amber-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
                                             <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
                                                 <div class="flex items-center gap-2">
@@ -1557,10 +1577,9 @@
                             </div>
                         </div>
                         }
-                        
-                        <!-- Sección de Responsables Externos -->
-                        @if (isTipoResponsableSeleccionado('externo')) {
-                        <div class="border-2 border-teal-200 rounded-xl p-5 bg-gradient-to-br from-teal-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            @if (tipo === 'externo') {
+                            <!-- Sección de Responsables Externos -->
+                            <div id="seccion-externos" class="border-2 border-teal-200 rounded-xl p-5 bg-gradient-to-br from-teal-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center">
@@ -1590,7 +1609,7 @@
                                         <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Externo" para comenzar</p>
                                     </div>
                                 } @else {
-                                    @for (externoControl of responsablesExternosArray.controls; track $index) {
+                                    @for (externoControl of responsablesExternosArray.controls; track externoControl) {
                                         <div class="bg-white border-2 border-teal-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
                                             <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
                                                 <div class="flex items-center gap-2">
@@ -1711,7 +1730,8 @@
                                     }
                                 }
                             </div>
-                        </div>
+                            </div>
+                            }
                         }
                     </div>
                     </div>
