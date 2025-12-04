@@ -417,7 +417,7 @@
                           @for (mensual of getActividadesMensualesSeleccionadas(); track $index) {
                             <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
                               <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                              <span>{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}</span>
+                              <span>{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}</span>
                             </div>
                           }
                         </div>

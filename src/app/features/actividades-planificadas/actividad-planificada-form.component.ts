@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, Abs
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
-import type { ActividadCreate } from '../../core/models/actividad';
+import type { ActividadCreate, ResponsableCreate } from '../../core/models/actividad';
 import type { Departamento } from '../../core/models/departamento';
 import type { CategoriaActividad } from '../../core/models/categoria-actividad';
 import type { EstadoActividad } from '../../core/models/estado-actividad';
@@ -26,6 +26,7 @@ import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 import { AlertService } from '../../core/services/alert.service';
 import { forkJoin } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Component({
   standalone: true,
@@ -128,9 +129,30 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   docentes = signal<Docente[]>([]);
   estudiantes = signal<Estudiante[]>([]);
   administrativos = signal<Administrativo[]>([]);
+  responsablesExternos = signal<any[]>([]);
   rolesResponsable = signal<any[]>([]);
   tiposResponsableSeleccionados = signal<string[]>([]);
   ordenTiposResponsables = signal<string[]>([]); // Orden de selección (el más reciente primero)
+  
+  // Búsqueda para responsables
+  terminoBusquedaUsuario = signal<{ [key: number]: string }>({});
+  terminoBusquedaDocente = signal<{ [key: number]: string }>({});
+  terminoBusquedaEstudiante = signal<{ [key: number]: string }>({});
+  terminoBusquedaAdministrativo = signal<{ [key: number]: string }>({});
+  terminoBusquedaExterno = signal<{ [key: number]: string }>({});
+  
+  // Dropdowns abiertos para responsables
+  mostrarDropdownUsuario = signal<{ [key: number]: boolean }>({});
+  mostrarDropdownDocente = signal<{ [key: number]: boolean }>({});
+  mostrarDropdownEstudiante = signal<{ [key: number]: boolean }>({});
+  mostrarDropdownAdministrativo = signal<{ [key: number]: boolean }>({});
+  mostrarDropdownExterno = signal<{ [key: number]: boolean }>({});
+  
+  // Selección múltiple
+  mostrarSeleccionMultiple = signal<{ [key: string]: boolean }>({});
+  personasSeleccionadas = signal<{ [key: string]: number[] }>({});
+  rolSeleccionadoMultiple = signal<{ [key: string]: number | null }>({});
+  terminoBusquedaMultiple = signal<{ [key: string]: string }>({});
 
   indicadorIdFromQuery = signal<number | null>(null);
 
@@ -196,6 +218,55 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   // Validador personalizado para comparar fechas
+  fechaInicioValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) {
+      return null; // Dejar que Validators.required maneje los campos vacíos
+    }
+
+    // Parsear la fecha sin problemas de zona horaria
+    const fechaStr = control.value; // Formato: YYYY-MM-DD
+    const partes = fechaStr.split('-');
+    if (partes.length !== 3) {
+      return null; // Formato inválido
+    }
+    
+    const fechaYear = Number(partes[0]);
+    const fechaMonth = Number(partes[1]); // 1-12
+    const fechaDay = Number(partes[2]); // 1-31
+    
+    if (isNaN(fechaYear) || isNaN(fechaMonth) || isNaN(fechaDay)) {
+      return null; // Valores inválidos
+    }
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // Convertir de 0-11 a 1-12
+    const currentDay = now.getDate(); // 1-31
+
+    // Validar año: no puede ser menor al año vigente
+    if (fechaYear < currentYear) {
+      return { 
+        fechaInicioAnterior: true
+      };
+    }
+
+    // Validar mes: si es el mismo año, el mes no puede ser anterior al mes vigente
+    if (fechaYear === currentYear && fechaMonth < currentMonth) {
+      return { 
+        fechaInicioMesAnterior: true
+      };
+    }
+
+    // Validar día: si es el mismo año y mes, el día no puede ser anterior al día vigente (advertencia)
+    if (fechaYear === currentYear && fechaMonth === currentMonth && fechaDay < currentDay) {
+      return { 
+        fechaInicioDiaAnterior: true
+      };
+    }
+
+    return null;
+  }
+
   fechaFinValidator(control: AbstractControl): ValidationErrors | null {
     if (!control.parent) {
       return null;
@@ -208,29 +279,64 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       return null; // Si alguna fecha está vacía, no validar (validación opcional)
     }
     
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
+    // Parsear fechas sin problemas de zona horaria
+    const [inicioYear, inicioMonth, inicioDay] = fechaInicio.split('-').map(Number);
+    const [finYear, finMonth, finDay] = fechaFin.split('-').map(Number);
+    
+    const inicio = new Date(inicioYear, inicioMonth - 1, inicioDay); // month - 1 porque Date usa 0-11
+    const fin = new Date(finYear, finMonth - 1, finDay);
+    
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
+      return null; // Fechas inválidas serán manejadas por otros validadores
+    }
     
     // Comparar solo las fechas (sin horas)
     inicio.setHours(0, 0, 0, 0);
     fin.setHours(0, 0, 0, 0);
     
+    // Validar que la fecha de fin no sea anterior a la fecha de inicio
     if (fin < inicio) {
       return { fechaFinAnterior: true };
+    }
+
+    // Validar que la fecha de fin no sea de un año anterior al de inicio
+    if (finYear < inicioYear) {
+      return { fechaFinAnioAnterior: true };
+    }
+
+    // Validar mes: si es el mismo año que inicio, el mes no puede ser anterior
+    if (finYear === inicioYear) {
+      if (finMonth < inicioMonth) {
+        return { fechaFinMesAnterior: true };
+      }
+    }
+
+    // Validar mes respecto al mes vigente (advertencia)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // Convertir de 0-11 a 1-12
+    const currentDay = now.getDate();
+
+    if (finYear === currentYear && finMonth < currentMonth) {
+      return { fechaFinMesAnteriorVigente: true };
+    }
+
+    // Validar día: si es el mismo año y mes, el día no puede ser anterior al día vigente (advertencia)
+    if (finYear === currentYear && finMonth === currentMonth && finDay < currentDay) {
+      return { fechaFinDiaAnteriorVigente: true };
     }
     
     return null;
   }
 
   initializeForm(): void {
-    const currentYear = new Date().getFullYear();
     this.form = this.fb.group({
       nombre: [''], // No requerido en el formulario principal, solo se usa en responsables
       nombreActividad: ['', [Validators.required, Validators.minLength(3)]],
       descripcion: [''],
       departamentoId: [null],
       departamentoResponsableId: [[], Validators.required],
-      fechaInicio: ['', Validators.required],
+      fechaInicio: ['', [Validators.required, this.fechaInicioValidator.bind(this)]],
       fechaFin: ['', [Validators.required, this.fechaFinValidator.bind(this)]],
       horaRealizacion: [''], // Campo oculto que se actualiza desde los selects
       horaRealizacionHora: ['', Validators.required],
@@ -250,9 +356,9 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       objetivo: [''],
       cantidadParticipantesProyectados: [null, Validators.required],
       cantidadParticipantesEstudiantesProyectados: [null],
-      cantidadTotalParticipantesProtagonistas: [null],
+      cantidadTotalParticipantesProtagonistas: [null, Validators.required],
       idTipoEvidencias: [[]],
-      anio: [String(new Date().getFullYear())],
+      anio: [''],
       horaInicioPrevista: [''],
       idTipoProtagonista: [[], Validators.required],
       responsableActividad: [''],
@@ -493,6 +599,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         console.log('✅ Actividades anuales filtradas para indicador', idIndicador, ':', actividadesFiltradas.length, 'de', actividadesAnuales?.length || 0);
         this.actividadesAnualesFiltradas.set(actividadesFiltradas);
         
+        // Si hay actividades anuales disponibles y no estamos en modo skipCheck, abrir el dropdown automáticamente
+        if (!skipCheck && actividadesFiltradas.length > 0) {
+          this.mostrarDropdownActividadAnual.set(true);
+        }
+        
         if (skipCheck && actividadAnualActual) {
           const actividadesAnualesArray = Array.isArray(actividadAnualActual) ? actividadAnualActual : [actividadAnualActual];
           const actividadesValidas = actividadesAnualesArray.filter(id => 
@@ -570,6 +681,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         );
 
         this.actividadesMensualesFiltradas.set(mensualesUnicas);
+        
+        // Si hay actividades mensuales disponibles y no estamos en modo skipCheck, abrir el dropdown automáticamente
+        if (!skipCheck && mensualesUnicas.length > 0) {
+          this.mostrarDropdownActividadMensual.set(true);
+        }
 
         if (skipCheck) {
           const actividadMensualActual = this.form.get('idActividadMensualInst')?.value;
@@ -681,7 +797,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           idIndicador: data.idIndicador || null,
           idActividadAnual: idActividadAnualArray,
           objetivo: data.objetivo || '',
-          anio: data.anio ? String(data.anio) : String(new Date().getFullYear()),
+          anio: data.anio ? String(data.anio) : '',
           horaRealizacion: data.horaRealizacion || '',
           horaRealizacionHora: horaRealizacionHora,
           horaRealizacionMinuto: horaRealizacionMinuto,
@@ -779,17 +895,15 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       let fechaFin: string | undefined = undefined;
       
       if (formValue.fechaInicio) {
-        const fecha = new Date(formValue.fechaInicio);
-        if (!isNaN(fecha.getTime())) {
-          fechaInicio = fecha.toISOString().split('T')[0];
-        }
+        // El valor ya viene en formato YYYY-MM-DD del input type="date"
+        // No necesitamos convertir con Date para evitar problemas de zona horaria
+        fechaInicio = formValue.fechaInicio;
       }
       
       if (formValue.fechaFin) {
-        const fecha = new Date(formValue.fechaFin);
-        if (!isNaN(fecha.getTime())) {
-          fechaFin = fecha.toISOString().split('T')[0];
-        }
+        // El valor ya viene en formato YYYY-MM-DD del input type="date"
+        // No necesitamos convertir con Date para evitar problemas de zona horaria
+        fechaFin = formValue.fechaFin;
       }
 
       let horaRealizacion: string | undefined = undefined;
@@ -799,12 +913,16 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         horaRealizacion = hora.includes(':') ? (hora.split(':').length === 2 ? hora + ':00' : hora) : hora;
       }
 
+      // Construir el array de responsables antes de crear la actividad
+      const responsables = this.construirResponsables(formValue);
+      
       const data: ActividadCreate = {
         nombreActividad: formValue.nombreActividad || formValue.nombre,
         nombre: formValue.nombreActividad || formValue.nombre,
         descripcion: formValue.descripcion || undefined,
         departamentoId: formValue.departamentoId || undefined,
-        departamentoResponsableId: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : undefined,
+        // Cambiar a idDepartamentosResponsables (plural) como espera el backend
+        idDepartamentosResponsables: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : undefined,
         fechaInicio: fechaInicio,
         fechaFin: fechaFin,
         idEstadoActividad: formValue.idEstadoActividad || undefined,
@@ -813,23 +931,32 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         idCapacidadInstalada: formValue.idCapacidadInstalada || undefined,
         semanaMes: formValue.semanaMes || undefined,
         codigoActividad: formValue.codigoActividad || undefined,
-        idActividadMensualInst: Array.isArray(formValue.idActividadMensualInst) && formValue.idActividadMensualInst.length > 0 ? formValue.idActividadMensualInst : undefined,
+        // El backend espera List<int>? (array) - usar idActividadesMensualesInst (plural)
+        idActividadesMensualesInst: Array.isArray(formValue.idActividadMensualInst) && formValue.idActividadMensualInst.length > 0 
+          ? formValue.idActividadMensualInst 
+          : undefined,
         esPlanificada: true, // Siempre true para actividades planificadas
         idIndicador: formValue.idIndicador || undefined,
-        idActividadAnual: Array.isArray(formValue.idActividadAnual) && formValue.idActividadAnual.length > 0 ? formValue.idActividadAnual : undefined,
+        // El backend espera List<int>? (array) - usar idActividadesAnuales (plural)
+        idActividadesAnuales: Array.isArray(formValue.idActividadAnual) && formValue.idActividadAnual.length > 0 
+          ? formValue.idActividadAnual 
+          : undefined,
         objetivo: formValue.objetivo || undefined,
         anio: formValue.anio ? String(formValue.anio) : undefined,
         horaRealizacion: horaRealizacion,
         cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados || undefined,
         cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados || undefined,
-        cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas || undefined,
-        idTipoProtagonista: Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0 ? formValue.idTipoProtagonista : undefined,
+        cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas !== null && formValue.cantidadTotalParticipantesProtagonistas !== undefined && formValue.cantidadTotalParticipantesProtagonistas !== '' ? Number(formValue.cantidadTotalParticipantesProtagonistas) : undefined,
+        // Cambiar a idTiposProtagonistas (plural) como espera el backend
+        idTiposProtagonistas: Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0 ? formValue.idTipoProtagonista : undefined,
         idTipoEvidencias: Array.isArray(formValue.idTipoEvidencias) && formValue.idTipoEvidencias.length > 0 ? formValue.idTipoEvidencias : undefined,
         responsableActividad: formValue.responsableActividad || undefined,
         categoriaActividadId: Array.isArray(formValue.idTipoActividad) && formValue.idTipoActividad.length > 0 ? formValue.idTipoActividad[0] : (formValue.categoriaActividadId || undefined),
         areaConocimientoId: formValue.idArea || formValue.areaConocimientoId || undefined,
         ubicacion: formValue.ubicacion || undefined,
-        activo: formValue.activo !== undefined ? formValue.activo : true
+        activo: formValue.activo !== undefined ? formValue.activo : true,
+        // Incluir responsables en el payload
+        responsables: responsables.length > 0 ? responsables : undefined
       };
 
       if (this.isEditMode()) {
@@ -849,33 +976,102 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           }
         });
       } else {
+        // Log solo en desarrollo para no ralentizar en producción
+        if (!environment.production) {
+          console.log('📤 Enviando datos al backend:', JSON.stringify(data, null, 2));
+        }
+        
         this.actividadesService.create(data).subscribe({
           next: (actividadCreada) => {
             const indicadorId = this.indicadorIdFromQuery();
-            const responsableActividad = formValue.responsableActividad?.trim();
+            const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
             
-            if (indicadorId && actividadCreada.id) {
+            // Mostrar alerta de éxito inmediatamente después de crear la actividad
+            this.loading.set(false);
+            this.alertService.success(
+              '¡Actividad creada exitosamente!',
+              `La actividad "${nombreActividad}" ha sido creada correctamente.`
+            ).then(() => {
+              // Redirigir a la vista de actividades después de cerrar la alerta
+              this.clearFormState();
+              this.router.navigate(['/actividades']);
+            });
+            
+            // Si hay un indicador adicional desde query params, asociarlo en segundo plano
+            if (actividadCreada.id && indicadorId) {
               this.actividadesService.agregarIndicador(actividadCreada.id, indicadorId).subscribe({
                 next: () => {
-                  this.crearResponsablesParaActividad(actividadCreada.id, responsableActividad);
+                  console.log('✅ Indicador asociado correctamente');
                 },
                 error: (errIndicador) => {
                   console.error('Error al asociar indicador:', errIndicador);
-                  this.crearResponsablesParaActividad(actividadCreada.id, responsableActividad);
                 }
               });
-            } else {
-              if (actividadCreada.id) {
-                this.crearResponsablesParaActividad(actividadCreada.id, responsableActividad);
-              } else {
-                this.router.navigate(['/actividades']);
-              }
             }
           },
           error: (err: any) => {
-            console.error('Error saving actividad:', err);
-            this.error.set('Error al guardar la actividad');
+            console.error('❌ Error saving actividad:', err);
+            console.error('📋 Error details:', err.error);
+            console.error('📤 Payload enviado:', JSON.stringify(data, null, 2));
+            
             this.loading.set(false);
+            
+            // Detectar error de timeout
+            const errorMessage = err.error?.message || err.error?.details || err.error || err.message || '';
+            const errorText = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+            const isTimeoutError = errorText.includes('Execution Timeout Expired') || 
+                                 errorText.includes('timeout period elapsed') ||
+                                 errorText.includes('timeout period ela') ||
+                                 errorText.includes('SqlException') ||
+                                 (err.status === 400 && errorText.includes('timeout'));
+            
+            // Detectar error de nombre duplicado
+            const isDuplicateNameError = errorText.includes('UQ_Actividades_Nombre') || 
+                                        errorText.includes('duplicate key') ||
+                                        errorText.includes('Cannot insert duplicate key');
+            
+            if (isTimeoutError) {
+              // Timeout: la actividad puede haberse creado pero el backend no pudo responder a tiempo
+              const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
+              this.alertService.warning(
+                '⏱️ Timeout en la creación de la actividad',
+                `La operación tardó demasiado tiempo. Es posible que la actividad "${nombreActividad}" se haya creado correctamente, pero el servidor no pudo responder a tiempo.\n\n` +
+                `Por favor, verifica en la lista de actividades si la actividad fue creada. Si no aparece, intenta crearla nuevamente.`
+              ).then(() => {
+                // Redirigir a la vista de actividades para que el usuario pueda verificar
+                this.clearFormState();
+                this.router.navigate(['/actividades']);
+              });
+              this.error.set('Timeout: La actividad puede haberse creado. Verifica en la lista de actividades.');
+            } else if (isDuplicateNameError) {
+              // Solo mostrar alerta de que ya existe la actividad
+              const nombreOriginal = formValue.nombreActividad || formValue.nombre;
+              const currentYear = new Date().getFullYear();
+              this.alertService.warning(
+                `Ya existe una actividad con el nombre "${nombreOriginal}" en el año ${currentYear}. ` +
+                `Por favor, cambia el nombre de la actividad.`
+              );
+              this.error.set(`Ya existe una actividad con este nombre en el año ${currentYear}`);
+            } else {
+              // Otro tipo de error
+              let errorMsg = 'Error al guardar la actividad';
+              if (err.error) {
+                if (typeof err.error === 'string') {
+                  errorMsg = err.error;
+                } else if (err.error.message) {
+                  errorMsg = err.error.message;
+                } else if (err.error.errors) {
+                  // Si hay errores de validación, mostrar el primero
+                  const firstError = Object.values(err.error.errors)[0];
+                  if (Array.isArray(firstError) && firstError.length > 0) {
+                    errorMsg = String(firstError[0]);
+                  }
+                }
+              }
+              
+              this.alertService.error('Error al guardar la actividad', errorMsg);
+              this.error.set(errorMsg);
+            }
           }
         });
       }
@@ -1258,11 +1454,25 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       } else {
         newValue = currentValue;
       }
+      // Cerrar el dropdown de anuales después de seleccionar
       this.mostrarDropdownActividadAnual.set(false);
+      
+      // Cargar actividades mensuales para las actividades anuales seleccionadas y abrir el dropdown automáticamente
+      this.cargarActividadesMensualesPorMultiplesAnuales(newValue, false);
+      // Abrir el dropdown de actividades mensuales automáticamente cuando se carguen los datos
+      this.mostrarDropdownActividadMensual.set(true);
     } else {
       newValue = currentValue.filter((item: number) => item !== id);
       if (newValue.length === 0) {
         this.mostrarDropdownActividadAnual.set(true);
+        // Si no hay actividades anuales seleccionadas, limpiar las mensuales
+        this.actividadesMensualesFiltradas.set([]);
+        this.form.patchValue({ idActividadMensualInst: [] }, { emitEvent: false });
+        this.mostrarDropdownActividadMensual.set(false);
+      } else {
+        // Recargar actividades mensuales con las actividades anuales restantes
+        this.cargarActividadesMensualesPorMultiplesAnuales(newValue, false);
+        this.mostrarDropdownActividadMensual.set(true);
       }
     }
     
@@ -1336,6 +1546,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       } else {
         newValue = currentValue;
       }
+      // Cerrar el dropdown de mensuales después de seleccionar
       this.mostrarDropdownActividadMensual.set(false);
     } else {
       newValue = currentValue.filter((item: number) => item !== id);
@@ -1443,10 +1654,14 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
 
   crearUsuarioFormGroup(): FormGroup {
     const formGroup = this.fb.group({
-      idUsuario: [null, Validators.required]
+      idUsuario: [null, Validators.required],
+      idRolResponsable: [null, Validators.required]
     });
     // Forzar reset para asegurar que esté completamente limpio
-    formGroup.reset({ idUsuario: null }, { emitEvent: false });
+    formGroup.reset({ 
+      idUsuario: null, 
+      idRolResponsable: null 
+    }, { emitEvent: false });
     return formGroup;
   }
 
@@ -1467,15 +1682,21 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
 
   crearResponsableExternoFormGroup(): FormGroup {
     const formGroup = this.fb.group({
+      idResponsableExterno: [null], // Para seleccionar existente
+      esNuevo: [true], // Indica si es nuevo o existente
       nombre: ['', [Validators.required]],
       institucion: ['', [Validators.required]],
       cargo: [''],
       telefono: [''],
       correo: [''],
       idRolResponsable: [null, Validators.required]
+    }, {
+      validators: this.validarContactoExterno.bind(this)
     });
     // Forzar reset para asegurar que esté completamente limpio
     formGroup.reset({ 
+      idResponsableExterno: null,
+      esNuevo: true,
       nombre: '', 
       institucion: '', 
       cargo: '', 
@@ -1484,6 +1705,20 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       idRolResponsable: null 
     }, { emitEvent: false });
     return formGroup;
+  }
+
+  // Validador personalizado: al menos teléfono o correo debe estar presente si es nuevo
+  validarContactoExterno(formGroup: FormGroup): ValidationErrors | null {
+    const esNuevo = formGroup.get('esNuevo')?.value;
+    const telefono = formGroup.get('telefono')?.value;
+    const correo = formGroup.get('correo')?.value;
+    
+    // Si es nuevo, al menos teléfono o correo debe estar presente
+    if (esNuevo && (!telefono || telefono.trim() === '') && (!correo || correo.trim() === '')) {
+      return { contactoRequerido: true };
+    }
+    
+    return null;
   }
 
   agregarPersona(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): void {
@@ -1556,6 +1791,42 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     this.responsablesExternosArray.removeAt(index);
   }
 
+  seleccionarResponsableExternoExistente(control: AbstractControl, id: number): void {
+    const formGroup = control as FormGroup;
+    const responsable = this.responsablesExternos().find(r => r.id === id);
+    if (responsable) {
+      formGroup.patchValue({
+        idResponsableExterno: responsable.id,
+        esNuevo: false,
+        nombre: responsable.nombre,
+        institucion: responsable.institucion,
+        cargo: responsable.cargo || '',
+        telefono: responsable.telefono || '',
+        correo: responsable.correo || ''
+      });
+      const index = this.responsablesExternosArray.controls.indexOf(control);
+      this.mostrarDropdownExterno.set({ ...this.mostrarDropdownExterno(), [index]: false });
+    }
+  }
+
+  cambiarANuevoResponsableExterno(control: AbstractControl): void {
+    const formGroup = control as FormGroup;
+    formGroup.patchValue({
+      idResponsableExterno: null,
+      esNuevo: true,
+      nombre: '',
+      institucion: '',
+      cargo: '',
+      telefono: '',
+      correo: ''
+    });
+  }
+
+  esResponsableExternoNuevo(control: AbstractControl): boolean {
+    const formGroup = control as FormGroup;
+    return formGroup.get('esNuevo')?.value === true;
+  }
+
   getPersonasDisponiblesPorTipo(tipo: 'usuario' | 'docente' | 'estudiante' | 'administrativo'): any[] {
     if (tipo === 'usuario') {
       return this.usuarios();
@@ -1570,6 +1841,342 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
 
   getNombrePersona(persona: any): string {
     return persona.nombreCompleto || persona.nombre || 'Sin nombre';
+  }
+
+  // Métodos para búsqueda de responsables
+  getUsuariosFiltrados(index: number): Usuario[] {
+    const termino = (this.terminoBusquedaUsuario()[index] || '').toLowerCase();
+    if (!termino) return this.usuarios();
+    return this.usuarios().filter(u => {
+      const nombre = (u.nombreCompleto || '').toLowerCase();
+      return nombre.includes(termino);
+    });
+  }
+
+  getDocentesFiltrados(index: number): Docente[] {
+    const termino = (this.terminoBusquedaDocente()[index] || '').toLowerCase();
+    if (!termino) return this.docentes();
+    return this.docentes().filter(d => {
+      const nombre = this.getNombrePersona(d).toLowerCase();
+      return nombre.includes(termino);
+    });
+  }
+
+  getEstudiantesFiltrados(index: number): Estudiante[] {
+    const termino = (this.terminoBusquedaEstudiante()[index] || '').toLowerCase();
+    if (!termino) return this.estudiantes();
+    return this.estudiantes().filter(e => {
+      const nombre = this.getNombrePersona(e).toLowerCase();
+      return nombre.includes(termino);
+    });
+  }
+
+  getAdministrativosFiltrados(index: number): Administrativo[] {
+    const termino = (this.terminoBusquedaAdministrativo()[index] || '').toLowerCase();
+    if (!termino) return this.administrativos();
+    return this.administrativos().filter(a => {
+      const nombre = this.getNombrePersona(a).toLowerCase();
+      return nombre.includes(termino);
+    });
+  }
+
+  getResponsablesExternosFiltrados(index: number): any[] {
+    const termino = (this.terminoBusquedaExterno()[index] || '').toLowerCase();
+    if (!termino) return this.responsablesExternos();
+    return this.responsablesExternos().filter(r => {
+      const nombre = (r.nombre || '').toLowerCase();
+      const institucion = (r.institucion || '').toLowerCase();
+      return nombre.includes(termino) || institucion.includes(termino);
+    });
+  }
+
+  toggleDropdownUsuario(index: number): void {
+    const current = this.mostrarDropdownUsuario();
+    this.mostrarDropdownUsuario.set({ ...current, [index]: !current[index] });
+  }
+
+  toggleDropdownDocente(index: number): void {
+    const current = this.mostrarDropdownDocente();
+    this.mostrarDropdownDocente.set({ ...current, [index]: !current[index] });
+  }
+
+  toggleDropdownEstudiante(index: number): void {
+    const current = this.mostrarDropdownEstudiante();
+    this.mostrarDropdownEstudiante.set({ ...current, [index]: !current[index] });
+  }
+
+  toggleDropdownAdministrativo(index: number): void {
+    const current = this.mostrarDropdownAdministrativo();
+    this.mostrarDropdownAdministrativo.set({ ...current, [index]: !current[index] });
+  }
+
+  toggleDropdownExterno(index: number): void {
+    const current = this.mostrarDropdownExterno();
+    this.mostrarDropdownExterno.set({ ...current, [index]: !current[index] });
+  }
+
+  seleccionarUsuario(control: AbstractControl, id: number | string): void {
+    const formGroup = control as FormGroup;
+    formGroup.patchValue({ idUsuario: id });
+    const index = this.usuariosArray.controls.indexOf(control);
+    this.mostrarDropdownUsuario.set({ ...this.mostrarDropdownUsuario(), [index]: false });
+  }
+
+  seleccionarPersona(control: AbstractControl, tipo: 'docente' | 'estudiante' | 'administrativo', id: number): void {
+    const formGroup = control as FormGroup;
+    formGroup.patchValue({ idPersona: id });
+    let index = -1;
+    if (tipo === 'docente') {
+      index = this.docentesArray.controls.indexOf(control);
+      this.mostrarDropdownDocente.set({ ...this.mostrarDropdownDocente(), [index]: false });
+    } else if (tipo === 'estudiante') {
+      index = this.estudiantesArray.controls.indexOf(control);
+      this.mostrarDropdownEstudiante.set({ ...this.mostrarDropdownEstudiante(), [index]: false });
+    } else {
+      index = this.administrativosArray.controls.indexOf(control);
+      this.mostrarDropdownAdministrativo.set({ ...this.mostrarDropdownAdministrativo(), [index]: false });
+    }
+  }
+
+  getUsuarioSeleccionado(control: AbstractControl): Usuario | null {
+    const formGroup = control as FormGroup;
+    const id = formGroup.get('idUsuario')?.value;
+    if (!id) return null;
+    return this.usuarios().find(u => (u.id || u.idUsuario) === id) || null;
+  }
+
+  getPersonaSeleccionada(control: AbstractControl, tipo: 'docente' | 'estudiante' | 'administrativo'): any {
+    const formGroup = control as FormGroup;
+    const id = formGroup.get('idPersona')?.value;
+    if (!id) return null;
+    if (tipo === 'docente') {
+      return this.docentes().find(d => d.id === id) || null;
+    } else if (tipo === 'estudiante') {
+      return this.estudiantes().find(e => e.id === id) || null;
+    } else {
+      return this.administrativos().find(a => a.id === id) || null;
+    }
+  }
+
+  getResponsableExternoSeleccionado(control: AbstractControl): any {
+    const formGroup = control as FormGroup;
+    const id = formGroup.get('idResponsableExterno')?.value;
+    if (!id) return null;
+    return this.responsablesExternos().find(r => r.id === id) || null;
+  }
+
+  actualizarBusquedaUsuario(index: number, valor: string): void {
+    this.terminoBusquedaUsuario.set({ ...this.terminoBusquedaUsuario(), [index]: valor });
+  }
+
+  limpiarBusquedaUsuario(index: number): void {
+    this.terminoBusquedaUsuario.set({ ...this.terminoBusquedaUsuario(), [index]: '' });
+  }
+
+  actualizarBusquedaDocente(index: number, valor: string): void {
+    this.terminoBusquedaDocente.set({ ...this.terminoBusquedaDocente(), [index]: valor });
+  }
+
+  limpiarBusquedaDocente(index: number): void {
+    this.terminoBusquedaDocente.set({ ...this.terminoBusquedaDocente(), [index]: '' });
+  }
+
+  actualizarBusquedaEstudiante(index: number, valor: string): void {
+    this.terminoBusquedaEstudiante.set({ ...this.terminoBusquedaEstudiante(), [index]: valor });
+  }
+
+  limpiarBusquedaEstudiante(index: number): void {
+    this.terminoBusquedaEstudiante.set({ ...this.terminoBusquedaEstudiante(), [index]: '' });
+  }
+
+  actualizarBusquedaAdministrativo(index: number, valor: string): void {
+    this.terminoBusquedaAdministrativo.set({ ...this.terminoBusquedaAdministrativo(), [index]: valor });
+  }
+
+  limpiarBusquedaAdministrativo(index: number): void {
+    this.terminoBusquedaAdministrativo.set({ ...this.terminoBusquedaAdministrativo(), [index]: '' });
+  }
+
+  actualizarBusquedaExterno(index: number, valor: string): void {
+    this.terminoBusquedaExterno.set({ ...this.terminoBusquedaExterno(), [index]: valor });
+  }
+
+  limpiarBusquedaExterno(index: number): void {
+    this.terminoBusquedaExterno.set({ ...this.terminoBusquedaExterno(), [index]: '' });
+  }
+
+  // Métodos para selección múltiple
+  toggleSeleccionMultiple(tipo: string): void {
+    const current = this.mostrarSeleccionMultiple();
+    this.mostrarSeleccionMultiple.set({ ...current, [tipo]: !current[tipo] });
+    if (!current[tipo]) {
+      // Al abrir, limpiar selecciones anteriores
+      this.personasSeleccionadas.set({ ...this.personasSeleccionadas(), [tipo]: [] });
+      this.rolSeleccionadoMultiple.set({ ...this.rolSeleccionadoMultiple(), [tipo]: null });
+      this.terminoBusquedaMultiple.set({ ...this.terminoBusquedaMultiple(), [tipo]: '' });
+    }
+  }
+
+  getPersonasDisponiblesParaSeleccionMultiple(tipo: string): any[] {
+    const termino = (this.terminoBusquedaMultiple()[tipo] || '').toLowerCase();
+    let personas: any[] = [];
+    
+    if (tipo === 'usuario') {
+      personas = this.usuarios();
+    } else if (tipo === 'docente') {
+      personas = this.docentes();
+    } else if (tipo === 'estudiante') {
+      personas = this.estudiantes();
+    } else if (tipo === 'administrativo') {
+      personas = this.administrativos();
+    }
+    
+    if (!termino) return personas;
+    
+    return personas.filter(p => {
+      const nombre = this.getNombrePersona(p).toLowerCase();
+      return nombre.includes(termino);
+    });
+  }
+
+  togglePersonaSeleccionada(tipo: string, id: number): void {
+    const current = this.personasSeleccionadas();
+    const seleccionadas = current[tipo] || [];
+    const index = seleccionadas.indexOf(id);
+    
+    if (index > -1) {
+      // Deseleccionar
+      seleccionadas.splice(index, 1);
+    } else {
+      // Seleccionar
+      seleccionadas.push(id);
+    }
+    
+    this.personasSeleccionadas.set({ ...current, [tipo]: seleccionadas });
+  }
+
+  isPersonaSeleccionada(tipo: string, id: number): boolean {
+    const seleccionadas = this.personasSeleccionadas()[tipo] || [];
+    return seleccionadas.includes(id);
+  }
+
+  agregarPersonasSeleccionadas(tipo: string): void {
+    const seleccionadas = this.personasSeleccionadas()[tipo] || [];
+    const rolId = this.rolSeleccionadoMultiple()[tipo];
+    
+    if (seleccionadas.length === 0) {
+      this.alertService.warning('Por favor selecciona al menos una persona');
+      return;
+    }
+    
+    if (tipo === 'estudiante' && !rolId) {
+      this.alertService.warning('Por favor selecciona un rol para los estudiantes');
+      return;
+    }
+    
+    // Agregar todas las personas seleccionadas
+    seleccionadas.forEach(id => {
+      if (tipo === 'usuario') {
+        const formGroup = this.crearUsuarioFormGroup();
+        formGroup.patchValue({ idUsuario: id, idRolResponsable: rolId });
+        this.usuariosArray.insert(0, formGroup);
+      } else {
+        const formGroup = this.crearPersonaFormGroup(tipo as 'docente' | 'estudiante' | 'administrativo');
+        formGroup.patchValue({ idPersona: id, idRolResponsable: rolId });
+        const array = tipo === 'docente' ? this.docentesArray : 
+                      tipo === 'estudiante' ? this.estudiantesArray : 
+                      this.administrativosArray;
+        array.insert(0, formGroup);
+      }
+    });
+    
+    // Cerrar la vista de selección múltiple y limpiar
+    this.mostrarSeleccionMultiple.set({ ...this.mostrarSeleccionMultiple(), [tipo]: false });
+    this.personasSeleccionadas.set({ ...this.personasSeleccionadas(), [tipo]: [] });
+    this.rolSeleccionadoMultiple.set({ ...this.rolSeleccionadoMultiple(), [tipo]: null });
+    this.terminoBusquedaMultiple.set({ ...this.terminoBusquedaMultiple(), [tipo]: '' });
+    
+    // Hacer scroll a la sección
+    setTimeout(() => {
+      this.scrollToSeccionResponsable(tipo);
+    }, 100);
+  }
+
+  actualizarBusquedaMultiple(tipo: string, valor: string): void {
+    this.terminoBusquedaMultiple.set({ ...this.terminoBusquedaMultiple(), [tipo]: valor });
+  }
+
+  limpiarBusquedaMultiple(tipo: string): void {
+    this.terminoBusquedaMultiple.set({ ...this.terminoBusquedaMultiple(), [tipo]: '' });
+  }
+
+  getCantidadSeleccionadas(tipo: string): number {
+    return (this.personasSeleccionadas()[tipo] || []).length;
+  }
+
+  actualizarRolSeleccionadoMultiple(tipo: string, valor: string): void {
+    const rolId = valor ? +valor : null;
+    this.rolSeleccionadoMultiple.set({ ...this.rolSeleccionadoMultiple(), [tipo]: rolId });
+  }
+
+  getAnioVigente(): number {
+    return new Date().getFullYear();
+  }
+
+  getMesVigente(): number {
+    return new Date().getMonth(); // 0-11
+  }
+
+  getDiaVigente(): number {
+    return new Date().getDate(); // 1-31
+  }
+
+  getNombreMes(mes: number): string {
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return meses[mes] || '';
+  }
+
+  getAnioFechaInicio(): number | null {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    if (!fechaInicio) return null;
+    const [year] = fechaInicio.split('-').map(Number);
+    return year || null;
+  }
+
+  getMesFechaInicio(): number | null {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    if (!fechaInicio) return null;
+    const [, month] = fechaInicio.split('-').map(Number);
+    return month ? month - 1 : null; // Convertir de 1-12 a 0-11 para getNombreMes
+  }
+
+  getDiaFechaInicio(): number | null {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    if (!fechaInicio) return null;
+    const [, , day] = fechaInicio.split('-').map(Number);
+    return day || null;
+  }
+
+  getAnioFechaFin(): number | null {
+    const fechaFin = this.form.get('fechaFin')?.value;
+    if (!fechaFin) return null;
+    const [year] = fechaFin.split('-').map(Number);
+    return year || null;
+  }
+
+  getMesFechaFin(): number | null {
+    const fechaFin = this.form.get('fechaFin')?.value;
+    if (!fechaFin) return null;
+    const [, month] = fechaFin.split('-').map(Number);
+    return month ? month - 1 : null; // Convertir de 1-12 a 0-11 para getNombreMes
+  }
+
+  getDiaFechaFin(): number | null {
+    const fechaFin = this.form.get('fechaFin')?.value;
+    if (!fechaFin) return null;
+    const [, , day] = fechaFin.split('-').map(Number);
+    return day || null;
   }
 
   loadTodasLasPersonas(): void {
@@ -1602,6 +2209,14 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error loading administrativos:', err);
         this.administrativos.set([]);
+      }
+    });
+    
+    this.personasService.listResponsablesExternos().subscribe({
+      next: (data) => this.responsablesExternos.set(data),
+      error: (err) => {
+        console.error('Error loading responsables externos:', err);
+        this.responsablesExternos.set([]);
       }
     });
     
@@ -1723,7 +2338,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     return true;
   }
 
-  crearResponsablesParaActividad(idActividad: number, responsableActividad?: string): void {
+  crearResponsablesParaActividad(idActividad: number, responsableActividad?: string, mostrarAlerta: boolean = true): void {
     const responsables: ActividadResponsableCreate[] = [];
     const formValue = this.formResponsable.value;
     const fechaAsignacion = formValue.fechaAsignacion || new Date().toISOString().split('T')[0];
@@ -1822,19 +2437,22 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         next: (responsablesCreados) => {
           console.log('✅ Responsables creados exitosamente:', responsablesCreados);
           console.log('📊 Total de responsables creados:', responsablesCreados.length);
-          this.mostrarAlertaExito();
+          // No hacer nada aquí, la alerta y navegación ya se hicieron
         },
         error: (err) => {
           console.error('❌ Error creando responsables:', err);
           console.error('❌ Error details:', err.error);
           console.error('❌ Error status:', err.status);
-          // Mostrar alerta de éxito aunque haya error con responsables
-          this.mostrarAlertaExito();
+          // Mostrar alerta de advertencia pero no bloquear (la actividad ya se creó)
+          this.alertService.warning(
+            'Advertencia',
+            'La actividad se creó correctamente, pero hubo un problema al asignar algunos responsables. Puedes asignarlos manualmente más tarde.'
+          );
         }
       });
     } else {
       console.warn('⚠️ No hay responsables para crear');
-      this.mostrarAlertaExito();
+      // No hacer nada aquí, la alerta y navegación ya se hicieron
     }
   }
 
@@ -2170,6 +2788,99 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     return rol?.nombre || undefined;
   }
 
+  /**
+   * Construye el array de responsables en el formato que espera el backend
+   * El backend espera un array de objetos con idUsuario, idDocente, idEstudiante, idAdmin, idRolResponsable, etc.
+   */
+  private construirResponsables(formValue: any): ResponsableCreate[] {
+    const responsables: ResponsableCreate[] = [];
+
+    // Agregar usuarios
+    this.usuariosArray.controls.forEach((control) => {
+      const idUsuario = control.get('idUsuario')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idUsuario) {
+        responsables.push({
+          idUsuario: Number(idUsuario),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined
+        });
+      }
+    });
+
+    // Agregar docentes
+    this.docentesArray.controls.forEach((control) => {
+      const idDocente = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idDocente) {
+        responsables.push({
+          idDocente: Number(idDocente),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined
+        });
+      }
+    });
+
+    // Agregar estudiantes
+    this.estudiantesArray.controls.forEach((control) => {
+      const idEstudiante = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idEstudiante && idRolResponsable) {
+        responsables.push({
+          idEstudiante: Number(idEstudiante),
+          idRolResponsable: Number(idRolResponsable)
+        });
+      }
+    });
+
+    // Agregar administrativos
+    this.administrativosArray.controls.forEach((control) => {
+      const idAdmin = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idAdmin) {
+        responsables.push({
+          idAdmin: Number(idAdmin),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined
+        });
+      }
+    });
+
+    // Agregar responsables externos
+    this.responsablesExternosArray.controls.forEach((control) => {
+      const esNuevo = control.get('esNuevo')?.value;
+      const idResponsableExterno = control.get('idResponsableExterno')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      
+      if (esNuevo) {
+        // Responsable externo nuevo
+        const nombre = control.get('nombre')?.value;
+        const institucion = control.get('institucion')?.value;
+        const cargo = control.get('cargo')?.value;
+        const telefono = control.get('telefono')?.value;
+        const correo = control.get('correo')?.value;
+        
+        if (nombre && institucion && idRolResponsable) {
+          responsables.push({
+            responsableExterno: {
+              nombre: String(nombre),
+              institucion: String(institucion),
+              cargo: cargo ? String(cargo) : undefined,
+              telefono: telefono ? String(telefono) : undefined,
+              correo: correo ? String(correo) : undefined
+            },
+            idRolResponsable: Number(idRolResponsable)
+          });
+        }
+      } else if (idResponsableExterno && idRolResponsable) {
+        // Responsable externo existente
+        responsables.push({
+          idResponsableExterno: Number(idResponsableExterno),
+          idRolResponsable: Number(idRolResponsable)
+        });
+      }
+    });
+
+    return responsables;
+  }
+
   // Métodos para Estado de Actividad
   tieneEstadoActividadSeleccionado(): boolean {
     return !!this.form.get('idEstadoActividad')?.value;
@@ -2340,6 +3051,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       const indicador = this.indicadores().find(ind => ind.idIndicador === idIndicador);
       this.indicadorSeleccionado.set(indicador || null);
       this.mostrarDropdownIndicador.set(false);
+      
+      // Cargar actividades anuales para este indicador y abrir el dropdown automáticamente
+      this.cargarActividadesPorIndicador(idIndicador, false);
+      // Abrir el dropdown de actividades anuales automáticamente cuando se carguen los datos
+      this.mostrarDropdownActividadAnual.set(true);
     }
   }
 

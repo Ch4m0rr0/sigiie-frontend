@@ -312,9 +312,30 @@ export class ActividadesService {
     if (actividad.descripcion) dto.Descripcion = actividad.descripcion;
     if (actividad.objetivo) dto.Objetivo = actividad.objetivo;
     
-    const deptResponsableId = getDepartamentoResponsableId(actividad.departamentoResponsableId);
-    if (deptResponsableId !== undefined && deptResponsableId !== null && Number(deptResponsableId) > 0) {
-      dto.DepartamentoResponsableId = Number(deptResponsableId);
+    // IdDepartamentosResponsables - el backend espera List<int>? (array)
+    if (actividad.idDepartamentosResponsables && Array.isArray(actividad.idDepartamentosResponsables) && actividad.idDepartamentosResponsables.length > 0) {
+      const idsValidos = actividad.idDepartamentosResponsables
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdDepartamentosResponsables = idsValidos;
+      }
+    } else if (actividad.departamentoResponsableId) {
+      // Legacy: si viene departamentoResponsableId, convertirlo a array
+      const deptResponsableId = getDepartamentoResponsableId(actividad.departamentoResponsableId);
+      if (deptResponsableId !== undefined && deptResponsableId !== null) {
+        if (Array.isArray(deptResponsableId)) {
+          const idsValidos = deptResponsableId.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+          if (idsValidos.length > 0) {
+            dto.IdDepartamentosResponsables = idsValidos;
+          }
+        } else {
+          const idNum = Number(deptResponsableId);
+          if (!isNaN(idNum) && idNum > 0) {
+            dto.IdDepartamentosResponsables = [idNum];
+          }
+        }
+      }
     }
     
     if (actividad.fechaInicio) dto.FechaInicio = actividad.fechaInicio;
@@ -334,40 +355,52 @@ export class ActividadesService {
       dto.IdIndicador = Number(actividad.idIndicador);
     }
     
-    // Manejar idActividadAnual - puede ser número o array
-    if (actividad.idActividadAnual !== undefined && actividad.idActividadAnual !== null) {
+    // Manejar idActividadesAnuales - el backend espera List<int>? (array)
+    if (actividad.idActividadesAnuales && Array.isArray(actividad.idActividadesAnuales) && actividad.idActividadesAnuales.length > 0) {
+      const idsValidos = actividad.idActividadesAnuales
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdActividadesAnuales = idsValidos;
+      }
+    } else if (actividad.idActividadAnual !== undefined && actividad.idActividadAnual !== null) {
+      // Legacy: si viene idActividadAnual, convertirlo a array
       if (Array.isArray(actividad.idActividadAnual) && actividad.idActividadAnual.length > 0) {
-        // Si es un array, enviar el array completo con números válidos
         const idsValidos = actividad.idActividadAnual
           .map(id => Number(id))
           .filter(id => !isNaN(id) && id > 0);
         if (idsValidos.length > 0) {
-          dto.IdActividadAnual = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+          dto.IdActividadesAnuales = idsValidos;
         }
       } else if (!Array.isArray(actividad.idActividadAnual)) {
-        // Si es un solo número, enviarlo
         const idNum = Number(actividad.idActividadAnual);
         if (!isNaN(idNum) && idNum > 0) {
-          dto.IdActividadAnual = idNum;
+          dto.IdActividadesAnuales = [idNum];
         }
       }
     }
     
-    // Manejar idActividadMensualInst - puede ser número o array
-    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null) {
+    // Manejar idActividadesMensualesInst - el backend espera List<int>? (array)
+    if (actividad.idActividadesMensualesInst && Array.isArray(actividad.idActividadesMensualesInst) && actividad.idActividadesMensualesInst.length > 0) {
+      const idsValidos = actividad.idActividadesMensualesInst
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdActividadesMensualesInst = idsValidos;
+      }
+    } else if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null) {
+      // Legacy: si viene idActividadMensualInst, convertirlo a array
       if (Array.isArray(actividad.idActividadMensualInst) && actividad.idActividadMensualInst.length > 0) {
-        // Si es un array, enviar el array completo con números válidos
         const idsValidos = actividad.idActividadMensualInst
           .map(id => Number(id))
           .filter(id => !isNaN(id) && id > 0);
         if (idsValidos.length > 0) {
-          dto.IdActividadMensualInst = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+          dto.IdActividadesMensualesInst = idsValidos;
         }
       } else if (!Array.isArray(actividad.idActividadMensualInst)) {
-        // Si es un solo número, enviarlo
         const idNum = Number(actividad.idActividadMensualInst);
         if (!isNaN(idNum) && idNum > 0) {
-          dto.IdActividadMensualInst = idNum;
+          dto.IdActividadesMensualesInst = [idNum];
         }
       }
     }
@@ -380,9 +413,30 @@ export class ActividadesService {
       dto.CantidadTotalParticipantesProtagonistas = Number(actividad.cantidadTotalParticipantesProtagonistas);
     }
     
-    const tipoProtagonista = getIdTipoProtagonista(actividad.idTipoProtagonista);
-    if (tipoProtagonista !== undefined && tipoProtagonista !== null && Number(tipoProtagonista) > 0) {
-      dto.IdTipoProtagonista = Number(tipoProtagonista);
+    // IdTiposProtagonistas - el backend espera List<int>? (array)
+    if (actividad.idTiposProtagonistas && Array.isArray(actividad.idTiposProtagonistas) && actividad.idTiposProtagonistas.length > 0) {
+      const idsValidos = actividad.idTiposProtagonistas
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdTiposProtagonistas = idsValidos;
+      }
+    } else if (actividad.idTipoProtagonista) {
+      // Legacy: si viene idTipoProtagonista, convertirlo a array
+      const tipoProtagonista = getIdTipoProtagonista(actividad.idTipoProtagonista);
+      if (tipoProtagonista !== undefined && tipoProtagonista !== null) {
+        if (Array.isArray(tipoProtagonista)) {
+          const idsValidos = tipoProtagonista.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+          if (idsValidos.length > 0) {
+            dto.IdTiposProtagonistas = idsValidos;
+          }
+        } else {
+          const idNum = Number(tipoProtagonista);
+          if (!isNaN(idNum) && idNum > 0) {
+            dto.IdTiposProtagonistas = [idNum];
+          }
+        }
+      }
     }
     
     // idTipoEvidencias - array, solo si tiene elementos
@@ -392,60 +446,88 @@ export class ActividadesService {
     
     // Responsables - solo si hay responsables
     if (actividad.responsables && Array.isArray(actividad.responsables) && actividad.responsables.length > 0) {
-      dto.Responsables = actividad.responsables.map(r => {
-        const responsableDto: any = {};
-        
-        // Según los ejemplos del backend:
-        // - Para usuarios: solo IdUsuario, NO se envía IdRolResponsable
-        // - Para estudiantes: IdEstudiante + IdRolResponsable (obligatorio)
-        // - Para docentes: IdDocente + IdRolResponsable (opcional)
-        // - Para administrativos: IdAdmin + IdRolResponsable (opcional)
-        // - Para responsables externos: ResponsableExterno + IdRolResponsable (obligatorio)
-        // - NO se envía FechaAsignacion en el POST
-        // - NO se envía RolResponsable (texto), solo IdRolResponsable
-        
-        if (r.idUsuario !== undefined && r.idUsuario !== null && Number(r.idUsuario) > 0) {
-          responsableDto.IdUsuario = Number(r.idUsuario);
-          // Para usuarios, NO se envía IdRolResponsable (el sistema usa el rol del usuario)
-        }
-        if (r.idDocente !== undefined && r.idDocente !== null && Number(r.idDocente) > 0) {
-          responsableDto.IdDocente = Number(r.idDocente);
-          // Para docentes, IdRolResponsable es opcional
-          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
-            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+      dto.Responsables = actividad.responsables
+        .map(r => {
+          const responsableDto: any = {};
+          let tieneTipo = false; // Flag para verificar que tiene al menos un tipo
+          
+          // Según los ejemplos del backend:
+          // - Para usuarios: solo IdUsuario, NO se envía IdRolResponsable
+          // - Para estudiantes: IdEstudiante + IdRolResponsable (obligatorio)
+          // - Para docentes: IdDocente + IdRolResponsable (opcional)
+          // - Para administrativos: IdAdmin + IdRolResponsable (opcional)
+          // - Para responsables externos: ResponsableExterno + IdRolResponsable (obligatorio) o IdResponsableExterno + IdRolResponsable
+          // - NO se envía FechaAsignacion en el POST
+          // - NO se envía RolResponsable (texto), solo IdRolResponsable
+          
+          // Usuario
+          if (r.idUsuario !== undefined && r.idUsuario !== null && Number(r.idUsuario) > 0) {
+            responsableDto.IdUsuario = Number(r.idUsuario);
+            tieneTipo = true;
+            // Para usuarios, NO se envía IdRolResponsable (el sistema usa el rol del usuario)
           }
-        }
-        if (r.idEstudiante !== undefined && r.idEstudiante !== null && Number(r.idEstudiante) > 0) {
-          responsableDto.IdEstudiante = Number(r.idEstudiante);
-          // Para estudiantes, IdRolResponsable es OBLIGATORIO
-          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
-            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          
+          // Docente
+          if (r.idDocente !== undefined && r.idDocente !== null && Number(r.idDocente) > 0) {
+            responsableDto.IdDocente = Number(r.idDocente);
+            tieneTipo = true;
+            // Para docentes, IdRolResponsable es opcional
+            if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+              responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+            }
           }
-        }
-        if (r.idAdmin !== undefined && r.idAdmin !== null && Number(r.idAdmin) > 0) {
-          responsableDto.IdAdmin = Number(r.idAdmin);
-          // Para administrativos, IdRolResponsable es opcional
-          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
-            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          
+          // Estudiante
+          if (r.idEstudiante !== undefined && r.idEstudiante !== null && Number(r.idEstudiante) > 0) {
+            responsableDto.IdEstudiante = Number(r.idEstudiante);
+            tieneTipo = true;
+            // Para estudiantes, IdRolResponsable es OBLIGATORIO
+            if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+              responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+            }
           }
-        }
-        if (r.responsableExterno) {
-          responsableDto.ResponsableExterno = {
-            Nombre: r.responsableExterno.nombre,
-            Institucion: r.responsableExterno.institucion
-          };
-          // Campos opcionales del responsable externo
-          if (r.responsableExterno.cargo) responsableDto.ResponsableExterno.Cargo = r.responsableExterno.cargo;
-          if (r.responsableExterno.telefono) responsableDto.ResponsableExterno.Telefono = r.responsableExterno.telefono;
-          if (r.responsableExterno.correo) responsableDto.ResponsableExterno.Correo = r.responsableExterno.correo;
-          // Para responsables externos, IdRolResponsable es OBLIGATORIO
-          if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
-            responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+          
+          // Administrativo
+          if (r.idAdmin !== undefined && r.idAdmin !== null && Number(r.idAdmin) > 0) {
+            responsableDto.IdAdmin = Number(r.idAdmin);
+            tieneTipo = true;
+            // Para administrativos, IdRolResponsable es opcional
+            if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+              responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+            }
           }
-        }
-        
-        return responsableDto;
-      });
+          
+          // Responsable externo existente
+          if (r.idResponsableExterno !== undefined && r.idResponsableExterno !== null && Number(r.idResponsableExterno) > 0) {
+            responsableDto.IdResponsableExterno = Number(r.idResponsableExterno);
+            tieneTipo = true;
+            // Para responsables externos existentes, IdRolResponsable es OBLIGATORIO
+            if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+              responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+            }
+          }
+          
+          // Responsable externo nuevo
+          if (r.responsableExterno && r.responsableExterno.nombre && r.responsableExterno.institucion) {
+            responsableDto.ResponsableExterno = {
+              Nombre: r.responsableExterno.nombre,
+              Institucion: r.responsableExterno.institucion
+            };
+            // Campos opcionales del responsable externo
+            if (r.responsableExterno.cargo) responsableDto.ResponsableExterno.Cargo = r.responsableExterno.cargo;
+            if (r.responsableExterno.telefono) responsableDto.ResponsableExterno.Telefono = r.responsableExterno.telefono;
+            if (r.responsableExterno.correo) responsableDto.ResponsableExterno.Correo = r.responsableExterno.correo;
+            tieneTipo = true;
+            // Para responsables externos nuevos, IdRolResponsable es OBLIGATORIO
+            if (r.idRolResponsable !== undefined && r.idRolResponsable !== null && Number(r.idRolResponsable) > 0) {
+              responsableDto.IdRolResponsable = Number(r.idRolResponsable);
+            }
+          }
+          
+          // Solo retornar el responsable si tiene al menos un tipo definido
+          return tieneTipo ? responsableDto : null;
+        })
+        .filter(r => r !== null); // Filtrar responsables inválidos
     }
     
     // Remover campos undefined, null, o arrays vacíos
@@ -459,15 +541,20 @@ export class ActividadesService {
       }
     });
     
-    console.log('🔄 POST Actividad - DTO:', JSON.stringify(dto, null, 2));
-    console.log('📤 IdTipoEvidencias enviado:', dto.IdTipoEvidencias);
+    // Log solo en desarrollo para no ralentizar en producción
+    if (!environment.production) {
+      console.log('🔄 POST Actividad - DTO:', JSON.stringify(dto, null, 2));
+      console.log('📤 IdTipoEvidencias enviado:', dto.IdTipoEvidencias);
+    }
     
     return this.http.post<any>(this.apiUrl, dto).pipe(
       map(item => {
-        console.log('📥 Respuesta del backend al crear actividad:', item);
-        console.log('📥 IdTipoEvidencias en respuesta:', item.IdTipoEvidencias || item.idTipoEvidencias);
+        // Mapear directamente sin logs innecesarios en producción
         const actividadMapeada = this.mapActividad(item);
-        console.log('📥 Actividad mapeada - idTipoEvidencias:', actividadMapeada.idTipoEvidencias);
+        if (!environment.production) {
+          console.log('📥 Respuesta del backend al crear actividad:', item);
+          console.log('📥 Actividad mapeada - idTipoEvidencias:', actividadMapeada.idTipoEvidencias);
+        }
         return actividadMapeada;
       }),
       catchError(error => {
@@ -494,6 +581,20 @@ export class ActividadesService {
           };
           return of(actividadBasica);
         }
+        
+        // Si es un timeout, dejar que el componente maneje el error
+        // No intentar crear una actividad básica porque el timeout puede indicar
+        // que la actividad se creó pero el backend no pudo responder
+        const errorMessage = error.error?.message || error.error?.details || error.error || error.message || '';
+        const errorText = typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage);
+        if (errorText.includes('Execution Timeout Expired') || 
+            errorText.includes('timeout period elapsed') ||
+            errorText.includes('timeout period ela')) {
+          console.warn('⚠️ Timeout en la creación de la actividad. La actividad puede haberse guardado correctamente.');
+          console.warn('⚠️ Error details:', error.error);
+          // Dejar que el componente maneje el error para mostrar el mensaje apropiado
+        }
+        
         return throwError(() => error);
       })
     );
@@ -1083,8 +1184,8 @@ export class ActividadesService {
   }
 
   private mapActividad(item: any): Actividad {
-    // Log para debug: ver qué viene del backend
-    if (item.IdTipoEvidencias || item.idTipoEvidencias) {
+    // Log solo en desarrollo para no ralentizar en producción
+    if (!environment.production && (item.IdTipoEvidencias || item.idTipoEvidencias)) {
       console.log('🔍 Backend devolvió IdTipoEvidencias:', item.IdTipoEvidencias || item.idTipoEvidencias, 'Tipo:', typeof (item.IdTipoEvidencias || item.idTipoEvidencias));
     }
     

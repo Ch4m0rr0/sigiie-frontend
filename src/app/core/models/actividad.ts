@@ -129,7 +129,8 @@ export interface ResponsableCreate {
   idDocente?: number;
   idEstudiante?: number;
   idAdmin?: number;
-  responsableExterno?: ResponsableExternoCreate;
+  idResponsableExterno?: number; // Para responsables externos existentes
+  responsableExterno?: ResponsableExternoCreate; // Para responsables externos nuevos
   idRolResponsable?: number;
   rolResponsable?: string;
   fechaAsignacion?: string; // YYYY-MM-DD
@@ -139,7 +140,8 @@ export interface ActividadCreate {
   nombreActividad: string;
   descripcion?: string;
   departamentoId?: number;
-  departamentoResponsableId?: number | number[]; // Puede ser un número o un array de números
+  departamentoResponsableId?: number | number[]; // Legacy - usar idDepartamentosResponsables
+  idDepartamentosResponsables?: number[]; // Campo que espera el backend (plural)
   idTipoIniciativa?: number;
   fechaInicio?: string; // DateOnly en formato string
   fechaFin?: string; // DateOnly en formato string
@@ -156,10 +158,12 @@ export interface ActividadCreate {
   nivelActividad?: number; // Default: 1
   semanaMes?: number;
   codigoActividad?: string;
-  idActividadMensualInst?: number | number[]; // Puede ser un número o un array de números
+  idActividadMensualInst?: number | number[]; // Legacy - usar idActividadesMensualesInst
+  idActividadesMensualesInst?: number[]; // Campo que espera el backend (plural, array)
   esPlanificada?: boolean;
   idIndicador?: number;
-  idActividadAnual?: number | number[]; // Puede ser un número o un array de números
+  idActividadAnual?: number | number[]; // Legacy - usar idActividadesAnuales
+  idActividadesAnuales?: number[]; // Campo que espera el backend (plural, array)
   objetivo?: string;
   cantidadMaximaParticipantesEstudiantes?: number;
   cantidadTotalParticipantesProtagonistas?: number;
@@ -172,7 +176,8 @@ export interface ActividadCreate {
   horaRealizacion?: string; // TimeOnly en formato string (HH:mm:ss)
   cantidadParticipantesProyectados?: number;
   cantidadParticipantesEstudiantesProyectados?: number;
-  idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
+  idTipoProtagonista?: number | number[]; // Legacy - usar idTiposProtagonistas
+  idTiposProtagonistas?: number[]; // Campo que espera el backend (plural)
   responsableActividad?: string;
   idTipoEvidencias?: number[]; // Lista de IDs de tipos de evidencias requeridas
   responsables?: ResponsableCreate[]; // Lista de responsables de la actividad

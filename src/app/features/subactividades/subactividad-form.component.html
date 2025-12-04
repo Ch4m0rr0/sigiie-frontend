@@ -321,7 +321,7 @@
                             @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
                                 <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:shadow transition-all duration-200 hover:scale-105">
                                     <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                                    <span class="max-w-xs truncate">{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}</span>
+                                    <span class="max-w-xs truncate">{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}</span>
                                     <button
                                         type="button"
                                         (click)="eliminarActividadMensual(mensual.idActividadMensualInst)"
@@ -349,7 +349,7 @@
                                                 class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
                                             <app-icon icon="calendar_month" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
                                             <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">
-                                                {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
+                                                {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}
                                             </span>
                                         </label>
                                     }
