@@ -2589,14 +2589,14 @@
                     <app-icon icon="assignment" size="sm"></app-icon>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
-                      {{ eventoHovered.title }}
-                    </h4>
                     @if (eventoHovered.meta?.actividad?.codigoActividad) {
                       <p class="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded inline-block mb-2">
-                        Código: {{ eventoHovered.meta.actividad.codigoActividad }}
+                        {{ eventoHovered.meta.actividad.codigoActividad }}
                       </p>
                     }
+                    <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
+                      {{ eventoHovered.meta?.actividad?.nombreActividad || eventoHovered.meta?.actividad?.nombre || eventoHovered.title }}
+                    </h4>
                     @if (eventoHovered.meta?.actividad?.descripcion) {
                       <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
                         {{ eventoHovered.meta.actividad.descripcion }}
@@ -2637,7 +2637,13 @@
                         </div>
                         <div class="flex-1 min-w-0">
                           <p class="text-xs text-slate-500 mb-0.5 font-medium">Fecha</p>
-                          <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.start | date:'dd \'de\' MMMM \'de\' yyyy':'es-ES' }}</p>
+                          @if (eventoHovered.end) {
+                            <p class="text-sm font-semibold text-slate-900">
+                              Del {{ eventoHovered.start | date:'dd/MM/yyyy':'es-ES' }} al {{ eventoHovered.end | date:'dd/MM/yyyy':'es-ES' }}
+                            </p>
+                          } @else {
+                            <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.start | date:'dd \'de\' MMMM \'de\' yyyy':'es-ES' }}</p>
+                          }
                         </div>
                       </div>
                     }

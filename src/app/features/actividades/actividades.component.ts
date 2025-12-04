@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, AfterViewInit, signal, computed, HostListener, ElementRef, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, AfterViewInit, signal, computed, effect, HostListener, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -135,6 +135,42 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   locale: string = 'es';
   
   eventosCalendario = signal<CalendarEvent[]>([]);
+
+  constructor() {
+    // Efecto para actualizar badges cuando cambien los eventos o el modo de vista
+    effect(() => {
+      const modo = this.modoVista();
+      const eventos = this.eventosCalendario();
+      
+      console.log('🔄 Effect ejecutado - Modo:', modo, 'Eventos:', eventos.length);
+      
+      // Solo ejecutar si estamos en vista de calendario y hay eventos
+      if (modo === 'calendario' && eventos.length > 0) {
+        console.log('✅ Condiciones cumplidas, ejecutando agregarBadgesCodigo...');
+        // Esperar a que el DOM se actualice
+        setTimeout(() => {
+          console.log('⏰ Timeout ejecutado, buscando celdas...');
+          const dayCells = this.obtenerCeldasCalendario();
+          console.log('📅 Celdas encontradas:', dayCells?.length || 0);
+          if (dayCells && dayCells.length > 0) {
+            this.agregarBadgesCodigoEnCeldas(dayCells);
+          } else {
+            console.log('⚠️ No se encontraron celdas, intentando de nuevo...');
+            // Intentar de nuevo después de más tiempo
+            setTimeout(() => {
+              const retryCells = this.obtenerCeldasCalendario();
+              if (retryCells && retryCells.length > 0) {
+                console.log('✅ Celdas encontradas en reintento');
+                this.agregarBadgesCodigoEnCeldas(retryCells);
+              } else {
+                console.log('❌ No se encontraron celdas después del reintento');
+              }
+            }, 500);
+          }
+        }, 600);
+      }
+    });
+  }
 
   // Catálogos para el formulario de actividad
   departamentos = signal<any[]>([]);
@@ -2315,70 +2351,387 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.eventosCalendario.set(eventos);
     
     // Re-attach listeners después de actualizar eventos y agregar badges de código
+    // Usar timeout más largo para asegurar que el calendario se haya renderizado
     setTimeout(() => {
       this.attachEventListeners();
       this.agregarBadgesCodigo();
       this.agregarPuntosColorEstado();
-    }, 100);
+      this.agregarSombreadoRangos();
+    }, 500);
+  }
+
+  private obtenerCeldasCalendario(): NodeListOf<HTMLElement> | null {
+    // Intentar múltiples selectores para encontrar las celdas
+    let dayCells: NodeListOf<HTMLElement> | null = null;
+    
+    // Buscar dentro del contenedor del calendario
+    const calendarContainer = this.elementRef.nativeElement.querySelector('.calendar-container');
+    if (calendarContainer) {
+      dayCells = calendarContainer.querySelectorAll('.cal-day-cell') as NodeListOf<HTMLElement>;
+      if (dayCells && dayCells.length > 0) return dayCells;
+    }
+    
+    // Buscar en mwl-calendar-month-view
+    const monthView = this.elementRef.nativeElement.querySelector('mwl-calendar-month-view');
+    if (monthView) {
+      dayCells = monthView.querySelectorAll('.cal-day-cell') as NodeListOf<HTMLElement>;
+      if (dayCells && dayCells.length > 0) return dayCells;
+    }
+    
+    // Buscar en .cal-month-view
+    const calMonthView = this.elementRef.nativeElement.querySelector('.cal-month-view');
+    if (calMonthView) {
+      dayCells = calMonthView.querySelectorAll('.cal-day-cell') as NodeListOf<HTMLElement>;
+      if (dayCells && dayCells.length > 0) return dayCells;
+    }
+    
+    // Buscar directamente en el componente
+    dayCells = this.elementRef.nativeElement.querySelectorAll('.cal-day-cell') as NodeListOf<HTMLElement>;
+    if (dayCells && dayCells.length > 0) return dayCells;
+    
+    return null;
   }
 
   agregarBadgesCodigo(): void {
-    // Obtener todas las celdas del día en el calendario
-    const dayCells = this.elementRef.nativeElement.querySelectorAll('.cal-day-cell');
+    // Solo ejecutar si estamos en vista de calendario
+    if (this.modoVista() !== 'calendario') {
+      return;
+    }
     
-    dayCells.forEach((cell: HTMLElement) => {
-      // Limpiar atributos anteriores
-      cell.removeAttribute('data-has-code');
-      cell.removeAttribute('data-activity-code');
+    const dayCells = this.obtenerCeldasCalendario();
+    
+    if (!dayCells || dayCells.length === 0) {
+      // Intentar de nuevo después de un breve delay
+      setTimeout(() => {
+        const retryCells = this.obtenerCeldasCalendario();
+        if (!retryCells || retryCells.length === 0) {
+          console.log('⚠️ No se encontraron celdas del calendario después de reintento');
+          return;
+        }
+        this.agregarBadgesCodigoEnCeldas(retryCells);
+      }, 200);
+      return;
+    }
+    
+    this.agregarBadgesCodigoEnCeldas(dayCells);
+  }
+
+  private agregarBadgesCodigoEnCeldas(dayCells: NodeListOf<HTMLElement>): void {
+    const eventos = this.eventosCalendario();
+    
+    if (eventos.length === 0) {
+      console.log('⚠️ No hay eventos en el calendario');
+      return;
+    }
+    
+    let badgesAgregados = 0;
+    let eventosNoEncontrados = 0;
+    let eventosSinCodigo = 0;
+    
+    // Estrategia mejorada: iterar sobre los eventos y buscar sus elementos en el DOM
+    // Primero, crear un mapa de eventos por fecha para manejar múltiples eventos en la misma fecha
+    const eventosPorFecha = new Map<string, CalendarEvent[]>();
+    eventos.forEach(evento => {
+      const eventStart = startOfDay(evento.start);
+      const eventEnd = evento.end ? startOfDay(evento.end) : eventStart;
       
-      // Obtener el número del día
-      const dayNumberEl = cell.querySelector('.cal-day-number');
-      if (!dayNumberEl) return;
+      // Agregar el evento a todas las fechas de su rango
+      let currentDate = new Date(eventStart);
+      while (currentDate <= eventEnd) {
+        const fechaKey = currentDate.toISOString().split('T')[0];
+        if (!eventosPorFecha.has(fechaKey)) {
+          eventosPorFecha.set(fechaKey, []);
+        }
+        eventosPorFecha.get(fechaKey)!.push(evento);
+        currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000);
+      }
+    });
+    
+    eventos.forEach((evento, eventoIndex) => {
+      // Obtener el código de la actividad
+      const meta = evento.meta as any;
+      const codigo = meta?.codigoActividad || 
+                    meta?.actividad?.codigoActividad ||
+                    (meta?.actividad && typeof meta.actividad === 'object' && 'codigoActividad' in meta.actividad ? meta.actividad.codigoActividad : null);
       
-      const dayNumber = parseInt(dayNumberEl.textContent?.trim() || '0', 10);
-      if (dayNumber === 0) return;
+      if (!codigo || typeof codigo !== 'string' || codigo.trim() === '') {
+        eventosSinCodigo++;
+        return;
+      }
       
-      // Buscar eventos en esta celda
-      const events = cell.querySelectorAll('.cal-event');
-      if (events.length === 0) return;
+      // Buscar la celda del calendario que corresponde a la fecha del evento
+      const eventStart = startOfDay(evento.start);
+      const eventEnd = evento.end ? startOfDay(evento.end) : eventStart;
       
-      // Obtener el primer evento con código
-      let codigoEncontrado: string | null = null;
+      // Obtener el color como string
+      let evColor: string | undefined;
+      if (typeof evento.color === 'string') {
+        evColor = evento.color;
+      } else if (evento.color && typeof evento.color === 'object' && 'primary' in evento.color) {
+        evColor = evento.color.primary;
+      }
       
-      // Obtener la fecha de la celda comparando con los eventos
-      const eventos = this.eventosCalendario();
+      if (!evColor) {
+        eventosNoEncontrados++;
+        console.log(`⚠️ Evento ${eventoIndex} (ID: ${evento.id}) sin color`);
+        return;
+      }
       
-      events.forEach((eventEl: Element) => {
-        const eventTitle = eventEl.textContent?.trim() || '';
+      // Convertir color a RGB para comparar
+      const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+      
+      const rgb = hexToRgb(evColor);
+      if (!rgb) {
+        eventosNoEncontrados++;
+        console.log(`⚠️ Evento ${eventoIndex} (ID: ${evento.id}) color inválido: ${evColor}`);
+        return;
+      }
+      
+      const expectedRgb = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      let elementosEncontrados = 0;
+      
+      // Buscar en todas las celdas que corresponden a este evento
+      dayCells.forEach((cell: HTMLElement) => {
+        const cellDate = this.obtenerFechaDeCelda(cell);
+        if (!cellDate) return;
         
-        // Buscar el evento que coincida con este elemento
-        const evento = eventos.find(e => {
-          // Comparar por título
-          if (e.title === eventTitle) return true;
-          
-          // Comparar por nombre de actividad
-          const actividad = (e.meta as any)?.actividad;
-          if (actividad?.nombre === eventTitle) return true;
-          
-          // Verificar si el título contiene el nombre
-          if (actividad?.nombre && eventTitle.includes(actividad.nombre)) return true;
-          
-          return false;
-        });
+        const cellDateStart = startOfDay(cellDate);
         
-        if (evento) {
-          const codigo = (evento.meta as any)?.codigoActividad || 
-                        (evento.meta as any)?.actividad?.codigoActividad;
-          if (codigo && !codigoEncontrado) {
-            codigoEncontrado = codigo;
+        // Verificar si esta celda contiene el evento
+        if (cellDateStart >= eventStart && cellDateStart <= eventEnd) {
+          const fechaKey = cellDateStart.toISOString().split('T')[0];
+          const eventosEnEstaFecha = eventosPorFecha.get(fechaKey) || [];
+          
+          // Obtener el índice de este evento en la lista de eventos de esta fecha
+          const indiceEnFecha = eventosEnEstaFecha.findIndex(ev => ev.id === evento.id);
+          
+          // Buscar eventos en esta celda que coincidan con el color
+          const eventosEnCelda = Array.from(cell.querySelectorAll('.cal-event')) as HTMLElement[];
+          
+          // Filtrar eventos que ya tienen badge de este evento específico
+          const eventosSinBadge = eventosEnCelda.filter(el => {
+            const dataEventId = el.getAttribute('data-event-id');
+            const existingBadge = el.querySelector('.activity-code-badge-inline');
+            // Si ya tiene badge Y el data-event-id coincide, ya fue procesado
+            if (existingBadge && dataEventId === String(evento.id)) {
+              return false; // Ya tiene badge de este evento
+            }
+            return true;
+          });
+          
+          // Buscar eventos que coinciden con el color
+          const eventosConMismoColor = eventosSinBadge.filter(el => {
+            const computedStyle = window.getComputedStyle(el);
+            const backgroundColor = computedStyle.backgroundColor;
+            return backgroundColor && (backgroundColor === expectedRgb || backgroundColor.includes(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`));
+          });
+          
+          let eventoEncontrado: HTMLElement | null = null;
+          
+          if (eventosConMismoColor.length === 1) {
+            // Solo hay un evento con este color, debe ser este
+            eventoEncontrado = eventosConMismoColor[0];
+          } else if (eventosConMismoColor.length > 1) {
+            // Hay múltiples eventos con el mismo color, usar el índice
+            // Filtrar los que ya tienen data-event-id asignado
+            const eventosSinAsignar = eventosConMismoColor.filter(el => !el.getAttribute('data-event-id'));
+            
+            if (indiceEnFecha >= 0 && indiceEnFecha < eventosSinAsignar.length) {
+              // Usar el índice para identificar el evento correcto
+              eventoEncontrado = eventosSinAsignar[indiceEnFecha];
+              console.log(`🔍 Múltiples eventos con mismo color en ${fechaKey}, usando índice ${indiceEnFecha}`);
+            } else if (eventosSinAsignar.length === 1) {
+              // Solo hay un evento sin asignar, debe ser este
+              eventoEncontrado = eventosSinAsignar[0];
+            }
+          } else if (eventosSinBadge.length > 0 && indiceEnFecha >= 0) {
+            // No hay eventos con el color exacto, pero hay eventos sin badge
+            // Usar el índice si está disponible
+            const eventosSinAsignar = eventosSinBadge.filter(el => !el.getAttribute('data-event-id'));
+            if (indiceEnFecha < eventosSinAsignar.length) {
+              eventoEncontrado = eventosSinAsignar[indiceEnFecha];
+              console.log(`⚠️ Usando índice ${indiceEnFecha} para evento en ${fechaKey} (color no coincide exactamente)`);
+            }
+          }
+          
+          if (eventoEncontrado) {
+            // Verificar que no esté ya asignado a otro evento
+            const dataEventId = eventoEncontrado.getAttribute('data-event-id');
+            if (dataEventId && dataEventId !== String(evento.id)) {
+              console.log(`⚠️ Elemento ya asignado a evento ${dataEventId}, saltando...`);
+            } else {
+              // Agregar badge y marcar con el ID del evento
+              console.log(`✅ Evento ${eventoIndex} (ID: ${evento.id}) encontrado en fecha ${fechaKey}. Código: ${codigo}`);
+              this.agregarBadgeAElemento(eventoEncontrado, codigo, evento.id);
+              elementosEncontrados++;
+            }
           }
         }
       });
       
-      // Si encontramos un código, agregarlo como atributo
-      if (codigoEncontrado) {
-        cell.setAttribute('data-has-code', 'true');
-        cell.setAttribute('data-activity-code', codigoEncontrado);
+      if (elementosEncontrados > 0) {
+        badgesAgregados += elementosEncontrados;
+        console.log(`✅ Badges agregados para evento ${eventoIndex} (ID: ${evento.id}) en ${elementosEncontrados} día(s)`);
+      } else {
+        eventosNoEncontrados++;
+        console.log(`❌ No se encontró elemento DOM para evento ${eventoIndex} (ID: ${evento.id}, Título: ${evento.title}, Color: ${evColor})`);
+      }
+    });
+    
+    // Método alternativo: si aún hay elementos sin badge, intentar por índice
+    const eventElements = this.elementRef.nativeElement.querySelectorAll('.cal-event');
+    eventElements.forEach((eventEl: HTMLElement, index: number) => {
+      if (!eventEl.querySelector('.activity-code-badge-inline') && index < eventos.length) {
+        const evento = eventos[index];
+        const meta = evento.meta as any;
+        const codigo = meta?.codigoActividad || meta?.actividad?.codigoActividad;
+        if (codigo) {
+          console.log(`⚠️ Agregando badge por índice ${index} como último recurso. Código: ${codigo}`);
+          this.agregarBadgeAElemento(eventEl, codigo, evento.id);
+          badgesAgregados++;
+        }
+      }
+    });
+    
+    console.log(`📊 Resumen: ${badgesAgregados} badges agregados, ${eventosNoEncontrados} eventos no encontrados, ${eventosSinCodigo} eventos sin código`);
+    
+    if (badgesAgregados > 0) {
+      console.log(`✅ Badges de código agregados a ${badgesAgregados} eventos`);
+    } else {
+      console.log('⚠️ No se agregaron badges. Revisa los logs anteriores.');
+    }
+  }
+
+  private agregarBadgeAElemento(eventEl: HTMLElement, codigo: string, eventoId?: string | number): void {
+    // Limpiar badges anteriores
+    const existingBadge = eventEl.querySelector('.activity-code-badge-inline');
+    if (existingBadge) {
+      existingBadge.remove();
+    }
+    
+    // Crear badge de código al lado del evento
+    const badge = document.createElement('span');
+    badge.className = 'activity-code-badge-inline';
+    badge.style.cssText = 'margin-left: 0.5rem; padding: 0.125rem 0.375rem; font-size: 0.625rem; font-family: monospace; font-weight: 600; background-color: rgba(255, 255, 255, 0.9); color: #334155; border-radius: 0.25rem; border: 1px solid rgba(203, 213, 225, 0.8); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); white-space: nowrap; display: inline-block; vertical-align: middle;';
+    badge.textContent = codigo;
+    badge.title = `Código: ${codigo}`;
+    
+    // Insertar el badge después del contenido del evento
+    // Intentar agregarlo al lado del evento, no dentro
+    const titleElement = eventEl.querySelector('.cal-event-title') as HTMLElement;
+    if (titleElement) {
+      // Agregar el badge después del título (dentro del mismo contenedor)
+      titleElement.appendChild(badge);
+    } else {
+      // Si no hay elemento de título, agregar al final del evento
+      eventEl.appendChild(badge);
+    }
+    
+    // Guardar el ID del evento en el elemento para futuras búsquedas
+    if (eventoId) {
+      eventEl.setAttribute('data-event-id', String(eventoId));
+    }
+  }
+
+  obtenerFechaDeCelda(cell: HTMLElement): Date | null {
+    try {
+      // Obtener el número del día
+      const dayNumberEl = cell.querySelector('.cal-day-number');
+      if (!dayNumberEl) return null;
+      
+      const dayNumber = parseInt(dayNumberEl.textContent?.trim() || '0', 10);
+      if (dayNumber === 0) return null;
+      
+      // Obtener el mes y año del viewDate
+      const viewDate = this.viewDate;
+      const year = viewDate.getFullYear();
+      const month = viewDate.getMonth();
+      
+      // Crear la fecha
+      const fecha = new Date(year, month, dayNumber);
+      return fecha;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  agregarSombreadoRangos(): void {
+    // Solo ejecutar si estamos en vista de calendario
+    if (this.modoVista() !== 'calendario') {
+      return;
+    }
+    
+    const dayCells = this.obtenerCeldasCalendario();
+    
+    if (!dayCells || dayCells.length === 0) {
+      // Intentar de nuevo después de un breve delay
+      setTimeout(() => {
+        const retryCells = this.obtenerCeldasCalendario();
+        if (retryCells && retryCells.length > 0) {
+          this.agregarSombreadoRangosEnCeldas(retryCells);
+        }
+      }, 200);
+      return;
+    }
+    
+    this.agregarSombreadoRangosEnCeldas(dayCells);
+  }
+
+  private agregarSombreadoRangosEnCeldas(dayCells: NodeListOf<HTMLElement>): void {
+    const eventos = this.eventosCalendario();
+    
+    dayCells.forEach((cell: HTMLElement) => {
+      // Limpiar estilos anteriores
+      cell.style.backgroundColor = '';
+      cell.style.backgroundImage = '';
+      
+      // Obtener la fecha de la celda
+      const cellDate = this.obtenerFechaDeCelda(cell);
+      if (!cellDate) return;
+      
+      const cellDateStart = startOfDay(cellDate);
+      
+      // Buscar eventos de múltiples días que incluyan esta fecha
+      const eventosMultiplesDias = eventos.filter(e => {
+        if (!e.end) return false; // Solo eventos con fecha fin
+        const eventStart = startOfDay(e.start);
+        const eventEnd = startOfDay(e.end);
+        return cellDateStart >= eventStart && cellDateStart <= eventEnd;
+      });
+      
+      if (eventosMultiplesDias.length > 0) {
+        // Obtener el color del primer evento (o combinar colores si hay múltiples)
+        const primerEvento = eventosMultiplesDias[0];
+        const actividad = (primerEvento.meta as any)?.actividad;
+        
+        if (actividad) {
+          const estadoInfo = this.obtenerEstadoParaMostrar(actividad);
+          const colorEstado = estadoInfo.color || '#3B82F6';
+          
+          // Convertir color hex a RGB para crear sombreado
+          const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+              r: parseInt(result[1], 16),
+              g: parseInt(result[2], 16),
+              b: parseInt(result[3], 16)
+            } : null;
+          };
+          
+          const rgb = hexToRgb(colorEstado);
+          if (rgb) {
+            // Sombreado suave con opacidad baja
+            const backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.12)`;
+            cell.style.backgroundColor = backgroundColor;
+          }
+        }
       }
     });
   }
@@ -2809,10 +3162,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     setTimeout(() => {
       this.attachEventListeners();
       this.agregarPuntosColorEstado();
+      this.agregarBadgesCodigo();
+      this.agregarSombreadoRangos();
     }, 500);
   }
 
   attachEventListeners(): void {
+    // Agregar listeners a eventos
     const eventos = document.querySelectorAll('.cal-month-view .cal-event');
     eventos.forEach((eventoEl) => {
       // Remover listeners anteriores si existen
@@ -2826,7 +3182,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // Buscar el evento por el título del elemento
         const titulo = target.textContent?.trim();
         if (titulo) {
-          const evento = this.eventosCalendario().find(ev => ev.title === titulo);
+          const evento = this.eventosCalendario().find(ev => {
+            if (ev.title === titulo) return true;
+            const actividad = (ev.meta as any)?.actividad;
+            if (actividad?.nombre === titulo || actividad?.nombreActividad === titulo) return true;
+            if (actividad?.nombre && titulo.includes(actividad.nombre)) return true;
+            return false;
+          });
           if (evento) {
             this.hoverTimeout = setTimeout(() => {
               this.eventoHovered = evento;
@@ -2853,6 +3215,58 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           this.hoverPosition.set({
             x: mouseEvent.clientX,
             y: mouseEvent.clientY
+          });
+        }
+      });
+    });
+
+    // Agregar listeners a las celdas del calendario para mostrar tooltip al hover
+    const dayCells = this.elementRef.nativeElement.querySelectorAll('.cal-day-cell');
+    dayCells.forEach((cell: HTMLElement) => {
+      // Remover listeners anteriores
+      const newCell = cell.cloneNode(true) as HTMLElement;
+      cell.parentNode?.replaceChild(newCell, cell);
+      
+      newCell.addEventListener('mouseenter', (e: MouseEvent) => {
+        const cellDate = this.obtenerFechaDeCelda(newCell);
+        if (!cellDate) return;
+        
+        const cellDateStart = startOfDay(cellDate);
+        const eventos = this.eventosCalendario();
+        
+        // Buscar eventos que coincidan con esta fecha
+        const eventosEnEsteDia = eventos.filter(ev => {
+          const eventStart = startOfDay(ev.start);
+          const eventEnd = ev.end ? startOfDay(ev.end) : eventStart;
+          return cellDateStart >= eventStart && cellDateStart <= eventEnd;
+        });
+        
+        if (eventosEnEsteDia.length > 0) {
+          // Mostrar tooltip con información de la primera actividad
+          const primerEvento = eventosEnEsteDia[0];
+          this.hoverTimeout = setTimeout(() => {
+            this.eventoHovered = primerEvento;
+            this.hoverPosition.set({
+              x: e.clientX,
+              y: e.clientY
+            });
+          }, 200);
+        }
+      });
+      
+      newCell.addEventListener('mouseleave', () => {
+        if (this.hoverTimeout) {
+          clearTimeout(this.hoverTimeout);
+        }
+        this.eventoHovered = null;
+        this.hoverPosition.set(null);
+      });
+      
+      newCell.addEventListener('mousemove', (e: MouseEvent) => {
+        if (this.eventoHovered) {
+          this.hoverPosition.set({
+            x: e.clientX,
+            y: e.clientY
           });
         }
       });
@@ -2901,18 +3315,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
     }
     this.viewDate = nuevaFecha;
-    // Agregar puntos de color después de que el calendario se actualice
+    // Agregar puntos de color, badges y sombreado después de que el calendario se actualice
     setTimeout(() => {
       this.agregarPuntosColorEstado();
-    }, 300);
+      this.agregarBadgesCodigo();
+      this.agregarSombreadoRangos();
+    }, 500);
   }
 
   irAHoy(): void {
     this.viewDate = new Date();
-    // Agregar puntos de color después de que el calendario se actualice
+    // Agregar puntos de color, badges y sombreado después de que el calendario se actualice
     setTimeout(() => {
       this.agregarPuntosColorEstado();
-    }, 300);
+      this.agregarBadgesCodigo();
+      this.agregarSombreadoRangos();
+    }, 500);
   }
 
   toggleFormIndicador(): void {
