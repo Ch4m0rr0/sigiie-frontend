@@ -93,6 +93,12 @@ mwl-calendar-month-view,
   width: 100% !important;
   background-color: white !important;
   border-radius: 0.5rem !important;
+  overflow: visible !important;
+}
+
+.calendar-container {
+  overflow: visible !important;
+  position: relative !important;
 }
 
 .cal-month-view .cal-header {
@@ -114,7 +120,7 @@ mwl-calendar-month-view,
   display: block !important;
   border: 1px solid #e2e8f0 !important;
   border-radius: 0.5rem !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 .cal-month-view .cal-cell-row {
@@ -133,6 +139,7 @@ mwl-calendar-month-view,
   align-items: stretch !important;
   min-width: 0 !important;
   border-right: 1px solid #e2e8f0 !important;
+  overflow: visible !important;
 }
 
 .cal-month-view .cal-cell:last-child {
@@ -176,6 +183,39 @@ mwl-calendar-month-view,
   margin-bottom: 0 !important;
 }
 
+/* Badge de código de actividad - aparece externo al día, como anotación */
+.cal-month-view .cal-day-cell[data-has-code] {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.cal-month-view .cal-day-cell[data-has-code]::after {
+  content: attr(data-activity-code) !important;
+  position: absolute !important;
+  top: 0.2rem !important;
+  right: -0.15rem !important;
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  color: #047857 !important;
+  font-size: 0.5rem !important;
+  font-weight: 600 !important;
+  padding: 0.12rem 0.3rem !important;
+  border-radius: 0.15rem !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  z-index: 25 !important;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace !important;
+  letter-spacing: 0.03em !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  line-height: 1.1 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  text-transform: uppercase !important;
+}
+
+/* Ajustar posición del número del día cuando hay código */
+.cal-month-view .cal-day-cell[data-has-code] .cal-day-number {
+  padding-right: 0.1rem !important;
+}
+
 /* Ocultar el badge de contador de eventos que se superpone */
 .cal-month-view .cal-day-badge {
   display: none !important;
@@ -210,6 +250,32 @@ mwl-calendar-month-view,
   margin: 0.125rem 0 !important;
   min-width: 0 !important;
   backdrop-filter: blur(4px) !important;
+}
+
+/* Estilos para eventos de varios días (rango de fechas) */
+.cal-month-view .cal-event.cal-starts-within-month {
+  border-left: 3px solid currentColor !important;
+}
+
+.cal-month-view .cal-event.cal-ends-within-month {
+  border-right: 3px solid currentColor !important;
+}
+
+.cal-month-view .cal-event.cal-in-month {
+  /* Evento que continúa desde el mes anterior o al siguiente */
+  opacity: 0.9 !important;
+}
+
+/* Indicador visual para eventos de varios días */
+.cal-month-view .cal-event[data-event-duration]::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 2px !important;
+  background: currentColor !important;
+  opacity: 0.6 !important;
 }
 
 .cal-month-view .cal-event:hover {
@@ -281,8 +347,33 @@ mwl-calendar-month-view,
 
 .cal-month-view .cal-event-title {
   font-size: 0.75rem !important;
-  line-height: 1.2 !important;
+  line-height: 1.3 !important;
   font-weight: 500 !important;
+  word-break: break-word !important;
+  hyphens: auto !important;
+  display: block !important;
+  position: relative !important;
+}
+
+/* Estilo para eventos con código - hacer el código más prominente */
+.cal-month-view .cal-event {
+  font-weight: 600 !important;
+}
+
+/* Hacer que el código (primera parte antes de " - ") sea más visible */
+/* El título tiene formato: "CODIGO - Nombre Actividad" */
+.cal-month-view .cal-event-title {
+  /* El código ya está en el título y se mostrará primero */
+  /* Aumentar el peso de la fuente para el código */
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+}
+
+/* Si el título contiene un guión, la primera parte (código) será más visible */
+.cal-month-view .cal-event-title::first-line {
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.5px !important;
 }
 
 /* Estilos para días fuera del mes actual */

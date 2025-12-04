@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, AfterViewInit, signal, computed, HostListener, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { firstValueFrom, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -25,7 +25,7 @@ import { IconComponent } from '../../shared/icon/icon.component';
 import { CalendarModule, CalendarUtils, CalendarDateFormatter, CalendarA11y, CalendarEventTitleFormatter, DateAdapter } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { es } from 'date-fns/locale';
-import { format, startOfWeek, addDays } from 'date-fns';
+import { format, startOfWeek, addDays, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 import { EvidenciaFormComponent } from '../evidencias/evidencia-form.component';
 
 // Formateador personalizado para usar locale español
@@ -57,6 +57,15 @@ class CustomCalendarDateFormatter extends CalendarDateFormatter {
   }
 }
 
+// Formateador personalizado para títulos de eventos que muestra el código de manera prominente
+class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
+  override month(event: CalendarEvent): string {
+    // Retornar el título completo que ya incluye el código al inicio
+    // El código aparece primero en el formato: "CODIGO - Nombre Actividad"
+    return event.title;
+  }
+}
+
 @Component({
   standalone: true,
   selector: 'app-list-actividades',
@@ -75,7 +84,10 @@ class CustomCalendarDateFormatter extends CalendarDateFormatter {
       useClass: CustomCalendarDateFormatter,
     },
     CalendarA11y,
-    CalendarEventTitleFormatter,
+    {
+      provide: CalendarEventTitleFormatter,
+      useClass: CustomCalendarEventTitleFormatter,
+    },
     {
       provide: DateAdapter,
       useFactory: adapterFactory,
@@ -108,6 +120,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   error = signal<string | null>(null);
   showRetryButton = false;
   private cargandoActividades = false; // Flag para evitar llamadas múltiples simultáneas
+
+  // Arrays para selector de hora en formato 12 horas
+  horas12: string[] = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  minutos: string[] = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
   
   // Modo de vista: 'cards' | 'lista' | 'calendario'
   modoVista = signal<'cards' | 'lista' | 'calendario'>('lista');
@@ -124,6 +140,20 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   departamentos = signal<any[]>([]);
   tiposIniciativa = signal<any[]>([]);
   estadosActividad = signal<any[]>([]);
+  
+  // Estados filtrados para creación (excluye Suspendido, Cancelado y Finalizado)
+  estadosActividadParaCreacion = computed(() => {
+    // Siempre filtrar en el formulario principal ya que es solo para creación
+    return this.estadosActividad().filter(estado => {
+      const nombre = estado.nombre?.toLowerCase() || '';
+      return !nombre.includes('suspendido') && 
+             !nombre.includes('suspendida') &&
+             !nombre.includes('cancelado') && 
+             !nombre.includes('cancelada') &&
+             !nombre.includes('finalizado') &&
+             !nombre.includes('finalizada');
+    });
+  });
   tiposActividad = signal<any[]>([]);
   tiposDocumento = signal<any[]>([]);
   tiposProtagonista = signal<any[]>([]);
@@ -484,6 +514,33 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 
+  // Validador personalizado para comparar fechas
+  fechaFinValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.parent) {
+      return null;
+    }
+    
+    const fechaInicio = control.parent.get('fechaInicio')?.value;
+    const fechaFin = control.value;
+    
+    if (!fechaInicio || !fechaFin) {
+      return null; // Si alguna fecha está vacía, no validar (validación opcional)
+    }
+    
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    
+    // Comparar solo las fechas (sin horas)
+    inicio.setHours(0, 0, 0, 0);
+    fin.setHours(0, 0, 0, 0);
+    
+    if (fin < inicio) {
+      return { fechaFinAnterior: true };
+    }
+    
+    return null;
+  }
+
   initializeFormNuevaActividad(): void {
     this.cargandoRelaciones = false; // Resetear flag
     const currentYear = new Date().getFullYear();
@@ -512,8 +569,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       
       // Fechas
       fechaInicio: [''],
-      fechaFin: [''],
-      horaRealizacion: [''],
+      fechaFin: ['', [this.fechaFinValidator.bind(this)]],
+      horaRealizacion: [''], // Campo oculto que se actualiza desde los selects
+      horaRealizacionHora: [''],
+      horaRealizacionMinuto: [''],
+      horaRealizacionAmPm: [''],
       anio: [''], // No cargar automáticamente el año
       
       // Tipos y categorías
@@ -542,6 +602,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       
     });
     
+    // Suscribirse a cambios en fechaInicio para revalidar fechaFin
+    this.formNuevaActividad.get('fechaInicio')?.valueChanges.subscribe(() => {
+      this.formNuevaActividad.get('fechaFin')?.updateValueAndValidity();
+    });
+
+    // Sincronizar selectores de hora con el campo horaRealizacion
+    this.formNuevaActividad.get('horaRealizacionHora')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+    this.formNuevaActividad.get('horaRealizacionMinuto')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+    this.formNuevaActividad.get('horaRealizacionAmPm')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+
     // Suscribirse a cambios en el indicador
     this.formNuevaActividad.get('idIndicador')?.valueChanges.subscribe(idIndicador => {
       if (this.cargandoRelaciones) return; // Evitar loops
@@ -620,7 +696,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     const estadoActual = this.formNuevaActividad.get('idEstadoActividad')?.value;
     if (estadoActual) return; // Ya tiene un estado seleccionado
     
-    const estados = this.estadosActividad();
+    const estados = this.estadosActividadParaCreacion(); // Usar estados filtrados para creación
     if (estados.length === 0) return;
     
     // Buscar "Planificada" primero, luego "En Curso", luego el primero disponible
@@ -1737,7 +1813,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         if (formValue.fechaInicio) actividadData.fechaInicio = formValue.fechaInicio;
         if (formValue.fechaFin) actividadData.fechaFin = formValue.fechaFin;
         
-        // horaRealizacion - formatear a HH:mm:ss
+        // horaRealizacion - ya está en formato 24h desde actualizarHoraRealizacion, solo agregar segundos si falta
         if (formValue.horaRealizacion) {
           const hora = formValue.horaRealizacion.trim();
           if (hora.includes(':') && hora.split(':').length === 2) {
@@ -2010,12 +2086,30 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     const eventos: CalendarEvent[] = actividades
       .filter(actividad => actividad.fechaInicio || actividad.fechaEvento || actividad.fechaCreacion)
       .map(actividad => {
-        // Usar fechaInicio, fechaEvento o fechaCreacion como fecha del evento
-        const fecha = actividad.fechaInicio 
-          ? new Date(actividad.fechaInicio)
-          : actividad.fechaEvento
-          ? new Date(actividad.fechaEvento)
-          : new Date(actividad.fechaCreacion);
+        // Determinar las fechas de inicio y fin
+        let fechaInicio: Date;
+        let fechaFin: Date | undefined;
+        
+        if (actividad.fechaInicio && actividad.fechaFin) {
+          // Actividad con rango de fechas
+          fechaInicio = startOfDay(new Date(actividad.fechaInicio));
+          fechaFin = endOfDay(new Date(actividad.fechaFin));
+          
+          // Verificar que la fecha fin sea posterior a la fecha inicio
+          if (fechaFin < fechaInicio) {
+            // Si la fecha fin es anterior, usar solo fecha inicio
+            fechaFin = undefined;
+          }
+        } else if (actividad.fechaInicio) {
+          // Solo fecha inicio
+          fechaInicio = startOfDay(new Date(actividad.fechaInicio));
+        } else if (actividad.fechaEvento) {
+          // Fecha evento como fallback
+          fechaInicio = startOfDay(new Date(actividad.fechaEvento));
+        } else {
+          // Fecha creación como último recurso
+          fechaInicio = startOfDay(new Date(actividad.fechaCreacion));
+        }
         
         // Obtener el color del estado de la actividad
         let colorEstado = '#3B82F6'; // Color por defecto (azul)
@@ -2056,6 +2150,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         
         // Crear tooltip con información detallada
         let tooltip = actividad.nombre;
+        if (actividad.codigoActividad) {
+          tooltip += `\nCódigo: ${actividad.codigoActividad}`;
+        }
         if (actividad.descripcion) {
           tooltip += `\n\n${actividad.descripcion.substring(0, 150)}${actividad.descripcion.length > 150 ? '...' : ''}`;
         }
@@ -2069,25 +2166,115 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           tooltip += `\nEstado: ${nombreEstado}`;
         }
         
-        return {
+        // Si hay rango de fechas, agregar información al tooltip
+        if (fechaFin) {
+          const diasDuracion = differenceInDays(fechaFin, fechaInicio) + 1;
+          tooltip += `\nDuración: ${diasDuracion} día(s)`;
+          tooltip += `\nDel ${format(fechaInicio, 'dd/MM/yyyy')} al ${format(fechaFin, 'dd/MM/yyyy')}`;
+        }
+        
+        // Construir el título solo con el nombre (el código se mostrará como badge separado)
+        let title = actividad.nombre;
+        
+        // Agregar información de duración si es un evento de varios días
+        if (fechaFin) {
+          const diasDuracion = differenceInDays(fechaFin, fechaInicio) + 1;
+          if (diasDuracion > 1) {
+            title = `${actividad.nombre} (${diasDuracion} días)`;
+          }
+        }
+        
+        const evento: CalendarEvent = {
           id: actividad.id,
-          start: fecha,
-          title: actividad.nombre, // El nombre de la actividad se mostrará en la ficha
+          start: fechaInicio,
+          title: title,
           color: color,
           meta: {
             actividad: actividad,
             estado: nombreEstado,
-            tooltip: tooltip
+            tooltip: tooltip,
+            codigoActividad: actividad.codigoActividad // Guardar código por separado para estilos
           }
-        } as CalendarEvent;
+        };
+        
+        // Si hay fecha fin, agregarla al evento para que se muestre como evento de varios días
+        if (fechaFin) {
+          evento.end = fechaFin;
+          // Marcar como evento de todo el día para mejor visualización
+          evento.allDay = true;
+        }
+        
+        return evento;
       });
     
     this.eventosCalendario.set(eventos);
     
-    // Re-attach listeners después de actualizar eventos
+    // Re-attach listeners después de actualizar eventos y agregar badges de código
     setTimeout(() => {
       this.attachEventListeners();
+      this.agregarBadgesCodigo();
     }, 100);
+  }
+
+  agregarBadgesCodigo(): void {
+    // Obtener todas las celdas del día en el calendario
+    const dayCells = this.elementRef.nativeElement.querySelectorAll('.cal-day-cell');
+    
+    dayCells.forEach((cell: HTMLElement) => {
+      // Limpiar atributos anteriores
+      cell.removeAttribute('data-has-code');
+      cell.removeAttribute('data-activity-code');
+      
+      // Obtener el número del día
+      const dayNumberEl = cell.querySelector('.cal-day-number');
+      if (!dayNumberEl) return;
+      
+      const dayNumber = parseInt(dayNumberEl.textContent?.trim() || '0', 10);
+      if (dayNumber === 0) return;
+      
+      // Buscar eventos en esta celda
+      const events = cell.querySelectorAll('.cal-event');
+      if (events.length === 0) return;
+      
+      // Obtener el primer evento con código
+      let codigoEncontrado: string | null = null;
+      
+      // Obtener la fecha de la celda comparando con los eventos
+      const eventos = this.eventosCalendario();
+      
+      events.forEach((eventEl: Element) => {
+        const eventTitle = eventEl.textContent?.trim() || '';
+        
+        // Buscar el evento que coincida con este elemento
+        const evento = eventos.find(e => {
+          // Comparar por título
+          if (e.title === eventTitle) return true;
+          
+          // Comparar por nombre de actividad
+          const actividad = (e.meta as any)?.actividad;
+          if (actividad?.nombre === eventTitle) return true;
+          
+          // Verificar si el título contiene el nombre
+          if (actividad?.nombre && eventTitle.includes(actividad.nombre)) return true;
+          
+          return false;
+        });
+        
+        if (evento) {
+          const codigo = (evento.meta as any)?.codigoActividad || 
+                        (evento.meta as any)?.actividad?.codigoActividad;
+          if (codigo && !codigoEncontrado) {
+            codigoEncontrado = codigo;
+          }
+        }
+      });
+      
+      // Si encontramos un código, agregarlo como atributo
+      if (codigoEncontrado) {
+        cell.setAttribute('data-has-code', 'true');
+        cell.setAttribute('data-activity-code', codigoEncontrado);
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -2160,6 +2347,172 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   getColorBordeEstado(actividad: any): string {
     const color = this.getColorEstadoActividad(actividad);
     return this.hexToRgba(color, 0.4);
+  }
+
+  /**
+   * Parsea una fecha en formato YYYY-MM-DD a Date sin problemas de zona horaria
+   */
+  private parsearFecha(fechaString: string | undefined | Date): Date | null {
+    if (!fechaString) return null;
+    
+    // Si ya es un Date, retornarlo
+    if (fechaString instanceof Date) {
+      const fecha = new Date(fechaString);
+      fecha.setHours(0, 0, 0, 0);
+      return fecha;
+    }
+    
+    // Parsear formato YYYY-MM-DD manualmente para evitar problemas de zona horaria
+    const fechaStr = String(fechaString);
+    const partes = fechaStr.split('T')[0].split('-');
+    if (partes.length === 3) {
+      const año = parseInt(partes[0], 10);
+      const mes = parseInt(partes[1], 10) - 1; // Mes es 0-indexed
+      const dia = parseInt(partes[2], 10);
+      
+      if (!isNaN(año) && !isNaN(mes) && !isNaN(dia)) {
+        const fecha = new Date(año, mes, dia);
+        fecha.setHours(0, 0, 0, 0);
+        return fecha;
+      }
+    }
+    
+    // Fallback a new Date si el formato no es YYYY-MM-DD
+    try {
+      const fecha = new Date(fechaStr);
+      if (!isNaN(fecha.getTime())) {
+        fecha.setHours(0, 0, 0, 0);
+        return fecha;
+      }
+    } catch (e) {
+      // Ignorar errores
+    }
+    
+    return null;
+  }
+
+  /**
+   * Calcula el estado automático de una actividad basado en sus fechas
+   * Retorna el estado calculado o null si debe usar el estado manual
+   */
+  calcularEstadoAutomatico(actividad: Actividad): { nombre: string; id?: number } | null {
+    // Si la actividad tiene un estado manual (Suspendida, Cancelada, etc.), mantenerlo
+    const estadoActual = actividad.nombreEstadoActividad?.toLowerCase() || '';
+    const estadosManuales = ['suspendida', 'suspendido', 'cancelada', 'cancelado'];
+    
+    if (estadosManuales.some(estado => estadoActual.includes(estado))) {
+      return null; // Mantener el estado manual
+    }
+
+    // Obtener fechas - usar fechaInicio como referencia principal
+    const fechaInicio = this.parsearFecha(actividad.fechaInicio);
+    const fechaFin = this.parsearFecha(actividad.fechaFin);
+    const fechaEvento = this.parsearFecha(actividad.fechaEvento);
+    
+    // Si no hay fechaInicio, usar fechaEvento como fallback, pero no fechaCreacion
+    const fechaReferencia = fechaInicio || fechaEvento;
+    
+    if (!fechaReferencia) {
+      return null; // Sin fecha de referencia, no calcular automáticamente
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    // Buscar los estados en la lista de estados disponibles
+    const estados = this.estadosActividad();
+
+    // 1. Si fechaInicio es futura → Planificada
+    if (fechaReferencia > hoy) {
+      const estadoPlanificada = estados.find(e => {
+        const nombre = e.nombre?.toLowerCase() || '';
+        return nombre.includes('planificada') || nombre.includes('planificad');
+      });
+      if (estadoPlanificada) {
+        return {
+          nombre: estadoPlanificada.nombre,
+          id: estadoPlanificada.idEstadoActividad || estadoPlanificada.id
+        };
+      }
+      return { nombre: 'Planificada' };
+    }
+
+    // 2. Si fechaInicio es hoy o pasada, verificar fechaFin
+    if (fechaReferencia <= hoy) {
+      // Si hay fechaFin y ya pasó → Terminada
+      if (fechaFin && fechaFin < hoy) {
+        const estadoTerminada = estados.find(e => {
+          const nombre = e.nombre?.toLowerCase() || '';
+          return nombre.includes('terminada') || nombre.includes('terminado') || 
+                 nombre.includes('finalizada') || nombre.includes('finalizado') ||
+                 nombre.includes('completada') || nombre.includes('completado');
+        });
+        if (estadoTerminada) {
+          return {
+            nombre: estadoTerminada.nombre,
+            id: estadoTerminada.idEstadoActividad || estadoTerminada.id
+          };
+        }
+        return { nombre: 'Terminada' };
+      }
+
+      // 3. Si fechaInicio <= hoy y (fechaFin no existe o fechaFin >= hoy) → En ejecución
+      // Esto cubre: fechaInicio es hoy, o estamos dentro del rango [fechaInicio, fechaFin]
+      // Ejemplo: actividad del 15 al 20, hoy es 17 → En ejecución
+      const estadoEnEjecucion = estados.find(e => {
+        const nombre = e.nombre?.toLowerCase() || '';
+        return nombre.includes('en ejecución') || nombre.includes('en ejecucion') ||
+               nombre.includes('ejecución') || nombre.includes('ejecucion') ||
+               nombre.includes('en curso') || nombre.includes('en_curso') ||
+               nombre.includes('curso');
+      });
+      if (estadoEnEjecucion) {
+        return {
+          nombre: estadoEnEjecucion.nombre,
+          id: estadoEnEjecucion.idEstadoActividad || estadoEnEjecucion.id
+        };
+      }
+      return { nombre: 'En ejecución' };
+    }
+
+    return null;
+  }
+
+  /**
+   * Obtiene el estado a mostrar para una actividad (automático o manual)
+   */
+  obtenerEstadoParaMostrar(actividad: Actividad): { nombre: string; id?: number; esAutomatico: boolean } {
+    // Intentar calcular estado automático
+    const estadoAutomatico = this.calcularEstadoAutomatico(actividad);
+    
+    if (estadoAutomatico) {
+      return { ...estadoAutomatico, esAutomatico: true };
+    }
+
+    // Si no hay estado automático, usar el estado guardado
+    if (actividad.nombreEstadoActividad) {
+      return {
+        nombre: actividad.nombreEstadoActividad,
+        id: actividad.idEstadoActividad,
+        esAutomatico: false
+      };
+    }
+
+    // Buscar estado por ID
+    if (actividad.idEstadoActividad) {
+      const estado = this.estadosActividad().find(
+        e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
+      );
+      if (estado) {
+        return {
+          nombre: estado.nombre || estado.Nombre || 'Sin estado',
+          id: actividad.idEstadoActividad,
+          esAutomatico: false
+        };
+      }
+    }
+
+    return { nombre: 'Sin estado', esAutomatico: false };
   }
 
   getTiposEvidenciaDeActividad(): number[] | null {
@@ -2975,6 +3328,58 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
    * Convierte hora de formato 12h con AM/PM a formato 24h (HH:mm)
    * Ejemplo: "02:30 PM" -> "14:30"
    */
+  // Actualizar horaRealizacion desde los selectores de 12h
+  actualizarHoraRealizacion(): void {
+    const hora = this.formNuevaActividad.get('horaRealizacionHora')?.value;
+    const minuto = this.formNuevaActividad.get('horaRealizacionMinuto')?.value;
+    const amPm = this.formNuevaActividad.get('horaRealizacionAmPm')?.value;
+    
+    if (!hora || !minuto || !amPm) {
+      this.formNuevaActividad.patchValue({ horaRealizacion: '' }, { emitEvent: false });
+      return;
+    }
+    
+    // Convertir de 12h a 24h
+    let horas24 = parseInt(hora, 10);
+    
+    if (amPm === 'PM' && horas24 !== 12) {
+      horas24 = horas24 + 12;
+    } else if (amPm === 'AM' && horas24 === 12) {
+      horas24 = 0;
+    }
+    
+    const hora24h = `${horas24.toString().padStart(2, '0')}:${minuto}`;
+    this.formNuevaActividad.patchValue({ horaRealizacion: hora24h }, { emitEvent: false });
+  }
+
+  // Convertir hora de 24h a 12h para los selectores
+  convertir24hA12h(hora24h: string): { hora: string; minuto: string; amPm: string } | null {
+    if (!hora24h || !hora24h.includes(':')) return null;
+    
+    const [horas, minutos] = hora24h.split(':');
+    const horasNum = parseInt(horas, 10);
+    
+    if (isNaN(horasNum)) return null;
+    
+    let horas12 = horasNum;
+    let amPm = 'AM';
+    
+    if (horasNum === 0) {
+      horas12 = 12;
+    } else if (horasNum === 12) {
+      amPm = 'PM';
+    } else if (horasNum > 12) {
+      horas12 = horasNum - 12;
+      amPm = 'PM';
+    }
+    
+    return {
+      hora: horas12.toString().padStart(2, '0'),
+      minuto: minutos,
+      amPm: amPm
+    };
+  }
+
   private convertir12hA24h(hora12h: string): string | null {
     if (!hora12h) return null;
     

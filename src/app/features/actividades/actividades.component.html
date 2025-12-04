@@ -508,14 +508,31 @@
                   <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
                   Hora de realización
                 </label>
-                <div class="relative">
-                  <input 
-                    type="time"
-                    formControlName="horaRealizacion"
-                    class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                  <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                    <app-icon icon="access_time" size="xs"></app-icon>
-                  </span>
+                <div class="flex items-center gap-2">
+                  <select 
+                    formControlName="horaRealizacionHora"
+                    class="flex-1 px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    <option value="">Hora</option>
+                    @for (hora of horas12; track hora) {
+                      <option [value]="hora">{{ hora }}</option>
+                    }
+                  </select>
+                  <span class="text-slate-500 font-medium">:</span>
+                  <select 
+                    formControlName="horaRealizacionMinuto"
+                    class="flex-1 px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    <option value="">Min</option>
+                    @for (minuto of minutos; track minuto) {
+                      <option [value]="minuto">{{ minuto }}</option>
+                    }
+                  </select>
+                  <select 
+                    formControlName="horaRealizacionAmPm"
+                    class="flex-1 px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                    <option value="">AM/PM</option>
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
                 </div>
               </div>
 
@@ -528,11 +545,18 @@
                   <input 
                     type="date"
                     formControlName="fechaFin"
+                    [class.border-red-500]="formNuevaActividad.get('fechaFin')?.invalid && formNuevaActividad.get('fechaFin')?.touched"
                     class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
                   <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                     <app-icon icon="calendar_today" size="xs"></app-icon>
                   </span>
                 </div>
+                @if (formNuevaActividad.get('fechaFin')?.hasError('fechaFinAnterior') && formNuevaActividad.get('fechaFin')?.touched) {
+                  <p class="mt-1 text-xs text-red-600 flex items-center gap-1">
+                    <app-icon icon="error" size="xs"></app-icon>
+                    La fecha de fin no puede ser anterior a la fecha de inicio
+                  </p>
+                }
               </div>
             </div>
 
@@ -576,7 +600,7 @@
                     formControlName="idEstadoActividad"
                     class="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer transition-all">
                     <option [ngValue]="null">Seleccione estado...</option>
-                    @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                    @for (estado of estadosActividadParaCreacion(); track estado.idEstadoActividad || estado.id) {
                       <option [ngValue]="estado.idEstadoActividad || estado.id">
                         {{ estado.nombre || estado.Nombre }}
                       </option>
@@ -2036,24 +2060,11 @@
             </div>
 
             <div class="mb-3 flex flex-wrap gap-2">
-              @if (actividad.nombreEstadoActividad || actividad.idEstadoActividad) {
-                @let estadoActividad = getEstadoDeActividad(actividad);
-                @let colorEstado = getColorEstadoActividad(actividad);
-                @let colorFondo = getColorFondoEstado(actividad);
-                @let colorBorde = getColorBordeEstado(actividad);
-                @let nombreEstado = actividad.nombreEstadoActividad || (estadoActividad?.nombre || estadoActividad?.Nombre) || 'Sin estado';
-                <span 
-                  class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border"
-                  [style.background-color]="colorFondo"
-                  [style.color]="colorEstado"
-                  [style.border-color]="colorBorde">
-                  <div 
-                    class="w-2 h-2 rounded-full mr-1.5"
-                    [style.background-color]="colorEstado">
-                  </div>
-                  {{ nombreEstado }}
+              @let estadoMostrar = obtenerEstadoParaMostrar(actividad);
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                  <app-icon icon="toggle_on" size="xs" class="mr-1 text-blue-600"></app-icon>
+                {{ estadoMostrar.nombre }}
                 </span>
-              }
               @if (actividad.nombreNivel) {
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
                   <app-icon icon="layers" size="xs" class="mr-1 text-slate-400"></app-icon>
@@ -2171,29 +2182,11 @@
                     </span>
                   </td>
                   <td class="px-3 py-2.5">
-                    @if (actividad.nombreEstadoActividad || actividad.idEstadoActividad) {
-                      @let estadoActividad = getEstadoDeActividad(actividad);
-                      @let colorEstado = getColorEstadoActividad(actividad);
-                      @let colorFondo = getColorFondoEstado(actividad);
-                      @let colorBorde = getColorBordeEstado(actividad);
-                      @let nombreEstado = actividad.nombreEstadoActividad || (estadoActividad?.nombre || estadoActividad?.Nombre) || 'Sin estado';
-                      <span 
-                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
-                        [style.background-color]="colorFondo"
-                        [style.color]="colorEstado"
-                        [style.border-color]="colorBorde">
-                        <span 
-                          class="w-1.5 h-1.5 rounded-full mr-1.5"
-                          [style.background-color]="colorEstado">
-                        </span>
-                        {{ nombreEstado }}
+                    @let estadoMostrar = obtenerEstadoParaMostrar(actividad);
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                        <span class="w-1 h-1 rounded-full bg-blue-500 mr-1"></span>
+                      {{ estadoMostrar.nombre }}
                       </span>
-                    } @else {
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                        <span class="w-1.5 h-1.5 rounded-full bg-slate-400 mr-1.5"></span>
-                        Sin estado
-                      </span>
-                    }
                   </td>
                   <td class="px-4 py-2.5 whitespace-nowrap text-right">
                     <div class="flex items-center justify-end gap-2">
@@ -2285,6 +2278,11 @@
                     <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
                       {{ eventoHovered.title }}
                     </h4>
+                    @if (eventoHovered.meta?.actividad?.codigoActividad) {
+                      <p class="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded inline-block mb-2">
+                        Código: {{ eventoHovered.meta.actividad.codigoActividad }}
+                      </p>
+                    }
                     @if (eventoHovered.meta?.actividad?.descripcion) {
                       <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
                         {{ eventoHovered.meta.actividad.descripcion }}

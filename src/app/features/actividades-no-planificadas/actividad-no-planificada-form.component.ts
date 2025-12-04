@@ -1,6 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
@@ -56,10 +56,33 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
   form!: FormGroup;
   departamentos = signal<Departamento[]>([]);
   estadosActividad = signal<EstadoActividad[]>([]);
+  
+  // Estados filtrados para creación (excluye Suspendido, Cancelado y Finalizado)
+  estadosActividadParaCreacion = computed(() => {
+    // En modo edición, mostrar todos los estados
+    if (this.isEditMode()) {
+      return this.estadosActividad();
+    }
+    // En modo creación, filtrar Suspendido, Cancelado y Finalizado
+    return this.estadosActividad().filter(estado => {
+      const nombre = estado.nombre?.toLowerCase() || '';
+      return !nombre.includes('suspendido') && 
+             !nombre.includes('suspendida') &&
+             !nombre.includes('cancelado') && 
+             !nombre.includes('cancelada') &&
+             !nombre.includes('finalizado') &&
+             !nombre.includes('finalizada');
+    });
+  });
+  
   actividadesMensualesInst = signal<ActividadMensualInst[]>([]);
   indicadores = signal<Indicador[]>([]);
   actividadesAnuales = signal<ActividadAnual[]>([]);
   actividadesAnualesFiltradas = signal<ActividadAnual[]>([]);
+
+  // Arrays para selector de hora en formato 12 horas
+  horas12: string[] = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  minutos: string[] = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
   actividadesMensualesFiltradas = signal<ActividadMensualInst[]>([]);
   tiposProtagonista = signal<any[]>([]);
   capacidadesInstaladas = signal<any[]>([]);
@@ -126,6 +149,33 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     }
   }
 
+  // Validador personalizado para comparar fechas
+  fechaFinValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.parent) {
+      return null;
+    }
+    
+    const fechaInicio = control.parent.get('fechaInicio')?.value;
+    const fechaFin = control.value;
+    
+    if (!fechaInicio || !fechaFin) {
+      return null; // Si alguna fecha está vacía, no validar (validación opcional)
+    }
+    
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    
+    // Comparar solo las fechas (sin horas)
+    inicio.setHours(0, 0, 0, 0);
+    fin.setHours(0, 0, 0, 0);
+    
+    if (fin < inicio) {
+      return { fechaFinAnterior: true };
+    }
+    
+    return null;
+  }
+
   initializeForm(): void {
     const currentYear = new Date().getFullYear();
     this.form = this.fb.group({
@@ -135,7 +185,11 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
       departamentoId: [null],
       departamentoResponsableId: [[]],
       fechaInicio: [''],
-      fechaFin: [''],
+      fechaFin: ['', [this.fechaFinValidator.bind(this)]],
+      horaRealizacion: [''], // Campo oculto que se actualiza desde los selects
+      horaRealizacionHora: [''],
+      horaRealizacionMinuto: [''],
+      horaRealizacionAmPm: [''],
       soporteDocumentoUrl: [null],
       idEstadoActividad: [null],
       modalidad: [''],
@@ -150,7 +204,6 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
       cantidadParticipantesEstudiantesProyectados: [null],
       anio: [String(currentYear)],
       horaInicioPrevista: [''],
-      horaRealizacion: [''],
       idTipoProtagonista: [[]],
       categoriaActividadId: [null],
       tipoUnidadId: [null],
@@ -169,6 +222,22 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
       if (value && this.form.get('nombreActividad')?.value !== value) {
         this.form.patchValue({ nombreActividad: value }, { emitEvent: false });
       }
+    });
+
+    // Suscribirse a cambios en fechaInicio para revalidar fechaFin
+    this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
+      this.form.get('fechaFin')?.updateValueAndValidity();
+    });
+
+    // Sincronizar selectores de hora con el campo horaRealizacion
+    this.form.get('horaRealizacionHora')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+    this.form.get('horaRealizacionMinuto')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+    this.form.get('horaRealizacionAmPm')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
     });
 
     this.form.get('idIndicador')?.valueChanges.subscribe(idIndicador => {
@@ -417,9 +486,17 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     this.loading.set(true);
     this.actividadesService.get(id).subscribe({
       next: (data) => {
-        let horaRealizacionFormatted = '';
+        // Convertir hora de 24h a 12h para los selectores
+        let horaRealizacionHora = '';
+        let horaRealizacionMinuto = '';
+        let horaRealizacionAmPm = '';
         if (data.horaRealizacion) {
-          horaRealizacionFormatted = this.convertir24hA12h(String(data.horaRealizacion).substring(0, 5));
+          const hora12h = this.convertir24hA12hParaSelectores(String(data.horaRealizacion).substring(0, 5));
+          if (hora12h) {
+            horaRealizacionHora = hora12h.hora;
+            horaRealizacionMinuto = hora12h.minuto;
+            horaRealizacionAmPm = hora12h.amPm;
+          }
         }
 
         const nombreActividad = data.nombreActividad || data.nombre || '';
@@ -454,7 +531,10 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
           idActividadAnual: idActividadAnualArray,
           objetivo: data.objetivo || '',
           anio: data.anio ? String(data.anio) : String(new Date().getFullYear()),
-          horaRealizacion: horaRealizacionFormatted,
+          horaRealizacion: data.horaRealizacion || '',
+          horaRealizacionHora: horaRealizacionHora,
+          horaRealizacionMinuto: horaRealizacionMinuto,
+          horaRealizacionAmPm: horaRealizacionAmPm,
           cantidadParticipantesProyectados: data.cantidadParticipantesProyectados || null,
           cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados || null,
           idTipoProtagonista: idTipoProtagonistaArray,
@@ -546,11 +626,9 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
 
       let horaRealizacion: string | undefined = undefined;
       if (formValue.horaRealizacion) {
-        const hora12h = String(formValue.horaRealizacion).trim();
-        const hora24h = this.convertir12hA24h(hora12h);
-        if (hora24h) {
-          horaRealizacion = hora24h.includes(':') ? (hora24h.split(':').length === 2 ? hora24h + ':00' : hora24h) : hora24h;
-        }
+        // horaRealizacion ya está en formato 24h desde actualizarHoraRealizacion
+        const hora = String(formValue.horaRealizacion).trim();
+        horaRealizacion = hora.includes(':') ? (hora.split(':').length === 2 ? hora + ':00' : hora) : hora;
       }
 
       // Limpiar el objeto data para no enviar campos undefined o vacíos que puedan causar problemas
@@ -979,6 +1057,58 @@ export class ActividadNoPlanificadaFormComponent implements OnInit {
     } else {
       this.router.navigate(['/actividades-anuales/nueva']);
     }
+  }
+
+  // Actualizar horaRealizacion desde los selectores de 12h
+  actualizarHoraRealizacion(): void {
+    const hora = this.form.get('horaRealizacionHora')?.value;
+    const minuto = this.form.get('horaRealizacionMinuto')?.value;
+    const amPm = this.form.get('horaRealizacionAmPm')?.value;
+    
+    if (!hora || !minuto || !amPm) {
+      this.form.patchValue({ horaRealizacion: '' }, { emitEvent: false });
+      return;
+    }
+    
+    // Convertir de 12h a 24h
+    let horas24 = parseInt(hora, 10);
+    
+    if (amPm === 'PM' && horas24 !== 12) {
+      horas24 = horas24 + 12;
+    } else if (amPm === 'AM' && horas24 === 12) {
+      horas24 = 0;
+    }
+    
+    const hora24h = `${horas24.toString().padStart(2, '0')}:${minuto}`;
+    this.form.patchValue({ horaRealizacion: hora24h }, { emitEvent: false });
+  }
+
+  // Convertir hora de 24h a 12h para los selectores
+  convertir24hA12hParaSelectores(hora24h: string): { hora: string; minuto: string; amPm: string } | null {
+    if (!hora24h || !hora24h.includes(':')) return null;
+    
+    const [horas, minutos] = hora24h.split(':');
+    const horasNum = parseInt(horas, 10);
+    
+    if (isNaN(horasNum)) return null;
+    
+    let horas12 = horasNum;
+    let amPm = 'AM';
+    
+    if (horasNum === 0) {
+      horas12 = 12;
+    } else if (horasNum === 12) {
+      amPm = 'PM';
+    } else if (horasNum > 12) {
+      horas12 = horasNum - 12;
+      amPm = 'PM';
+    }
+    
+    return {
+      hora: horas12.toString().padStart(2, '0'),
+      minuto: minutos,
+      amPm: amPm
+    };
   }
 
   private convertir24hA12h(hora24h: string): string {
