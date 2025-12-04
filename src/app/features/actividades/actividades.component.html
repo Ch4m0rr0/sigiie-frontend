@@ -1881,70 +1881,301 @@
       
       <div class="md:col-span-3">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Estado</label>
-        <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <app-icon icon="toggle_on" size="xs"></app-icon>
+        <div class="relative" data-dropdown-filtro-estado>
+          <button
+            type="button"
+            (click)="mostrarDropdownFiltroEstado.set(!mostrarDropdownFiltroEstado())"
+            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer text-left flex items-center gap-2 hover:bg-white">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+              <app-icon icon="toggle_on" size="xs"></app-icon>
             </span>
-            <select 
-                [value]="filtroEstadoActividad() || ''"
-                (change)="onEstadoFiltroChange($event)"
-                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
-                <option value="">Todos los estados</option>
-                @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
-                  <option [value]="estado.idEstadoActividad || estado.id">
-                    {{ estado.nombre || estado.Nombre }}
-                  </option>
+            <span class="flex-1 min-w-0 truncate pl-6 flex items-center gap-2">
+              @if (filtroEstadoActividad() !== null) {
+                @let estadoSeleccionado = getEstadoSeleccionado();
+                @if (estadoSeleccionado) {
+                  @let colorEstado = getEstadoColor(estadoSeleccionado);
+                  <span class="flex items-center gap-2 min-w-0">
+                    <span 
+                      class="w-3 h-3 rounded border border-slate-300 flex-shrink-0"
+                      [style.background-color]="colorEstado"
+                      [title]="'Color: ' + colorEstado">
+                    </span>
+                    <span class="truncate">{{ estadoSeleccionado.nombre || estadoSeleccionado.Nombre }}</span>
+                  </span>
+                } @else {
+                  <span class="text-slate-400">Seleccionar estado...</span>
                 }
-            </select>
-            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <app-icon icon="expand_more" size="xs"></app-icon>
+              } @else {
+                <span class="text-slate-400">Todos los estados</span>
+              }
             </span>
+            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+              <app-icon icon="expand_more" size="xs" [class.rotate-180]="mostrarDropdownFiltroEstado()"></app-icon>
+            </span>
+          </button>
+
+          <!-- Dropdown -->
+          @if (mostrarDropdownFiltroEstado()) {
+            <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-96 flex flex-col animate-fade-in" style="min-width: 100%; max-width: 400px;">
+              <!-- Buscador -->
+              <div class="p-3 border-b border-slate-200">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <app-icon icon="search" size="xs" class="text-slate-400"></app-icon>
+                  </div>
+                  <input
+                    type="text"
+                    [value]="terminoBusquedaEstado()"
+                    (input)="terminoBusquedaEstado.set($any($event.target).value)"
+                    (click)="$event.stopPropagation()"
+                    placeholder="Buscar por nombre..."
+                    class="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  />
+                  @if (terminoBusquedaEstado()) {
+                    <button
+                      type="button"
+                      (click)="terminoBusquedaEstado.set(''); $event.stopPropagation()"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Limpiar búsqueda">
+                      <app-icon icon="close" size="xs"></app-icon>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Lista de opciones -->
+              <div class="overflow-y-auto max-h-80">
+                <button
+                  type="button"
+                  (click)="filtroEstadoActividad.set(null); onFiltroChange(); mostrarDropdownFiltroEstado.set(false)"
+                  [class.bg-emerald-50]="filtroEstadoActividad() === null"
+                  [class.text-emerald-700]="filtroEstadoActividad() === null"
+                  class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2">
+                  <app-icon icon="check" size="xs" [class.opacity-0]="filtroEstadoActividad() !== null"></app-icon>
+                  <span>Todos los estados</span>
+                </button>
+                @if (getEstadosFiltrados().length > 0) {
+                  @for (estado of getEstadosFiltrados(); track estado.idEstadoActividad || estado.id) {
+                    @let colorEstado = getEstadoColor(estado);
+                    @let idEstado = estado.idEstadoActividad || estado.id;
+                    <button
+                      type="button"
+                      (click)="filtroEstadoActividad.set(idEstado); onFiltroChange(); mostrarDropdownFiltroEstado.set(false)"
+                      [class.bg-emerald-50]="filtroEstadoActividad() === idEstado"
+                      [class.text-emerald-700]="filtroEstadoActividad() === idEstado"
+                      class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2 group">
+                      <app-icon icon="check" size="xs" [class.opacity-0]="filtroEstadoActividad() !== idEstado" class="flex-shrink-0"></app-icon>
+                      <span 
+                        class="w-3 h-3 rounded border border-slate-300 flex-shrink-0"
+                        [style.background-color]="colorEstado"
+                        [title]="'Color: ' + colorEstado">
+                      </span>
+                      <span class="flex-1 min-w-0 truncate">
+                        {{ estado.nombre || estado.Nombre }}
+                      </span>
+                    </button>
+                  }
+                } @else {
+                  <div class="px-4 py-8 text-center text-sm text-slate-500">
+                    <app-icon icon="search_off" size="sm" class="mx-auto mb-2 text-slate-400"></app-icon>
+                    <p>No se encontraron estados</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
 
       <div class="md:col-span-3">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Anual</label>
-        <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <app-icon icon="calendar_today" size="xs"></app-icon>
+        <div class="relative" data-dropdown-filtro-anual>
+          <button
+            type="button"
+            (click)="mostrarDropdownFiltroAnual.set(!mostrarDropdownFiltroAnual())"
+            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer text-left flex items-center gap-2 hover:bg-white">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+              <app-icon icon="calendar_today" size="xs"></app-icon>
             </span>
-            <select 
-                [value]="filtroActividadAnual() ?? ''"
-                (change)="filtroActividadAnual.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
-                <option value="">Todas las actividades anuales</option>
-                @for (anual of actividadesAnuales(); track anual.idActividadAnual) {
-                  <option [value]="anual.idActividadAnual">
-                    {{ anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador) }} - {{ anual.anio }}
-                  </option>
-                }
-            </select>
+            <span class="flex-1 min-w-0 truncate pl-6 flex items-center gap-2">
+              @if (filtroActividadAnual().length > 0) {
+                <span class="text-slate-900">
+                  {{ filtroActividadAnual().length }} {{ filtroActividadAnual().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+                </span>
+              } @else {
+                <span class="text-slate-400">Todas las actividades anuales</span>
+              }
+            </span>
             <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <app-icon icon="expand_more" size="xs"></app-icon>
+              <app-icon icon="expand_more" size="xs" [class.rotate-180]="mostrarDropdownFiltroAnual()"></app-icon>
             </span>
+          </button>
+
+          <!-- Dropdown -->
+          @if (mostrarDropdownFiltroAnual()) {
+            <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-96 flex flex-col animate-fade-in" style="min-width: 100%; max-width: 500px;">
+              <!-- Buscador -->
+              <div class="p-3 border-b border-slate-200">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <app-icon icon="search" size="xs" class="text-slate-400"></app-icon>
+                  </div>
+                  <input
+                    type="text"
+                    [value]="terminoBusquedaAnual()"
+                    (input)="terminoBusquedaAnual.set($any($event.target).value)"
+                    (click)="$event.stopPropagation()"
+                    placeholder="Buscar por nombre o código de indicador..."
+                    class="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  />
+                  @if (terminoBusquedaAnual()) {
+                    <button
+                      type="button"
+                      (click)="terminoBusquedaAnual.set(''); $event.stopPropagation()"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Limpiar búsqueda">
+                      <app-icon icon="close" size="xs"></app-icon>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Lista de opciones -->
+              <div class="overflow-y-auto max-h-80">
+                <label class="flex items-center gap-3 py-2.5 px-4 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                  <input 
+                    type="checkbox"
+                    [checked]="filtroActividadAnual().length === 0"
+                    (change)="filtroActividadAnual.set([]); onFiltroChange()"
+                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                  <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">Todas las actividades anuales</span>
+                </label>
+                @if (actividadesAnualesFiltradasBusqueda().length > 0) {
+                  @for (anual of actividadesAnualesFiltradasBusqueda(); track anual.idActividadAnual) {
+                    @let nombreCompleto = (anual.nombre || (anual.nombreIndicador || 'Indicador ' + anual.idIndicador)) + ' - ' + anual.anio;
+                    @let codigoIndicador = anual.codigoIndicador || '';
+                    <label class="flex items-start gap-3 py-2.5 px-4 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                      <input 
+                        type="checkbox"
+                        [checked]="isFiltroActividadAnualSelected(anual.idActividadAnual)"
+                        (change)="toggleFiltroActividadAnual(anual.idActividadAnual)"
+                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all mt-0.5 flex-shrink-0">
+                      <span 
+                        class="flex-1 min-w-0 text-left break-words whitespace-normal text-sm text-slate-700 group-hover:text-emerald-900 transition-colors"
+                        [title]="(codigoIndicador ? codigoIndicador + ' - ' : '') + nombreCompleto"
+                        style="max-width: 420px; line-height: 1.5;">
+                        @if (codigoIndicador) {
+                          <span class="font-mono font-semibold text-emerald-600 mr-2">{{ codigoIndicador }}</span>
+                        }
+                        {{ nombreCompleto }}
+                      </span>
+                    </label>
+                  }
+                } @else {
+                  <div class="px-4 py-8 text-center text-sm text-slate-500">
+                    <app-icon icon="search_off" size="sm" class="mx-auto mb-2 text-slate-400"></app-icon>
+                    <p>No se encontraron actividades anuales</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
 
       <div class="md:col-span-3">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Mensual Institucional</label>
-        <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
-                <app-icon icon="calendar_month" size="xs"></app-icon>
+        <div class="relative" data-dropdown-filtro-mensual>
+          <button
+            type="button"
+            (click)="mostrarDropdownFiltroMensual.set(!mostrarDropdownFiltroMensual())"
+            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer text-left flex items-center gap-2 hover:bg-white">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+              <app-icon icon="calendar_month" size="xs"></app-icon>
             </span>
-            <select 
-                [value]="filtroActividadMensualInst() ?? ''"
-                (change)="filtroActividadMensualInst.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
-                <option value="">Todas las actividades mensuales</option>
-                @for (mensual of actividadesMensualesInst(); track mensual.idActividadMensualInst) {
-                  <option [value]="mensual.idActividadMensualInst">
-                    {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }} - {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
-                  </option>
-                }
-            </select>
+            <span class="flex-1 min-w-0 truncate pl-6 flex items-center gap-2">
+              @if (filtroActividadMensualInst().length > 0) {
+                <span class="text-slate-900">
+                  {{ filtroActividadMensualInst().length }} {{ filtroActividadMensualInst().length === 1 ? 'seleccionada' : 'seleccionadas' }}
+                </span>
+              } @else {
+                <span class="text-slate-400">Todas las actividades mensuales</span>
+              }
+            </span>
             <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <app-icon icon="expand_more" size="xs"></app-icon>
+              <app-icon icon="expand_more" size="xs" [class.rotate-180]="mostrarDropdownFiltroMensual()"></app-icon>
             </span>
+          </button>
+
+          <!-- Dropdown -->
+          @if (mostrarDropdownFiltroMensual()) {
+            <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-96 flex flex-col animate-fade-in" style="min-width: 100%; max-width: 500px;">
+              <!-- Buscador -->
+              <div class="p-3 border-b border-slate-200">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <app-icon icon="search" size="xs" class="text-slate-400"></app-icon>
+                  </div>
+                  <input
+                    type="text"
+                    [value]="terminoBusquedaMensual()"
+                    (input)="terminoBusquedaMensual.set($any($event.target).value)"
+                    (click)="$event.stopPropagation()"
+                    placeholder="Buscar por nombre o código de indicador..."
+                    class="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                  />
+                  @if (terminoBusquedaMensual()) {
+                    <button
+                      type="button"
+                      (click)="terminoBusquedaMensual.set(''); $event.stopPropagation()"
+                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Limpiar búsqueda">
+                      <app-icon icon="close" size="xs"></app-icon>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <!-- Lista de opciones -->
+              <div class="overflow-y-auto max-h-80">
+                <label class="flex items-center gap-3 py-2.5 px-4 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                  <input 
+                    type="checkbox"
+                    [checked]="filtroActividadMensualInst().length === 0"
+                    (change)="filtroActividadMensualInst.set([]); onFiltroChange()"
+                    class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                  <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">Todas las actividades mensuales</span>
+                </label>
+                @if (actividadesMensualesFiltradasBusqueda().length > 0) {
+                  @for (mensual of actividadesMensualesFiltradasBusqueda(); track mensual.idActividadMensualInst) {
+                    @let nombreCompleto = (mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst) + ' - ' + (mensual.nombreMes || 'Mes ' + mensual.mes);
+                    @let codigoIndicador = getCodigoIndicadorDeMensual(mensual);
+                    <label class="flex items-start gap-3 py-2.5 px-4 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                      <input 
+                        type="checkbox"
+                        [checked]="isFiltroActividadMensualSelected(mensual.idActividadMensualInst)"
+                        (change)="toggleFiltroActividadMensual(mensual.idActividadMensualInst)"
+                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all mt-0.5 flex-shrink-0">
+                      <span 
+                        class="flex-1 min-w-0 text-left break-words whitespace-normal text-sm text-slate-700 group-hover:text-emerald-900 transition-colors"
+                        [title]="(codigoIndicador ? codigoIndicador + ' - ' : '') + nombreCompleto"
+                        style="max-width: 420px; line-height: 1.5;">
+                        @if (codigoIndicador) {
+                          <span class="font-mono font-semibold text-emerald-600 mr-2">{{ codigoIndicador }}</span>
+                        }
+                        {{ nombreCompleto }}
+                      </span>
+                    </label>
+                  }
+                } @else {
+                  <div class="px-4 py-8 text-center text-sm text-slate-500">
+                    <app-icon icon="search_off" size="sm" class="mx-auto mb-2 text-slate-400"></app-icon>
+                    <p>No se encontraron actividades mensuales</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
       </div>
 
@@ -2004,7 +2235,7 @@
                     <app-icon icon="refresh" size="sm"></app-icon>
                     Reintentar
                 </button>
-                @if (filtroActividadAnual() || filtroActividadMensualInst() || filtroEstadoActividad() !== null) {
+                @if (filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || filtroEstadoActividad() !== null) {
                     <button 
                         type="button"
                         (click)="clearFilters()"
@@ -2021,10 +2252,13 @@
     <!-- Contador de resultados -->
     <div class="mb-4 flex items-center justify-between">
       <p class="text-sm text-slate-600">
-        <span class="font-semibold text-slate-900">{{ actividades().length }}</span>
-        {{ actividades().length === 1 ? 'actividad encontrada' : 'actividades encontradas' }}
+        <span class="font-semibold text-slate-900">{{ actividadesFiltradas().length }}</span>
+        {{ actividadesFiltradas().length === 1 ? 'actividad encontrada' : 'actividades encontradas' }}
+        @if (terminoBusqueda() && actividadesFiltradas().length !== actividades().length) {
+          <span class="text-slate-400"> (de {{ actividades().length }} totales)</span>
+        }
       </p>
-      @if (filtroEstadoActividad() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+      @if (filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
         <button 
           (click)="clearFilters()"
           class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-colors">
@@ -2036,8 +2270,40 @@
 
     <!-- Vista de Cards -->
     @if (modoVista() === 'cards') {
+      <!-- Buscador -->
+      <div class="mb-4 animate-fade-in">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <app-icon icon="search" size="sm" class="text-slate-400"></app-icon>
+            </div>
+            <input
+              type="text"
+              [value]="terminoBusqueda()"
+              (input)="terminoBusqueda.set($any($event.target).value)"
+              placeholder="Buscar por nombre o código de actividad..."
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+            />
+            @if (terminoBusqueda()) {
+              <button
+                type="button"
+                (click)="terminoBusqueda.set('')"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                title="Limpiar búsqueda">
+                <app-icon icon="close" size="sm"></app-icon>
+              </button>
+            }
+          </div>
+          @if (terminoBusqueda()) {
+            <div class="mt-2 text-xs text-slate-600">
+              Mostrando {{ actividadesFiltradas().length }} de {{ actividades().length }} actividades
+            </div>
+          }
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @for (actividad of actividades(); track actividad.id; let i = $index) {
+        @for (actividad of actividadesFiltradas(); track actividad.id; let i = $index) {
           
           <div 
             (click)="navigateToDetail(actividad.id)"
@@ -2061,8 +2327,16 @@
 
             <div class="mb-3 flex flex-wrap gap-2">
               @let estadoMostrar = obtenerEstadoParaMostrar(actividad);
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                  <app-icon icon="toggle_on" size="xs" class="mr-1 text-blue-600"></app-icon>
+              @let coloresBadge = getColoresBadgeEstado(estadoMostrar.color || '#3B82F6');
+                <span 
+                  class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border"
+                  [style.background-color]="coloresBadge.fondo"
+                  [style.color]="coloresBadge.texto"
+                  [style.border-color]="coloresBadge.borde">
+                  <span 
+                    class="w-1.5 h-1.5 rounded-full mr-1"
+                    [style.background-color]="coloresBadge.punto">
+                  </span>
                 {{ estadoMostrar.nombre }}
                 </span>
               @if (actividad.nombreNivel) {
@@ -2140,6 +2414,38 @@
 
     <!-- Vista de Lista -->
     @if (modoVista() === 'lista') {
+      <!-- Buscador -->
+      <div class="mb-4 animate-fade-in">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <app-icon icon="search" size="sm" class="text-slate-400"></app-icon>
+            </div>
+            <input
+              type="text"
+              [value]="terminoBusqueda()"
+              (input)="terminoBusqueda.set($any($event.target).value)"
+              placeholder="Buscar por nombre o código de actividad..."
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+            />
+            @if (terminoBusqueda()) {
+              <button
+                type="button"
+                (click)="terminoBusqueda.set('')"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                title="Limpiar búsqueda">
+                <app-icon icon="close" size="sm"></app-icon>
+              </button>
+            }
+          </div>
+          @if (terminoBusqueda()) {
+            <div class="mt-2 text-xs text-slate-600">
+              Mostrando {{ actividadesFiltradas().length }} de {{ actividades().length }} actividades
+            </div>
+          }
+        </div>
+      </div>
+
       <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
         <div class="overflow-x-auto">
           <table class="w-full">
@@ -2153,7 +2459,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200">
-              @for (actividad of actividades(); track actividad.id; let i = $index) {
+              @for (actividad of actividadesFiltradas(); track actividad.id; let i = $index) {
                 <tr 
                   (click)="navigateToDetail(actividad.id)"
                   [style.animation-delay.ms]="i * 30"
@@ -2183,8 +2489,16 @@
                   </td>
                   <td class="px-3 py-2.5">
                     @let estadoMostrar = obtenerEstadoParaMostrar(actividad);
-                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                        <span class="w-1 h-1 rounded-full bg-blue-500 mr-1"></span>
+                    @let coloresBadge = getColoresBadgeEstado(estadoMostrar.color || '#3B82F6');
+                      <span 
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                        [style.background-color]="coloresBadge.fondo"
+                        [style.color]="coloresBadge.texto"
+                        [style.border-color]="coloresBadge.borde">
+                        <span 
+                          class="w-1 h-1 rounded-full mr-1"
+                          [style.background-color]="coloresBadge.punto">
+                        </span>
                       {{ estadoMostrar.nombre }}
                       </span>
                   </td>
@@ -2374,19 +2688,19 @@
         </div>
         <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
         <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
-            @if (filtroEstadoActividad() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
-                @if (filtroActividadMensualInst()) {
+            @if (filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+                @if (filtroActividadMensualInst().length > 0) {
                     No hay actividades asociadas a esta actividad mensual. Las actividades mensuales son contenedores que agrupan actividades. 
                     Para ver actividades aquí, necesitas crear actividades normales y asociarlas a esta actividad mensual.
                 } @else {
-                    No hay actividades que coincidan con los filtros seleccionados. Intenta ajustar los filtros o crear una nueva actividad.
+                    No hay actividades que coincidan con los filtros o búsqueda seleccionados. Intenta ajustar los filtros, cambiar el término de búsqueda o crear una nueva actividad.
                 }
             } @else {
                 Aún no hay actividades registradas. Comienza creando tu primera actividad.
             }
         </p>
         <div class="flex gap-3 flex-wrap justify-center">
-            @if (filtroEstadoActividad() !== null || filtroActividadAnual() || filtroActividadMensualInst()) {
+            @if (filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
                 <button 
                     (click)="clearFilters()" 
                     class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">
@@ -2399,6 +2713,28 @@
                 class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2">
                 <app-icon icon="add" size="xs" color="white"></app-icon>
                 Crear Actividad
+            </button>
+        </div>
+    </div>
+  }
+
+  <!-- Mensaje cuando hay actividades pero la búsqueda no devuelve resultados -->
+  @if (!loading() && !error() && actividades().length > 0 && actividadesFiltradas().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-xl border border-slate-200 border-dashed animate-fade-in">
+        <div class="w-20 h-20 bg-gradient-to-br from-slate-50 to-slate-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+            <app-icon icon="search_off" size="xl" class="text-slate-400"></app-icon>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron resultados</h3>
+        <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
+            No hay actividades que coincidan con el término de búsqueda "<span class="font-semibold text-slate-700">{{ terminoBusqueda() }}</span>". 
+            Intenta buscar por nombre o código de actividad.
+        </p>
+        <div class="flex gap-3 flex-wrap justify-center">
+            <button 
+                (click)="terminoBusqueda.set('')" 
+                class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">
+                <app-icon icon="close" size="xs"></app-icon>
+                Limpiar Búsqueda
             </button>
         </div>
     </div>

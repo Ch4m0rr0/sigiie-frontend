@@ -162,8 +162,100 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   // Filtros
   filtroEstadoActividad = signal<number | null>(null);
-  filtroActividadAnual = signal<number | null>(null);
-  filtroActividadMensualInst = signal<number | null>(null);
+  filtroActividadAnual = signal<number[]>([]);
+  filtroActividadMensualInst = signal<number[]>([]);
+  terminoBusqueda = signal<string>('');
+  terminoBusquedaAnual = signal<string>('');
+  mostrarDropdownFiltroAnual = signal(false);
+  terminoBusquedaMensual = signal<string>('');
+  mostrarDropdownFiltroMensual = signal(false);
+  terminoBusquedaEstado = signal<string>('');
+  mostrarDropdownFiltroEstado = signal(false);
+
+  // Actividades anuales disponibles según filtro de mensuales
+  actividadesAnualesDisponibles = computed(() => {
+    const filtroMensuales = this.filtroActividadMensualInst();
+    if (filtroMensuales.length === 0) {
+      return this.actividadesAnuales();
+    }
+    // Obtener las actividades anuales asociadas a las mensuales seleccionadas
+    const idsAnuales = new Set<number>();
+    filtroMensuales.forEach(idMensual => {
+      const mensual = this.actividadesMensualesInst().find(m => m.idActividadMensualInst === idMensual);
+      if (mensual?.idActividadAnual) {
+        idsAnuales.add(mensual.idActividadAnual);
+      }
+    });
+    return this.actividadesAnuales().filter(a => idsAnuales.has(a.idActividadAnual));
+  });
+
+  // Actividades anuales filtradas por búsqueda
+  actividadesAnualesFiltradasBusqueda = computed(() => {
+    const termino = this.terminoBusquedaAnual().toLowerCase().trim();
+    const disponibles = this.actividadesAnualesDisponibles();
+    if (!termino) {
+      return disponibles;
+    }
+    return disponibles.filter(anual => {
+      const nombre = (anual.nombre || anual.nombreIndicador || '').toLowerCase();
+      const anio = (anual.anio || '').toString();
+      const codigoIndicador = (anual.codigoIndicador || '').toLowerCase();
+      return nombre.includes(termino) || anio.includes(termino) || codigoIndicador.includes(termino);
+    });
+  });
+
+  // Actividades mensuales disponibles según filtro de anuales
+  actividadesMensualesDisponibles = computed(() => {
+    const filtroAnuales = this.filtroActividadAnual();
+    if (filtroAnuales.length === 0) {
+      return this.actividadesMensualesInst();
+    }
+    // Filtrar solo las mensuales asociadas a las anuales seleccionadas
+    return this.actividadesMensualesInst().filter(m => 
+      m.idActividadAnual && filtroAnuales.includes(m.idActividadAnual)
+    );
+  });
+
+  // Actividades mensuales filtradas por búsqueda
+  actividadesMensualesFiltradasBusqueda = computed(() => {
+    const termino = this.terminoBusquedaMensual().toLowerCase().trim();
+    const disponibles = this.actividadesMensualesDisponibles();
+    if (!termino) {
+      return disponibles;
+    }
+    return disponibles.filter(mensual => {
+      const nombre = (mensual.nombre || '').toLowerCase();
+      const nombreMes = (mensual.nombreMes || '').toLowerCase();
+      const mes = (mensual.mes || '').toString();
+      
+      // Buscar código del indicador desde la actividad anual relacionada
+      let codigoIndicador = '';
+      if (mensual.idActividadAnual) {
+        const anual = this.actividadesAnuales().find(a => a.idActividadAnual === mensual.idActividadAnual);
+        if (anual) {
+          codigoIndicador = (anual.codigoIndicador || '').toLowerCase();
+        }
+      }
+      
+      return nombre.includes(termino) || 
+             nombreMes.includes(termino) || 
+             mes.includes(termino) || 
+             codigoIndicador.includes(termino);
+    });
+  });
+
+  // Actividades filtradas por búsqueda
+  actividadesFiltradas = computed(() => {
+    const termino = this.terminoBusqueda().toLowerCase().trim();
+    if (!termino) {
+      return this.actividades();
+    }
+    return this.actividades().filter(actividad => {
+      const nombre = (actividad.nombreActividad || actividad.nombre || '').toLowerCase();
+      const codigo = (actividad.codigoActividad || '').toLowerCase();
+      return nombre.includes(termino) || codigo.includes(termino);
+    });
+  });
 
   // Formulario para crear indicador
   formIndicador!: FormGroup;
@@ -280,7 +372,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         const idActividadMensual = Number(queryParams['actividadMensualCreada']);
         if (!isNaN(idActividadMensual)) {
           console.log('📊 Filtrando por actividad mensual creada:', idActividadMensual);
-          this.filtroActividadMensualInst.set(idActividadMensual);
+          this.filtroActividadMensualInst.set([idActividadMensual]);
         }
       }
       
@@ -800,33 +892,35 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           filtered = filtered.filter(a => a.idEstadoActividad === this.filtroEstadoActividad()!);
         }
         
-        // Filtrar por actividad mensual institucional
-        if (this.filtroActividadMensualInst()) {
-          const filtroId = this.filtroActividadMensualInst()!;
+        // Filtrar por actividad mensual institucional (múltiples selecciones)
+        if (this.filtroActividadMensualInst().length > 0) {
+          const filtroIds = this.filtroActividadMensualInst();
           filtered = filtered.filter(a => {
+            if (!a.idActividadMensualInst) return false;
             if (Array.isArray(a.idActividadMensualInst)) {
-              return a.idActividadMensualInst.includes(filtroId);
+              return a.idActividadMensualInst.some(id => filtroIds.includes(id));
             }
-            return a.idActividadMensualInst === filtroId;
+            return filtroIds.includes(a.idActividadMensualInst);
           });
         }
         
-        // Filtrar por actividad anual (a través de actividad mensual institucional)
-        if (this.filtroActividadAnual()) {
-          // Crear un mapa de idActividadMensualInst -> idActividadAnual
+        // Filtrar por actividad anual (múltiples selecciones)
+        if (this.filtroActividadAnual().length > 0) {
+          const filtroIdsAnuales = this.filtroActividadAnual();
+          // Obtener todas las mensuales asociadas a las anuales seleccionadas
           const mensualesInst = this.actividadesMensualesInst();
-          const mensualesPorAnual = mensualesInst
-            .filter(m => m.idActividadAnual === this.filtroActividadAnual()!)
+          const idsMensualesInst = mensualesInst
+            .filter(m => m.idActividadAnual && filtroIdsAnuales.includes(m.idActividadAnual))
             .map(m => m.idActividadMensualInst);
           
           filtered = filtered.filter(a => {
             if (!a.idActividadMensualInst) return false;
             if (Array.isArray(a.idActividadMensualInst)) {
-              // Si es un array, verificar si alguno de los IDs está en mensualesPorAnual
-              return a.idActividadMensualInst.some(id => mensualesPorAnual.includes(id));
+              // Si es un array, verificar si alguno de los IDs está en idsMensualesInst
+              return a.idActividadMensualInst.some(id => idsMensualesInst.includes(id));
             }
-            // Si es un solo número, verificar si está en mensualesPorAnual
-            return mensualesPorAnual.includes(a.idActividadMensualInst);
+            // Si es un solo número, verificar si está en idsMensualesInst
+            return idsMensualesInst.includes(a.idActividadMensualInst);
           });
         }
         
@@ -929,12 +1023,20 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     const isDropdownButton = target.closest('button[type="button"]')?.getAttribute('title')?.includes('indicador') ||
                             target.closest('button[type="button"]')?.textContent?.includes('Nueva Actividad');
     
+    // Verificar si el clic fue dentro del dropdown de filtro anual, mensual o estado
+    const isInsideFiltroAnual = target.closest('[data-dropdown-filtro-anual]');
+    const isInsideFiltroMensual = target.closest('[data-dropdown-filtro-mensual]');
+    const isInsideFiltroEstado = target.closest('[data-dropdown-filtro-estado]');
+    
     // Solo cerrar si el clic fue fuera del componente y fuera de los dropdowns
-    if (!this.elementRef.nativeElement.contains(target) && !isInsideDropdown && !isDropdownButton) {
+    if (!this.elementRef.nativeElement.contains(target) && !isInsideDropdown && !isDropdownButton && !isInsideFiltroAnual && !isInsideFiltroMensual && !isInsideFiltroEstado) {
       this.mostrarDropdownActividad.set(false);
       this.mostrarDropdownIndicadorForm.set(false);
       this.mostrarDropdownIndicadorSeleccionado.set(false);
       this.mostrarDropdownTipoActividad.set(false);
+      this.mostrarDropdownFiltroAnual.set(false);
+      this.mostrarDropdownFiltroMensual.set(false);
+      this.mostrarDropdownFiltroEstado.set(false);
     }
   }
 
@@ -2026,8 +2128,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   clearFilters(): void {
     this.filtroEstadoActividad.set(null);
-    this.filtroActividadAnual.set(null);
-    this.filtroActividadMensualInst.set(null);
+    this.filtroActividadAnual.set([]);
+    this.filtroActividadMensualInst.set([]);
+    this.terminoBusqueda.set('');
+    this.terminoBusquedaAnual.set('');
+    this.terminoBusquedaMensual.set('');
     this.error.set(null);
     this.showRetryButton = false;
     this.loadActividades();
@@ -2213,6 +2318,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     setTimeout(() => {
       this.attachEventListeners();
       this.agregarBadgesCodigo();
+      this.agregarPuntosColorEstado();
     }, 100);
   }
 
@@ -2277,6 +2383,66 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 
+  agregarPuntosColorEstado(): void {
+    // Obtener todos los eventos del calendario
+    const events = this.elementRef.nativeElement.querySelectorAll('.cal-event');
+    const eventos = this.eventosCalendario();
+    
+    events.forEach((eventEl: HTMLElement) => {
+      // Verificar si ya tiene el punto de color
+      if (eventEl.querySelector('.estado-color-dot')) {
+        return; // Ya tiene el punto, no agregarlo de nuevo
+      }
+
+      const eventTitle = eventEl.textContent?.trim() || '';
+      
+      // Buscar el evento que coincida con este elemento
+      const evento = eventos.find(e => {
+        // Comparar por título
+        if (e.title === eventTitle) return true;
+        
+        // Comparar por nombre de actividad
+        const actividad = (e.meta as any)?.actividad;
+        if (actividad?.nombre === eventTitle) return true;
+        
+        // Verificar si el título contiene el nombre
+        if (actividad?.nombre && eventTitle.includes(actividad.nombre)) return true;
+        
+        return false;
+      });
+      
+      if (evento) {
+        const actividad = (evento.meta as any)?.actividad;
+        if (actividad) {
+          // Obtener el estado y su color
+          const estadoInfo = this.obtenerEstadoParaMostrar(actividad);
+          const colorEstado = estadoInfo.color || '#3B82F6';
+          
+          // Crear el punto de color
+          const punto = document.createElement('span');
+          punto.className = 'estado-color-dot';
+          punto.style.cssText = `
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: ${colorEstado};
+            margin-right: 4px;
+            vertical-align: middle;
+            flex-shrink: 0;
+          `;
+          
+          // Insertar el punto al inicio del contenido del evento
+          if (eventEl.firstChild) {
+            eventEl.insertBefore(punto, eventEl.firstChild);
+          } else {
+            eventEl.appendChild(punto);
+          }
+        }
+      }
+    });
+  }
+
   ngOnDestroy(): void {
     if (this.hoverTimeout) {
       clearTimeout(this.hoverTimeout);
@@ -2285,6 +2451,42 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   getEstadoColor(estado: any): string {
     return estado?.color || estado?.Color || '#3B82F6';
+  }
+
+  /**
+   * Obtiene los colores de fondo y texto para un badge de estado basado en el color del estado
+   */
+  getColoresBadgeEstado(colorEstado: string): { fondo: string; texto: string; borde: string; punto: string } {
+    // Convertir color hex a RGB para crear variaciones
+    const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    };
+
+    const rgb = hexToRgb(colorEstado);
+    if (rgb) {
+      // Fondo con opacidad baja
+      const fondo = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+      // Texto con el color del estado pero más oscuro
+      const texto = colorEstado;
+      // Borde con opacidad media
+      const borde = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+      // Punto con el color del estado
+      const punto = colorEstado;
+      return { fondo, texto, borde, punto };
+    }
+
+    // Fallback
+    return {
+      fondo: 'rgba(59, 130, 246, 0.1)',
+      texto: '#3B82F6',
+      borde: 'rgba(59, 130, 246, 0.3)',
+      punto: '#3B82F6'
+    };
   }
 
   /**
@@ -2481,20 +2683,40 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   /**
    * Obtiene el estado a mostrar para una actividad (automático o manual)
    */
-  obtenerEstadoParaMostrar(actividad: Actividad): { nombre: string; id?: number; esAutomatico: boolean } {
+  obtenerEstadoParaMostrar(actividad: Actividad): { nombre: string; id?: number; esAutomatico: boolean; color?: string } {
     // Intentar calcular estado automático
     const estadoAutomatico = this.calcularEstadoAutomatico(actividad);
     
     if (estadoAutomatico) {
-      return { ...estadoAutomatico, esAutomatico: true };
+      // Buscar el color del estado automático
+      let colorEstado = '#3B82F6'; // Color por defecto
+      if (estadoAutomatico.id) {
+        const estado = this.estadosActividad().find(
+          e => (e.idEstadoActividad || e.id) === estadoAutomatico.id
+        );
+        if (estado) {
+          colorEstado = this.getEstadoColor(estado);
+        }
+      }
+      return { ...estadoAutomatico, esAutomatico: true, color: colorEstado };
     }
 
     // Si no hay estado automático, usar el estado guardado
     if (actividad.nombreEstadoActividad) {
+      let colorEstado = '#3B82F6'; // Color por defecto
+      if (actividad.idEstadoActividad) {
+        const estado = this.estadosActividad().find(
+          e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
+        );
+        if (estado) {
+          colorEstado = this.getEstadoColor(estado);
+        }
+      }
       return {
         nombre: actividad.nombreEstadoActividad,
         id: actividad.idEstadoActividad,
-        esAutomatico: false
+        esAutomatico: false,
+        color: colorEstado
       };
     }
 
@@ -2507,12 +2729,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         return {
           nombre: estado.nombre || estado.Nombre || 'Sin estado',
           id: actividad.idEstadoActividad,
-          esAutomatico: false
+          esAutomatico: false,
+          color: this.getEstadoColor(estado)
         };
       }
     }
 
-    return { nombre: 'Sin estado', esAutomatico: false };
+    return { nombre: 'Sin estado', esAutomatico: false, color: '#3B82F6' };
   }
 
   getTiposEvidenciaDeActividad(): number[] | null {
@@ -2585,6 +2808,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     // Agregar listeners a los eventos del calendario después de que se rendericen
     setTimeout(() => {
       this.attachEventListeners();
+      this.agregarPuntosColorEstado();
     }, 500);
   }
 
@@ -2677,10 +2901,18 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
     }
     this.viewDate = nuevaFecha;
+    // Agregar puntos de color después de que el calendario se actualice
+    setTimeout(() => {
+      this.agregarPuntosColorEstado();
+    }, 300);
   }
 
   irAHoy(): void {
     this.viewDate = new Date();
+    // Agregar puntos de color después de que el calendario se actualice
+    setTimeout(() => {
+      this.agregarPuntosColorEstado();
+    }, 300);
   }
 
   toggleFormIndicador(): void {
@@ -3011,6 +3243,95 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     }
     
     this.formNuevaActividad.patchValue({ idActividadAnual: newValue });
+  }
+
+  toggleFiltroActividadAnual(id: number): void {
+    const current = this.filtroActividadAnual();
+    if (current.includes(id)) {
+      this.filtroActividadAnual.set(current.filter(i => i !== id));
+    } else {
+      this.filtroActividadAnual.set([...current, id]);
+    }
+    // Limpiar filtro de mensuales si ya no hay anuales seleccionadas
+    if (this.filtroActividadAnual().length === 0) {
+      this.filtroActividadMensualInst.set([]);
+    } else {
+      // Filtrar mensuales para que solo muestre las asociadas a las anuales seleccionadas
+      const idsAnuales = this.filtroActividadAnual();
+      const mensualesDisponibles = this.actividadesMensualesInst().filter(m => 
+        m.idActividadAnual && idsAnuales.includes(m.idActividadAnual)
+      );
+      // Mantener solo las mensuales seleccionadas que aún están disponibles
+      this.filtroActividadMensualInst.set(
+        this.filtroActividadMensualInst().filter(id => 
+          mensualesDisponibles.some(m => m.idActividadMensualInst === id)
+        )
+      );
+    }
+    this.onFiltroChange();
+  }
+
+  toggleFiltroActividadMensual(id: number): void {
+    const current = this.filtroActividadMensualInst();
+    if (current.includes(id)) {
+      this.filtroActividadMensualInst.set(current.filter(i => i !== id));
+    } else {
+      this.filtroActividadMensualInst.set([...current, id]);
+    }
+    // Limpiar filtro de anuales si ya no hay mensuales seleccionadas
+    if (this.filtroActividadMensualInst().length === 0) {
+      this.filtroActividadAnual.set([]);
+    } else {
+      // Filtrar anuales para que solo muestre las asociadas a las mensuales seleccionadas
+      const idsMensuales = this.filtroActividadMensualInst();
+      const idsAnuales = new Set<number>();
+      idsMensuales.forEach(idMensual => {
+        const mensual = this.actividadesMensualesInst().find(m => m.idActividadMensualInst === idMensual);
+        if (mensual?.idActividadAnual) {
+          idsAnuales.add(mensual.idActividadAnual);
+        }
+      });
+      // Mantener solo las anuales seleccionadas que aún están disponibles
+      this.filtroActividadAnual.set(
+        this.filtroActividadAnual().filter(id => idsAnuales.has(id))
+      );
+    }
+    this.onFiltroChange();
+  }
+
+  isFiltroActividadAnualSelected(id: number): boolean {
+    return this.filtroActividadAnual().includes(id);
+  }
+
+  isFiltroActividadMensualSelected(id: number): boolean {
+    return this.filtroActividadMensualInst().includes(id);
+  }
+
+  getEstadoSeleccionado(): any | undefined {
+    const idFiltro = this.filtroEstadoActividad();
+    if (idFiltro === null) {
+      return undefined;
+    }
+    return this.estadosActividad().find(e => (e.idEstadoActividad || e.id) === idFiltro);
+  }
+
+  getEstadosFiltrados(): any[] {
+    const termino = this.terminoBusquedaEstado().toLowerCase().trim();
+    if (!termino) {
+      return this.estadosActividad();
+    }
+    return this.estadosActividad().filter(e => {
+      const nombre = (e.nombre || e.Nombre || '').toLowerCase();
+      return nombre.includes(termino);
+    });
+  }
+
+  getCodigoIndicadorDeMensual(mensual: ActividadMensualInst): string {
+    if (!mensual.idActividadAnual) {
+      return '';
+    }
+    const anual = this.actividadesAnuales().find(a => a.idActividadAnual === mensual.idActividadAnual);
+    return anual?.codigoIndicador || '';
   }
 
   eliminarActividadAnual(id: number): void {
