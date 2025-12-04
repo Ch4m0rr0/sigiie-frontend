@@ -347,8 +347,13 @@ export class ActividadesService {
       dto.IdCapacidadInstalada = Number(actividad.idCapacidadInstalada);
     }
     
-    if (actividad.idEstadoActividad !== undefined && actividad.idEstadoActividad !== null && Number(actividad.idEstadoActividad) > 0) {
-      dto.IdEstadoActividad = Number(actividad.idEstadoActividad);
+    // Estado de actividad - SIEMPRE enviar si tiene valor (incluso si es 0, aunque normalmente no debería ser 0)
+    // El estado es requerido para crear una actividad
+    if (actividad.idEstadoActividad !== undefined && actividad.idEstadoActividad !== null) {
+      const estadoId = Number(actividad.idEstadoActividad);
+      if (!isNaN(estadoId) && estadoId > 0) {
+        dto.IdEstadoActividad = estadoId;
+      }
     }
     
     if (actividad.idIndicador !== undefined && actividad.idIndicador !== null && Number(actividad.idIndicador) > 0) {
@@ -680,8 +685,12 @@ export class ActividadesService {
     if (actividad.fechaEvento !== undefined) {
       dto.FechaEvento = actividad.fechaEvento;
     }
-    if (actividad.idEstadoActividad !== undefined) {
-      dto.IdEstadoActividad = actividad.idEstadoActividad;
+    // Estado de actividad - SIEMPRE enviar si tiene valor para actualizar
+    if (actividad.idEstadoActividad !== undefined && actividad.idEstadoActividad !== null) {
+      const estadoId = Number(actividad.idEstadoActividad);
+      if (!isNaN(estadoId) && estadoId > 0) {
+        dto.IdEstadoActividad = estadoId;
+      }
     }
     if (actividad.idTipoActividad !== undefined || actividad.categoriaActividadId !== undefined) {
       const tipoActividadId = getIdTipoActividad(actividad.idTipoActividad);

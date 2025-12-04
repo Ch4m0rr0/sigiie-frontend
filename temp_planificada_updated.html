@@ -7,11 +7,11 @@
             <app-icon icon="arrow_back" size="sm"></app-icon>
         </button>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-            {{ isEditMode() ? 'Editar Actividad planificada' : 'Nueva Actividad planificada' }}
+            {{ isEditMode() ? 'Editar actividad no planificada' : 'Nueva actividad no planificada' }}
         </h1>
       </div>
       <p class="text-slate-500 text-sm ml-10">
-        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad planificada.' : 'Registra una nueva actividad planificada con todos sus detalles.' }}
+        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad no planificada.' : 'Registra una nueva actividad no planificada con todos sus detalles.' }}
       </p>
     </div> 
 
@@ -400,7 +400,7 @@
                         </div>
                         <div class="text-left">
                             <h3 class="text-base font-bold text-slate-900">Información de la Actividad</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad planificada</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad no planificada</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -1180,19 +1180,6 @@
                 @if (seccionResponsablesExpandida()) {
                     <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
                     
-                    <!-- Alerta: Al menos un responsable debe asignarse -->
-                    @if (tiposResponsableSeleccionados().length === 0) {
-                        <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-                            <app-icon icon="info" size="sm" class="text-amber-600 mt-0.5 flex-shrink-0"></app-icon>
-                            <div class="flex-1">
-                                <h4 class="text-sm font-bold text-amber-800 mb-1">Asignación de Responsables Requerida</h4>
-                                <p class="text-xs text-amber-700">
-                                    Debe seleccionar al menos un tipo de responsable y completar la información correspondiente para poder guardar la actividad.
-                                </p>
-                            </div>
-                        </div>
-                    }
-                    
                     <div [formGroup]="formResponsable" class="space-y-6">
                         
                         <!-- Checklist de Tipos de Responsables -->
@@ -1292,6 +1279,12 @@
                                         [class.text-teal-900]="isTipoResponsableSeleccionado('externo')">Externos</span>
                                 </label>
                             </div>
+                            @if (!tieneAlMenosUnTipoResponsable() && form.get('nombreActividad')?.touched) {
+                                <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                    <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                    <p class="text-xs text-red-800">Debe seleccionar al menos un tipo de responsable.</p>
+                                </div>
+                            }
                         </div>
                         
                         <!-- Secciones de Responsables (ordenadas por selección) -->

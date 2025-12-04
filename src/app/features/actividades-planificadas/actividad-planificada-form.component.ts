@@ -925,7 +925,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         idDepartamentosResponsables: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : undefined,
         fechaInicio: fechaInicio,
         fechaFin: fechaFin,
-        idEstadoActividad: formValue.idEstadoActividad || undefined,
+        idEstadoActividad: formValue.idEstadoActividad !== null && formValue.idEstadoActividad !== undefined ? Number(formValue.idEstadoActividad) : undefined,
         idTipoActividad: Array.isArray(formValue.idTipoActividad) && formValue.idTipoActividad.length > 0 ? formValue.idTipoActividad : (formValue.categoriaActividadId ? [formValue.categoriaActividadId] : undefined),
         modalidad: formValue.modalidad || undefined,
         idCapacidadInstalada: formValue.idCapacidadInstalada || undefined,
@@ -976,13 +976,26 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           }
         });
       } else {
+        // Modo creación: crear nueva actividad
         // Log solo en desarrollo para no ralentizar en producción
         if (!environment.production) {
           console.log('📤 Enviando datos al backend:', JSON.stringify(data, null, 2));
         }
         
+        // Agregar timeout para evitar que se quede cargando indefinidamente
+        let timeoutId: any = setTimeout(() => {
+          if (this.loading()) {
+            this.loading.set(false);
+            this.alertService.warning(
+              '⏱️ La operación está tardando más de lo esperado',
+              'La creación de la actividad está tomando más tiempo del normal. Por favor, espere un momento más o verifique su conexión.'
+            );
+          }
+        }, 60000); // 60 segundos de timeout
+        
         this.actividadesService.create(data).subscribe({
           next: (actividadCreada) => {
+            clearTimeout(timeoutId); // Limpiar timeout si la operación fue exitosa
             const indicadorId = this.indicadorIdFromQuery();
             const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
             
@@ -1010,6 +1023,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             }
           },
           error: (err: any) => {
+            clearTimeout(timeoutId); // Limpiar timeout en caso de error
             console.error('❌ Error saving actividad:', err);
             console.error('📋 Error details:', err.error);
             console.error('📤 Payload enviado:', JSON.stringify(data, null, 2));

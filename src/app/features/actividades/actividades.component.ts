@@ -924,8 +924,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         let filtered = data;
         
         // Filtrar por estado de actividad (del catálogo)
+        // Asegurar comparación correcta convirtiendo ambos a número
         if (this.filtroEstadoActividad() !== null) {
-          filtered = filtered.filter(a => a.idEstadoActividad === this.filtroEstadoActividad()!);
+          const filtroEstadoId = Number(this.filtroEstadoActividad());
+          filtered = filtered.filter(a => {
+            const actividadEstadoId = a.idEstadoActividad ? Number(a.idEstadoActividad) : null;
+            return actividadEstadoId === filtroEstadoId;
+          });
         }
         
         // Filtrar por actividad mensual institucional (múltiples selecciones)
@@ -3035,9 +3040,41 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   /**
    * Obtiene el estado a mostrar para una actividad (automático o manual)
+   * PRIORIDAD: Estado guardado por el usuario > Estado automático calculado
    */
   obtenerEstadoParaMostrar(actividad: Actividad): { nombre: string; id?: number; esAutomatico: boolean; color?: string } {
-    // Intentar calcular estado automático
+    // PRIORIDAD 1: Si la actividad tiene un estado guardado (idEstadoActividad), usarlo SIEMPRE
+    // Esto respeta la selección del usuario
+    if (actividad.idEstadoActividad !== null && actividad.idEstadoActividad !== undefined) {
+      const estadoGuardado = this.estadosActividad().find(
+        e => {
+          const estadoId = e.idEstadoActividad || e.id;
+          return estadoId !== undefined && Number(estadoId) === Number(actividad.idEstadoActividad);
+        }
+      );
+      
+      if (estadoGuardado) {
+        return {
+          nombre: estadoGuardado.nombre || estadoGuardado.Nombre || actividad.nombreEstadoActividad || 'Sin estado',
+          id: actividad.idEstadoActividad,
+          esAutomatico: false,
+          color: this.getEstadoColor(estadoGuardado)
+        };
+      }
+      
+      // Si no se encuentra el estado en la lista pero hay nombreEstadoActividad, usarlo
+      if (actividad.nombreEstadoActividad) {
+        let colorEstado = '#3B82F6'; // Color por defecto
+        return {
+          nombre: actividad.nombreEstadoActividad,
+          id: actividad.idEstadoActividad,
+          esAutomatico: false,
+          color: colorEstado
+        };
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay estado guardado, calcular estado automático basado en fechas
     const estadoAutomatico = this.calcularEstadoAutomatico(actividad);
     
     if (estadoAutomatico) {
@@ -3045,7 +3082,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       let colorEstado = '#3B82F6'; // Color por defecto
       if (estadoAutomatico.id) {
         const estado = this.estadosActividad().find(
-          e => (e.idEstadoActividad || e.id) === estadoAutomatico.id
+          e => {
+            const estadoId = e.idEstadoActividad || e.id;
+            return estadoId !== undefined && Number(estadoId) === Number(estadoAutomatico.id);
+          }
         );
         if (estado) {
           colorEstado = this.getEstadoColor(estado);
@@ -3054,40 +3094,17 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       return { ...estadoAutomatico, esAutomatico: true, color: colorEstado };
     }
 
-    // Si no hay estado automático, usar el estado guardado
+    // PRIORIDAD 3: Si hay nombreEstadoActividad pero no idEstadoActividad, usarlo
     if (actividad.nombreEstadoActividad) {
-      let colorEstado = '#3B82F6'; // Color por defecto
-      if (actividad.idEstadoActividad) {
-        const estado = this.estadosActividad().find(
-          e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
-        );
-        if (estado) {
-          colorEstado = this.getEstadoColor(estado);
-        }
-      }
       return {
         nombre: actividad.nombreEstadoActividad,
         id: actividad.idEstadoActividad,
         esAutomatico: false,
-        color: colorEstado
+        color: '#3B82F6'
       };
     }
 
-    // Buscar estado por ID
-    if (actividad.idEstadoActividad) {
-      const estado = this.estadosActividad().find(
-        e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
-      );
-      if (estado) {
-        return {
-          nombre: estado.nombre || estado.Nombre || 'Sin estado',
-          id: actividad.idEstadoActividad,
-          esAutomatico: false,
-          color: this.getEstadoColor(estado)
-        };
-      }
-    }
-
+    // Por defecto: Sin estado
     return { nombre: 'Sin estado', esAutomatico: false, color: '#3B82F6' };
   }
 
@@ -3730,7 +3747,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     if (idFiltro === null) {
       return undefined;
     }
-    return this.estadosActividad().find(e => (e.idEstadoActividad || e.id) === idFiltro);
+    const filtroId = Number(idFiltro);
+    return this.estadosActividad().find(e => {
+      const estadoId = e.idEstadoActividad || e.id;
+      return estadoId !== undefined && Number(estadoId) === filtroId;
+    });
   }
 
   getEstadosFiltrados(): any[] {
