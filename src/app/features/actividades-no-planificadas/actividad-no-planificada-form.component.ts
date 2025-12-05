@@ -3279,9 +3279,15 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Confirma la cancelación y navega a la lista de actividades
+   * Confirma la cancelación y navega a la lista de actividades o a la vista de detalle
    */
   private confirmarCancelacion(): void {
+    // Marcar que se está cancelando para evitar guardar en ngOnDestroy
+    this.isCancelling = true;
+    
+    // Limpiar el estado guardado del formulario
+    this.clearFormState();
+    
     // Limpiar el formulario actual
     if (this.form) {
       this.form.reset();
@@ -3295,8 +3301,13 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     // Resetear estado visual
     this.localSeleccionado.set(null);
     
-    // Navegar a la lista de actividades
-    this.router.navigate(['/actividades']);
+    // Si estamos en modo edición, navegar a la vista de detalle de la actividad
+    // Si estamos en modo creación, navegar a la lista de actividades
+    if (this.isEditMode() && this.actividadId()) {
+      this.router.navigate(['/actividades', this.actividadId()]);
+    } else {
+      this.router.navigate(['/actividades']);
+    }
   }
 
   toggleSeccionPlanificacion(): void {

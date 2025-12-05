@@ -3275,7 +3275,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Confirma la cancelación y navega a la lista de actividades
+   * Confirma la cancelación y navega a la lista de actividades o a la vista de detalle
    */
   private confirmarCancelacion(): void {
     // Marcar que se está cancelando para evitar guardar en ngOnDestroy
@@ -3300,8 +3300,13 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     this.seccionResponsablesExpandida.set(false);
     this.localSeleccionado.set(null);
     
-    // Navegar a la lista de actividades
-    this.router.navigate(['/actividades']);
+    // Si estamos en modo edición, navegar a la vista de detalle de la actividad
+    // Si estamos en modo creación, navegar a la lista de actividades
+    if (this.isEditMode() && this.actividadId()) {
+      this.router.navigate(['/actividades', this.actividadId()]);
+    } else {
+      this.router.navigate(['/actividades']);
+    }
   }
 
   /**
