@@ -443,88 +443,44 @@
       </div>
     }
 
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+    <!-- Cards organizadas en grid debajo de los botones -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       
-      <div class="xl:col-span-2 space-y-6">
-        
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            @if (progressChartData) {
-              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                  <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                      <h3 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">Progreso Anual</h3>
-                      <button class="text-slate-400 hover:text-blue-600 transition-colors">
-                          <app-icon icon="more_horiz" size="sm"></app-icon>
-                      </button>
-                  </div>
-                  <div class="p-4 h-80 w-full relative">
-                      <app-chart [data]="progressChartData" [config]="progressChartConfig"></app-chart>
-                  </div>
-              </div>
-            }
-
-            @if (activitiesChartData) {
-              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                  <div class="px-6 py-4 border-b border-slate-100">
-                      <h3 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">Actividades / Mes</h3>
-                  </div>
-                  <div class="p-4 h-80 w-full relative">
-                      <app-chart [data]="activitiesChartData" [config]="activitiesChartConfig"></app-chart>
-                  </div>
-              </div>
-            }
-
-            @if (usersChartData) {
-              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col lg:col-span-2">
-                  <div class="px-6 py-4 border-b border-slate-100">
-                      <h3 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">Distribución de Usuarios</h3>
-                  </div>
-                  <div class="p-6 min-h-[400px] w-full relative flex items-center justify-center">
-                       <app-chart [data]="usersChartData" [config]="usersChartConfig"></app-chart>
-                  </div>
-              </div>
-            }
+      <!-- Progreso Anual -->
+      @if (progressChartData) {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">Progreso Anual</h3>
+            <button class="text-slate-400 hover:text-blue-600 transition-colors">
+              <app-icon icon="more_horiz" size="sm"></app-icon>
+            </button>
+          </div>
+          <div class="p-4 h-80 w-full relative">
+            <app-chart [data]="progressChartData" [config]="progressChartConfig"></app-chart>
+          </div>
         </div>
-      </div>
+      }
 
-      <div class="space-y-6">
-        
-        <!-- Accesos Directos -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-                <h3 class="font-semibold text-slate-800">Accesos Directos</h3>
-            </div>
-            <div class="p-2">
-                <a routerLink="/actividades/nueva" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                        <app-icon icon="assignment" size="sm"></app-icon>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-slate-700">Registrar Actividad</p>
-                    </div>
-                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-emerald-500 transition-colors" size="sm"></app-icon>
-                </a>
-
-                <a routerLink="/reportes" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                    <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all">
-                        <app-icon icon="description" size="sm"></app-icon>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-slate-700">Generar Reportes</p>
-                    </div>
-                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-purple-500 transition-colors" size="sm"></app-icon>
-                </a>
-            </div>
+      <!-- Distribución de Usuarios -->
+      @if (usersChartData) {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="px-6 py-4 border-b border-slate-100">
+            <h3 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">Distribución de Usuarios</h3>
+          </div>
+          <div class="p-6 min-h-[400px] w-full relative flex items-center justify-center">
+            <app-chart [data]="usersChartData" [config]="usersChartConfig"></app-chart>
+          </div>
         </div>
+      }
 
-        <!-- Vista Especial Métricas -->
-        @if (vistaEspecialMetricas()) {
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 class="font-semibold text-slate-800">Métricas Especiales</h3>
-            </div>
-            <div class="p-6 space-y-3">
-              @if (vistaEspecialMetricas()!.metricas && isArray(vistaEspecialMetricas()!.metricas) && vistaEspecialMetricas()!.metricas.length > 0) {
+      <!-- Métricas Especiales -->
+      @if (vistaEspecialMetricas()) {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex-shrink-0">
+            <h3 class="font-semibold text-slate-800">Métricas Especiales</h3>
+          </div>
+          <div class="p-6 space-y-3 flex-1 overflow-y-auto max-h-[400px]">
+            @if (vistaEspecialMetricas()!.metricas && isArray(vistaEspecialMetricas()!.metricas) && vistaEspecialMetricas()!.metricas.length > 0) {
                 @for (metrica of vistaEspecialMetricas()!.metricas; track $index) {
                   <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                     <span class="text-sm font-medium text-slate-700">{{ metrica.nombre || metrica.label || metrica.indicador || 'Métrica' }}</span>
@@ -574,13 +530,13 @@
           </div>
         }
 
-        <!-- Vista Especial Rendimiento -->
-        @if (vistaEspecialRendimiento()) {
-          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 class="font-semibold text-slate-800">Rendimiento</h3>
-            </div>
-            <div class="p-6 space-y-6">
+      <!-- Vista Especial Rendimiento -->
+      @if (vistaEspecialRendimiento()) {
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+          <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex-shrink-0">
+            <h3 class="font-semibold text-slate-800">Rendimiento</h3>
+          </div>
+          <div class="p-6 space-y-6 flex-1 overflow-y-auto max-h-[400px]">
               <!-- Indicadores de Eficiencia -->
               @if (vistaEspecialRendimiento()!.indicadoresEficiencia && isArray(vistaEspecialRendimiento()!.indicadoresEficiencia)) {
                 <div class="space-y-4">
@@ -674,38 +630,38 @@
                   </div>
                 }
               </div>
+              </div>
             </div>
-          </div>
-        }
+          }
 
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-6 py-4 bg-slate-50 border-b border-slate-200">
-                <h3 class="font-semibold text-slate-800">Accesos Directos</h3>
-            </div>
-            <div class="p-2">
-                <a routerLink="/actividades/nueva" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                        <app-icon icon="assignment" size="sm"></app-icon>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-slate-700">Registrar Actividad</p>
-                    </div>
-                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-emerald-500 transition-colors" size="sm"></app-icon>
-                </a>
-
-                <a routerLink="/reportes" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
-                    <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all">
-                        <app-icon icon="description" size="sm"></app-icon>
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-slate-700">Generar Reportes</p>
-                    </div>
-                    <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-purple-500 transition-colors" size="sm"></app-icon>
-                </a>
-            </div>
+      <!-- Accesos Directos -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex-shrink-0">
+          <h3 class="font-semibold text-slate-800">Accesos Directos</h3>
         </div>
+        <div class="p-2 flex-1 flex flex-col">
+          <a routerLink="/actividades/nueva" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all">
+              <app-icon icon="assignment" size="sm"></app-icon>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-slate-700">Registrar Actividad</p>
+            </div>
+            <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-emerald-500 transition-colors" size="sm"></app-icon>
+          </a>
 
+          <a routerLink="/reportes" class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all">
+              <app-icon icon="description" size="sm"></app-icon>
+            </div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-slate-700">Generar Reportes</p>
+            </div>
+            <app-icon icon="chevron_right" class="text-slate-300 group-hover:text-purple-500 transition-colors" size="sm"></app-icon>
+          </a>
+        </div>
       </div>
+
     </div>
   }
 </div>
