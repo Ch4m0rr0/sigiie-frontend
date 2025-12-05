@@ -100,6 +100,14 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
     // Usar input si está disponible, sino usar query param
     const actividadId = this.actividadIdInput !== undefined ? this.actividadIdInput : (actividadIdParam ? +actividadIdParam : null);
     
+    // Si viene desde una actividad, deshabilitar los campos de actividad y subactividad
+    if (actividadId) {
+      this.vieneDesdeActividad.set(true);
+      // Deshabilitar los campos
+      this.form.get('idActividad')?.disable();
+      this.form.get('idSubactividad')?.disable();
+    }
+    
     if (id) {
       this.isEditMode.set(true);
       this.evidenciaId.set(+id);
@@ -148,9 +156,13 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
       this.tiposEvidenciaPermitidos.set(tiposPermitidos);
       
       // Si los tipos de evidencia ya están cargados, pre-seleccionar
-      if (this.tiposEvidencia().length > 0 && !this.isEditMode() && this.selectedTiposEvidencia().length === 0) {
-        this.selectedTiposEvidencia.set(tiposPermitidos);
+      // Solo si no estamos en modo edición, no hay tipos ya seleccionados, y aún no se han pre-seleccionado
+      // Esto permite que el usuario pueda editar la selección después sin que se sobrescriba
+      if (this.tiposEvidencia().length > 0 && !this.isEditMode() && this.selectedTiposEvidencia().length === 0 && !this.tiposPreSeleccionados()) {
+        this.selectedTiposEvidencia.set([...tiposPermitidos]);
+        this.tiposPreSeleccionados.set(true);
         console.log('✅ Tipos pre-seleccionados después de actualizar filtro');
+        console.log('✅ El usuario puede editar la selección dentro del dropdown');
       }
     } else {
       console.log('⚠️ No hay tipos permitidos en el input, mostrando todos');
@@ -159,6 +171,8 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   selectedTiposEvidencia = signal<number[]>([]);
+  vieneDesdeActividad = signal<boolean>(false);
+  tiposPreSeleccionados = signal<boolean>(false); // Flag para evitar sobrescribir la selección del usuario
 
   initializeForm(): void {
     this.form = this.fb.group({
@@ -216,10 +230,13 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
           this.tiposEvidenciaPermitidos.set(tiposPermitidosFinal);
           
           // Pre-seleccionar automáticamente todos los tipos permitidos
-          // Solo si no estamos en modo edición y no hay tipos ya seleccionados
-          if (!this.isEditMode() && this.selectedTiposEvidencia().length === 0) {
-            this.selectedTiposEvidencia.set(tiposPermitidosFinal);
+          // Solo si no estamos en modo edición, no hay tipos ya seleccionados, y aún no se han pre-seleccionado
+          // Esto permite que el usuario pueda editar la selección después
+          if (!this.isEditMode() && this.selectedTiposEvidencia().length === 0 && !this.tiposPreSeleccionados()) {
+            this.selectedTiposEvidencia.set([...tiposPermitidosFinal]);
+            this.tiposPreSeleccionados.set(true);
             console.log('✅ Tipos de evidencia pre-seleccionados automáticamente:', tiposPermitidosFinal);
+            console.log('✅ El usuario puede editar la selección dentro del dropdown');
           }
         } else {
           console.log('⚠️ No hay tipos de evidencia permitidos, mostrando todos los tipos');
@@ -513,15 +530,18 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
 
       const files = this.selectedFiles();
       
+      // Usar getRawValue() para incluir campos deshabilitados
+      const formValue = this.form.getRawValue();
+      
       // Preparar datos base (sin idTipoEvidencia, se agregará por cada tipo)
       const baseData: Omit<EvidenciaCreate, 'idTipoEvidencia'> = {
-        idProyecto: this.form.value.idProyecto || undefined,
-        idActividad: this.form.value.idActividad || undefined,
-        idSubactividad: this.form.value.idSubactividad || undefined,
-        fechaEvidencia: this.form.value.fechaEvidencia || undefined,
-        seleccionadaParaReporte: this.form.value.seleccionadaParaReporte || false,
-        descripcion: this.form.value.descripcion || undefined,
-        tipo: this.form.value.tipo || undefined
+        idProyecto: formValue.idProyecto || undefined,
+        idActividad: formValue.idActividad || undefined,
+        idSubactividad: formValue.idSubactividad || undefined,
+        fechaEvidencia: formValue.fechaEvidencia || undefined,
+        seleccionadaParaReporte: formValue.seleccionadaParaReporte || false,
+        descripcion: formValue.descripcion || undefined,
+        tipo: formValue.tipo || undefined
       };
 
       if (this.isEditMode()) {
@@ -587,6 +607,15 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   get idTipoEvidencia() { return this.form.get('idTipoEvidencia'); }
+
+  onTiposEvidenciaChange(selectedIds: number[]): void {
+    // Cuando el usuario cambia la selección, actualizar directamente
+    // Esto evita que cualquier lógica de pre-selección sobrescriba los cambios del usuario
+    console.log('🔄 Usuario cambió la selección de tipos de evidencia:', selectedIds);
+    this.selectedTiposEvidencia.set(selectedIds);
+    // Marcar que el usuario ya ha interactuado, para evitar pre-selecciones futuras
+    this.tiposPreSeleccionados.set(true);
+  }
 
   getTiposEvidenciaOptions() {
     // Usar los tipos filtrados si hay filtro activo

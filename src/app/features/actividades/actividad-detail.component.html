@@ -1550,58 +1550,96 @@
                   <p class="text-slate-500 text-sm">Agrega evidencias para esta actividad haciendo clic en el botón "Agregar Evidencia"</p>
                 </div>
               } @else {
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   @for (evidencia of evidencias(); track evidencia.idEvidencia || evidencia.id) {
-                    <div class="border border-slate-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-                         (click)="navigateToEvidenciaDetail((evidencia.idEvidencia || evidencia.id)!)">
-                      <div class="aspect-video bg-slate-100 relative overflow-hidden">
-                        @if (getEvidenciaImageUrl(evidencia.idEvidencia || evidencia.id || 0)) {
-                          <img 
-                            [src]="getEvidenciaImageUrl(evidencia.idEvidencia || evidencia.id || 0)!" 
-                            [alt]="evidencia.descripcion || 'Evidencia'"
-                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\'%3E%3Crect fill=\'%23e2e8f0\' width=\'100\' height=\'100\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%2394a3b8\' font-family=\'Arial\' font-size=\'14\'%3EImagen%3C/text%3E%3C/svg%3E'">
-                        } @else {
-                          <div class="w-full h-full flex items-center justify-center">
-                            <app-icon icon="perm_media" size="xl" class="text-slate-400"></app-icon>
-                          </div>
-                        }
-                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span class="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded">
-                            Ver detalles
-                          </span>
+                    <div 
+                      (click)="navigateToEvidenciaDetail((evidencia.idEvidencia || evidencia.id)!)"
+                      class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                      
+                      <!-- Header -->
+                      <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                          @if (evidencia.nombreTipoEvidencia) {
+                            <span class="inline-block px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full mb-2">
+                              {{ evidencia.nombreTipoEvidencia }}
+                            </span>
+                          }
+                          @if (evidencia.descripcion) {
+                            <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                              {{ evidencia.descripcion }}
+                            </h3>
+                          } @else {
+                            <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              Evidencia #{{ evidencia.idEvidencia }}
+                            </h3>
+                          }
                         </div>
                       </div>
-                      <div class="p-4">
-                        <div class="flex items-start justify-between mb-2">
-                          <h4 class="font-semibold text-slate-900 text-sm line-clamp-1">
-                            {{ evidencia.nombreTipoEvidencia || 'Evidencia' }}
-                          </h4>
-                          @if (evidencia.seleccionadaParaReporte) {
-                            <span class="px-2 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 rounded-full whitespace-nowrap">
+
+                      <!-- Información -->
+                      <div class="space-y-2 mb-4">
+                        @if (evidencia.fechaEvidencia) {
+                          <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <app-icon icon="calendar_today" size="sm" color="slate-500"></app-icon>
+                            <span>{{ evidencia.fechaEvidencia | date:'short' }}</span>
+                          </div>
+                        }
+                        @if (evidencia.fechaSubida) {
+                          <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <app-icon icon="upload" size="sm" color="slate-500"></app-icon>
+                            <span>Subida: {{ evidencia.fechaSubida | date:'short' }}</span>
+                          </div>
+                        }
+                        @if (evidencia.seleccionadaParaReporte) {
+                          <div class="flex items-center gap-2 text-sm">
+                            <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
                               Para Reporte
                             </span>
-                          }
-                        </div>
-                        @if (evidencia.descripcion) {
-                          <p class="text-xs text-slate-600 line-clamp-2 mb-2">
-                            {{ evidencia.descripcion }}
-                          </p>
+                          </div>
                         }
-                        <div class="flex items-center justify-between text-xs text-slate-500">
-                          @if (evidencia.fechaEvidencia) {
-                            <span class="flex items-center gap-1">
-                              <app-icon icon="calendar_today" size="xs"></app-icon>
-                              {{ evidencia.fechaEvidencia | date:'dd/MM/yyyy' }}
-                            </span>
-                          }
-                          @if (evidencia.nombreSubidoPor) {
-                            <span class="flex items-center gap-1">
-                              <app-icon icon="person" size="xs"></app-icon>
-                              {{ evidencia.nombreSubidoPor }}
-                            </span>
-                          }
-                        </div>
+                      </div>
+
+                      <!-- Archivos -->
+                      <div class="space-y-2 mb-4">
+                        @if (getEvidenciaImageUrl(evidencia.idEvidencia || evidencia.id || 0)) {
+                          <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <app-icon icon="image" size="sm" color="slate-500"></app-icon>
+                            <span>{{ evidenciasImageUrls().get(evidencia.idEvidencia || evidencia.id || 0)?.length || 0 }} imagen(es)</span>
+                          </div>
+                        }
+                        @if (getEvidenciaOfficeFiles(evidencia.idEvidencia || evidencia.id || 0).length > 0) {
+                          <div class="space-y-1">
+                            <div class="flex items-center gap-2 text-sm text-slate-600 mb-1">
+                              <app-icon icon="description" size="sm" color="slate-500"></app-icon>
+                              <span>{{ getEvidenciaOfficeFiles(evidencia.idEvidencia || evidencia.id || 0).length }} archivo(s)</span>
+                            </div>
+                            <div class="pl-6 space-y-1">
+                              @for (file of getEvidenciaOfficeFiles(evidencia.idEvidencia || evidencia.id || 0); track file.fileIndex) {
+                                <div class="flex items-center justify-between p-2 border border-slate-200 rounded hover:bg-slate-50 transition"
+                                     (click)="downloadOfficeFile(evidencia.idEvidencia || evidencia.id || 0, file.fileIndex); $event.stopPropagation()">
+                                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                                    <app-icon [icon]="getFileIcon(file.fileName)" size="xs" color="slate-600"></app-icon>
+                                    <span class="text-xs text-slate-700 truncate">{{ file.fileName }}</span>
+                                  </div>
+                                  <app-icon icon="download" size="xs" color="blue-600"></app-icon>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Acción rápida -->
+                      <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+                        @if (hasEvidenciaFiles(evidencia.idEvidencia || evidencia.id || 0)) {
+                          <button
+                            (click)="downloadEvidenciaZip(evidencia); $event.stopPropagation()"
+                            class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                            <app-icon icon="download" size="xs" color="white"></app-icon>
+                            Descargar Todo (ZIP)
+                          </button>
+                        }
+                        <app-icon icon="chevron_right" size="sm" color="slate-400" class="group-hover:text-blue-500 transition-colors"></app-icon>
                       </div>
                     </div>
                   }

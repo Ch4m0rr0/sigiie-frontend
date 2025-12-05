@@ -108,6 +108,10 @@ export class SubactividadFormComponent implements OnInit {
   rolesResponsable = signal<any[]>([]);
   tiposResponsableSeleccionados = signal<string[]>([]);
 
+  // Arrays para formato de hora de 12 horas
+  horas12: string[] = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  minutos: string[] = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
   ngOnInit(): void {
     this.initializeForm();
     this.loadActividades();
@@ -164,7 +168,10 @@ export class SubactividadFormComponent implements OnInit {
       cantidadTotalParticipantesProtagonistas: [null],
       idTipoEvidencias: [[]],
       anio: [String(currentYear)],
-      horaRealizacion: [''],
+      horaRealizacion: [''], // Campo oculto que se actualiza desde los selects
+      horaRealizacionHora: [''],
+      horaRealizacionMinuto: [''],
+      horaRealizacionAmPm: [''],
       idTipoProtagonista: [[]],
       categoriaActividadId: [null],
       areaConocimientoId: [null],
@@ -235,6 +242,19 @@ export class SubactividadFormComponent implements OnInit {
 
     this.form.get('fechaFin')?.valueChanges.subscribe(() => {
       this.form.updateValueAndValidity();
+    });
+
+    // Sincronizar selectores de hora con el campo horaRealizacion
+    this.form.get('horaRealizacionHora')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+
+    this.form.get('horaRealizacionMinuto')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
+    });
+
+    this.form.get('horaRealizacionAmPm')?.valueChanges.subscribe(() => {
+      this.actualizarHoraRealizacion();
     });
 
     // Suscripción para esPlanificada - actualizar validaciones cuando cambie
@@ -639,16 +659,20 @@ export class SubactividadFormComponent implements OnInit {
       next: (data) => {
         console.log('📥 Datos recibidos del backend para subactividad:', data);
         
-        // Convertir horaRealizacion de "HH:MM:SS" a "HH:MM" para el input type="time"
+        // Convertir horaRealizacion de 24h a 12h para los selectores
         let horaRealizacionFormatted = '';
+        let hora12h: { hora: string; minuto: string; amPm: string } | null = null;
         if (data.horaRealizacion) {
           const horaStr = String(data.horaRealizacion);
           // Si viene como "10:00:00", tomar solo "10:00"
           if (horaStr.includes(':')) {
             const partes = horaStr.split(':');
             horaRealizacionFormatted = `${partes[0]}:${partes[1]}`;
+            // Convertir a formato 12h para los selectores
+            hora12h = this.convertir24hA12h(horaRealizacionFormatted);
           } else {
             horaRealizacionFormatted = horaStr;
+            hora12h = this.convertir24hA12h(horaStr);
           }
         }
 
@@ -718,6 +742,9 @@ export class SubactividadFormComponent implements OnInit {
           objetivo: data.objetivo !== undefined && data.objetivo !== null ? data.objetivo : '',
           anio: data.anio ? String(data.anio) : String(new Date().getFullYear()),
           horaRealizacion: horaRealizacionFormatted,
+          horaRealizacionHora: hora12h?.hora || '',
+          horaRealizacionMinuto: hora12h?.minuto || '',
+          horaRealizacionAmPm: hora12h?.amPm || '',
           cantidadParticipantesProyectados: data.cantidadParticipantesProyectados !== undefined && data.cantidadParticipantesProyectados !== null ? data.cantidadParticipantesProyectados : null,
           cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados !== undefined && data.cantidadParticipantesEstudiantesProyectados !== null ? data.cantidadParticipantesEstudiantesProyectados : null,
           cantidadTotalParticipantesProtagonistas: data.cantidadTotalParticipantesProtagonistas !== undefined && data.cantidadTotalParticipantesProtagonistas !== null ? data.cantidadTotalParticipantesProtagonistas : null,
@@ -908,7 +935,8 @@ export class SubactividadFormComponent implements OnInit {
 
       let horaRealizacion: string | undefined = undefined;
       if (formValue.horaRealizacion) {
-        // El input type="time" devuelve el formato "HH:MM", necesitamos convertirlo a "HH:MM:SS" para el backend
+        // El campo horaRealizacion ya está en formato 24h (HH:MM) desde los selectores de 12h
+        // Necesitamos convertirlo a "HH:MM:SS" para el backend
         const horaStr = String(formValue.horaRealizacion).trim();
         if (horaStr.includes(':')) {
           const partes = horaStr.split(':');
@@ -1883,54 +1911,61 @@ export class SubactividadFormComponent implements OnInit {
     return this.actividades().find(a => a.id === id) || null;
   }
 
-  private convertir24hA12h(hora24h: string): string {
-    if (!hora24h || !hora24h.includes(':')) return hora24h;
+  /**
+   * Convierte hora de formato 24h a formato 12h para los selectores
+   * Retorna un objeto con hora, minuto y amPm
+   */
+  convertir24hA12h(hora24h: string): { hora: string; minuto: string; amPm: string } | null {
+    if (!hora24h || !hora24h.includes(':')) return null;
     
     const [horas, minutos] = hora24h.split(':');
     const horasNum = parseInt(horas, 10);
     
-    if (isNaN(horasNum)) return hora24h;
+    if (isNaN(horasNum)) return null;
     
     let horas12 = horasNum;
-    const ampm = horasNum >= 12 ? 'PM' : 'AM';
+    let amPm = 'AM';
     
     if (horasNum === 0) {
       horas12 = 12;
+    } else if (horasNum === 12) {
+      amPm = 'PM';
     } else if (horasNum > 12) {
       horas12 = horasNum - 12;
+      amPm = 'PM';
     }
     
-    return `${horas12.toString().padStart(2, '0')}:${minutos} ${ampm}`;
+    return {
+      hora: horas12.toString().padStart(2, '0'),
+      minuto: minutos || '00',
+      amPm: amPm
+    };
   }
 
-  private convertir12hA24h(hora12h: string): string | null {
-    if (!hora12h) return null;
+  /**
+   * Actualiza el campo horaRealizacion desde los selectores de 12h
+   */
+  actualizarHoraRealizacion(): void {
+    const hora = this.form.get('horaRealizacionHora')?.value;
+    const minuto = this.form.get('horaRealizacionMinuto')?.value;
+    const amPm = this.form.get('horaRealizacionAmPm')?.value;
     
-    const hora = hora12h.trim().toUpperCase();
-    const tieneAM = hora.includes('AM');
-    const tienePM = hora.includes('PM');
-    
-    if (!tieneAM && !tienePM) {
-      return hora;
+    if (!hora || !minuto || !amPm) {
+      this.form.patchValue({ horaRealizacion: '' }, { emitEvent: false });
+      return;
     }
     
-    const horaSinAmPm = hora.replace(/AM|PM/g, '').trim();
+    // Convertir de 12h a 24h
+    let horas24 = parseInt(hora, 10);
     
-    if (!horaSinAmPm.includes(':')) return null;
-    
-    const [horasStr, minutos] = horaSinAmPm.split(':');
-    const horas = parseInt(horasStr, 10);
-    
-    if (isNaN(horas) || isNaN(parseInt(minutos, 10))) return null;
-    
-    let horas24 = horas;
-    
-    if (tienePM && horas !== 12) {
-      horas24 = horas + 12;
-    } else if (tieneAM && horas === 12) {
+    if (amPm === 'PM' && horas24 !== 12) {
+      horas24 = horas24 + 12;
+    } else if (amPm === 'AM' && horas24 === 12) {
       horas24 = 0;
     }
     
-    return `${horas24.toString().padStart(2, '0')}:${minutos}`;
+    const hora24h = `${horas24.toString().padStart(2, '0')}:${minuto}`;
+    this.form.patchValue({ horaRealizacion: hora24h }, { emitEvent: false });
   }
+
 }

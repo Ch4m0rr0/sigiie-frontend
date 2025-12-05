@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { firstValueFrom, forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
+import JSZip from 'jszip';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { ActividadAnualService } from '../../core/services/actividad-anual.service';
 import { ActividadMensualInstService } from '../../core/services/actividad-mensual-inst.service';
@@ -72,6 +73,7 @@ export class ActividadDetailComponent implements OnInit {
   evidenciasLoading = signal(false);
   evidenciasError = signal<string | null>(null);
   evidenciasImageUrls = signal<Map<number, string[]>>(new Map());
+  evidenciasOfficeFiles = signal<Map<number, Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>>>(new Map());
   
   // Vista de evidencia dentro de actividad
   evidenciaDetalle = signal<Evidencia | null>(null);
@@ -146,6 +148,12 @@ export class ActividadDetailComponent implements OnInit {
       this.loadActividad(+id);
       this.loadIndicadoresList();
       this.loadDepartamentos();
+      
+      // Verificar si hay un query param 'tab' para establecer el tab automáticamente
+      const tabParam = this.route.snapshot.queryParams['tab'];
+      if (tabParam && this.isValidTab(tabParam)) {
+        this.setTab(tabParam as any);
+      }
       this.loadCategoriasActividad();
     this.loadTiposProtagonista();
     this.loadTiposResponsable();
@@ -781,18 +789,28 @@ export class ActividadDetailComponent implements OnInit {
         });
         this.evidencias.set(evidenciasFiltradas);
         
-        // Cargar imágenes desde IndexedDB para cada evidencia
+        // Cargar imágenes y archivos Office desde IndexedDB para cada evidencia
         const imageUrlsMap = new Map<number, string[]>();
+        const officeFilesMap = new Map<number, Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>>();
+        
         for (const evidencia of evidenciasFiltradas) {
           const evidenciaId = evidencia.idEvidencia || evidencia.id;
           if (evidenciaId) {
+            // Cargar imágenes
             const images = await this.imageStorageService.getAllImages(evidenciaId);
             if (images.length > 0) {
               imageUrlsMap.set(evidenciaId, images);
             }
+            
+            // Cargar archivos Office
+            const officeFiles = await this.imageStorageService.getAllOfficeFiles(evidenciaId);
+            if (officeFiles.length > 0) {
+              officeFilesMap.set(evidenciaId, officeFiles);
+            }
           }
         }
         this.evidenciasImageUrls.set(imageUrlsMap);
+        this.evidenciasOfficeFiles.set(officeFilesMap);
         
         this.evidenciasLoading.set(false);
       },
@@ -807,6 +825,184 @@ export class ActividadDetailComponent implements OnInit {
   getEvidenciaImageUrl(evidenciaId: number): string | null {
     const urls = this.evidenciasImageUrls().get(evidenciaId);
     return urls && urls.length > 0 ? urls[0] : null;
+  }
+
+  getEvidenciaOfficeFiles(evidenciaId: number): Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}> {
+    return this.evidenciasOfficeFiles().get(evidenciaId) || [];
+  }
+
+  hasEvidenciaFiles(evidenciaId: number): boolean {
+    const hasImages = (this.evidenciasImageUrls().get(evidenciaId)?.length ?? 0) > 0;
+    const hasOfficeFiles = (this.evidenciasOfficeFiles().get(evidenciaId)?.length ?? 0) > 0;
+    return hasImages || hasOfficeFiles;
+  }
+
+  getFileIcon(fileName: string): string {
+    const ext = fileName.toLowerCase().split('.').pop();
+    switch (ext) {
+      case 'doc':
+      case 'docx':
+        return 'description'; // Word
+      case 'xls':
+      case 'xlsx':
+        return 'table_chart'; // Excel
+      case 'ppt':
+      case 'pptx':
+        return 'slideshow'; // PowerPoint
+      case 'pdf':
+        return 'picture_as_pdf'; // PDF
+      default:
+        return 'insert_drive_file';
+    }
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  async downloadOfficeFile(evidenciaId: number, fileIndex: number): Promise<void> {
+    try {
+      const fileBlob = await this.imageStorageService.getOfficeFileBlob(evidenciaId, fileIndex);
+      if (!fileBlob) {
+        alert('No se pudo obtener el archivo');
+        return;
+      }
+
+      const officeFiles = this.evidenciasOfficeFiles().get(evidenciaId);
+      const file = officeFiles?.find(f => f.fileIndex === fileIndex);
+      const fileName = file?.fileName || `archivo_${fileIndex}`;
+
+      const url = URL.createObjectURL(fileBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error descargando archivo:', error);
+      alert('Error al descargar el archivo');
+    }
+  }
+
+  async downloadEvidenciaZip(evidencia: Evidencia): Promise<void> {
+    const evidenciaId = evidencia.idEvidencia || evidencia.id;
+    if (!evidenciaId) {
+      alert('No se puede descargar: ID de evidencia inválido');
+      return;
+    }
+
+    try {
+      console.log('📦 Iniciando creación de archivo ZIP...');
+      const zip = new JSZip();
+      
+      // Obtener todas las imágenes
+      const images = this.evidenciasImageUrls().get(evidenciaId) || [];
+      console.log(`📸 Agregando ${images.length} imagen(es) al ZIP...`);
+      
+      for (let i = 0; i < images.length; i++) {
+        const imageBlob = await this.imageStorageService.getImageBlob(evidenciaId, i);
+        if (imageBlob) {
+          // Determinar la extensión del archivo basado en el tipo MIME
+          const mimeType = imageBlob.type || 'image/jpeg';
+          let extension = 'jpg';
+          if (mimeType.includes('png')) extension = 'png';
+          else if (mimeType.includes('gif')) extension = 'gif';
+          else if (mimeType.includes('webp')) extension = 'webp';
+          
+          const fileName = images.length > 1 
+            ? `imagen_${i + 1}.${extension}`
+            : `imagen.${extension}`;
+          
+          zip.file(fileName, imageBlob);
+          console.log(`✅ Imagen ${i + 1} agregada: ${fileName}`);
+        }
+      }
+      
+      // Obtener todos los archivos Office
+      const officeFiles = this.evidenciasOfficeFiles().get(evidenciaId) || [];
+      console.log(`📄 Agregando ${officeFiles.length} archivo(s) Office al ZIP...`);
+      
+      for (const file of officeFiles) {
+        const fileBlob = await this.imageStorageService.getOfficeFileBlob(evidenciaId, file.fileIndex);
+        if (fileBlob) {
+          zip.file(file.fileName, fileBlob);
+          console.log(`✅ Archivo Office agregado: ${file.fileName}`);
+        }
+      }
+      
+      // Verificar que hay al menos un archivo en el ZIP
+      const fileCount = images.length + officeFiles.length;
+      if (fileCount === 0) {
+        alert('No hay archivos para descargar');
+        return;
+      }
+      
+      // Generar el archivo ZIP
+      console.log('📦 Generando archivo ZIP...');
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      
+      // Obtener información de la actividad para el nombre del archivo
+      let nombreActividad = this.actividad()?.nombreActividad || this.actividad()?.nombre || 'Actividad';
+      let fechaActividad = '';
+      
+      if (this.actividad()) {
+        const actividad = this.actividad()!;
+        // Obtener la fecha de la actividad (fechaInicio o fechaCreacion)
+        const fecha = actividad.fechaInicio || actividad.fechaCreacion;
+        if (fecha) {
+          // Formatear la fecha como DD-MM-YYYY
+          const fechaObj = new Date(fecha);
+          if (!isNaN(fechaObj.getTime())) {
+            const dia = String(fechaObj.getDate()).padStart(2, '0');
+            const mes = String(fechaObj.getMonth() + 1).padStart(2, '0');
+            const anio = fechaObj.getFullYear();
+            fechaActividad = `${dia}-${mes}-${anio}`;
+          }
+        }
+      }
+      
+      // Obtener nombre de la evidencia
+      const nombreEvidencia = evidencia.descripcion || evidencia.nombreTipoEvidencia || `Evidencia_${evidenciaId}`;
+      
+      // Limpiar nombres para que sean válidos como nombres de archivo
+      const limpiarNombre = (nombre: string): string => {
+        return nombre
+          .replace(/[^a-zA-Z0-9\s\-_]/g, '') // Remover caracteres especiales
+          .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
+          .substring(0, 50); // Limitar longitud
+      };
+      
+      // Construir el nombre del archivo: Actividad + Evidencia + Fecha
+      const partesNombre: string[] = [];
+      partesNombre.push(limpiarNombre(nombreActividad));
+      partesNombre.push(limpiarNombre(nombreEvidencia));
+      if (fechaActividad) {
+        partesNombre.push(fechaActividad);
+      }
+      
+      const zipFileName = `${partesNombre.join('_')}.zip`;
+      
+      // Descargar el ZIP
+      const blobUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = zipFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+      
+      console.log(`✅ Archivo ZIP descargado: ${zipFileName} (${images.length} imagen(es) + ${officeFiles.length} archivo(s) Office)`);
+    } catch (error) {
+      console.error('❌ Error al crear el archivo ZIP:', error);
+      alert('Error al crear el archivo ZIP. Por favor, intente nuevamente.');
+    }
   }
 
   navigateToCrearEvidencia(): void {
@@ -1951,6 +2147,18 @@ export class ActividadDetailComponent implements OnInit {
     if (tab === 'participantes') {
       this.loadEstadisticasParticipantes();
     }
+    // Actualizar la URL con el query param del tab
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  private isValidTab(tab: string): boolean {
+    const validTabs = ['info', 'departamentos', 'responsables', 'indicadores', 'subactividades', 'actividades-anuales', 'evidencias', 'participantes'];
+    return validTabs.includes(tab);
   }
 
   getActividadesMensualesPorAnual(idActividadAnual: number): ActividadMensualInst[] {
