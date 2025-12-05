@@ -37,12 +37,12 @@
               [selectedIds]="selectedTiposEvidencia()"
               [placeholder]="'Seleccione uno o más tipos...'"
               [label]="'Tipo de Evidencia *'"
-              (selectionChange)="selectedTiposEvidencia.set($event)">
+              (selectionChange)="onTiposEvidenciaChange($event)">
             </app-multi-select-dropdown>
             @if (tiposEvidenciaPermitidos() && tiposEvidenciaPermitidos()!.length > 0) {
               <p class="mt-1 text-xs text-blue-600 flex items-center gap-1">
                 <app-icon icon="info" size="xs"></app-icon>
-                <span>Mostrando solo los tipos de evidencia permitidos para esta actividad ({{ tiposEvidenciaPermitidos()!.length }} tipo(s))</span>
+                <span>Tipos de evidencia permitidos para esta actividad ({{ tiposEvidenciaPermitidos()!.length }} tipo(s)). Puedes seleccionar o deseleccionar los que necesites.</span>
               </p>
             }
             @if (selectedTiposEvidencia().length === 0 && form.touched) {
@@ -58,12 +58,16 @@
               </label>
               <select 
                 formControlName="idActividad"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                [disabled]="vieneDesdeActividad()"
+                [class]="vieneDesdeActividad() ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
                 <option [value]="null">Ninguna</option>
                 @for (actividad of actividades(); track actividad.id) {
                   <option [value]="actividad.id">{{ actividad.nombre }}</option>
                 }
               </select>
+              @if (vieneDesdeActividad()) {
+                <p class="mt-1 text-xs text-gray-500">Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica</p>
+              }
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -71,12 +75,16 @@
               </label>
               <select 
                 formControlName="idSubactividad"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                [disabled]="vieneDesdeActividad()"
+                [class]="vieneDesdeActividad() ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
                 <option [value]="null">Ninguna</option>
                 @for (sub of subactividades(); track sub.idSubactividad) {
                   <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
                 }
               </select>
+              @if (vieneDesdeActividad()) {
+                <p class="mt-1 text-xs text-gray-500">Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica</p>
+              }
             </div>
           </div>
 

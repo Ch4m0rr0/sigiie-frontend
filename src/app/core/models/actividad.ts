@@ -2,6 +2,8 @@ import type { ActividadResponsable } from './actividad-responsable';
 import type { Subactividad } from './subactividad';
 import type { Evidencia } from './evidencia';
 import type { Edicion } from './edicion';
+import type { ActividadAnual } from './actividad-anual';
+import type { ActividadMensualInst } from './actividad-mensual-inst';
 
 export interface Actividad {
   id: number;
@@ -13,7 +15,8 @@ export interface Actividad {
   // Departamentos
   departamentoId?: number;
   nombreDepartamento?: string;
-  departamentoResponsableId?: number | number[]; // Puede ser un número o un array de números
+  departamentoResponsableId?: number | number[]; // Puede ser un número o un array de números (legacy)
+  idDepartamentosResponsables?: number[]; // Array de IDs de departamentos responsables (formato backend)
   nombreDepartamentoResponsable?: string;
   
   // Tipos e Iniciativas
@@ -56,7 +59,8 @@ export interface Actividad {
   // Campos adicionales
   semanaMes?: number;
   codigoActividad?: string;
-  idActividadMensualInst?: number | number[]; // Puede ser un número o un array de números
+  idActividadMensualInst?: number | number[]; // Puede ser un número o un array de números (legacy)
+  idActividadesMensualesInst?: number[]; // Array de IDs de actividades mensuales (formato backend)
   nombreActividadMensualInst?: string;
   codigoIndicador?: string;
   
@@ -67,7 +71,8 @@ export interface Actividad {
   codigoIndicadorAsociado?: string;
   nombreIndicadorAsociado?: string;
   metaIndicador?: number;
-  idActividadAnual?: number | number[]; // Puede ser un número o un array de números
+  idActividadAnual?: number | number[]; // Puede ser un número o un array de números (legacy)
+  idActividadesAnuales?: number[]; // Array de IDs de actividades anuales (formato backend)
   nombreActividadAnual?: string;
   
   // Objetivos y Metas
@@ -83,7 +88,8 @@ export interface Actividad {
   cantidadParticipantesProyectados?: number;
   cantidadParticipantesEstudiantesProyectados?: number;
   cantidadTotalParticipantesProtagonistas?: number;
-  idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números
+  idTipoProtagonista?: number | number[]; // Puede ser un número o un array de números (legacy)
+  idTiposProtagonistas?: number[]; // Array de IDs de tipos de protagonistas (formato backend)
   responsableActividad?: string;
   idTipoEvidencias?: number[]; // Lista de IDs de tipos de evidencias requeridas
   
@@ -104,6 +110,8 @@ export interface Actividad {
   evidencias?: Evidencia[];
   responsables?: ActividadResponsable[];
   ediciones?: Edicion[];
+  actividadesAnuales?: ActividadAnual[]; // Array completo de actividades anuales con sus nombres
+  actividadesMensualesInst?: ActividadMensualInst[]; // Array completo de actividades mensuales con sus nombres
   
   // Campos de compatibilidad (legacy)
   categoriaActividadId?: number; // Alias para idTipoActividad

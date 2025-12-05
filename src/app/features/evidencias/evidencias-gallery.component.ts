@@ -37,10 +37,20 @@ export class EvidenciasGalleryComponent implements OnInit {
   error = signal<string | null>(null);
   previewUrls = signal<Map<number, SafeUrl>>(new Map());
 
+  // Vista de resumen (cards de actividades)
+  resumenEvidencias = signal<any[]>([]);
+  loadingResumen = signal(true);
+  vistaDetalle = signal<{ idActividad: number, nombre: string } | null>(null);
+  actividades = signal<any[]>([]);
+
   // Filtros
-  filtroSubactividad = signal<number | null>(null);
+  busquedaTexto = signal<string>('');
   filtroTipo = signal<number[]>([]);
   filtroSeleccionadas = signal<boolean | null>(null);
+  
+  // Mapas para códigos y nombres
+  codigosActividades = signal<Map<number, string>>(new Map());
+  codigosSubactividades = signal<Map<number, string>>(new Map());
   
   // Modo selección múltiple
   modoSeleccion = signal(false);
@@ -50,12 +60,40 @@ export class EvidenciasGalleryComponent implements OnInit {
   ngOnInit(): void {
     this.loadSubactividades();
     this.loadTiposEvidencia();
-    this.loadEvidencias();
+    this.loadActividades();
+    this.loadResumenEvidencias();
+  }
+
+  loadActividades(): void {
+    this.actividadesService.getAll().subscribe({
+      next: (data) => {
+        this.actividades.set(data);
+        // Crear mapa de códigos de actividades
+        const codigosMap = new Map<number, string>();
+        data.forEach(actividad => {
+          if (actividad.codigoActividad) {
+            codigosMap.set(actividad.id, actividad.codigoActividad);
+          }
+        });
+        this.codigosActividades.set(codigosMap);
+      },
+      error: (err) => console.error('Error loading actividades:', err)
+    });
   }
 
   loadSubactividades(): void {
     this.subactividadService.getAll().subscribe({
-      next: (data) => this.subactividades.set(data),
+      next: (data) => {
+        this.subactividades.set(data);
+        // Crear mapa de códigos de subactividades
+        const codigosMap = new Map<number, string>();
+        data.forEach(subactividad => {
+          if (subactividad.codigoSubactividad) {
+            codigosMap.set(subactividad.idSubactividad, subactividad.codigoSubactividad);
+          }
+        });
+        this.codigosSubactividades.set(codigosMap);
+      },
       error: (err) => console.error('Error loading subactividades:', err)
     });
   }
@@ -67,26 +105,166 @@ export class EvidenciasGalleryComponent implements OnInit {
     });
   }
 
-  loadEvidencias(): void {
-    this.loading.set(true);
+  loadResumenEvidencias(): void {
+    // No cargar si ya hay una vista de detalle activa
+    if (this.vistaDetalle()) {
+      return;
+    }
+    
+    this.loadingResumen.set(true);
     this.error.set(null);
 
-    let observable;
-    if (this.filtroSubactividad()) {
-      observable = this.evidenciaService.getBySubactividad(this.filtroSubactividad()!);
-    } else {
-      observable = this.evidenciaService.getAll();
+    // Esperar a que las actividades estén cargadas
+    if (this.actividades().length === 0) {
+      setTimeout(() => this.loadResumenEvidencias(), 200);
+      return;
     }
 
-    observable.subscribe({
+    const busqueda = this.busquedaTexto().trim().toLowerCase();
+
+    // Cargar todas las evidencias y agrupar por actividad
+    this.evidenciaService.getAll().subscribe({
       next: async (data) => {
         let filtered = data;
+        
+        // Aplicar búsqueda por nombre o código de actividad/subactividad
+        if (busqueda) {
+          filtered = filtered.filter(e => {
+            // Buscar en nombre de actividad
+            const nombreActividad = e.nombreActividad || this.getNombreActividad(e.idActividad) || '';
+            if (nombreActividad.toLowerCase().includes(busqueda)) {
+              return true;
+            }
+            
+            // Buscar en código de actividad
+            if (e.idActividad) {
+              const codigoActividad = this.codigosActividades().get(e.idActividad) || '';
+              if (codigoActividad.toLowerCase().includes(busqueda)) {
+                return true;
+              }
+            }
+            
+            // Buscar en nombre de subactividad
+            if (e.nombreSubactividad && e.nombreSubactividad.toLowerCase().includes(busqueda)) {
+              return true;
+            }
+            
+            // Buscar en código de subactividad
+            if (e.idSubactividad) {
+              const codigoSubactividad = this.codigosSubactividades().get(e.idSubactividad) || '';
+              if (codigoSubactividad.toLowerCase().includes(busqueda)) {
+                return true;
+              }
+            }
+            
+            return false;
+          });
+        }
+        
+        // Aplicar otros filtros
         if (this.filtroTipo().length > 0) {
           filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
         }
         if (this.filtroSeleccionadas() !== null) {
           filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
         }
+
+        // Agrupar evidencias por actividad
+        const evidenciasPorActividad = new Map<number, Evidencia[]>();
+        filtered.forEach(evidencia => {
+          if (evidencia.idActividad) {
+            if (!evidenciasPorActividad.has(evidencia.idActividad)) {
+              evidenciasPorActividad.set(evidencia.idActividad, []);
+            }
+            evidenciasPorActividad.get(evidencia.idActividad)!.push(evidencia);
+          }
+        });
+
+        // Crear resumen con nombre de actividad y cantidad
+        const resumen: any[] = [];
+        evidenciasPorActividad.forEach((evidencias, idActividad) => {
+          const actividad = this.actividades().find(a => a.id === idActividad);
+          if (actividad) {
+            resumen.push({
+              idActividad: idActividad,
+              nombre: actividad.nombre || actividad.nombreActividad || `Actividad #${idActividad}`,
+              totalEvidencias: evidencias.length
+            });
+          }
+        });
+
+        // Ordenar por nombre
+        resumen.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        
+        this.resumenEvidencias.set(resumen);
+        this.loadingResumen.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading resumen evidencias:', err);
+        this.error.set('Error al cargar el resumen de evidencias');
+        this.loadingResumen.set(false);
+      }
+    });
+  }
+
+  loadEvidencias(): void {
+    this.loading.set(true);
+    this.error.set(null);
+
+    const actividadId = this.vistaDetalle()?.idActividad;
+    const busqueda = this.busquedaTexto().trim().toLowerCase();
+
+    this.evidenciaService.getAll().subscribe({
+      next: async (data) => {
+        let filtered = data;
+        
+        // Filtrar por actividad si estamos en vista de detalle
+        if (actividadId) {
+          filtered = filtered.filter(e => e.idActividad === actividadId);
+        }
+        
+        // Aplicar búsqueda por nombre o código de actividad/subactividad
+        if (busqueda) {
+          filtered = filtered.filter(e => {
+            // Buscar en nombre de actividad
+            const nombreActividad = e.nombreActividad || this.getNombreActividad(e.idActividad) || '';
+            if (nombreActividad.toLowerCase().includes(busqueda)) {
+              return true;
+            }
+            
+            // Buscar en código de actividad
+            if (e.idActividad) {
+              const codigoActividad = this.codigosActividades().get(e.idActividad) || '';
+              if (codigoActividad.toLowerCase().includes(busqueda)) {
+                return true;
+              }
+            }
+            
+            // Buscar en nombre de subactividad
+            if (e.nombreSubactividad && e.nombreSubactividad.toLowerCase().includes(busqueda)) {
+              return true;
+            }
+            
+            // Buscar en código de subactividad
+            if (e.idSubactividad) {
+              const codigoSubactividad = this.codigosSubactividades().get(e.idSubactividad) || '';
+              if (codigoSubactividad.toLowerCase().includes(busqueda)) {
+                return true;
+              }
+            }
+            
+            return false;
+          });
+        }
+        
+        // Aplicar otros filtros
+        if (this.filtroTipo().length > 0) {
+          filtered = filtered.filter(e => e.idTipoEvidencia !== undefined && this.filtroTipo().includes(e.idTipoEvidencia));
+        }
+        if (this.filtroSeleccionadas() !== null) {
+          filtered = filtered.filter(e => e.seleccionadaParaReporte === this.filtroSeleccionadas()!);
+        }
+        
         this.evidencias.set(filtered);
         await this.loadNombresActividades(filtered);
         this.loadPreviews(filtered);
@@ -98,6 +276,16 @@ export class EvidenciasGalleryComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  abrirVistaDetalle(idActividad: number, nombre: string): void {
+    this.vistaDetalle.set({ idActividad, nombre });
+    this.loadEvidencias();
+  }
+
+  cerrarVistaDetalle(): void {
+    this.vistaDetalle.set(null);
+    this.loadResumenEvidencias();
   }
 
   loadPreviews(evidencias: Evidencia[]): void {
@@ -204,26 +392,63 @@ export class EvidenciasGalleryComponent implements OnInit {
         this.evidenciasSeleccionadas.set(new Set());
         this.modoSeleccion.set(false);
         this.eliminando.set(false);
-        this.loadEvidencias(); // Recargar la lista
+        if (this.vistaDetalle()) {
+          this.loadEvidencias(); // Recargar la lista
+        } else {
+          this.loadResumenEvidencias(); // Recargar el resumen
+        }
       },
       error: (err) => {
         console.error('Error eliminando evidencias:', err);
         this.error.set('Error al eliminar algunas evidencias');
         this.eliminando.set(false);
-        this.loadEvidencias(); // Recargar de todas formas para actualizar
+        if (this.vistaDetalle()) {
+          this.loadEvidencias(); // Recargar de todas formas para actualizar
+        } else {
+          this.loadResumenEvidencias(); // Recargar el resumen
+        }
       }
     });
   }
 
   onFiltroChange(): void {
-    this.loadEvidencias();
+    if (this.vistaDetalle()) {
+      this.loadEvidencias();
+    } else {
+      this.loadResumenEvidencias();
+    }
   }
 
   clearFilters(): void {
-    this.filtroSubactividad.set(null);
+    this.busquedaTexto.set('');
     this.filtroTipo.set([]);
     this.filtroSeleccionadas.set(null);
-    this.loadEvidencias();
+    if (this.vistaDetalle()) {
+      this.loadEvidencias();
+    } else {
+      this.loadResumenEvidencias();
+    }
+  }
+
+  onBusquedaChange(): void {
+    if (this.vistaDetalle()) {
+      this.loadEvidencias();
+    } else {
+      this.loadResumenEvidencias();
+    }
+  }
+
+  getTipoEvidencia(evidencia: Evidencia): 'Actividad' | 'Subactividad' {
+    return evidencia.idSubactividad ? 'Subactividad' : 'Actividad';
+  }
+
+  getCodigoEvidencia(evidencia: Evidencia): string | null {
+    if (evidencia.idSubactividad) {
+      return this.codigosSubactividades().get(evidencia.idSubactividad) || null;
+    } else if (evidencia.idActividad) {
+      return this.codigosActividades().get(evidencia.idActividad) || null;
+    }
+    return null;
   }
 
   getTiposEvidenciaOptions() {

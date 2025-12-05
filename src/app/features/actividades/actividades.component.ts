@@ -203,6 +203,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   capacidadesInstaladas = signal<any[]>([]);
 
   // Filtros
+  filtroPlanificada = signal<boolean | null>(null); // null = todas, true = planificadas, false = no planificadas
   filtroEstadoActividad = signal<number | null>(null);
   filtroActividadAnual = signal<number[]>([]);
   filtroActividadMensualInst = signal<number[]>([]);
@@ -289,18 +290,61 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   });
 
+  // Paginación
+  paginaActual = signal<number>(1);
+  itemsPorPagina = 10;
+  mostrarTodas = signal<boolean>(false);
+
   // Actividades filtradas por búsqueda
   actividadesFiltradas = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
-    if (!termino) {
-      return this.actividades();
+    let filtradas = this.actividades();
+    
+    if (termino) {
+      filtradas = filtradas.filter(actividad => {
+        const nombre = (actividad.nombreActividad || actividad.nombre || '').toLowerCase();
+        const codigo = (actividad.codigoActividad || '').toLowerCase();
+        return nombre.includes(termino) || codigo.includes(termino);
+      });
     }
-    return this.actividades().filter(actividad => {
-      const nombre = (actividad.nombreActividad || actividad.nombre || '').toLowerCase();
-      const codigo = (actividad.codigoActividad || '').toLowerCase();
-      return nombre.includes(termino) || codigo.includes(termino);
-    });
+    
+    return filtradas;
   });
+
+  // Actividades paginadas
+  actividadesPaginadas = computed(() => {
+    const todas = this.actividadesFiltradas();
+    if (this.mostrarTodas()) {
+      return todas;
+    }
+    const inicio = (this.paginaActual() - 1) * this.itemsPorPagina;
+    const fin = inicio + this.itemsPorPagina;
+    return todas.slice(inicio, fin);
+  });
+
+  // Total de páginas
+  totalPaginas = computed(() => {
+    return Math.ceil(this.actividadesFiltradas().length / this.itemsPorPagina);
+  });
+
+  // Métodos de paginación
+  siguientePagina(): void {
+    if (this.paginaActual() < this.totalPaginas()) {
+      this.paginaActual.set(this.paginaActual() + 1);
+    }
+  }
+
+  verTodas(): void {
+    this.mostrarTodas.set(true);
+  }
+
+  verSiguiente(): void {
+    this.mostrarTodas.set(false);
+    this.siguientePagina();
+  }
+
+  // Métodos Math para usar en el template
+  Math = Math;
 
   // Formulario para crear indicador
   formIndicador!: FormGroup;
@@ -356,6 +400,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   // Modal de evidencia
   showEvidenciaModal = signal(false);
   actividadParaEvidencia = signal<Actividad | null>(null);
+  
+  // Modal de edición de tipos de evidencia
+  showEditarTiposEvidenciaModal = signal(false);
+  tiposEvidenciaSeleccionadosParaEditar = signal<number[]>([]);
+  guardandoTiposEvidencia = signal(false);
   
   // Signal computado para los tipos de evidencia de la actividad
   tiposEvidenciaDeActividad = computed(() => {
@@ -925,6 +974,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     
     console.log('🔄 Cargando actividades...');
     console.log('📊 Filtros activos:', {
+      planificada: this.filtroPlanificada(),
       estadoActividad: this.filtroEstadoActividad(),
       actividadAnual: this.filtroActividadAnual(),
       actividadMensualInst: this.filtroActividadMensualInst()
@@ -936,9 +986,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         // Aplicar filtros del lado del cliente
         let filtered = data;
         
+        // Filtrar por planificada/no planificada
+        if (this.filtroPlanificada() !== null) {
+          filtered = filtered.filter(a => {
+            const esPlanificada = a.esPlanificada === true;
+            return esPlanificada === this.filtroPlanificada();
+          });
+        }
+        
         // Filtrar por estado de actividad (del catálogo)
+        // Asegurar comparación correcta convirtiendo ambos a número
         if (this.filtroEstadoActividad() !== null) {
-          filtered = filtered.filter(a => a.idEstadoActividad === this.filtroEstadoActividad()!);
+          const filtroEstadoId = Number(this.filtroEstadoActividad());
+          filtered = filtered.filter(a => {
+            const actividadEstadoId = a.idEstadoActividad ? Number(a.idEstadoActividad) : null;
+            return actividadEstadoId === filtroEstadoId;
+          });
         }
         
         // Filtrar por actividad mensual institucional (múltiples selecciones)
@@ -2157,6 +2220,86 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.loadActividades();
   }
 
+  abrirEditarTiposEvidencia(): void {
+    const actividad = this.actividadParaEvidencia();
+    if (!actividad) return;
+    
+    // Inicializar con los tipos actuales de la actividad
+    const tiposActuales = actividad.idTipoEvidencias;
+    if (Array.isArray(tiposActuales) && tiposActuales.length > 0) {
+      this.tiposEvidenciaSeleccionadosParaEditar.set([...tiposActuales]);
+    } else {
+      this.tiposEvidenciaSeleccionadosParaEditar.set([]);
+    }
+    
+    this.showEditarTiposEvidenciaModal.set(true);
+  }
+
+  cerrarEditarTiposEvidenciaModal(): void {
+    this.showEditarTiposEvidenciaModal.set(false);
+    this.tiposEvidenciaSeleccionadosParaEditar.set([]);
+  }
+
+  guardarTiposEvidencia(): void {
+    const actividad = this.actividadParaEvidencia();
+    if (!actividad || !actividad.id) {
+      console.error('❌ No hay actividad seleccionada');
+      return;
+    }
+
+    const tiposSeleccionados = this.tiposEvidenciaSeleccionadosParaEditar();
+    
+    this.guardandoTiposEvidencia.set(true);
+    
+    // Actualizar solo los tipos de evidencia de la actividad
+    this.actividadesService.update(actividad.id, {
+      idTipoEvidencias: tiposSeleccionados
+    }).subscribe({
+      next: () => {
+        console.log('✅ Tipos de evidencia actualizados correctamente');
+        // Actualizar la actividad en el signal para que el formulario de evidencias se actualice
+        const actividadActualizada = {
+          ...actividad,
+          idTipoEvidencias: tiposSeleccionados
+        };
+        this.actividadParaEvidencia.set(actividadActualizada);
+        
+        // También actualizar la actividad en la lista
+        const actividadesActuales = this.actividades();
+        const index = actividadesActuales.findIndex(a => a.id === actividad.id);
+        if (index > -1) {
+          actividadesActuales[index] = actividadActualizada;
+          this.actividades.set([...actividadesActuales]);
+        }
+        
+        this.cerrarEditarTiposEvidenciaModal();
+        this.guardandoTiposEvidencia.set(false);
+      },
+      error: (err) => {
+        console.error('❌ Error al actualizar tipos de evidencia:', err);
+        this.guardandoTiposEvidencia.set(false);
+        alert('Error al actualizar los tipos de evidencia. Por favor, intente nuevamente.');
+      }
+    });
+  }
+
+  toggleTipoEvidenciaParaEditar(id: number): void {
+    const actuales = this.tiposEvidenciaSeleccionadosParaEditar();
+    const index = actuales.indexOf(id);
+    
+    if (index > -1) {
+      // Remover si ya está seleccionado
+      this.tiposEvidenciaSeleccionadosParaEditar.set(actuales.filter(t => t !== id));
+    } else {
+      // Agregar si no está seleccionado
+      this.tiposEvidenciaSeleccionadosParaEditar.set([...actuales, id]);
+    }
+  }
+
+  isTipoEvidenciaSeleccionadoParaEditar(id: number): boolean {
+    return this.tiposEvidenciaSeleccionadosParaEditar().includes(id);
+  }
+
   crearNuevaActividadAnual(): void {
     const indicadorId = this.formNuevaActividad.get('idIndicador')?.value || this.indicadorSeleccionado();
     
@@ -2176,6 +2319,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   clearFilters(): void {
+    this.filtroPlanificada.set(null);
     this.filtroEstadoActividad.set(null);
     this.filtroActividadAnual.set([]);
     this.filtroActividadMensualInst.set([]);
@@ -2186,7 +2330,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.terminoBusquedaProyecto.set('');
     this.error.set(null);
     this.showRetryButton = false;
+    this.paginaActual.set(1);
+    this.mostrarTodas.set(false);
     this.loadActividades();
+  }
+
+  onPlanificadaFiltroChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    if (value === '') {
+      this.filtroPlanificada.set(null);
+    } else if (value === 'planificada') {
+      this.filtroPlanificada.set(true);
+    } else {
+      this.filtroPlanificada.set(false);
+    }
+    this.onFiltroChange();
   }
 
   onEstadoFiltroChange(event: Event): void {
@@ -3050,9 +3209,41 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
   /**
    * Obtiene el estado a mostrar para una actividad (automático o manual)
+   * PRIORIDAD: Estado guardado por el usuario > Estado automático calculado
    */
   obtenerEstadoParaMostrar(actividad: Actividad): { nombre: string; id?: number; esAutomatico: boolean; color?: string } {
-    // Intentar calcular estado automático
+    // PRIORIDAD 1: Si la actividad tiene un estado guardado (idEstadoActividad), usarlo SIEMPRE
+    // Esto respeta la selección del usuario
+    if (actividad.idEstadoActividad !== null && actividad.idEstadoActividad !== undefined) {
+      const estadoGuardado = this.estadosActividad().find(
+        e => {
+          const estadoId = e.idEstadoActividad || e.id;
+          return estadoId !== undefined && Number(estadoId) === Number(actividad.idEstadoActividad);
+        }
+      );
+      
+      if (estadoGuardado) {
+        return {
+          nombre: estadoGuardado.nombre || estadoGuardado.Nombre || actividad.nombreEstadoActividad || 'Sin estado',
+          id: actividad.idEstadoActividad,
+          esAutomatico: false,
+          color: this.getEstadoColor(estadoGuardado)
+        };
+      }
+      
+      // Si no se encuentra el estado en la lista pero hay nombreEstadoActividad, usarlo
+      if (actividad.nombreEstadoActividad) {
+        let colorEstado = '#3B82F6'; // Color por defecto
+        return {
+          nombre: actividad.nombreEstadoActividad,
+          id: actividad.idEstadoActividad,
+          esAutomatico: false,
+          color: colorEstado
+        };
+      }
+    }
+
+    // PRIORIDAD 2: Si no hay estado guardado, calcular estado automático basado en fechas
     const estadoAutomatico = this.calcularEstadoAutomatico(actividad);
     
     if (estadoAutomatico) {
@@ -3060,7 +3251,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       let colorEstado = '#3B82F6'; // Color por defecto
       if (estadoAutomatico.id) {
         const estado = this.estadosActividad().find(
-          e => (e.idEstadoActividad || e.id) === estadoAutomatico.id
+          e => {
+            const estadoId = e.idEstadoActividad || e.id;
+            return estadoId !== undefined && Number(estadoId) === Number(estadoAutomatico.id);
+          }
         );
         if (estado) {
           colorEstado = this.getEstadoColor(estado);
@@ -3069,40 +3263,17 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       return { ...estadoAutomatico, esAutomatico: true, color: colorEstado };
     }
 
-    // Si no hay estado automático, usar el estado guardado
+    // PRIORIDAD 3: Si hay nombreEstadoActividad pero no idEstadoActividad, usarlo
     if (actividad.nombreEstadoActividad) {
-      let colorEstado = '#3B82F6'; // Color por defecto
-      if (actividad.idEstadoActividad) {
-        const estado = this.estadosActividad().find(
-          e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
-        );
-        if (estado) {
-          colorEstado = this.getEstadoColor(estado);
-        }
-      }
       return {
         nombre: actividad.nombreEstadoActividad,
         id: actividad.idEstadoActividad,
         esAutomatico: false,
-        color: colorEstado
+        color: '#3B82F6'
       };
     }
 
-    // Buscar estado por ID
-    if (actividad.idEstadoActividad) {
-      const estado = this.estadosActividad().find(
-        e => (e.idEstadoActividad || e.id) === actividad.idEstadoActividad
-      );
-      if (estado) {
-        return {
-          nombre: estado.nombre || estado.Nombre || 'Sin estado',
-          id: actividad.idEstadoActividad,
-          esAutomatico: false,
-          color: this.getEstadoColor(estado)
-        };
-      }
-    }
-
+    // Por defecto: Sin estado
     return { nombre: 'Sin estado', esAutomatico: false, color: '#3B82F6' };
   }
 
@@ -3745,7 +3916,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     if (idFiltro === null) {
       return undefined;
     }
-    return this.estadosActividad().find(e => (e.idEstadoActividad || e.id) === idFiltro);
+    const filtroId = Number(idFiltro);
+    return this.estadosActividad().find(e => {
+      const estadoId = e.idEstadoActividad || e.id;
+      return estadoId !== undefined && Number(estadoId) === filtroId;
+    });
   }
 
   getProyectosFiltrados(): Proyecto[] {

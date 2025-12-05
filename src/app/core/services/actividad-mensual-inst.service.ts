@@ -289,7 +289,11 @@ export class ActividadMensualInstService {
     return this.http.get(`${this.apiUrl}/plantilla-excel`, { responseType: 'blob' });
   }
 
-  private mapActividadMensualInst(item: any): ActividadMensualInst {
+  /**
+   * Mapea un objeto de actividad mensual institucional del backend a la interfaz ActividadMensualInst
+   * Método público para poder usarlo desde otros componentes
+   */
+  mapActividadMensualInst(item: any): ActividadMensualInst {
     const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const mes = item.mes || item.Mes || 0;
     

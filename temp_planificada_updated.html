@@ -7,11 +7,11 @@
             <app-icon icon="arrow_back" size="sm"></app-icon>
         </button>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-            {{ isEditMode() ? 'Editar Actividad planificada' : 'Nueva Actividad planificada' }}
+            {{ isEditMode() ? 'Editar actividad no planificada' : 'Nueva actividad no planificada' }}
         </h1>
       </div>
       <p class="text-slate-500 text-sm ml-10">
-        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad planificada.' : 'Registra una nueva actividad planificada con todos sus detalles.' }}
+        {{ isEditMode() ? 'Modifica los detalles operativos de la actividad no planificada.' : 'Registra una nueva actividad no planificada con todos sus detalles.' }}
       </p>
     </div> 
 
@@ -81,7 +81,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="idIndicador">
                             <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
-                            Indicador <span class="text-red-500">*</span>
+                            Indicador
                             @if (form.get('idIndicador')?.disabled) {
                                 <span class="text-xs text-slate-500 font-normal ml-1">(No editable)</span>
                             }
@@ -192,18 +192,12 @@
                             </div>
                         }
                     </div>
-                    @if (form.get('idIndicador')?.invalid && form.get('idIndicador')?.touched) {
-                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                            <p class="text-xs text-red-800">Debe seleccionar un indicador</p>
-                        </div>
-                    }
 
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-sm font-medium text-slate-700 flex items-center gap-2">
                                 <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                                Actividades anuales <span class="text-red-500">*</span>
+                                Actividades anuales
                             </label>
                             @if (form.get('idIndicador')?.value) {
                                 <button
@@ -299,18 +293,12 @@
                             </button>
                         }
                     </div>
-                    @if (form.get('idActividadAnual')?.invalid && form.get('idActividadAnual')?.touched) {
-                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                            <p class="text-xs text-red-800">Debe seleccionar al menos una actividad anual</p>
-                        </div>
-                    }
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                         <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
-                        Actividades Mensuales Institucionales <span class="text-red-500">*</span>
+                        Actividades Mensuales Institucionales
                     </label>
                     
                     <!-- Actividades Mensuales Seleccionadas (Chips) -->
@@ -395,12 +383,6 @@
                         </button>
                     }
                 </div>
-                    @if (form.get('idActividadMensualInst')?.invalid && form.get('idActividadMensualInst')?.touched) {
-                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                            <p class="text-xs text-red-800">Debe seleccionar al menos una actividad mensual</p>
-                        </div>
-                    }
                     </div>
                 }
             </div>
@@ -418,7 +400,7 @@
                         </div>
                         <div class="text-left">
                             <h3 class="text-base font-bold text-slate-900">Información de la Actividad</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad planificada</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Complete los detalles de la actividad no planificada</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -540,42 +522,6 @@
                                 </p>
                             </div>
                         }
-                        @if (form.get('fechaInicio')?.hasError('fechaInicioMayorFinAnio') && form.get('fechaInicio')?.touched) {
-                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                                <p class="text-xs text-red-800">
-                                    @let inicioYear = getAnioFechaInicio();
-                                    @let finYear = getAnioFechaFin();
-                                    @if (inicioYear && finYear) {
-                                        La fecha de inicio (año {{ inicioYear }}) no puede ser de un año mayor al de fin (año {{ finYear }}). Por favor, verifica las fechas.
-                                    }
-                                </p>
-                            </div>
-                        }
-                        @if (form.get('fechaInicio')?.hasError('fechaInicioMayorFinMes') && form.get('fechaInicio')?.touched) {
-                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                                <p class="text-xs text-red-800">
-                                    @let inicioMonth = getMesFechaInicio();
-                                    @let finMonth = getMesFechaFin();
-                                    @if (inicioMonth !== null && finMonth !== null) {
-                                        La fecha de inicio ({{ getNombreMes(inicioMonth) }}) no puede ser de un mes mayor al de fin ({{ getNombreMes(finMonth) }}). Por favor, verifica las fechas.
-                                    }
-                                </p>
-                            </div>
-                        }
-                        @if (form.get('fechaInicio')?.hasError('fechaInicioMayorFinDia') && form.get('fechaInicio')?.touched) {
-                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                                <p class="text-xs text-red-800">
-                                    @let inicioDay = getDiaFechaInicio();
-                                    @let finDay = getDiaFechaFin();
-                                    @if (inicioDay !== null && finDay !== null) {
-                                        La fecha de inicio (día {{ inicioDay }}) no puede ser mayor al día de fin (día {{ finDay }}) en el mismo mes. Por favor, verifica las fechas.
-                                    }
-                                </p>
-                            </div>
-                        }
                         @if (form.get('fechaInicio')?.hasError('required') && form.get('fechaInicio')?.touched) {
                             <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                 <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
@@ -663,18 +609,6 @@
                                 </p>
                             </div>
                         }
-                        @if (form.get('fechaFin')?.hasError('fechaFinDiaAnterior') && form.get('fechaFin')?.touched) {
-                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
-                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
-                                <p class="text-xs text-red-800">
-                                    @let inicioDay = getDiaFechaInicio();
-                                    @let finDay = getDiaFechaFin();
-                                    @if (inicioDay !== null && finDay !== null) {
-                                        La fecha de fin (día {{ finDay }}) no puede ser anterior al día de inicio (día {{ inicioDay }}) en el mismo mes. Por favor, verifica las fechas.
-                                    }
-                                </p>
-                            </div>
-                        }
                         @if (form.get('fechaFin')?.hasError('fechaFinMesAnteriorVigente') && form.get('fechaFin')?.touched) {
                             <div class="mt-1 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                 <app-icon icon="warning" size="xs" class="text-amber-600 mt-0.5 flex-shrink-0"></app-icon>
@@ -706,105 +640,6 @@
                             </div>
                         }
                     </div>
-                </div>
-
-                <!-- Proyecto (Opcional) -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                        <app-icon icon="folder" size="xs" class="text-emerald-600"></app-icon>
-                        Proyecto Asociado
-                    </label>
-                    <div class="relative" data-dropdown-proyecto>
-                        <button
-                            type="button"
-                            (click)="mostrarDropdownProyecto.set(!mostrarDropdownProyecto())"
-                            class="w-full pl-9 pr-8 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer text-left flex items-center gap-2 hover:bg-slate-50">
-                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                                <app-icon icon="folder" size="xs"></app-icon>
-                            </span>
-                            <span class="flex-1 min-w-0 truncate pl-6 flex items-center gap-2">
-                                @if (getProyectoSeleccionado(); as proyecto) {
-                                    <span class="truncate">{{ proyecto.nombreProyecto || proyecto.nombre }}</span>
-                                } @else {
-                                    <span class="text-slate-400">Seleccionar proyecto (opcional)...</span>
-                                }
-                            </span>
-                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                                <app-icon icon="expand_more" size="xs" [class.rotate-180]="mostrarDropdownProyecto()"></app-icon>
-                            </span>
-                        </button>
-
-                        <!-- Dropdown -->
-                        @if (mostrarDropdownProyecto()) {
-                            <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-96 flex flex-col animate-fade-in" style="min-width: 100%; max-width: 500px;">
-                                <!-- Buscador -->
-                                <div class="p-3 border-b border-slate-200">
-                                    <div class="relative">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <app-icon icon="search" size="xs" class="text-slate-400"></app-icon>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            [value]="terminoBusquedaProyecto()"
-                                            (input)="terminoBusquedaProyecto.set($any($event.target).value)"
-                                            (click)="$event.stopPropagation()"
-                                            placeholder="Buscar por nombre..."
-                                            class="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                                        />
-                                        @if (terminoBusquedaProyecto()) {
-                                            <button
-                                                type="button"
-                                                (click)="terminoBusquedaProyecto.set(''); $event.stopPropagation()"
-                                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                                                title="Limpiar búsqueda">
-                                                <app-icon icon="close" size="xs"></app-icon>
-                                            </button>
-                                        }
-                                    </div>
-                                </div>
-
-                                <!-- Lista de opciones -->
-                                <div class="overflow-y-auto max-h-80">
-                                    <button
-                                        type="button"
-                                        (click)="form.patchValue({ idProyecto: null }); mostrarDropdownProyecto.set(false)"
-                                        [class.bg-emerald-50]="!form.get('idProyecto')?.value"
-                                        [class.text-emerald-700]="!form.get('idProyecto')?.value"
-                                        class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2">
-                                        <app-icon icon="check" size="xs" [class.opacity-0]="form.get('idProyecto')?.value"></app-icon>
-                                        <span>Ningún proyecto</span>
-                                    </button>
-                                    @if (getProyectosFiltrados().length > 0) {
-                                        @for (proyecto of getProyectosFiltrados(); track proyecto.id) {
-                                            @let idProyecto = proyecto.id || proyecto.idProyecto;
-                                            <button
-                                                type="button"
-                                                (click)="form.patchValue({ idProyecto: idProyecto }); mostrarDropdownProyecto.set(false)"
-                                                [class.bg-emerald-50]="form.get('idProyecto')?.value === idProyecto"
-                                                [class.text-emerald-700]="form.get('idProyecto')?.value === idProyecto"
-                                                class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2 group">
-                                                <app-icon icon="check" size="xs" [class.opacity-0]="form.get('idProyecto')?.value !== idProyecto" class="flex-shrink-0"></app-icon>
-                                                <span class="flex-1 min-w-0 truncate">
-                                                    {{ proyecto.nombreProyecto || proyecto.nombre }}
-                                                </span>
-                                            </button>
-                                        }
-                                    } @else {
-                                        <div class="px-4 py-8 text-center text-sm text-slate-500">
-                                            <app-icon icon="search_off" size="sm" class="mx-auto mb-2 text-slate-400"></app-icon>
-                                            <p>No se encontraron proyectos</p>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                    @if (getProyectoSeleccionado(); as proyecto) {
-                        <div class="mt-2 flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg animate-fade-in">
-                            <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                            <span class="text-xs text-emerald-800 font-medium">Proyecto: {{ proyecto.nombreProyecto || proyecto.nombre }}</span>
-                        </div>
-                    }
                 </div>
 
                 <!-- Departamentos y Estado -->
@@ -1345,19 +1180,6 @@
                 @if (seccionResponsablesExpandida()) {
                     <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
                     
-                    <!-- Alerta: Al menos un responsable debe asignarse -->
-                    @if (tiposResponsableSeleccionados().length === 0) {
-                        <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in">
-                            <app-icon icon="info" size="sm" class="text-amber-600 mt-0.5 flex-shrink-0"></app-icon>
-                            <div class="flex-1">
-                                <h4 class="text-sm font-bold text-amber-800 mb-1">Asignación de Responsables Requerida</h4>
-                                <p class="text-xs text-amber-700">
-                                    Debe seleccionar al menos un tipo de responsable y completar la información correspondiente para poder guardar la actividad.
-                                </p>
-                            </div>
-                        </div>
-                    }
-                    
                     <div [formGroup]="formResponsable" class="space-y-6">
                         
                         <!-- Checklist de Tipos de Responsables -->
@@ -1457,6 +1279,12 @@
                                         [class.text-teal-900]="isTipoResponsableSeleccionado('externo')">Externos</span>
                                 </label>
                             </div>
+                            @if (!tieneAlMenosUnTipoResponsable() && form.get('nombreActividad')?.touched) {
+                                <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                    <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                    <p class="text-xs text-red-800">Debe seleccionar al menos un tipo de responsable.</p>
+                                </div>
+                            }
                         </div>
                         
                         <!-- Secciones de Responsables (ordenadas por selección) -->
@@ -1609,7 +1437,7 @@
                                                         <app-icon icon="person" size="xs" class="text-indigo-600"></app-icon>
                                                         Usuario <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10" style="overflow: visible;">
+                                                    <div class="relative z-10">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownUsuario($index)"
@@ -1624,7 +1452,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownUsuario()[$index]) {
-                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-indigo-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-indigo-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                                     <div class="relative">
@@ -1650,7 +1478,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de usuarios -->
-                                                                <div class="p-2 max-h-96 overflow-y-auto">
+                                                                <div class="p-2 max-h-48 overflow-y-auto">
                                                                     @if (getUsuariosFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (usuario of getUsuariosFiltrados($index); track usuario.id || usuario.idUsuario || $index) {
@@ -1861,7 +1689,7 @@
                                                         <app-icon icon="person" size="xs" class="text-blue-600"></app-icon>
                                                         Docente <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10" style="overflow: visible;">
+                                                    <div class="relative z-10">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownDocente($index)"
@@ -1876,7 +1704,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownDocente()[$index]) {
-                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-blue-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-blue-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                     <div class="relative">
@@ -1902,7 +1730,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de docentes -->
-                                                                <div class="p-2 max-h-96 overflow-y-auto">
+                                                                <div class="p-2 max-h-48 overflow-y-auto">
                                                                     @if (getDocentesFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (docente of getDocentesFiltrados($index); track docente.id || $index) {
@@ -2107,7 +1935,7 @@
                                                         <app-icon icon="person" size="xs" class="text-purple-600"></app-icon>
                                                         Estudiante <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10" style="overflow: visible;">
+                                                    <div class="relative z-10">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownEstudiante($index)"
@@ -2122,7 +1950,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownEstudiante()[$index]) {
-                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-purple-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-purple-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                     <div class="relative">
@@ -2148,7 +1976,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de estudiantes -->
-                                                                <div class="p-2 max-h-96 overflow-y-auto">
+                                                                <div class="p-2 max-h-48 overflow-y-auto">
                                                                     @if (getEstudiantesFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (estudiante of getEstudiantesFiltrados($index); track estudiante.id || $index) {
@@ -2359,7 +2187,7 @@
                                                         <app-icon icon="person" size="xs" class="text-amber-600"></app-icon>
                                                         Administrativo <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10" style="overflow: visible;">
+                                                    <div class="relative z-10">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownAdministrativo($index)"
@@ -2374,7 +2202,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownAdministrativo()[$index]) {
-                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-amber-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-amber-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                     <div class="relative">
@@ -2400,7 +2228,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de administrativos -->
-                                                                <div class="p-2 max-h-96 overflow-y-auto">
+                                                                <div class="p-2 max-h-48 overflow-y-auto">
                                                                     @if (getAdministrativosFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (admin of getAdministrativosFiltrados($index); track admin.id || $index) {
@@ -2544,7 +2372,7 @@
                                                             <app-icon icon="person" size="xs" class="text-teal-600"></app-icon>
                                                             Responsable Externo <span class="text-red-500">*</span>
                                                         </label>
-                                                        <div class="relative z-10" style="overflow: visible;">
+                                                        <div class="relative z-10">
                                                             <button
                                                                 type="button"
                                                                 (click)="toggleDropdownExterno($index)"
@@ -2560,7 +2388,7 @@
                                                                 <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                             </button>
                                                             @if (mostrarDropdownExterno()[$index]) {
-                                                                <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-teal-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
+                                                                <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-teal-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
                                                                     <!-- Buscador -->
                                                                     <div class="p-3 border-b border-gray-200">
                                                                         <div class="relative">
@@ -2586,7 +2414,7 @@
                                                                         </div>
                                                                     </div>
                                                                     <!-- Lista de responsables externos -->
-                                                                    <div class="p-2 max-h-96 overflow-y-auto">
+                                                                    <div class="p-2 max-h-48 overflow-y-auto">
                                                                         @if (getResponsablesExternosFiltrados($index).length > 0) {
                                                                             <div class="space-y-0.5">
                                                                                 @for (ext of getResponsablesExternosFiltrados($index); track ext.id) {

@@ -229,7 +229,11 @@ export class ActividadAnualService {
     return this.http.get(`${this.apiUrl}/plantilla-excel`, { responseType: 'blob' });
   }
 
-  private mapActividadAnual(item: any): ActividadAnual {
+  /**
+   * Mapea un objeto de actividad anual del backend a la interfaz ActividadAnual
+   * Método público para poder usarlo desde otros componentes
+   */
+  mapActividadAnual(item: any): ActividadAnual {
     return {
       idActividadAnual: item.idActividadAnual || item.IdActividadAnual || item.Id || item.id || 0,
       idIndicador: item.idIndicador || item.IdIndicador || 0,

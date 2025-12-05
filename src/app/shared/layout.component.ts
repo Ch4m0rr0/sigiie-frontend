@@ -1,13 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { IconComponent } from './icon/icon.component';
+import { NotificacionesComponent } from './notificaciones/notificaciones.component';
+import { ToastComponent } from './toast/toast.component';
+import { NotificacionesAutomaticasService } from '../core/services/notificaciones-automaticas.service';
 
 @Component({
   standalone: true,
   selector: 'app-layout',
-  imports: [CommonModule, RouterOutlet, SidebarComponent, IconComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, IconComponent, NotificacionesComponent, ToastComponent],
   template: `
     <div class="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
       
@@ -50,10 +53,7 @@ import { IconComponent } from './icon/icon.component';
                     <app-icon icon="help" size="sm"></app-icon>
                 </button>
 
-                <button class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative" title="Notificaciones">
-                    <app-icon icon="notifications" size="sm"></app-icon>
-                    <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
-                </button>
+                <app-notificaciones></app-notificaciones>
 
               </div>
             </div>
@@ -67,7 +67,22 @@ import { IconComponent } from './icon/icon.component';
         </main>
 
       </div>
+      
+      <!-- Componente de Toast para notificaciones emergentes -->
+      <app-toast></app-toast>
     </div>
   `,
 })
-export class LayoutComponent {}
+export class LayoutComponent implements OnInit, OnDestroy {
+  private notificacionesAutomaticas = inject(NotificacionesAutomaticasService);
+
+  ngOnInit(): void {
+    // Iniciar el servicio de notificaciones automáticas
+    this.notificacionesAutomaticas.iniciar();
+  }
+
+  ngOnDestroy(): void {
+    // Detener el servicio cuando se destruye el componente
+    this.notificacionesAutomaticas.detener();
+  }
+}

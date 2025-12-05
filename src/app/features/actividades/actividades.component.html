@@ -1852,9 +1852,30 @@
   }
 
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8 relative" style="z-index: 1;">
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+    <div class="flex flex-wrap gap-4 items-end">
       
-      <div class="md:col-span-3">
+      <!-- Filtro Planificada/No Planificada -->
+      <div class="flex-shrink-0" style="min-width: 200px;">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Tipo de Actividad</label>
+        <div class="relative">
+          <select
+            [value]="filtroPlanificada() === null ? '' : (filtroPlanificada() ? 'planificada' : 'no-planificada')"
+            (change)="onPlanificadaFiltroChange($event)"
+            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer appearance-none">
+            <option value="">Todas las actividades</option>
+            <option value="planificada">Planificadas</option>
+            <option value="no-planificada">No planificadas</option>
+          </select>
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+            <app-icon icon="event" size="xs"></app-icon>
+          </span>
+          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+            <app-icon icon="expand_more" size="xs"></app-icon>
+          </span>
+        </div>
+      </div>
+
+      <div class="flex-shrink-0" style="min-width: 200px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Estado</label>
         <div class="relative" data-dropdown-filtro-estado>
           <button
@@ -1962,6 +1983,7 @@
         </div>
       </div>
 
+<<<<<<< HEAD
       <div class="md:col-span-3">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Proyecto</label>
         <div class="relative" data-dropdown-filtro-proyecto>
@@ -2057,6 +2079,9 @@
       </div>
 
       <div class="md:col-span-3">
+=======
+      <div class="flex-shrink-0" style="min-width: 200px;">
+>>>>>>> 8e0a8ebbfe2735742b50b8bf4c8a069433e3d852
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Anual</label>
         <div class="relative" data-dropdown-filtro-anual>
           <button
@@ -2152,7 +2177,7 @@
         </div>
       </div>
 
-      <div class="md:col-span-3">
+      <div class="flex-shrink-0" style="min-width: 200px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Mensual Institucional</label>
         <div class="relative" data-dropdown-filtro-mensual>
           <button
@@ -2248,12 +2273,12 @@
         </div>
       </div>
 
-      <div class="md:col-span-3">
+      <div class="flex-shrink-0">
         <button 
           (click)="clearFilters()"
-          class="w-full py-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors text-sm font-medium flex items-center justify-center gap-2">
-          <app-icon icon="restart_alt" size="xs"></app-icon>
-          Limpiar Filtros
+          class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          title="Limpiar filtros">
+          <app-icon icon="restart_alt" size="sm"></app-icon>
         </button>
       </div>
     </div>
@@ -2327,12 +2352,12 @@
           <span class="text-slate-400"> (de {{ actividades().length }} totales)</span>
         }
       </p>
-      @if (filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+      @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
         <button 
           (click)="clearFilters()"
-          class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-colors">
-          <app-icon icon="close" size="xs"></app-icon>
-          Limpiar filtros
+          class="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+          title="Limpiar filtros">
+          <app-icon icon="close" size="sm"></app-icon>
         </button>
       }
     </div>
@@ -2516,13 +2541,14 @@
             <thead class="bg-slate-50 border-b border-slate-200 sticky top-0">
               <tr>
                 <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Actividad</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Tipo</th>
                 <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fecha</th>
                 <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
                 <th class="px-4 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-200">
-              @for (actividad of actividadesFiltradas(); track actividad.id; let i = $index) {
+              @for (actividad of actividadesPaginadas(); track actividad.id; let i = $index) {
                 <tr 
                   (click)="navigateToDetail(actividad.id)"
                   [style.animation-delay.ms]="i * 30"
@@ -2537,6 +2563,19 @@
                         <div class="text-sm font-medium text-slate-900 truncate">{{ actividad.nombreActividad || actividad.nombre || 'Sin nombre' }}</div>
                       </div>
                     </div>
+                  </td>
+                  <td class="px-3 py-2.5 whitespace-nowrap">
+                    @if (actividad.esPlanificada) {
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200">
+                        <app-icon icon="event" size="xs" class="text-blue-600"></app-icon>
+                        Planificada
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-xs font-medium border border-amber-200">
+                        <app-icon icon="event_busy" size="xs" class="text-amber-600"></app-icon>
+                        No planificada
+                      </span>
+                    }
                   </td>
                   <td class="px-3 py-2.5 whitespace-nowrap">
                     <span class="text-xs text-slate-600">
@@ -2585,6 +2624,31 @@
           </table>
         </div>
       </div>
+
+      <!-- Paginación -->
+      @if (actividadesFiltradas().length > 10 && !mostrarTodas()) {
+        <div class="mt-4 flex items-center justify-center gap-3">
+          <p class="text-sm text-slate-600">
+            Mostrando {{ (paginaActual() - 1) * 10 + 1 }} - {{ Math.min(paginaActual() * 10, actividadesFiltradas().length) }} de {{ actividadesFiltradas().length }} actividades
+          </p>
+          <div class="flex items-center gap-2">
+            @if (paginaActual() < totalPaginas()) {
+              <button
+                (click)="verSiguiente()"
+                class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2">
+                <span>Ver siguiente</span>
+                <app-icon icon="arrow_forward" size="xs" color="white"></app-icon>
+              </button>
+            }
+            <button
+              (click)="verTodas()"
+              class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium flex items-center gap-2">
+              <span>Ver todas</span>
+              <app-icon icon="unfold_more" size="xs"></app-icon>
+            </button>
+          </div>
+        </div>
+      }
     }
 
     <!-- Vista de Calendario -->
@@ -2743,7 +2807,7 @@
         </div>
         <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
         <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
-            @if (filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
                 @if (filtroActividadMensualInst().length > 0) {
                     No hay actividades asociadas a esta actividad mensual. Las actividades mensuales son contenedores que agrupan actividades. 
                     Para ver actividades aquí, necesitas crear actividades normales y asociarlas a esta actividad mensual.
@@ -2755,7 +2819,7 @@
             }
         </p>
         <div class="flex gap-3 flex-wrap justify-center">
-            @if (filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
                 <button 
                     (click)="clearFilters()" 
                     class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">
@@ -2815,12 +2879,21 @@
                   {{ actividadParaEvidencia()?.nombre }}
                 </p>
               </div>
-              <button
-                type="button"
-                (click)="cerrarEvidenciaModal()"
-                class="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg">
-                <app-icon icon="close" size="sm"></app-icon>
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="abrirEditarTiposEvidencia()"
+                  class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium">
+                  <app-icon icon="edit" size="xs" color="blue-600"></app-icon>
+                  Editar Tipos de Evidencia
+                </button>
+                <button
+                  type="button"
+                  (click)="cerrarEvidenciaModal()"
+                  class="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg">
+                  <app-icon icon="close" size="sm"></app-icon>
+                </button>
+              </div>
             </div>
           </div>
           
@@ -2833,6 +2906,91 @@
               [onSuccess]="onEvidenciaCreada.bind(this)"
               [isModalMode]="true">
             </app-evidencia-form>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Modal de Editar Tipos de Evidencia -->
+  @if (showEditarTiposEvidenciaModal() && actividadParaEvidencia()) {
+    <div class="fixed inset-0 z-[10001] overflow-y-auto" aria-labelledby="modal-tipos-title" role="dialog" aria-modal="true">
+      <!-- Overlay -->
+      <div class="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity z-[10000]" (click)="cerrarEditarTiposEvidenciaModal()"></div>
+      
+      <!-- Modal Container -->
+      <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0 z-[10001]">
+        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl w-full z-[10002]" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="bg-white px-6 py-4 border-b border-slate-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900" id="modal-tipos-title">
+                  Editar Tipos de Evidencia
+                </h3>
+                <p class="text-sm text-slate-500 mt-1">
+                  {{ actividadParaEvidencia()?.nombre }}
+                </p>
+              </div>
+              <button
+                type="button"
+                (click)="cerrarEditarTiposEvidenciaModal()"
+                class="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg">
+                <app-icon icon="close" size="sm"></app-icon>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Content -->
+          <div class="bg-white px-6 py-4">
+            <p class="text-sm text-slate-600 mb-4">
+              Selecciona los tipos de evidencia permitidos para esta actividad:
+            </p>
+            
+            <div class="max-h-96 overflow-y-auto border border-slate-200 rounded-lg p-4">
+              @if (tiposEvidencia().length === 0) {
+                <div class="text-center py-8 text-slate-500">
+                  <p>Cargando tipos de evidencia...</p>
+                </div>
+              } @else {
+                <div class="space-y-2">
+                  @for (tipo of tiposEvidencia(); track tipo.idTipoEvidencia || tipo.id) {
+                    <label class="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer rounded border border-transparent hover:border-slate-200 transition-all">
+                      <input
+                        type="checkbox"
+                        [checked]="isTipoEvidenciaSeleccionadoParaEditar(tipo.idTipoEvidencia || tipo.id)"
+                        (change)="toggleTipoEvidenciaParaEditar(tipo.idTipoEvidencia || tipo.id)"
+                        class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                      <span class="ml-3 text-sm text-gray-900">{{ tipo.nombre }}</span>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              (click)="cerrarEditarTiposEvidenciaModal()"
+              [disabled]="guardandoTiposEvidencia()"
+              class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              (click)="guardarTiposEvidencia()"
+              [disabled]="guardandoTiposEvidencia()"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              @if (guardandoTiposEvidencia()) {
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Guardando...</span>
+              } @else {
+                <app-icon icon="save" size="xs" color="white"></app-icon>
+                <span>Guardar</span>
+              }
+            </button>
           </div>
         </div>
       </div>
