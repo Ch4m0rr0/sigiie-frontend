@@ -196,48 +196,50 @@
     <div class="max-w-6xl mx-auto">
       <!-- Header -->
       <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
-        <div class="flex items-start justify-between mb-4">
+        <div class="flex items-start justify-between">
           <div class="flex-1">
-            <div class="flex items-center gap-3 mb-2">
+            <div class="flex items-center gap-3 mb-3">
               <button 
                 [routerLink]="['/actividades']"
                 class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
                 title="Regresar a actividades">
                 <app-icon icon="arrow_back" size="sm"></app-icon>
               </button>
-              <h1 class="text-3xl font-bold text-slate-900">
-                {{ actividad()!.nombre }}
+              <div class="flex-1">
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">
+                  {{ actividad()!.nombreActividad || actividad()!.nombre }}
               </h1>
-            </div>
-            @if (getTiposEvidenciaArray().length > 0) {
-              <div class="flex flex-wrap gap-2">
-                @for (tipo of getTiposEvidenciaArray(); track tipo.id) {
-                  <span class="inline-block px-3 py-1 text-sm font-medium bg-orange-100 text-orange-800 rounded-full">
-                    {{ tipo.nombre }}
+                <div class="flex items-center gap-2">
+                  @if (actividad()!.esPlanificada) {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                      <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                      Actividad Planificada
+                    </span>
+                  } @else {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-amber-100 text-amber-800 rounded-full">
+                      <app-icon icon="schedule" size="xs" class="text-amber-600"></app-icon>
+                      Actividad No Planificada
                   </span>
                 }
               </div>
-            }
           </div>
-          <div class="flex gap-2">
+            </div>
+          </div>
+          <div class="flex gap-2 ml-4">
             <button 
               (click)="navigateToEdit()"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
               <app-icon icon="edit" size="sm" color="white"></app-icon>
               Editar
             </button>
             <button 
               (click)="onDelete()"
-              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2">
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
               <app-icon icon="delete" size="sm" color="white"></app-icon>
               Eliminar
             </button>
           </div>
         </div>
-
-        @if (actividad()!.descripcion) {
-          <p class="text-slate-600 mb-4">{{ actividad()!.descripcion }}</p>
-        }
       </div>
 
       <!-- Tabs -->
@@ -367,62 +369,120 @@
                     </div>
                   </div>
                   
-                  <div class="p-6 space-y-6">
-                    <!-- Indicador -->
+                  <div class="p-4">
+                    <!-- Diagrama Visual de Planificación -->
+                    <div class="space-y-4">
+                      <!-- Indicador (si existe) -->
                     @if (actividad()!.idIndicador) {
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                          <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
-                          Indicador
-                        </label>
-                        <p class="text-sm text-slate-900">
+                        <div class="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-3 shadow-md border border-emerald-400">
+                          <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                              <app-icon icon="assessment" size="xs" color="white"></app-icon>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="text-xs font-medium text-emerald-100 mb-0.5">Indicador</div>
                           @if (actividad()!.codigoIndicadorAsociado) {
-                            <span class="font-mono font-semibold">{{ actividad()!.codigoIndicadorAsociado }}</span>
+                                <div class="text-sm font-bold text-white font-mono truncate">
+                                  {{ actividad()!.codigoIndicadorAsociado }}
+                                </div>
+                              }
                             @if (actividad()!.nombreIndicador) {
-                              <span class="text-slate-600 ml-2">- {{ actividad()!.nombreIndicador }}</span>
-                            }
-                          } @else if (actividad()!.nombreIndicador) {
+                                <div class="text-xs text-emerald-50 mt-0.5 truncate">
                             {{ actividad()!.nombreIndicador }}
+                                </div>
                           }
-                        </p>
+                            </div>
+                          </div>
                       </div>
                     }
 
+                      <!-- Actividades Anuales y Mensuales -->
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <!-- Actividades Anuales -->
                     @if (getActividadesAnualesSeleccionadas().length > 0) {
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                          <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                          Actividades anuales
-                        </label>
-                        <div class="flex flex-wrap gap-2">
-                          @for (anual of getActividadesAnualesSeleccionadas(); track $index) {
-                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
-                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                              <span>{{ anual.nombre || 'Actividad ' + anual.idActividadAnual }} - {{ anual.anio }}</span>
+                          <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3 border border-blue-200">
+                            <div class="flex items-center gap-2 mb-2">
+                              <div class="w-6 h-6 rounded bg-blue-500 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_today" size="xs" color="white"></app-icon>
+                              </div>
+                              <h4 class="text-xs font-bold text-blue-900">Actividades Anuales</h4>
+                              <span class="text-xs text-blue-600 bg-blue-200 px-1.5 py-0.5 rounded-full">
+                                {{ getActividadesAnualesSeleccionadas().length }}
+                              </span>
+                            </div>
+                            <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                              @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
+                                <div class="bg-white rounded p-2 border border-blue-200 shadow-sm">
+                                  <div class="text-xs font-medium text-blue-600 mb-0.5">Año {{ anual.anio }}</div>
+                                  <div class="text-xs font-semibold text-slate-900 line-clamp-2">
+                                    {{ anual.nombre || 'Actividad ' + anual.idActividadAnual }}
+                                  </div>
                             </div>
                           }
                         </div>
                       </div>
+                        } @else {
+                          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                            <div class="flex items-center gap-2 mb-2">
+                              <div class="w-6 h-6 rounded bg-slate-400 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_today" size="xs" color="white"></app-icon>
+                              </div>
+                              <h4 class="text-xs font-bold text-slate-600">Actividades Anuales</h4>
+                            </div>
+                            <p class="text-xs text-slate-500 italic">Sin actividades anuales</p>
+                          </div>
                     }
 
                     <!-- Actividades Mensuales -->
                     @if (getActividadesMensualesSeleccionadas().length > 0) {
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                          <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
-                          Actividades Mensuales Institucionales
-                        </label>
-                        <div class="flex flex-wrap gap-2">
-                          @for (mensual of getActividadesMensualesSeleccionadas(); track $index) {
-                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
-                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                              <span>{{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}</span>
+                          <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3 border border-purple-200">
+                            <div class="flex items-center gap-2 mb-2">
+                              <div class="w-6 h-6 rounded bg-purple-500 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_month" size="xs" color="white"></app-icon>
                             </div>
+                              <h4 class="text-xs font-bold text-purple-900">Actividades Mensuales</h4>
+                              <span class="text-xs text-purple-600 bg-purple-200 px-1.5 py-0.5 rounded-full">
+                                {{ getActividadesMensualesSeleccionadas().length }}
+                              </span>
+                            </div>
+                            <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                              @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
+                                <div class="bg-white rounded p-2 border border-purple-200 shadow-sm">
+                                  <div class="text-xs font-medium text-purple-600 mb-0.5">
+                                    @if (mensual.mes) {
+                                      Mes {{ mensual.mes }}
+                                    } @else {
+                                      Mensual
                           }
                         </div>
+                                  <div class="text-xs font-semibold text-slate-900 line-clamp-2">
+                                    {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}
+                                  </div>
                       </div>
                     }
+                  </div>
+                          </div>
+                        } @else {
+                          <div class="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                            <div class="flex items-center gap-2 mb-2">
+                              <div class="w-6 h-6 rounded bg-slate-400 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_month" size="xs" color="white"></app-icon>
+                              </div>
+                              <h4 class="text-xs font-bold text-slate-600">Actividades Mensuales</h4>
+                            </div>
+                            <p class="text-xs text-slate-500 italic">Sin actividades mensuales</p>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Mensaje si no hay datos de planificación -->
+                      @if (!actividad()!.idIndicador && getActividadesAnualesSeleccionadas().length === 0 && getActividadesMensualesSeleccionadas().length === 0) {
+                        <div class="text-center py-4 text-slate-500">
+                          <app-icon icon="info" size="sm" class="mx-auto mb-1 text-slate-400"></app-icon>
+                          <p class="text-xs">No hay información de planificación disponible</p>
+                        </div>
+                      }
+                    </div>
                   </div>
                 </div>
               }
@@ -441,18 +501,7 @@
                   </div>
                 </div>
                 
-                <div class="p-6 space-y-4 text-left">
-                  <!-- Nombre de la actividad -->
-                  <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
-                      <app-icon icon="title" size="xs" class="text-emerald-600"></app-icon>
-                      Nombre de la Actividad
-                    </label>
-                    <p class="text-sm text-slate-900 font-medium text-left">
-                      {{ actividad()!.nombreActividad || actividad()!.nombre || 'Sin nombre' }}
-                    </p>
-                  </div>
-
+                <div class="p-6 space-y-5 text-left">
                   <!-- Descripción y Objetivo -->
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -476,35 +525,22 @@
                     </div>
                   </div>
 
-                  <!-- Fechas y Horas -->
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Fechas y Hora -->
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
-                        Fecha de realización de la actividad
+                        Fecha Inicio
                       </label>
                       <p class="text-sm text-slate-900 text-left">
                         {{ actividad()!.fechaInicio ? (actividad()!.fechaInicio | date:'shortDate') : 'Sin fecha' }}
                       </p>
                     </div>
 
-                    <div>
-                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
-                        <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
-                        Hora de realización
-                      </label>
-                      <p class="text-sm text-slate-900 text-left">
-                        {{ actividad()!.horaRealizacion || 'Sin hora' }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-4">
                       <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                           <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
-                          Fecha de Fin
+                        Fecha Fin
                         </label>
                         <p class="text-sm text-slate-900 text-left">
                           {{ actividad()!.fechaFin ? (actividad()!.fechaFin | date:'shortDate') : 'Sin fecha' }}
@@ -513,34 +549,17 @@
 
                       <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
-                          <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
-                          Protagonista principal
-                        </label>
-                        @if (getProtagonistasArray().length > 0) {
-                          <div class="flex flex-wrap gap-2 justify-start">
-                            @for (tipo of getProtagonistasArray(); track tipo.id) {
-                              <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
-                                <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
-                                <span>{{ tipo.nombre }}</span>
-                              </div>
-                            }
-                          </div>
-                        } @else {
-                          <p class="text-sm text-slate-500 italic text-left">Sin protagonistas asignados</p>
-                        }
-                      </div>
-
-                      <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
-                          <app-icon icon="people_outline" size="xs" class="text-emerald-600"></app-icon>
-                          Total participantes protagonistas
+                        <app-icon icon="schedule" size="xs" class="text-emerald-600"></app-icon>
+                        Hora de realización
                         </label>
                         <p class="text-sm text-slate-900 text-left">
-                          {{ getCantidadTotalParticipantesProtagonistas() }}
+                        {{ actividad()!.horaRealizacion || 'Sin hora' }}
                         </p>
                       </div>
                     </div>
 
+                  <!-- Estado y Edición -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
@@ -596,10 +615,22 @@
                         </div>
                       }
                     </div>
+
+                    @if (actividad()!.anio) {
+                      <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                          <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                          Edición
+                        </label>
+                        <p class="text-sm text-slate-900 text-left">
+                          {{ actividad()!.anio }}
+                        </p>
+                      </div>
+                    }
                   </div>
 
-                  <!-- Departamentos -->
-                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <!-- Departamentos y Modalidad -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
@@ -617,11 +648,8 @@
                       } @else {
                         <p class="text-sm text-slate-500 italic text-left">Sin departamentos asignados</p>
                       }
-                    </div>
                   </div>
 
-                  <!-- Modalidad -->
-                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="video_call" size="xs" class="text-emerald-600"></app-icon>
@@ -640,7 +668,6 @@
 
                   <!-- Local y Código -->
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-4">
                       <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                           <app-icon icon="location_on" size="xs" class="text-emerald-600"></app-icon>
@@ -667,54 +694,81 @@
                           </p>
                         </div>
                       }
-                    </div>
                   </div>
 
-                  <!-- Participantes -->
-                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                  <!-- Participantes, Protagonistas y Tipos -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="people" size="xs" class="text-emerald-600"></app-icon>
-                        Cantidad total de participantes proyectados
+                        Participantes Proyectados
                       </label>
-                      <p class="text-sm text-slate-900 text-left">
+                      <div class="flex items-baseline gap-2">
+                        <span class="text-lg font-semibold text-slate-900">
                         {{ actividad()!.cantidadParticipantesProyectados || 0 }}
-                      </p>
+                        </span>
+                        @if (actividad()!.cantidadParticipantesEstudiantesProyectados) {
+                          <span class="text-sm text-slate-600">
+                            ({{ actividad()!.cantidadParticipantesEstudiantesProyectados }} estudiantes)
+                          </span>
+                        }
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
-                        <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                        Edición
+                        <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
+                        Total Protagonistas
                       </label>
-                      <p class="text-sm text-slate-900 text-left">
-                        {{ actividad()!.anio || 'Sin año' }}
-                      </p>
+                      <div class="flex items-baseline gap-2">
+                        <span class="text-lg font-semibold text-slate-900">
+                          {{ getCantidadTotalParticipantesProtagonistas() }}
+                        </span>
+                        @if (getProtagonistasArray().length > 0) {
+                          <span class="text-xs text-slate-500">
+                            ({{ getProtagonistasArray().length }} tipo{{ getProtagonistasArray().length > 1 ? 's' : '' }})
+                          </span>
+                        }
+                      </div>
                     </div>
                   </div>
 
-                  <!-- Tipo de Evidencia -->
+                  <!-- Protagonistas Principales -->
+                  @if (getProtagonistasArray().length > 0) {
                   <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
-                      <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
-                      Tipo de Evidencia
+                        <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
+                        Protagonistas Principales
                     </label>
-                    @if (getTiposEvidenciaArray().length > 0) {
                       <div class="flex flex-wrap gap-2 justify-start">
-                        @for (tipo of getTiposEvidenciaArray(); track tipo.id) {
+                        @for (tipo of getProtagonistasArray(); track tipo.id) {
                           <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
                             <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
                             <span>{{ tipo.nombre }}</span>
                           </div>
                         }
                       </div>
-                    } @else {
-                      <p class="text-sm text-slate-500 italic text-left">Sin tipos de evidencia asignados</p>
+                    </div>
                     }
+
+                </div>
                   </div>
 
+              <!-- Sección 3: Asignación de Responsables -->
+              <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                      <app-icon icon="person" size="sm"></app-icon>
+                    </div>
+                    <div>
+                      <h3 class="text-base font-bold text-slate-900">Asignación de Responsables</h3>
+                      <p class="text-xs text-slate-500 mt-0.5">Responsables asignados a la actividad</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="p-6 space-y-4">
                   <!-- Responsables -->
                   <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
@@ -735,6 +789,23 @@
                     }
                   </div>
 
+                  <!-- Tipo de Evidencia -->
+                  @if (getTiposEvidenciaArray().length > 0) {
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                        Tipo de Evidencia
+                      </label>
+                      <div class="flex flex-wrap gap-2 justify-start">
+                        @for (tipo of getTiposEvidenciaArray(); track tipo.id) {
+                          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                            <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                            <span>{{ tipo.nombre }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
               </div>
             </div>

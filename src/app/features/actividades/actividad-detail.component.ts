@@ -328,10 +328,13 @@ export class ActividadDetailComponent implements OnInit {
     if (capacidad) {
       const nombre = capacidad.nombre || capacidad.Nombre || capacidad.nombreCapacidadInstalada 
         || capacidad.nombreInstalacion || capacidad.NombreInstalacion || `ID: ${id}`;
-      // Guardar en cache
-      const newCache = new Map(cache);
-      newCache.set(id, nombre);
-      this.capacidadInstaladaCache.set(newCache);
+      // Guardar en cache después del renderizado para evitar error NG0600
+      setTimeout(() => {
+        const currentCache = this.capacidadInstaladaCache();
+        const newCache = new Map(currentCache);
+        newCache.set(id, nombre);
+        this.capacidadInstaladaCache.set(newCache);
+      }, 0);
       return nombre;
     }
     
@@ -341,32 +344,39 @@ export class ActividadDetailComponent implements OnInit {
       next: (data) => {
         if (data) {
           const nombre = data.nombre || data.nombreInstalacion || data.NombreInstalacion || data.Nombre || '';
-          // Guardar en cache
-          const newCache = new Map(cache);
-          newCache.set(id, nombre || `ID: ${id}`);
-          this.capacidadInstaladaCache.set(newCache);
-          // Agregar a la lista para futuras búsquedas
-          const capacidadData = {
-            id: data.id || data.idCapacidadInstalada || data.IdCapacidadInstalada 
-              || data.id_instalacion || data.IdInstalacion || data.idInstalacion || id,
-            nombre: nombre || `ID: ${id}`
-          };
-          const capacidadesActuales = this.capacidadesInstaladas();
-          if (!capacidadesActuales.find(c => {
-            const cId = c.id || c.idCapacidadInstalada || c.id_instalacion;
-            return Number(cId) === Number(capacidadData.id);
-          })) {
-            this.capacidadesInstaladas.set([...capacidadesActuales, capacidadData]);
-          }
-          this.cdr.detectChanges();
+          // Guardar en cache después del renderizado para evitar error NG0600
+          setTimeout(() => {
+            const currentCache = this.capacidadInstaladaCache();
+            const newCache = new Map(currentCache);
+            newCache.set(id, nombre || `ID: ${id}`);
+            this.capacidadInstaladaCache.set(newCache);
+            
+            // Agregar a la lista para futuras búsquedas
+            const capacidadData = {
+              id: data.id || data.idCapacidadInstalada || data.IdCapacidadInstalada 
+                || data.id_instalacion || data.IdInstalacion || data.idInstalacion || id,
+              nombre: nombre || `ID: ${id}`
+            };
+            const capacidadesActuales = this.capacidadesInstaladas();
+            if (!capacidadesActuales.find(c => {
+              const cId = c.id || c.idCapacidadInstalada || c.id_instalacion;
+              return Number(cId) === Number(capacidadData.id);
+            })) {
+              this.capacidadesInstaladas.set([...capacidadesActuales, capacidadData]);
+            }
+            this.cdr.detectChanges();
+          }, 0);
         }
       },
       error: (err) => {
         console.error('Error cargando capacidad instalada por ID:', err);
-        // Guardar error en cache para no intentar cargar de nuevo
-        const newCache = new Map(cache);
-        newCache.set(id, `ID: ${id}`);
-        this.capacidadInstaladaCache.set(newCache);
+        // Guardar error en cache después del renderizado para evitar error NG0600
+        setTimeout(() => {
+          const currentCache = this.capacidadInstaladaCache();
+          const newCache = new Map(currentCache);
+          newCache.set(id, `ID: ${id}`);
+          this.capacidadInstaladaCache.set(newCache);
+        }, 0);
       }
     });
     
@@ -375,8 +385,14 @@ export class ActividadDetailComponent implements OnInit {
   }
 
   getNombreResponsable(resp: ActividadResponsable): string {
-    return resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin || 
-           (resp as any).nombreResponsableExterno || `Responsable ${resp.idActividadResponsable}`;
+    // Buscar nombre en todos los campos posibles, incluyendo estudiantes
+    return resp.nombrePersona || 
+           resp.nombreDocente || 
+           resp.nombreAdmin || 
+           resp.nombreUsuario || 
+           (resp as any).nombreEstudiante ||
+           (resp as any).nombreResponsableExterno || 
+           `Responsable ${resp.idActividadResponsable}`;
   }
 
   getCantidadTotalParticipantesProtagonistas(): number {
@@ -457,6 +473,7 @@ export class ActividadDetailComponent implements OnInit {
     if (!actividad) return [];
     
     const deptos: any[] = [];
+    const actividadData = actividad as any;
     
     // Agregar departamento principal si existe
     if (actividad.departamentoId && actividad.nombreDepartamento) {
@@ -466,16 +483,59 @@ export class ActividadDetailComponent implements OnInit {
       });
     }
     
-    // Agregar departamentos responsables si existen
-    if (actividad.departamentoResponsableId) {
-      const ids = Array.isArray(actividad.departamentoResponsableId) 
-        ? actividad.departamentoResponsableId 
-        : [actividad.departamentoResponsableId];
+    // Buscar departamentos responsables en diferentes formatos
+    let idsDepartamentos: number[] = [];
+    
+    // Formato 1: idDepartamentosResponsables (array)
+    if (actividadData.idDepartamentosResponsables && Array.isArray(actividadData.idDepartamentosResponsables)) {
+      idsDepartamentos = actividadData.idDepartamentosResponsables.filter((id: any) => id != null && id > 0);
+    }
+    // Formato 2: IdDepartamentosResponsables (array, PascalCase)
+    else if (actividadData.IdDepartamentosResponsables && Array.isArray(actividadData.IdDepartamentosResponsables)) {
+      idsDepartamentos = actividadData.IdDepartamentosResponsables.filter((id: any) => id != null && id > 0);
+    }
+    // Formato 3: departamentoResponsableId (single o array)
+    else if (actividad.departamentoResponsableId) {
+      idsDepartamentos = Array.isArray(actividad.departamentoResponsableId) 
+        ? actividad.departamentoResponsableId.filter((id: any) => id != null && id > 0)
+        : [actividad.departamentoResponsableId].filter((id: any) => id != null && id > 0);
+    }
+    // Formato 4: nombreDepartamentoResponsable (si hay nombre pero no ID, buscar por nombre)
+    else if (actividadData.nombreDepartamentoResponsable) {
+      const nombres = Array.isArray(actividadData.nombreDepartamentoResponsable)
+        ? actividadData.nombreDepartamentoResponsable
+        : [actividadData.nombreDepartamentoResponsable];
       
-      ids.forEach(id => {
-        const dept = this.todosLosDepartamentos().find(d => d.id === id);
-        if (dept && !deptos.find(d => d.id === id)) {
+      nombres.forEach((nombre: string) => {
+        const dept = this.todosLosDepartamentos().find(d => 
+          d.nombre?.toLowerCase() === nombre.toLowerCase() || 
+          d.Nombre?.toLowerCase() === nombre.toLowerCase()
+        );
+        if (dept && !deptos.find(d => d.id === dept.id)) {
           deptos.push(dept);
+        }
+      });
+    }
+    
+    // Mapear IDs a departamentos
+    idsDepartamentos.forEach(id => {
+      const dept = this.todosLosDepartamentos().find(d => d.id === id || d.idDepartamento === id);
+      if (dept && !deptos.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
+        deptos.push({
+          id: dept.id || dept.idDepartamento,
+          nombre: dept.nombre || dept.Nombre
+        });
+      }
+    });
+    
+    // También usar los departamentos cargados directamente desde el servicio
+    if (this.departamentos().length > 0) {
+      this.departamentos().forEach(dept => {
+        if (!deptos.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
+          deptos.push({
+            id: dept.id || dept.idDepartamento,
+            nombre: dept.nombre || dept.Nombre
+          });
         }
       });
     }
@@ -524,39 +584,134 @@ export class ActividadDetailComponent implements OnInit {
       ? idTipoEvidencias 
       : [idTipoEvidencias];
     
-    return ids.map((id: number) => {
+    return ids.map((id: number, index: number) => {
       const tipo = this.tiposEvidencia().find(t => {
         const tId = t.idTipoEvidencia || t.id || t.IdTipoEvidencia || t.Id;
         return Number(tId) === Number(id);
       });
-      return tipo || { id, nombre: `ID: ${id}` };
+      const tipoObj = tipo || { id, nombre: `ID: ${id}` };
+      // Asegurar que siempre tenga un id único para el track
+      // Usar el ID numérico si está disponible y no es vacío, de lo contrario usar el índice
+      const uniqueId = (tipoObj.idTipoEvidencia && tipoObj.idTipoEvidencia !== '' && tipoObj.idTipoEvidencia != null) 
+        ? tipoObj.idTipoEvidencia 
+        : ((tipoObj.id && tipoObj.id !== '' && tipoObj.id != null) 
+          ? tipoObj.id 
+          : (id && id > 0 ? id : `evidencia-${index}`));
+      tipoObj.id = uniqueId;
+      tipoObj.idTipoEvidencia = uniqueId;
+      // Agregar un índice único para el track (siempre numérico)
+      tipoObj._trackIndex = index;
+      return tipoObj;
     }).filter((t: any) => t);
+  }
+
+  // Función trackBy para tipos de evidencia
+  trackByTipoEvidencia(index: number, tipo: any): any {
+    return tipo._trackIndex ?? tipo.idTipoEvidencia ?? tipo.id ?? index;
+  }
+
+  // Función trackBy para estados
+  trackByEstado(index: number, estado: any): any {
+    return estado.idEstadoActividad ?? estado.id ?? index;
+  }
+
+  // Función trackBy para departamentos
+  trackByDepartamento(index: number, dept: any): any {
+    return dept.id ?? dept.idDepartamento ?? index;
+  }
+
+  // Función trackBy para evidencias
+  trackByEvidencia(index: number, evidencia: any): any {
+    return evidencia.idEvidencia ?? evidencia.id ?? index;
+  }
+
+  // Función trackBy genérica para personas
+  trackByPersona(index: number, persona: any): any {
+    return persona.id ?? index;
   }
 
   getActividadesAnualesSeleccionadas(): ActividadAnual[] {
     const actividad = this.actividad();
-    if (!actividad || !actividad.idActividadAnual) return [];
+    if (!actividad) return [];
     
-    const ids = Array.isArray(actividad.idActividadAnual) 
-      ? actividad.idActividadAnual 
-      : [actividad.idActividadAnual];
+    // PRIMERO: Si la actividad ya tiene el array completo mapeado, usarlo directamente
+    if (actividad.actividadesAnuales && Array.isArray(actividad.actividadesAnuales) && actividad.actividadesAnuales.length > 0) {
+      console.log(`✅ [getActividadesAnualesSeleccionadas] Usando actividades anuales del objeto actividad: ${actividad.actividadesAnuales.length}`);
+      return actividad.actividadesAnuales;
+    }
     
-    return this.actividadesAnuales().filter(a => 
+    // FALLBACK: Buscar por IDs en el signal (método anterior)
+    const actividadData = actividad as any;
+    let ids: number[] = [];
+    
+    // Buscar en diferentes formatos
+    if (actividad.idActividadAnual) {
+      ids = Array.isArray(actividad.idActividadAnual) 
+        ? actividad.idActividadAnual 
+        : [actividad.idActividadAnual];
+    } else if (actividadData.idActividadesAnuales && Array.isArray(actividadData.idActividadesAnuales)) {
+      ids = actividadData.idActividadesAnuales;
+    } else if (actividadData.IdActividadesAnuales && Array.isArray(actividadData.IdActividadesAnuales)) {
+      ids = actividadData.IdActividadesAnuales;
+    }
+    
+    if (ids.length === 0) return [];
+    
+    const actividadesCargadas = this.actividadesAnuales();
+    const actividadesEncontradas = actividadesCargadas.filter(a => 
       a.idActividadAnual && ids.includes(a.idActividadAnual)
     );
+    
+    console.log('🔍 Actividades Anuales (fallback):', {
+      idsBuscados: ids,
+      actividadesCargadas: actividadesCargadas.length,
+      actividadesEncontradas: actividadesEncontradas.length,
+      encontradas: actividadesEncontradas.map(a => ({ id: a.idActividadAnual, nombre: a.nombre }))
+    });
+    
+    return actividadesEncontradas;
   }
 
   getActividadesMensualesSeleccionadas(): ActividadMensualInst[] {
     const actividad = this.actividad();
-    if (!actividad || !actividad.idActividadMensualInst) return [];
+    if (!actividad) return [];
     
-    const ids = Array.isArray(actividad.idActividadMensualInst) 
-      ? actividad.idActividadMensualInst 
-      : [actividad.idActividadMensualInst];
+    // PRIMERO: Si la actividad ya tiene el array completo mapeado, usarlo directamente
+    if (actividad.actividadesMensualesInst && Array.isArray(actividad.actividadesMensualesInst) && actividad.actividadesMensualesInst.length > 0) {
+      console.log(`✅ [getActividadesMensualesSeleccionadas] Usando actividades mensuales del objeto actividad: ${actividad.actividadesMensualesInst.length}`);
+      return actividad.actividadesMensualesInst;
+    }
     
-    return this.actividadesMensuales().filter(m => 
+    // FALLBACK: Buscar por IDs en el signal (método anterior)
+    const actividadData = actividad as any;
+    let ids: number[] = [];
+    
+    // Buscar en diferentes formatos
+    if (actividad.idActividadMensualInst) {
+      ids = Array.isArray(actividad.idActividadMensualInst) 
+        ? actividad.idActividadMensualInst 
+        : [actividad.idActividadMensualInst];
+    } else if (actividadData.idActividadesMensualesInst && Array.isArray(actividadData.idActividadesMensualesInst)) {
+      ids = actividadData.idActividadesMensualesInst;
+    } else if (actividadData.IdActividadesMensualesInst && Array.isArray(actividadData.IdActividadesMensualesInst)) {
+      ids = actividadData.IdActividadesMensualesInst;
+    }
+    
+    if (ids.length === 0) return [];
+    
+    const actividadesCargadas = this.actividadesMensuales();
+    const actividadesEncontradas = actividadesCargadas.filter(m => 
       m.idActividadMensualInst && ids.includes(m.idActividadMensualInst)
     );
+    
+    console.log('🔍 Actividades Mensuales (fallback):', {
+      idsBuscados: ids,
+      actividadesCargadas: actividadesCargadas.length,
+      actividadesEncontradas: actividadesEncontradas.length,
+      encontradas: actividadesEncontradas.map(m => ({ id: m.idActividadMensualInst, nombre: m.nombre }))
+    });
+    
+    return actividadesEncontradas;
   }
 
   loadTiposResponsable(): void {
@@ -830,8 +985,8 @@ export class ActividadDetailComponent implements OnInit {
         });
         this.actividad.set(data);
         
-        // Siempre cargar responsables desde el endpoint dedicado /api/actividad-responsable
-        // para asegurar que se obtengan todos los datos de la tabla actividad-responsable
+        // Usar el endpoint dedicado GET /api/actividad-responsable/actividad/{idActividad}
+        // Este endpoint gestiona todos los campos necesarios según la documentación del backend
         this.loadResponsables(id);
         
         // Cargar evidencias de la actividad
@@ -861,25 +1016,147 @@ export class ActividadDetailComponent implements OnInit {
           this.indicadores.set([indicadorData]);
         }
         
-        // Cargar actividades anuales y mensuales relacionadas (siempre que haya IDs asociados)
-        if (data.idActividadAnual || data.idActividadMensualInst) {
-          this.loadActividadesAnuales();
+        // Usar las actividades anuales y mensuales que vienen directamente en la respuesta del GET
+        // El servicio de actividades ya las mapea correctamente
+        console.log(`🔍 [ActividadDetail] Verificando actividades anuales y mensuales en data:`, {
+          tieneActividadesAnuales: !!(data.actividadesAnuales && Array.isArray(data.actividadesAnuales)),
+          cantidadAnuales: data.actividadesAnuales?.length || 0,
+          tieneActividadesMensualesInst: !!(data.actividadesMensualesInst && Array.isArray(data.actividadesMensualesInst)),
+          cantidadMensuales: data.actividadesMensualesInst?.length || 0,
+          keys: Object.keys(data).filter(k => k.toLowerCase().includes('anual') || k.toLowerCase().includes('mensual')),
+          muestraActividadesAnuales: data.actividadesAnuales ? JSON.stringify(data.actividadesAnuales.slice(0, 1)) : 'no existe',
+          muestraActividadesMensualesInst: data.actividadesMensualesInst ? JSON.stringify(data.actividadesMensualesInst.slice(0, 1)) : 'no existe'
+        });
+        
+        // PRIMERO: Intentar usar los datos mapeados del servicio
+        // El servicio ya mapeó actividadesAnuales y actividadesMensualesInst desde la respuesta del backend
+        console.log(`🔍 [ActividadDetail] Verificando data después del mapeo:`, {
+          tieneActividadesAnuales: !!(data.actividadesAnuales && Array.isArray(data.actividadesAnuales)),
+          cantidadAnuales: data.actividadesAnuales?.length || 0,
+          tieneActividadesMensualesInst: !!(data.actividadesMensualesInst && Array.isArray(data.actividadesMensualesInst)),
+          cantidadMensuales: data.actividadesMensualesInst?.length || 0,
+          tipoAnuales: typeof data.actividadesAnuales,
+          tipoMensuales: typeof data.actividadesMensualesInst
+        });
+        
+        if (data.actividadesAnuales && Array.isArray(data.actividadesAnuales) && data.actividadesAnuales.length > 0) {
+          console.log(`✅ [ActividadDetail] Usando actividades anuales mapeadas del servicio: ${data.actividadesAnuales.length} actividades`);
+          console.log(`📋 [ActividadDetail] Primera actividad anual mapeada:`, JSON.stringify(data.actividadesAnuales[0], null, 2));
+          this.actividadesAnuales.set(data.actividadesAnuales);
+        } else {
+          console.log(`⚠️ [ActividadDetail] No se encontraron actividades anuales mapeadas en data.actividadesAnuales`);
+          console.log(`🔍 [ActividadDetail] data.actividadesAnuales =`, data.actividadesAnuales);
+          // Si no vienen en la respuesta, intentar cargar por IDs como fallback
+          const tieneActividadesAnuales = data.idActividadAnual || 
+            (dataAny.idActividadesAnuales && Array.isArray(dataAny.idActividadesAnuales) && dataAny.idActividadesAnuales.length > 0) ||
+            (dataAny.IdActividadesAnuales && Array.isArray(dataAny.IdActividadesAnuales) && dataAny.IdActividadesAnuales.length > 0);
+          if (tieneActividadesAnuales) {
+            console.log(`⚠️ [ActividadDetail] Usando fallback por IDs para actividades anuales`);
+            this.loadActividadesAnuales();
+          } else {
+            console.log(`⚠️ [ActividadDetail] No hay IDs de actividades anuales, estableciendo array vacío`);
+            this.actividadesAnuales.set([]);
+          }
+        }
+        
+        // PRIMERO: Intentar usar los datos mapeados del servicio
+        if (data.actividadesMensualesInst && Array.isArray(data.actividadesMensualesInst) && data.actividadesMensualesInst.length > 0) {
+          console.log(`✅ [ActividadDetail] Usando actividades mensuales mapeadas del servicio: ${data.actividadesMensualesInst.length} actividades`);
+          console.log(`📋 [ActividadDetail] Primera actividad mensual mapeada:`, JSON.stringify(data.actividadesMensualesInst[0], null, 2));
+          this.actividadesMensuales.set(data.actividadesMensualesInst);
+        } else {
+          console.log(`⚠️ [ActividadDetail] No se encontraron actividades mensuales mapeadas en data.actividadesMensualesInst`);
+          console.log(`🔍 [ActividadDetail] data.actividadesMensualesInst =`, data.actividadesMensualesInst);
+          // Si no vienen en la respuesta y ya cargamos actividades anuales, las mensuales se cargarán automáticamente
+          // Si no hay actividades anuales, limpiar las mensuales
+          if (this.actividadesAnuales().length === 0) {
+            console.log(`⚠️ [ActividadDetail] No hay actividades anuales, estableciendo actividades mensuales vacías`);
+            this.actividadesMensuales.set([]);
+          }
         }
         
         // Departamentos - crear array desde los datos del departamento
         const departamentosData: any[] = [];
+        
+        // Agregar departamento principal si existe
         if (data.departamentoId && data.nombreDepartamento) {
           departamentosData.push({
             id: data.departamentoId,
             nombre: data.nombreDepartamento
           });
         }
-        if (data.departamentoResponsableId && data.nombreDepartamentoResponsable) {
-          departamentosData.push({
-            id: data.departamentoResponsableId,
-            nombre: data.nombreDepartamentoResponsable
+        
+        // Buscar departamentos responsables en diferentes formatos
+        // Formato 1: idDepartamentosResponsables (array)
+        if (dataAny.idDepartamentosResponsables && Array.isArray(dataAny.idDepartamentosResponsables)) {
+          dataAny.idDepartamentosResponsables.forEach((id: number) => {
+            if (id && id > 0) {
+              const dept = this.todosLosDepartamentos().find(d => d.id === id || d.idDepartamento === id);
+              if (dept && !departamentosData.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
+                departamentosData.push({
+                  id: dept.id || dept.idDepartamento,
+                  nombre: dept.nombre || dept.Nombre
+                });
+              }
+            }
           });
         }
+        // Formato 2: departamentoResponsableId (single o array)
+        else if (data.departamentoResponsableId) {
+          const ids = Array.isArray(data.departamentoResponsableId) 
+            ? data.departamentoResponsableId 
+            : [data.departamentoResponsableId];
+          
+          ids.forEach(id => {
+            if (id && id > 0) {
+              const dept = this.todosLosDepartamentos().find(d => d.id === id || d.idDepartamento === id);
+              if (dept && !departamentosData.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
+                departamentosData.push({
+                  id: dept.id || dept.idDepartamento,
+                  nombre: dept.nombre || dept.Nombre
+                });
+              } else if (data.nombreDepartamentoResponsable && !departamentosData.find(d => d.id === id)) {
+                // Si no se encuentra en la lista pero hay nombre, usar el nombre
+                const nombres = Array.isArray(data.nombreDepartamentoResponsable)
+                  ? data.nombreDepartamentoResponsable
+                  : [data.nombreDepartamentoResponsable];
+                const nombre = nombres.find((n: string, idx: number) => idx < ids.length && ids[idx] === id) || nombres[0];
+                if (nombre) {
+                  departamentosData.push({
+                    id: id,
+                    nombre: nombre
+                  });
+                }
+              }
+            }
+          });
+        }
+        // Formato 3: nombreDepartamentoResponsable (si hay nombre pero no ID)
+        else if (data.nombreDepartamentoResponsable) {
+          const nombres = Array.isArray(data.nombreDepartamentoResponsable)
+            ? data.nombreDepartamentoResponsable
+            : [data.nombreDepartamentoResponsable];
+          
+          nombres.forEach((nombre: string) => {
+            const dept = this.todosLosDepartamentos().find(d => 
+              d.nombre?.toLowerCase() === nombre.toLowerCase() || 
+              d.Nombre?.toLowerCase() === nombre.toLowerCase()
+            );
+            if (dept && !departamentosData.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
+              departamentosData.push({
+                id: dept.id || dept.idDepartamento,
+                nombre: dept.nombre || dept.Nombre
+              });
+            } else if (!departamentosData.find(d => d.nombre === nombre)) {
+              // Si no se encuentra, agregar con el nombre proporcionado
+              departamentosData.push({
+                id: 0, // ID desconocido
+                nombre: nombre
+              });
+            }
+          });
+        }
+        
         this.departamentos.set(departamentosData);
         
         // Ediciones
@@ -953,19 +1230,52 @@ export class ActividadDetailComponent implements OnInit {
     
     this.responsableService.getByActividad(id).subscribe({
       next: (data) => {
-        console.log(`📥 [ActividadDetail] Datos RAW del backend para actividad ${id}:`, JSON.stringify(data, null, 2));
-        
-        // Enriquecer los responsables con nombres de personas si no vienen del backend
-        const responsablesEnriquecidos = data.map(resp => {
+        this.procesarResponsables(data, id);
+      },
+      error: (err) => {
+        console.error('❌ Error loading responsables desde /api/actividad-responsable:', err);
+        console.error('❌ Error status:', err.status);
+        console.error('❌ Error details:', err.error);
+        // Si el endpoint dedicado falla, intentar con el método alternativo
+        console.log('⚠️ Intentando fallback para cargar responsables...');
+        this.actividadesService.getResponsables(id).subscribe({
+          next: (data) => {
+            console.log('⚠️ Usando fallback para cargar responsables');
+            this.procesarResponsables(data, id);
+          },
+          error: (fallbackErr) => {
+            console.error('❌ Error en fallback de responsables:', fallbackErr);
+            this.responsables.set([]);
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Procesa y enriquece los responsables (usado tanto desde GET /api/actividades/{id} como desde /api/actividad-responsable/actividad/{id})
+   */
+  procesarResponsables(data: ActividadResponsable[], id: number): void {
+    console.log(`📥 [ActividadDetail] Procesando ${data.length} responsables para actividad ${id}`);
+    console.log(`📥 [ActividadDetail] Datos RAW del backend:`, JSON.stringify(data, null, 2));
+    
+    // Enriquecer los responsables con nombres de personas si no vienen del backend
+    const responsablesEnriquecidos = data.map(resp => {
           console.log(`🔍 [ActividadDetail] Procesando responsable ${resp.idActividadResponsable}:`, {
             idActividad: resp.idActividad,
             idUsuario: resp.idUsuario,
             idDocente: resp.idDocente,
             idAdmin: resp.idAdmin,
+            idEstudiante: resp.idEstudiante,
+            idResponsableExterno: resp.idResponsableExterno,
+            idRolResponsable: resp.idRolResponsable,
             nombrePersona: resp.nombrePersona,
             nombreUsuario: resp.nombreUsuario,
             nombreDocente: resp.nombreDocente,
-            nombreAdmin: resp.nombreAdmin
+            nombreAdmin: resp.nombreAdmin,
+            nombreEstudiante: resp.nombreEstudiante,
+            nombreResponsableExterno: resp.nombreResponsableExterno,
+            rolResponsable: resp.rolResponsable
           });
           
           // Verificar que el responsable pertenezca a la actividad correcta
@@ -979,7 +1289,7 @@ export class ActividadDetailComponent implements OnInit {
           let tipoPersonaEncontrado: 'docente' | 'estudiante' | 'administrativo' | null = null;
           
           // Verificar si el backend ya proporcionó un nombre válido
-          const nombreDelBackend = resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin;
+          const nombreDelBackend = resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin || resp.nombreEstudiante || resp.nombreResponsableExterno;
           const esNombreValido = nombreDelBackend && 
                                  !nombreDelBackend.toLowerCase().includes('administrador sistema') &&
                                  !nombreDelBackend.toLowerCase().includes('admin sistema') &&
@@ -1017,6 +1327,29 @@ export class ActividadDetailComponent implements OnInit {
                 nombreEncontrado = true;
                 tipoPersonaEncontrado = 'administrativo';
                 console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de admin: ${admin.nombreCompleto}`);
+              }
+            }
+            
+            // Si no se encontró, intentar con idEstudiante si existe
+            if (!nombreEncontrado && resp.idEstudiante && resp.idEstudiante > 0) {
+              const estudiante = this.estudiantes().find(e => e.id === resp.idEstudiante);
+              if (estudiante && estudiante.nombreCompleto) {
+                resp.nombrePersona = estudiante.nombreCompleto;
+                resp.nombreEstudiante = estudiante.nombreCompleto;
+                resp.idEstudiante = resp.idEstudiante; // Preservar el ID
+                nombreEncontrado = true;
+                tipoPersonaEncontrado = 'estudiante';
+                console.log(`✅ Enriquecido responsable ${resp.idActividadResponsable} con nombre de estudiante: ${estudiante.nombreCompleto}`);
+              }
+            }
+            
+            // Si no se encontró y hay idResponsableExterno, usar el nombre del backend
+            // (los responsables externos no están en las listas de personas)
+            if (!nombreEncontrado && resp.idResponsableExterno && resp.idResponsableExterno > 0) {
+              if (resp.nombreResponsableExterno) {
+                resp.nombrePersona = resp.nombreResponsableExterno;
+                nombreEncontrado = true;
+                console.log(`✅ Usando nombre de responsable externo para responsable ${resp.idActividadResponsable}: ${resp.nombreResponsableExterno}`);
               }
             }
             
@@ -1116,7 +1449,7 @@ export class ActividadDetailComponent implements OnInit {
           }
           
           // Si el nombre actual es "Administrador Sistema" o similar, limpiarlo
-          const nombreActual = resp.nombrePersona || resp.nombreUsuario || resp.nombreAdmin || resp.nombreDocente || '';
+          const nombreActual = resp.nombrePersona || resp.nombreUsuario || resp.nombreAdmin || resp.nombreDocente || resp.nombreEstudiante || resp.nombreResponsableExterno || '';
           if (nombreActual && (
             nombreActual.toLowerCase().includes('administrador sistema') ||
             nombreActual.toLowerCase().includes('admin sistema') ||
@@ -1130,6 +1463,7 @@ export class ActividadDetailComponent implements OnInit {
               resp.nombreUsuario = undefined;
               resp.nombreAdmin = undefined;
               resp.nombreDocente = undefined;
+              resp.nombreEstudiante = undefined;
             }
           }
           
@@ -1140,17 +1474,21 @@ export class ActividadDetailComponent implements OnInit {
               idDocente: resp.idDocente,
               idAdmin: resp.idAdmin,
               idUsuario: resp.idUsuario,
+              idEstudiante: resp.idEstudiante,
+              idResponsableExterno: resp.idResponsableExterno,
               nombrePersona: resp.nombrePersona,
               nombreUsuario: resp.nombreUsuario,
               nombreDocente: resp.nombreDocente,
               nombreAdmin: resp.nombreAdmin,
+              nombreEstudiante: resp.nombreEstudiante,
+              nombreResponsableExterno: resp.nombreResponsableExterno,
               nombreDepartamento: resp.nombreDepartamento,
               docentesCargados: this.docentes().length,
               administrativosCargados: this.administrativos().length,
               estudiantesCargados: this.estudiantes().length
             });
           } else {
-            console.log(`✅ [ActividadDetail] Responsable ${resp.idActividadResponsable} procesado exitosamente. Nombre final: ${resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin}`);
+            console.log(`✅ [ActividadDetail] Responsable ${resp.idActividadResponsable} procesado exitosamente. Nombre final: ${resp.nombrePersona || resp.nombreUsuario || resp.nombreDocente || resp.nombreAdmin || resp.nombreEstudiante || resp.nombreResponsableExterno}`);
           }
           
           return resp;
@@ -1160,7 +1498,7 @@ export class ActividadDetailComponent implements OnInit {
         // Excluir "Administrador Sistema" y otros usuarios del sistema
         const responsablesFiltrados = responsablesEnriquecidos.filter((resp): resp is ActividadResponsable => {
           if (!resp) return false;
-          const nombre = resp.nombrePersona || resp.nombreDocente || resp.nombreAdmin || resp.nombreUsuario || '';
+          const nombre = resp.nombrePersona || resp.nombreDocente || resp.nombreAdmin || resp.nombreUsuario || resp.nombreEstudiante || resp.nombreResponsableExterno || '';
           // Excluir si el nombre es "Administrador Sistema" o similar
           const esUsuarioSistema = nombre.toLowerCase().includes('administrador sistema') || 
                                    nombre.toLowerCase().includes('admin sistema') ||
@@ -1169,11 +1507,13 @@ export class ActividadDetailComponent implements OnInit {
           // Incluir si:
           // 1. Tiene un nombre válido que no sea usuario del sistema
           // 2. Tiene un departamento asignado (sin persona)
-          // 3. Tiene un ID de persona válido (idDocente, idAdmin, o idUsuario > 0) aunque no tenga nombre aún
+          // 3. Tiene un ID de persona válido (idDocente, idAdmin, idEstudiante, idResponsableExterno, o idUsuario > 0) aunque no tenga nombre aún
           //    (esto permite mostrar responsables recién creados mientras se enriquecen)
           const tieneIdPersonaValido = Boolean(
             (resp.idDocente && resp.idDocente > 0) || 
             (resp.idAdmin && resp.idAdmin > 0) || 
+            (resp.idEstudiante && resp.idEstudiante > 0) ||
+            (resp.idResponsableExterno && resp.idResponsableExterno > 0) ||
             (resp.idUsuario && resp.idUsuario > 0)
           );
           
@@ -1190,10 +1530,15 @@ export class ActividadDetailComponent implements OnInit {
           idDocente: r.idDocente,
           idAdmin: r.idAdmin,
           idUsuario: r.idUsuario,
+          idEstudiante: r.idEstudiante,
+          idResponsableExterno: r.idResponsableExterno,
+          idRolResponsable: r.idRolResponsable,
           nombrePersona: r.nombrePersona,
           nombreDocente: r.nombreDocente,
           nombreAdmin: r.nombreAdmin,
           nombreUsuario: r.nombreUsuario,
+          nombreEstudiante: r.nombreEstudiante,
+          nombreResponsableExterno: r.nombreResponsableExterno,
           rolResponsable: r.rolResponsable
         } : null).filter(r => r !== null));
         console.log('📋 Responsables después del filtro:', responsablesFiltrados.map(r => ({
@@ -1201,45 +1546,30 @@ export class ActividadDetailComponent implements OnInit {
           idDocente: r.idDocente,
           idAdmin: r.idAdmin,
           idUsuario: r.idUsuario,
+          idEstudiante: r.idEstudiante,
+          idResponsableExterno: r.idResponsableExterno,
+          idRolResponsable: r.idRolResponsable,
           nombrePersona: r.nombrePersona,
           nombreDocente: r.nombreDocente,
           nombreAdmin: r.nombreAdmin,
           nombreUsuario: r.nombreUsuario,
+          nombreEstudiante: r.nombreEstudiante,
+          nombreResponsableExterno: r.nombreResponsableExterno,
           rolResponsable: r.rolResponsable
         })));
-        this.responsables.set(responsablesFiltrados);
-        console.log(`✅ [ActividadDetail] Responsables cargados desde /api/actividad-responsable/actividad/${id}: ${data.length} responsables`);
-        console.log(`✅ [ActividadDetail] Responsables filtrados: ${responsablesFiltrados.length} responsables`);
-        if (data.length > 0) {
-          console.log('📋 [ActividadDetail] Datos de responsables originales:', data);
-          console.log('📋 [ActividadDetail] IDs de actividad de los responsables:', data.map(r => r.idActividad));
-          console.log('📋 [ActividadDetail] Verificando que todos los responsables pertenezcan a la actividad:', id);
-          const responsablesIncorrectos = data.filter(r => r.idActividad !== id);
-          if (responsablesIncorrectos.length > 0) {
-            console.error(`❌ [ActividadDetail] ADVERTENCIA: Se encontraron ${responsablesIncorrectos.length} responsables que NO pertenecen a la actividad ${id}:`, responsablesIncorrectos);
-          }
-        } else {
-          console.warn(`⚠️ [ActividadDetail] No se encontraron responsables para la actividad ${id}`);
-        }
-      },
-      error: (err) => {
-        console.error('❌ Error loading responsables desde /api/actividad-responsable:', err);
-        console.error('❌ Error status:', err.status);
-        console.error('❌ Error details:', err.error);
-        // Si el endpoint dedicado falla, intentar con el método alternativo
-        console.log('⚠️ Intentando fallback para cargar responsables...');
-        this.actividadesService.getResponsables(id).subscribe({
-          next: (data) => {
-            console.log('⚠️ Usando fallback para cargar responsables');
-            this.responsables.set(data);
-          },
-          error: (fallbackErr) => {
-            console.error('❌ Error en fallback de responsables:', fallbackErr);
-            this.responsables.set([]);
-          }
-        });
+    this.responsables.set(responsablesFiltrados);
+    console.log(`✅ [ActividadDetail] Responsables procesados: ${data.length} responsables originales, ${responsablesFiltrados.length} después del filtro`);
+    if (data.length > 0) {
+      console.log('📋 [ActividadDetail] Datos de responsables originales:', data);
+      console.log('📋 [ActividadDetail] IDs de actividad de los responsables:', data.map(r => r.idActividad));
+      console.log('📋 [ActividadDetail] Verificando que todos los responsables pertenezcan a la actividad:', id);
+      const responsablesIncorrectos = data.filter(r => r.idActividad !== id);
+      if (responsablesIncorrectos.length > 0) {
+        console.error(`❌ [ActividadDetail] ADVERTENCIA: Se encontraron ${responsablesIncorrectos.length} responsables que NO pertenecen a la actividad ${id}:`, responsablesIncorrectos);
       }
-    });
+    } else {
+      console.warn(`⚠️ [ActividadDetail] No se encontraron responsables para la actividad ${id}`);
+    }
   }
 
   // Estos métodos ya no son necesarios ya que los datos vienen en el objeto Actividad

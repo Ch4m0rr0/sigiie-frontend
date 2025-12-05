@@ -11,6 +11,8 @@ import type { ActividadResponsable } from '../models/actividad-responsable';
 import type { ActividadIndicador } from '../models/indicador';
 import type { Subactividad } from '../models/subactividad';
 import type { EvidenciaCreate } from '../models/evidencia';
+import type { ActividadAnual } from '../models/actividad-anual';
+import type { ActividadMensualInst } from '../models/actividad-mensual-inst';
 
 export interface ActividadFilterDto {
   IdActividadMensualInst?: number;
@@ -232,10 +234,23 @@ export class ActividadesService {
   getById(id: number): Observable<Actividad> {
     return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
       map(item => {
-        console.log('📥 Respuesta del backend al obtener actividad:', item);
-        console.log('📥 IdTipoEvidencias en respuesta GET:', item.IdTipoEvidencias || item.idTipoEvidencias);
+        console.log('📥 [ActividadesService] Respuesta RAW del backend al obtener actividad:', {
+          id: item.id || item.Id || item.idActividad || item.IdActividad,
+          tieneActividadesAnuales: !!(item.actividadesAnuales && Array.isArray(item.actividadesAnuales)),
+          cantidadActividadesAnuales: item.actividadesAnuales?.length || 0,
+          tieneActividadesMensualesInst: !!(item.actividadesMensualesInst && Array.isArray(item.actividadesMensualesInst)),
+          cantidadActividadesMensualesInst: item.actividadesMensualesInst?.length || 0,
+          keys: Object.keys(item).filter(k => k.toLowerCase().includes('anual') || k.toLowerCase().includes('mensual'))
+        });
         const actividadMapeada = this.mapActividad(item);
-        console.log('📥 Actividad mapeada (GET) - idTipoEvidencias:', actividadMapeada.idTipoEvidencias);
+        console.log('📥 [ActividadesService] Actividad mapeada - actividadesAnuales:', actividadMapeada.actividadesAnuales?.length || 0);
+        console.log('📥 [ActividadesService] Actividad mapeada - actividadesMensualesInst:', actividadMapeada.actividadesMensualesInst?.length || 0);
+        if (actividadMapeada.actividadesAnuales && actividadMapeada.actividadesAnuales.length > 0) {
+          console.log('📋 [ActividadesService] Primera actividad anual mapeada:', actividadMapeada.actividadesAnuales[0]);
+        }
+        if (actividadMapeada.actividadesMensualesInst && actividadMapeada.actividadesMensualesInst.length > 0) {
+          console.log('📋 [ActividadesService] Primera actividad mensual mapeada:', actividadMapeada.actividadesMensualesInst[0]);
+        }
         return actividadMapeada;
       })
     );
@@ -1269,16 +1284,33 @@ export class ActividadesService {
       return resps.map(r => ({
         idActividadResponsable: r.IdActividadResponsable || r.idActividadResponsable || r.id || 0,
         idActividad: r.IdActividad || r.idActividad || idActividad,
-        idUsuario: r.IdUsuario || r.idUsuario,
-        idDocente: r.IdDocente || r.idDocente,
-        idAdmin: r.IdAdmin || r.idAdmin,
-        nombrePersona: r.NombreUsuario || r.nombreUsuario || r.NombreDocente || r.nombreDocente || r.NombreAdmin || r.nombreAdmin,
+        idUsuario: r.IdUsuario !== undefined && r.IdUsuario !== null ? r.IdUsuario : (r.idUsuario !== undefined && r.idUsuario !== null ? r.idUsuario : undefined),
+        idDocente: r.IdDocente !== undefined && r.IdDocente !== null ? r.IdDocente : (r.idDocente !== undefined && r.idDocente !== null ? r.idDocente : undefined),
+        idAdmin: r.IdAdmin !== undefined && r.IdAdmin !== null ? r.IdAdmin : (r.idAdmin !== undefined && r.idAdmin !== null ? r.idAdmin : undefined),
+        // Incluir idEstudiante e idResponsableExterno si el backend los envía
+        idEstudiante: r.IdEstudiante !== undefined && r.IdEstudiante !== null ? r.IdEstudiante : (r.idEstudiante !== undefined && r.idEstudiante !== null ? r.idEstudiante : undefined),
+        idResponsableExterno: r.IdResponsableExterno !== undefined && r.IdResponsableExterno !== null ? r.IdResponsableExterno : (r.idResponsableExterno !== undefined && r.idResponsableExterno !== null ? r.idResponsableExterno : undefined),
+        idRolResponsable: r.IdRolResponsable !== undefined && r.IdRolResponsable !== null ? r.IdRolResponsable : (r.idRolResponsable !== undefined && r.idRolResponsable !== null ? r.idRolResponsable : undefined),
+        // Mapear nombres en orden de prioridad: Persona > Docente > Admin > Usuario > Estudiante > ResponsableExterno
+        nombrePersona: r.NombrePersona || r.nombrePersona || 
+                      r.NombreDocente || r.nombreDocente || 
+                      r.NombreAdmin || r.nombreAdmin || 
+                      r.NombreUsuario || r.nombreUsuario ||
+                      r.NombreEstudiante || r.nombreEstudiante ||
+                      r.NombreResponsableExterno || r.nombreResponsableExterno,
+        nombreDocente: r.NombreDocente || r.nombreDocente,
+        nombreAdmin: r.NombreAdmin || r.nombreAdmin,
+        nombreUsuario: r.NombreUsuario || r.nombreUsuario,
+        nombreEstudiante: r.NombreEstudiante || r.nombreEstudiante,
+        nombreResponsableExterno: r.NombreResponsableExterno || r.nombreResponsableExterno,
         idTipoResponsable: r.IdTipoResponsable || r.idTipoResponsable || 0,
         nombreTipoResponsable: r.NombreTipoResponsable || r.nombreTipoResponsable,
-        departamentoId: r.DepartamentoId || r.departamentoId,
+        departamentoId: r.DepartamentoId !== undefined && r.DepartamentoId !== null ? r.DepartamentoId : (r.departamentoId !== undefined && r.departamentoId !== null ? r.departamentoId : undefined),
+        nombreDepartamento: r.NombreDepartamento || r.nombreDepartamento,
         fechaAsignacion: r.FechaAsignacion || r.fechaAsignacion ? formatDate(r.FechaAsignacion || r.fechaAsignacion) : undefined,
         rolResponsable: r.RolResponsable || r.rolResponsable,
-        rolResponsableDetalle: r.RolResponsableDetalle || r.rolResponsableDetalle
+        rolResponsableDetalle: r.RolResponsableDetalle || r.rolResponsableDetalle,
+        nombreActividad: r.NombreActividad || r.nombreActividad
       }));
     };
 
@@ -1305,6 +1337,63 @@ export class ActividadesService {
       }));
     };
 
+    // Mapear actividades anuales si existen (el backend devuelve el array completo con nombres)
+    const mapActividadesAnuales = (anuales: any[]): ActividadAnual[] => {
+      if (!Array.isArray(anuales)) return [];
+      return anuales.map(a => ({
+        idActividadAnual: a.idActividadAnual || a.IdActividadAnual || a.Id || a.id || 0,
+        idIndicador: a.idIndicador || a.IdIndicador || 0,
+        nombreIndicador: a.nombreIndicador || a.NombreIndicador,
+        codigoIndicador: a.codigoIndicador || a.CodigoIndicador,
+        nombre: a.nombre || a.Nombre,
+        descripcion: a.descripcion || a.Descripcion,
+        anio: a.anio || a.Anio || 0,
+        metaAnual: a.metaAnual !== undefined ? a.metaAnual : (a.MetaAnual !== undefined ? a.MetaAnual : undefined),
+        metaAlcanzada: a.metaAlcanzada !== undefined ? a.metaAlcanzada : (a.MetaAlcanzada !== undefined ? a.MetaAlcanzada : undefined),
+        porcentajeCumplimiento: a.porcentajeCumplimiento !== undefined ? a.porcentajeCumplimiento : (a.PorcentajeCumplimiento !== undefined ? a.PorcentajeCumplimiento : undefined),
+        valoracionCualitativa: a.valoracionCualitativa || a.ValoracionCualitativa,
+        brechas: a.brechas || a.Brechas,
+        evidenciaResumen: a.evidenciaResumen || a.EvidenciaResumen,
+        activo: a.activo !== undefined ? a.activo : (a.Activo !== undefined ? a.Activo : true),
+        creadoPor: a.creadoPor || a.CreadoPor,
+        fechaCreacion: a.fechaCreacion || a.FechaCreacion,
+        fechaModificacion: a.fechaModificacion || a.FechaModificacion
+      }));
+    };
+
+    // Mapear actividades mensuales si existen (el backend devuelve el array completo con nombres)
+    const mapActividadesMensualesInst = (mensuales: any[]): ActividadMensualInst[] => {
+      if (!Array.isArray(mensuales)) return [];
+      const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      return mensuales.map(m => {
+        const mes = m.mes || m.Mes || 0;
+        return {
+          idActividadMensualInst: m.idActividadMensualInst || m.IdActividadMensualInst || m.Id || m.id || 0,
+          idActividadAnual: m.idActividadAnual || m.IdActividadAnual || 0,
+          mes: mes,
+          nombre: m.nombre || m.Nombre,
+          descripcion: m.descripcion || m.Descripcion,
+          nombreMes: meses[mes] || m.nombreMes || m.NombreMes,
+          metaMensual: m.metaMensual !== undefined ? m.metaMensual : (m.MetaMensual !== undefined ? m.MetaMensual : undefined),
+          metaAlcanzada: m.metaAlcanzada !== undefined ? m.metaAlcanzada : (m.MetaAlcanzada !== undefined ? m.MetaAlcanzada : undefined),
+          porcentajeCumplimiento: m.porcentajeCumplimiento !== undefined ? m.porcentajeCumplimiento : (m.PorcentajeCumplimiento !== undefined ? m.PorcentajeCumplimiento : undefined),
+          valoracionCualitativa: m.valoracionCualitativa || m.ValoracionCualitativa,
+          brechas: m.brechas || m.Brechas,
+          evidenciaResumen: m.evidenciaResumen || m.EvidenciaResumen,
+          activo: m.activo !== undefined ? m.activo : (m.Activo !== undefined ? m.Activo : true),
+          creadoPor: m.creadoPor || m.CreadoPor,
+          fechaCreacion: m.fechaCreacion || m.FechaCreacion,
+          fechaModificacion: m.fechaModificacion || m.FechaModificacion,
+          actividadAnual: m.actividadAnual || m.ActividadAnual ? {
+            idActividadAnual: m.actividadAnual?.idActividadAnual || m.ActividadAnual?.IdActividadAnual || 0,
+            idIndicador: m.actividadAnual?.idIndicador || m.ActividadAnual?.IdIndicador || 0,
+            anio: m.actividadAnual?.anio || m.ActividadAnual?.Anio || 0,
+            nombreIndicador: m.actividadAnual?.nombreIndicador || m.ActividadAnual?.NombreIndicador
+          } : undefined
+        };
+      });
+    };
+
     return {
       id: idActividad,
       idActividad: idActividad,
@@ -1317,6 +1406,22 @@ export class ActividadesService {
       nombreDepartamento: item.NombreDepartamento || item.nombreDepartamento,
       departamentoResponsableId: item.DepartamentoResponsableId || item.departamentoResponsableId,
       nombreDepartamentoResponsable: item.NombreDepartamentoResponsable || item.nombreDepartamentoResponsable,
+      
+      // Arrays de Departamentos (mapear desde el backend)
+      idDepartamentosResponsables: (() => {
+        // Buscar en diferentes formatos
+        if (Array.isArray(item.IdDepartamentosResponsables) && item.IdDepartamentosResponsables.length > 0) {
+          return item.IdDepartamentosResponsables;
+        }
+        if (Array.isArray(item.idDepartamentosResponsables) && item.idDepartamentosResponsables.length > 0) {
+          return item.idDepartamentosResponsables;
+        }
+        // Si hay un solo valor, convertirlo a array
+        if (item.DepartamentoResponsableId || item.departamentoResponsableId) {
+          return [item.DepartamentoResponsableId || item.departamentoResponsableId];
+        }
+        return undefined;
+      })(),
       
       // Tipos e Iniciativas
       idTipoIniciativa: item.IdTipoIniciativa || item.idTipoIniciativa,
@@ -1412,6 +1517,36 @@ export class ActividadesService {
       idActividadAnual: item.IdActividadAnual || item.idActividadAnual,
       nombreActividadAnual: item.NombreActividadAnual || item.nombreActividadAnual,
       
+      // Arrays de Planificación (mapear desde el backend)
+      idActividadesAnuales: (() => {
+        // Buscar en diferentes formatos
+        if (Array.isArray(item.IdActividadesAnuales) && item.IdActividadesAnuales.length > 0) {
+          return item.IdActividadesAnuales;
+        }
+        if (Array.isArray(item.idActividadesAnuales) && item.idActividadesAnuales.length > 0) {
+          return item.idActividadesAnuales;
+        }
+        // Si hay un solo valor, convertirlo a array
+        if (item.IdActividadAnual || item.idActividadAnual) {
+          return [item.IdActividadAnual || item.idActividadAnual];
+        }
+        return undefined;
+      })(),
+      idActividadesMensualesInst: (() => {
+        // Buscar en diferentes formatos
+        if (Array.isArray(item.IdActividadesMensualesInst) && item.IdActividadesMensualesInst.length > 0) {
+          return item.IdActividadesMensualesInst;
+        }
+        if (Array.isArray(item.idActividadesMensualesInst) && item.idActividadesMensualesInst.length > 0) {
+          return item.idActividadesMensualesInst;
+        }
+        // Si hay un solo valor, convertirlo a array
+        if (item.IdActividadMensualInst || item.idActividadMensualInst) {
+          return [item.IdActividadMensualInst || item.idActividadMensualInst];
+        }
+        return undefined;
+      })(),
+      
       // Objetivos y Metas
       objetivo: item.Objetivo || item.objetivo,
       cantidadMaximaParticipantesEstudiantes: item.CantidadMaximaParticipantesEstudiantes || item.cantidadMaximaParticipantesEstudiantes,
@@ -1426,6 +1561,22 @@ export class ActividadesService {
       cantidadParticipantesEstudiantesProyectados: item.CantidadParticipantesEstudiantesProyectados !== undefined ? item.CantidadParticipantesEstudiantesProyectados : (item.cantidadParticipantesEstudiantesProyectados !== undefined ? item.cantidadParticipantesEstudiantesProyectados : undefined),
       cantidadTotalParticipantesProtagonistas: item.CantidadTotalParticipantesProtagonistas !== undefined ? item.CantidadTotalParticipantesProtagonistas : (item.cantidadTotalParticipantesProtagonistas !== undefined ? item.cantidadTotalParticipantesProtagonistas : undefined),
       idTipoProtagonista: item.IdTipoProtagonista || item.idTipoProtagonista,
+      
+      // Arrays de Tipos Protagonistas (mapear desde el backend)
+      idTiposProtagonistas: (() => {
+        // Buscar en diferentes formatos
+        if (Array.isArray(item.IdTiposProtagonistas) && item.IdTiposProtagonistas.length > 0) {
+          return item.IdTiposProtagonistas;
+        }
+        if (Array.isArray(item.idTiposProtagonistas) && item.idTiposProtagonistas.length > 0) {
+          return item.idTiposProtagonistas;
+        }
+        // Si hay un solo valor, convertirlo a array
+        if (item.IdTipoProtagonista || item.idTipoProtagonista) {
+          return [item.IdTipoProtagonista || item.idTipoProtagonista];
+        }
+        return undefined;
+      })(),
       idTipoEvidencias: (() => {
         console.log('🔍 Buscando IdTipoEvidencias en item:', {
           IdTipoEvidencias: item.IdTipoEvidencias,
@@ -1515,6 +1666,38 @@ export class ActividadesService {
       evidencias: mapEvidencias(item.Evidencias || item.evidencias || []),
       responsables: mapResponsables(item.Responsables || item.responsables || []),
       ediciones: mapEdiciones(item.Ediciones || item.ediciones || []),
+      // Actividades anuales y mensuales (el backend devuelve arrays completos con nombres)
+      // El backend devuelve en camelCase: actividadesAnuales y actividadesMensualesInst
+      actividadesAnuales: (() => {
+        // Buscar primero en camelCase (formato del backend)
+        const anuales = item.actividadesAnuales || item.ActividadesAnuales || [];
+        if (Array.isArray(anuales) && anuales.length > 0) {
+          console.log(`📥 [ActividadesService] Mapeando ${anuales.length} actividades anuales del backend`);
+          console.log(`📋 [ActividadesService] Primera actividad anual RAW:`, anuales[0]);
+        } else {
+          console.log(`⚠️ [ActividadesService] No se encontraron actividades anuales en la respuesta del backend`);
+        }
+        const mapeadas = mapActividadesAnuales(anuales);
+        if (mapeadas.length > 0) {
+          console.log(`✅ [ActividadesService] ${mapeadas.length} actividades anuales mapeadas exitosamente`);
+        }
+        return mapeadas;
+      })(),
+      actividadesMensualesInst: (() => {
+        // Buscar primero en camelCase (formato del backend)
+        const mensuales = item.actividadesMensualesInst || item.ActividadesMensualesInst || [];
+        if (Array.isArray(mensuales) && mensuales.length > 0) {
+          console.log(`📥 [ActividadesService] Mapeando ${mensuales.length} actividades mensuales del backend`);
+          console.log(`📋 [ActividadesService] Primera actividad mensual RAW:`, mensuales[0]);
+        } else {
+          console.log(`⚠️ [ActividadesService] No se encontraron actividades mensuales en la respuesta del backend`);
+        }
+        const mapeadas = mapActividadesMensualesInst(mensuales);
+        if (mapeadas.length > 0) {
+          console.log(`✅ [ActividadesService] ${mapeadas.length} actividades mensuales mapeadas exitosamente`);
+        }
+        return mapeadas;
+      })(),
       
       // Campos de compatibilidad (legacy)
       categoriaActividadId: item.IdTipoActividad || item.idTipoActividad,

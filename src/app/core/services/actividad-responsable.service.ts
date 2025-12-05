@@ -302,12 +302,15 @@ export class ActividadResponsableService {
 
     // Intentar obtener el nombre de múltiples campos posibles (SOLO campos de persona, NO nombreActividad)
     // NOTA: Excluir "Administrador Sistema" ya que es un usuario del sistema, no un responsable real
+    // El backend puede devolver el nombre en diferentes campos según el tipo de responsable
     let nombrePersona = 
+      item.NombrePersona || item.nombrePersona ||
       item.NombreUsuario || item.nombreUsuario || 
       item.NombreDocente || item.nombreDocente || 
       item.NombreAdmin || item.nombreAdmin ||
+      item.NombreEstudiante || item.nombreEstudiante ||
+      item.NombreResponsableExterno || item.nombreResponsableExterno ||
       item.Nombre || item.nombre ||
-      item.NombrePersona || item.nombrePersona ||
       item.NombreCompleto || item.nombreCompleto ||
       item.Usuario || item.usuario ||
       item.Docente || item.docente ||
@@ -326,11 +329,6 @@ export class ActividadResponsableService {
       nombrePersona = undefined;
     }
 
-    // NOTA: El backend actual NO devuelve RolResponsable ni RolResponsableDetalle en el DTO
-    // Estos campos están en el modelo pero no se incluyen en ActividadResponsableDto
-    // Por lo tanto, siempre serán undefined
-    const rolResponsable = undefined;
-    
     // NO usar nombreActividad como fallback para nombrePersona
     // El nombrePersona debe venir de los campos reales de persona
     const nombrePersonaFinal = nombrePersona || undefined;
@@ -338,20 +336,24 @@ export class ActividadResponsableService {
     const mapped = {
       idActividadResponsable: item.IdActividadResponsable || item.idActividadResponsable || item.id || 0,
       idActividad: item.IdActividad || item.idActividad || 0,
-      idUsuario: item.IdUsuario !== undefined ? item.IdUsuario : (item.idUsuario !== undefined ? item.idUsuario : undefined),
-      idDocente: item.IdDocente !== undefined ? item.IdDocente : (item.idDocente !== undefined ? item.idDocente : undefined),
-      idAdmin: item.IdAdmin !== undefined ? item.IdAdmin : (item.idAdmin !== undefined ? item.idAdmin : undefined),
+      idUsuario: item.IdUsuario !== undefined && item.IdUsuario !== null ? item.IdUsuario : (item.idUsuario !== undefined && item.idUsuario !== null ? item.idUsuario : undefined),
+      idDocente: item.IdDocente !== undefined && item.IdDocente !== null ? item.IdDocente : (item.idDocente !== undefined && item.idDocente !== null ? item.idDocente : undefined),
+      idAdmin: item.IdAdmin !== undefined && item.IdAdmin !== null ? item.IdAdmin : (item.idAdmin !== undefined && item.idAdmin !== null ? item.idAdmin : undefined),
+      idEstudiante: item.IdEstudiante !== undefined && item.IdEstudiante !== null ? item.IdEstudiante : (item.idEstudiante !== undefined && item.idEstudiante !== null ? item.idEstudiante : undefined),
+      idResponsableExterno: item.IdResponsableExterno !== undefined && item.IdResponsableExterno !== null ? item.IdResponsableExterno : (item.idResponsableExterno !== undefined && item.idResponsableExterno !== null ? item.idResponsableExterno : undefined),
       nombrePersona: nombrePersonaFinal,
       idTipoResponsable: item.IdTipoResponsable || item.idTipoResponsable || 0,
       nombreTipoResponsable: item.NombreTipoResponsable || item.nombreTipoResponsable || item.TipoResponsable || item.tipoResponsable,
-      departamentoId: item.DepartamentoId !== undefined ? item.DepartamentoId : (item.departamentoId !== undefined ? item.departamentoId : undefined),
+      departamentoId: item.DepartamentoId !== undefined && item.DepartamentoId !== null ? item.DepartamentoId : (item.departamentoId !== undefined && item.departamentoId !== null ? item.departamentoId : undefined),
       nombreDepartamento: item.NombreDepartamento || item.nombreDepartamento,
       fechaAsignacion: formatDate(item.FechaAsignacion || item.fechaAsignacion),
-      // NOTA: El backend actual NO devuelve RolResponsable ni RolResponsableDetalle en el DTO
-      rolResponsable: rolResponsable, // Siempre undefined porque el backend no lo devuelve
-      rolResponsableDetalle: undefined, // Siempre undefined porque el backend no lo devuelve
-      // El backend solo devuelve NombreUsuario, no NombreDocente ni NombreAdmin
-      nombreDocente: undefined, // El backend no devuelve este campo
+      // Mapear RolResponsable y RolResponsableDetalle - el backend ahora los devuelve
+      rolResponsable: item.RolResponsable || item.rolResponsable || item.NombreRolResponsable || item.nombreRolResponsable || undefined,
+      rolResponsableDetalle: item.RolResponsableDetalle || item.rolResponsableDetalle || undefined,
+      idRolResponsable: item.IdRolResponsable !== undefined && item.IdRolResponsable !== null ? item.IdRolResponsable : (item.idRolResponsable !== undefined && item.idRolResponsable !== null ? item.idRolResponsable : undefined),
+      nombreRolResponsable: item.NombreRolResponsable || item.nombreRolResponsable || undefined,
+      // Mapear nombres específicos por tipo
+      nombreDocente: item.NombreDocente || item.nombreDocente || undefined,
       nombreUsuario: (() => {
         const nombre = item.NombreUsuario || item.nombreUsuario;
         // Excluir "Administrador Sistema" ya que es un usuario del sistema
@@ -364,20 +366,40 @@ export class ActividadResponsableService {
         }
         return nombre;
       })(),
-      nombreAdmin: undefined, // El backend no devuelve este campo
-      nombreActividad: item.NombreActividad || item.nombreActividad
+      nombreAdmin: item.NombreAdmin || item.nombreAdmin || undefined,
+      nombreEstudiante: item.NombreEstudiante || item.nombreEstudiante || undefined,
+      nombreResponsableExterno: item.NombreResponsableExterno || item.nombreResponsableExterno || undefined,
+      nombreActividad: item.NombreActividad || item.nombreActividad,
+      // Campos adicionales del responsable externo
+      cargo: item.Cargo || item.cargo || undefined,
+      institucionResponsableExterno: item.InstitucionResponsableExterno || item.institucionResponsableExterno || undefined,
+      cargoResponsableExterno: item.CargoResponsableExterno || item.cargoResponsableExterno || undefined,
+      telefonoResponsableExterno: item.TelefonoResponsableExterno || item.telefonoResponsableExterno || undefined,
+      correoResponsableExterno: item.CorreoResponsableExterno || item.correoResponsableExterno || undefined
     };
 
     console.log('🔍 [ActividadResponsableService] Mapeo de responsable - Item original del backend:', JSON.stringify(item, null, 2));
     console.log('🔍 [ActividadResponsableService] Mapeo de responsable - Resultado mapeado:', JSON.stringify(mapped, null, 2));
-    console.log('🔍 [ActividadResponsableService] IDs extraídos:', {
+    console.log('🔍 [ActividadResponsableService] IDs y campos extraídos:', {
       idActividadResponsable: mapped.idActividadResponsable,
       idActividad: mapped.idActividad,
       idUsuario: mapped.idUsuario,
       idDocente: mapped.idDocente,
       idAdmin: mapped.idAdmin,
+      idEstudiante: mapped.idEstudiante,
+      idResponsableExterno: mapped.idResponsableExterno,
+      idRolResponsable: mapped.idRolResponsable,
       nombrePersona: mapped.nombrePersona,
-      nombreUsuario: mapped.nombreUsuario
+      nombreUsuario: mapped.nombreUsuario,
+      nombreDocente: mapped.nombreDocente,
+      nombreAdmin: mapped.nombreAdmin,
+      nombreEstudiante: mapped.nombreEstudiante,
+      nombreResponsableExterno: mapped.nombreResponsableExterno,
+      rolResponsable: mapped.rolResponsable,
+      nombreRolResponsable: mapped.nombreRolResponsable,
+      cargo: mapped.cargo,
+      institucionResponsableExterno: mapped.institucionResponsableExterno,
+      cargoResponsableExterno: mapped.cargoResponsableExterno
     });
 
     return mapped;
