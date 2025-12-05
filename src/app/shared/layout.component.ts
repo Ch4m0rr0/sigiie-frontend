@@ -1,14 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { IconComponent } from './icon/icon.component';
 import { NotificacionesComponent } from './notificaciones/notificaciones.component';
+import { ToastComponent } from './toast/toast.component';
+import { NotificacionesAutomaticasService } from '../core/services/notificaciones-automaticas.service';
 
 @Component({
   standalone: true,
   selector: 'app-layout',
-  imports: [CommonModule, RouterOutlet, SidebarComponent, IconComponent, NotificacionesComponent],
+  imports: [CommonModule, RouterOutlet, SidebarComponent, IconComponent, NotificacionesComponent, ToastComponent],
   template: `
     <div class="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
       
@@ -65,7 +67,22 @@ import { NotificacionesComponent } from './notificaciones/notificaciones.compone
         </main>
 
       </div>
+      
+      <!-- Componente de Toast para notificaciones emergentes -->
+      <app-toast></app-toast>
     </div>
   `,
 })
-export class LayoutComponent {}
+export class LayoutComponent implements OnInit, OnDestroy {
+  private notificacionesAutomaticas = inject(NotificacionesAutomaticasService);
+
+  ngOnInit(): void {
+    // Iniciar el servicio de notificaciones automáticas
+    this.notificacionesAutomaticas.iniciar();
+  }
+
+  ngOnDestroy(): void {
+    // Detener el servicio cuando se destruye el componente
+    this.notificacionesAutomaticas.detener();
+  }
+}

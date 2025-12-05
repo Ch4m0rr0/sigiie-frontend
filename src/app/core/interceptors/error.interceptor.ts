@@ -30,7 +30,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           '/api/actividades-mensuales-institucionales',
           '/api/actividades',
           '/api/indicadores',
-          '/api/tipo-evidencia'
+          '/api/tipo-evidencia',
+          '/api/notificaciones' // El servicio de notificaciones maneja sus propios errores
         ];
         
         const shouldSilence = silentEndpoints.some(endpoint => url.includes(endpoint));

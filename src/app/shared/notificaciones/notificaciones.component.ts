@@ -160,7 +160,24 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
     }
     
     if (notificacion.url) {
-      this.router.navigateByUrl(notificacion.url);
+      // Si la URL tiene query params, usar navigate con queryParams
+      const urlParts = notificacion.url.split('?');
+      const path = urlParts[0];
+      const queryString = urlParts[1];
+      
+      if (queryString) {
+        // Parsear query params
+        const queryParams: any = {};
+        queryString.split('&').forEach(param => {
+          const [key, value] = param.split('=');
+          if (key && value) {
+            queryParams[key] = decodeURIComponent(value);
+          }
+        });
+        this.router.navigate([path], { queryParams });
+      } else {
+        this.router.navigateByUrl(notificacion.url);
+      }
       this.isOpen.set(false);
     }
   }

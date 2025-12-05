@@ -49,17 +49,35 @@ export class NotificacionesService {
         return notificaciones;
       }),
       catchError(error => {
-        // Si el endpoint no existe, usar datos mock
-        if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/notificaciones no encontrado. Usando datos mock.');
+        // Si el endpoint no existe o hay un error del servidor, usar notificaciones locales
+        if (error.status === 404 || error.status === 500) {
+          const statusMsg = error.status === 404 
+            ? 'Endpoint /api/notificaciones no encontrado'
+            : 'Error del servidor al obtener notificaciones';
+          console.warn(`⚠️ ${statusMsg}. Usando notificaciones locales.`);
+          
+          // Combinar notificaciones mock con las notificaciones locales existentes
+          const notificacionesLocales = this.notificacionesSubject.value;
           const mockNotificaciones = this.getMockNotificaciones();
-          this.updateNotificaciones(mockNotificaciones);
-          return of(mockNotificaciones);
+          
+          // Si ya hay notificaciones locales, usarlas; si no, usar mock
+          const notificacionesFinales = notificacionesLocales.length > 0 
+            ? notificacionesLocales 
+            : mockNotificaciones;
+          
+          this.updateNotificaciones(notificacionesFinales);
+          return of(notificacionesFinales);
         }
-        console.error('❌ Error obteniendo notificaciones:', error);
+        
+        // Para otros errores, también usar notificaciones locales
+        console.warn('⚠️ Error obteniendo notificaciones del backend. Usando notificaciones locales.');
+        const notificacionesLocales = this.notificacionesSubject.value;
         const mockNotificaciones = this.getMockNotificaciones();
-        this.updateNotificaciones(mockNotificaciones);
-        return of(mockNotificaciones);
+        const notificacionesFinales = notificacionesLocales.length > 0 
+          ? notificacionesLocales 
+          : mockNotificaciones;
+        this.updateNotificaciones(notificacionesFinales);
+        return of(notificacionesFinales);
       })
     );
   }
@@ -161,6 +179,47 @@ export class NotificacionesService {
    */
   getNotificaciones(): Notificacion[] {
     return this.notificacionesSubject.value;
+  }
+
+  /**
+   * Agrega una notificación localmente (sin llamar al backend)
+   * Útil para notificaciones generadas automáticamente
+   */
+  agregarNotificacionLocal(notificacion: Omit<Notificacion, 'id'>, codigoNotificacion?: string): void {
+    const notificacionesActuales = this.notificacionesSubject.value;
+    
+    // Evitar duplicados si se proporciona un código de notificación
+    if (codigoNotificacion) {
+      // Verificar si ya existe una notificación similar (mismo mensaje y título en los últimos 5 minutos)
+      const ahora = new Date();
+      const hace5Minutos = new Date(ahora.getTime() - 5 * 60 * 1000);
+      
+      const existeDuplicado = notificacionesActuales.some(n => 
+        n.titulo === notificacion.titulo && 
+        n.mensaje === notificacion.mensaje &&
+        n.fecha > hace5Minutos
+      );
+      
+      if (existeDuplicado) {
+        console.log('⚠️ Notificación duplicada ignorada:', codigoNotificacion);
+        return;
+      }
+    }
+    
+    const nuevoId = notificacionesActuales.length > 0 
+      ? Math.max(...notificacionesActuales.map(n => n.id)) + 1 
+      : 1;
+    
+    const nuevaNotificacion: Notificacion = {
+      ...notificacion,
+      id: nuevoId
+    };
+
+    // Agregar al inicio de la lista
+    const notificacionesActualizadas = [nuevaNotificacion, ...notificacionesActuales];
+    this.updateNotificaciones(notificacionesActualizadas);
+    
+    console.log('✅ Notificación agregada localmente:', nuevaNotificacion);
   }
 
   // Métodos privados para manejo local del estado

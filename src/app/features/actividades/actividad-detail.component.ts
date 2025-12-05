@@ -139,6 +139,12 @@ export class ActividadDetailComponent implements OnInit {
       this.loadActividad(+id);
       this.loadIndicadoresList();
       this.loadDepartamentos();
+      
+      // Verificar si hay un query param 'tab' para establecer el tab automáticamente
+      const tabParam = this.route.snapshot.queryParams['tab'];
+      if (tabParam && this.isValidTab(tabParam)) {
+        this.setTab(tabParam as any);
+      }
       this.loadCategoriasActividad();
     this.loadTiposProtagonista();
     this.loadTiposResponsable();
@@ -1791,6 +1797,18 @@ export class ActividadDetailComponent implements OnInit {
     if (tab === 'participantes') {
       this.loadEstadisticasParticipantes();
     }
+    // Actualizar la URL con el query param del tab
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+  }
+
+  private isValidTab(tab: string): boolean {
+    const validTabs = ['info', 'departamentos', 'responsables', 'indicadores', 'subactividades', 'actividades-anuales', 'evidencias', 'participantes'];
+    return validTabs.includes(tab);
   }
 
   getActividadesMensualesPorAnual(idActividadAnual: number): ActividadMensualInst[] {
