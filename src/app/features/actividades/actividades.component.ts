@@ -348,6 +348,11 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   showEvidenciaModal = signal(false);
   actividadParaEvidencia = signal<Actividad | null>(null);
   
+  // Modal de edición de tipos de evidencia
+  showEditarTiposEvidenciaModal = signal(false);
+  tiposEvidenciaSeleccionadosParaEditar = signal<number[]>([]);
+  guardandoTiposEvidencia = signal(false);
+  
   // Signal computado para los tipos de evidencia de la actividad
   tiposEvidenciaDeActividad = computed(() => {
     const actividad = this.actividadParaEvidencia();
@@ -2142,6 +2147,86 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.cerrarEvidenciaModal();
     // Recargar actividades para mostrar las nuevas evidencias
     this.loadActividades();
+  }
+
+  abrirEditarTiposEvidencia(): void {
+    const actividad = this.actividadParaEvidencia();
+    if (!actividad) return;
+    
+    // Inicializar con los tipos actuales de la actividad
+    const tiposActuales = actividad.idTipoEvidencias;
+    if (Array.isArray(tiposActuales) && tiposActuales.length > 0) {
+      this.tiposEvidenciaSeleccionadosParaEditar.set([...tiposActuales]);
+    } else {
+      this.tiposEvidenciaSeleccionadosParaEditar.set([]);
+    }
+    
+    this.showEditarTiposEvidenciaModal.set(true);
+  }
+
+  cerrarEditarTiposEvidenciaModal(): void {
+    this.showEditarTiposEvidenciaModal.set(false);
+    this.tiposEvidenciaSeleccionadosParaEditar.set([]);
+  }
+
+  guardarTiposEvidencia(): void {
+    const actividad = this.actividadParaEvidencia();
+    if (!actividad || !actividad.id) {
+      console.error('❌ No hay actividad seleccionada');
+      return;
+    }
+
+    const tiposSeleccionados = this.tiposEvidenciaSeleccionadosParaEditar();
+    
+    this.guardandoTiposEvidencia.set(true);
+    
+    // Actualizar solo los tipos de evidencia de la actividad
+    this.actividadesService.update(actividad.id, {
+      idTipoEvidencias: tiposSeleccionados
+    }).subscribe({
+      next: () => {
+        console.log('✅ Tipos de evidencia actualizados correctamente');
+        // Actualizar la actividad en el signal para que el formulario de evidencias se actualice
+        const actividadActualizada = {
+          ...actividad,
+          idTipoEvidencias: tiposSeleccionados
+        };
+        this.actividadParaEvidencia.set(actividadActualizada);
+        
+        // También actualizar la actividad en la lista
+        const actividadesActuales = this.actividades();
+        const index = actividadesActuales.findIndex(a => a.id === actividad.id);
+        if (index > -1) {
+          actividadesActuales[index] = actividadActualizada;
+          this.actividades.set([...actividadesActuales]);
+        }
+        
+        this.cerrarEditarTiposEvidenciaModal();
+        this.guardandoTiposEvidencia.set(false);
+      },
+      error: (err) => {
+        console.error('❌ Error al actualizar tipos de evidencia:', err);
+        this.guardandoTiposEvidencia.set(false);
+        alert('Error al actualizar los tipos de evidencia. Por favor, intente nuevamente.');
+      }
+    });
+  }
+
+  toggleTipoEvidenciaParaEditar(id: number): void {
+    const actuales = this.tiposEvidenciaSeleccionadosParaEditar();
+    const index = actuales.indexOf(id);
+    
+    if (index > -1) {
+      // Remover si ya está seleccionado
+      this.tiposEvidenciaSeleccionadosParaEditar.set(actuales.filter(t => t !== id));
+    } else {
+      // Agregar si no está seleccionado
+      this.tiposEvidenciaSeleccionadosParaEditar.set([...actuales, id]);
+    }
+  }
+
+  isTipoEvidenciaSeleccionadoParaEditar(id: number): boolean {
+    return this.tiposEvidenciaSeleccionadosParaEditar().includes(id);
   }
 
   crearNuevaActividadAnual(): void {

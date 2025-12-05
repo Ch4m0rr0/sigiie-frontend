@@ -33,8 +33,8 @@ export interface ChartConfig {
   imports: [CommonModule],
   template: `
     <div class="chart-container">
-      <div *ngIf="config?.title" class="chart-title mb-4">
-        <h3 class="text-lg font-semibold text-slate-900">{{ config?.title }}</h3>
+      <div *ngIf="shouldShowTitle" class="chart-title mb-4">
+        <h3 class="text-lg font-semibold text-slate-900">{{ title }}</h3>
       </div>
       <div class="chart-wrapper" [style.height.px]="config?.height || 400">
         <canvas #chartCanvas [id]="canvasId"></canvas>
@@ -62,6 +62,16 @@ export class ChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewIn
   
   @Input() data: ChartData | null = null;
   @Input() config: ChartConfig | null = null;
+
+  // Helper para verificar si el título debe mostrarse
+  get shouldShowTitle(): boolean {
+    return !!(this.config?.title && this.config.title.trim() !== '');
+  }
+
+  // Helper para obtener el título de forma segura
+  get title(): string {
+    return this.config?.title || '';
+  }
   
   private chart: Chart | null = null;
   private isBrowser: boolean;
@@ -100,30 +110,58 @@ export class ChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewIn
     const ctx = this.chartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
 
+    // Configuración base de opciones
+    const baseOptions: any = {
+      responsive: this.config?.responsive !== false,
+      maintainAspectRatio: this.config?.maintainAspectRatio !== false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: {
+              size: 12,
+              family: 'Inter, system-ui, sans-serif'
+            }
+          }
+        },
+        title: {
+          display: false // Usamos nuestro propio título
+        },
+        ...this.config?.plugins
+      },
+      scales: this.config?.scales || this.getDefaultScales()
+    };
+
+    // Para gráficas doughnut/pie, agregar configuraciones de estabilidad
+    if (this.config?.type === 'doughnut' || this.config?.type === 'pie') {
+      // Solo aplicar animación si no está definida en la configuración personalizada
+      if (!baseOptions.animation) {
+        baseOptions.animation = {
+          animateRotate: false, // Desactivar animación de rotación para evitar movimiento constante
+          animateScale: false, // Desactivar animación de escala para evitar movimiento
+          duration: 0 // Sin animación para máxima estabilidad
+        };
+      }
+      baseOptions.layout = {
+        padding: {
+          top: 5,
+          bottom: 5,
+          left: 5,
+          right: 5
+        }
+      };
+      // Asegurar que el gráfico no se redimensione constantemente
+      baseOptions.resizeDelay = 0;
+    }
+
+    // Combinar con configuraciones personalizadas
     const chartConfig: ChartConfiguration = {
       type: this.config!.type,
       data: this.data!,
       options: {
-        responsive: this.config?.responsive !== false,
-        maintainAspectRatio: this.config?.maintainAspectRatio !== false,
-        plugins: {
-          legend: {
-            position: 'top',
-            labels: {
-              usePointStyle: true,
-              padding: 20,
-              font: {
-                size: 12,
-                family: 'Inter, system-ui, sans-serif'
-              }
-            }
-          },
-          title: {
-            display: false // Usamos nuestro propio título
-          },
-          ...this.config?.plugins
-        },
-        scales: this.config?.scales || this.getDefaultScales(),
+        ...baseOptions,
         ...this.config
       }
     };
@@ -135,8 +173,35 @@ export class ChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewIn
     if (!this.isBrowser) return;
     
     if (this.chart && this.data) {
-      this.chart.data = this.data;
-      this.chart.update();
+      // Para gráficas doughnut/pie, usar update con modo 'none' para evitar animaciones innecesarias
+      const isDoughnutOrPie = this.config?.type === 'doughnut' || this.config?.type === 'pie';
+      
+      // Verificar si los datos realmente han cambiado antes de actualizar
+      const currentData = this.chart.data.datasets[0]?.data;
+      const newData = this.data.datasets[0]?.data;
+      
+      // Comparar datos para evitar actualizaciones innecesarias
+      const dataChanged = !currentData || !newData || 
+        currentData.length !== newData.length ||
+        currentData.some((val: any, idx: number) => {
+          const currentVal = typeof val === 'number' ? val : (Array.isArray(val) ? val[0] : 0);
+          const newVal = typeof newData[idx] === 'number' ? newData[idx] : (Array.isArray(newData[idx]) ? newData[idx][0] : 0);
+          return Math.abs(currentVal - (newVal || 0)) > 0.01;
+        });
+      
+      if (dataChanged) {
+        // Actualizar datos
+        this.chart.data = this.data;
+        
+        // Actualizar con modo apropiado
+        if (isDoughnutOrPie) {
+          // Para doughnut/pie, usar 'none' para evitar movimiento constante
+          this.chart.update('none');
+        } else {
+          // Para otros tipos, usar actualización normal
+          this.chart.update();
+        }
+      }
     } else if (this.data && this.config) {
       // Destruir el gráfico existente antes de crear uno nuevo
       if (this.chart) {
