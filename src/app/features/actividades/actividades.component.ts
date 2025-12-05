@@ -197,6 +197,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   capacidadesInstaladas = signal<any[]>([]);
 
   // Filtros
+  filtroPlanificada = signal<boolean | null>(null); // null = todas, true = planificadas, false = no planificadas
   filtroEstadoActividad = signal<number | null>(null);
   filtroActividadAnual = signal<number[]>([]);
   filtroActividadMensualInst = signal<number[]>([]);
@@ -280,18 +281,61 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   });
 
+  // Paginación
+  paginaActual = signal<number>(1);
+  itemsPorPagina = 10;
+  mostrarTodas = signal<boolean>(false);
+
   // Actividades filtradas por búsqueda
   actividadesFiltradas = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
-    if (!termino) {
-      return this.actividades();
+    let filtradas = this.actividades();
+    
+    if (termino) {
+      filtradas = filtradas.filter(actividad => {
+        const nombre = (actividad.nombreActividad || actividad.nombre || '').toLowerCase();
+        const codigo = (actividad.codigoActividad || '').toLowerCase();
+        return nombre.includes(termino) || codigo.includes(termino);
+      });
     }
-    return this.actividades().filter(actividad => {
-      const nombre = (actividad.nombreActividad || actividad.nombre || '').toLowerCase();
-      const codigo = (actividad.codigoActividad || '').toLowerCase();
-      return nombre.includes(termino) || codigo.includes(termino);
-    });
+    
+    return filtradas;
   });
+
+  // Actividades paginadas
+  actividadesPaginadas = computed(() => {
+    const todas = this.actividadesFiltradas();
+    if (this.mostrarTodas()) {
+      return todas;
+    }
+    const inicio = (this.paginaActual() - 1) * this.itemsPorPagina;
+    const fin = inicio + this.itemsPorPagina;
+    return todas.slice(inicio, fin);
+  });
+
+  // Total de páginas
+  totalPaginas = computed(() => {
+    return Math.ceil(this.actividadesFiltradas().length / this.itemsPorPagina);
+  });
+
+  // Métodos de paginación
+  siguientePagina(): void {
+    if (this.paginaActual() < this.totalPaginas()) {
+      this.paginaActual.set(this.paginaActual() + 1);
+    }
+  }
+
+  verTodas(): void {
+    this.mostrarTodas.set(true);
+  }
+
+  verSiguiente(): void {
+    this.mostrarTodas.set(false);
+    this.siguientePagina();
+  }
+
+  // Métodos Math para usar en el template
+  Math = Math;
 
   // Formulario para crear indicador
   formIndicador!: FormGroup;
@@ -917,6 +961,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     
     console.log('🔄 Cargando actividades...');
     console.log('📊 Filtros activos:', {
+      planificada: this.filtroPlanificada(),
       estadoActividad: this.filtroEstadoActividad(),
       actividadAnual: this.filtroActividadAnual(),
       actividadMensualInst: this.filtroActividadMensualInst()
@@ -927,6 +972,14 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       next: (data) => {
         // Aplicar filtros del lado del cliente
         let filtered = data;
+        
+        // Filtrar por planificada/no planificada
+        if (this.filtroPlanificada() !== null) {
+          filtered = filtered.filter(a => {
+            const esPlanificada = a.esPlanificada === true;
+            return esPlanificada === this.filtroPlanificada();
+          });
+        }
         
         // Filtrar por estado de actividad (del catálogo)
         // Asegurar comparación correcta convirtiendo ambos a número
@@ -2253,6 +2306,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   clearFilters(): void {
+    this.filtroPlanificada.set(null);
     this.filtroEstadoActividad.set(null);
     this.filtroActividadAnual.set([]);
     this.filtroActividadMensualInst.set([]);
@@ -2261,7 +2315,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.terminoBusquedaMensual.set('');
     this.error.set(null);
     this.showRetryButton = false;
+    this.paginaActual.set(1);
+    this.mostrarTodas.set(false);
     this.loadActividades();
+  }
+
+  onPlanificadaFiltroChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    if (value === '') {
+      this.filtroPlanificada.set(null);
+    } else if (value === 'planificada') {
+      this.filtroPlanificada.set(true);
+    } else {
+      this.filtroPlanificada.set(false);
+    }
+    this.onFiltroChange();
   }
 
   onEstadoFiltroChange(event: Event): void {
