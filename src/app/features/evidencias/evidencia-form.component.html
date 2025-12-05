@@ -1,281 +1,384 @@
-<div [class]="isModalMode ? 'w-full' : 'h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6'">
-  <div [class]="isModalMode ? 'w-full' : 'max-w-3xl mx-auto'">
+<div [class]="isModalMode ? 'w-full' : 'min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900'">
+  <div [class]="isModalMode ? 'w-full' : 'max-w-5xl mx-auto'">
+    
     <!-- Header - Solo mostrar si no está en modo modal -->
     @if (!isModalMode) {
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold text-slate-900 mb-2">
-          {{ isEditMode() ? 'Editar' : 'Nueva' }} Evidencia
-        </h1>
-        <p class="text-sm text-slate-600">
-          {{ isEditMode() ? 'Modifica los datos de la evidencia' : 'Completa los datos para crear una nueva evidencia' }}
+      <div class="mb-8 animate-fade-in">
+        <div class="flex items-center gap-3 mb-2">
+          <button 
+            (click)="onClose ? onClose() : router.navigate(['/evidencias'])" 
+            class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+            <app-icon icon="arrow_back" size="sm"></app-icon>
+          </button>
+          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+            {{ isEditMode() ? 'Editar Evidencia' : 'Nueva Evidencia' }}
+          </h1>
+        </div>
+        <p class="text-slate-500 text-sm ml-10">
+          {{ isEditMode() ? 'Modifica los datos de la evidencia.' : 'Completa los datos para crear una nueva evidencia.' }}
         </p>
       </div>
     }
 
     <!-- Loading State -->
     @if (loading()) {
-      <div [class]="isModalMode ? 'flex justify-center items-center py-8' : 'flex justify-center items-center h-64'">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div [class]="isModalMode ? 'flex justify-center items-center py-8' : 'bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8 animate-pulse'">
+        @if (!isModalMode) {
+          <div class="space-y-4">
+            <div class="h-4 w-1/4 bg-slate-200 rounded"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-24 bg-slate-100 rounded-lg"></div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+            <div class="h-10 bg-slate-100 rounded-lg"></div>
+          </div>
+        } @else {
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        }
       </div>
     }
 
     <!-- Error State -->
     @if (error() && !loading()) {
-      <div [class]="isModalMode ? 'bg-red-50 border border-red-200 rounded-lg p-4 mb-4' : 'bg-red-50 border border-red-200 rounded-lg p-4 mb-6'">
-        <p class="text-red-800">{{ error() }}</p>
+      <div [class]="isModalMode ? 'bg-red-50 border border-red-200 rounded-lg p-4 mb-4' : 'bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3'">
+        @if (!isModalMode) {
+          <app-icon icon="error" size="md" class="text-red-600 mt-0.5"></app-icon>
+          <div>
+            <h3 class="text-sm font-bold text-red-800">Error al cargar formulario</h3>
+            <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+          </div>
+        } @else {
+          <p class="text-red-800">{{ error() }}</p>
+        }
       </div>
     }
 
     <!-- Form -->
     @if (!loading()) {
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="isModalMode ? 'bg-transparent' : 'bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6'">
-        <div [class]="isModalMode ? 'space-y-4' : 'space-y-6'">
-          <!-- Tipo de Evidencia -->
-          <div>
-            <app-multi-select-dropdown
-              [options]="getTiposEvidenciaOptions()"
-              [selectedIds]="selectedTiposEvidencia()"
-              [placeholder]="'Seleccione uno o más tipos...'"
-              [label]="'Tipo de Evidencia *'"
-              (selectionChange)="onTiposEvidenciaChange($event)">
-            </app-multi-select-dropdown>
-            @if (tiposEvidenciaPermitidos() && tiposEvidenciaPermitidos()!.length > 0) {
-              <p class="mt-1 text-xs text-blue-600 flex items-center gap-1">
-                <app-icon icon="info" size="xs"></app-icon>
-                <span>Tipos de evidencia permitidos para esta actividad ({{ tiposEvidenciaPermitidos()!.length }} tipo(s)). Puedes seleccionar o deseleccionar los que necesites.</span>
-              </p>
-            }
-            @if (selectedTiposEvidencia().length === 0 && form.touched) {
-              <p class="mt-1 text-sm text-red-600">Debe seleccionar al menos un tipo de evidencia</p>
-            }
-          </div>
-
-          <!-- Actividad y Subactividad -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Actividad
-              </label>
-              <select 
-                formControlName="idActividad"
-                [disabled]="vieneDesdeActividad() || vieneDesdeSubactividad()"
-                [class]="(vieneDesdeActividad() || vieneDesdeSubactividad()) ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
-                <option [value]="null">Ninguna</option>
-                @for (actividad of actividades(); track actividad.id) {
-                  <option [value]="actividad.id">{{ actividad.nombre }}</option>
-                }
-              </select>
-              @if (vieneDesdeActividad() || vieneDesdeSubactividad()) {
-                <p class="mt-1 text-xs text-gray-500">
-                  @if (vieneDesdeActividad()) {
-                    Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica
-                  } @else if (vieneDesdeSubactividad()) {
-                    Este campo no se puede modificar porque estás creando una evidencia para esta subactividad específica
-                  }
-                </p>
-              }
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Subactividad
-              </label>
-              <select 
-                formControlName="idSubactividad"
-                [disabled]="vieneDesdeActividad() || vieneDesdeSubactividad()"
-                [class]="(vieneDesdeActividad() || vieneDesdeSubactividad()) ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
-                <option [value]="null">Ninguna</option>
-                @for (sub of subactividades(); track sub.idSubactividad) {
-                  <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
-                }
-              </select>
-              @if (vieneDesdeActividad() || vieneDesdeSubactividad()) {
-                <p class="mt-1 text-xs text-gray-500">
-                  @if (vieneDesdeActividad()) {
-                    Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica
-                  } @else if (vieneDesdeSubactividad()) {
-                    Este campo no se puede modificar porque estás creando una evidencia para esta subactividad específica
-                  }
-                </p>
-              }
-            </div>
-          </div>
-
-          <!-- Fecha de Evidencia -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Fecha de Evidencia
-            </label>
-            <input 
-              type="date" 
-              formControlName="fechaEvidencia"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
-
-          <!-- Descripción -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Descripción
-            </label>
-            <textarea 
-              formControlName="descripcion"
-              rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Descripción de la evidencia"></textarea>
-          </div>
-
-          <!-- Upload de Archivos -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Archivos (Imágenes y Documentos Office)
-            </label>
-            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition">
-              <div class="space-y-1 text-center">
-                <app-icon icon="cloud_upload" size="lg" color="slate-400"></app-icon>
-                <div class="flex text-sm text-gray-600">
-                  <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                    <span>Seleccione imágenes o archivos Office</span>
-                    <input 
-                      id="file-upload" 
-                      name="file-upload" 
-                      type="file" 
-                      class="sr-only"
-                      (change)="onFileSelected($event)"
-                      accept="image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf"
-                      multiple>
-                  </label>
-                  <p class="pl-1">o arrástrelos aquí</p>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" [class]="isModalMode ? 'bg-transparent' : 'bg-white rounded-xl shadow-sm border border-slate-200'">
+        <div [class]="isModalMode ? 'space-y-4' : 'p-6 md:p-8 space-y-6'">
+          
+          <!-- Sección 1: Información Básica -->
+          <div class="border border-slate-200 rounded-lg overflow-hidden">
+            <!-- Header del acordeón -->
+            <button
+              type="button"
+              (click)="seccionInformacionExpandida.set(!seccionInformacionExpandida())"
+              class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <app-icon icon="edit_note" size="sm"></app-icon>
                 </div>
-                <p class="text-xs text-gray-500">
-                  Formatos permitidos: Imágenes (JPG, PNG, GIF) y Documentos (Word, Excel, PowerPoint, PDF)
-                </p>
-                @if (selectedImages().length > 0 || selectedOfficeFiles().length > 0) {
-                  <p class="text-xs text-gray-500 mt-2">
-                    {{ selectedImages().length }} imagen(es) y {{ selectedOfficeFiles().length }} archivo(s) Office seleccionado(s)
-                  </p>
-                }
-              </div>
-            </div>
-            
-            <!-- Sección de Imágenes -->
-            @if (previewUrls().length > 0) {
-              <div class="mt-4 bg-white rounded-lg border border-gray-300 p-4">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <app-icon icon="image" size="sm" color="slate-600"></app-icon>
-                  Imágenes ({{ selectedImages().length }})
-                </h3>
-                
-                <!-- Imagen Actual -->
-                <div class="relative mb-4">
-                  <img 
-                    [src]="getCurrentPreviewUrl()!" 
-                    alt="Preview" 
-                    class="w-full h-auto rounded-lg border border-gray-300 max-h-96 object-contain mx-auto"
-                    (error)="previewUrls.set([])">
-                </div>
-                
-                <!-- Controles de Navegación -->
-                @if (previewUrls().length > 1) {
-                  <div class="flex items-center justify-center gap-4 mb-4">
-                    <button
-                      type="button"
-                      (click)="previousImage()"
-                      [disabled]="!canGoPrevious()"
-                      class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
-                      <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
-                      <span>Atrás</span>
-                    </button>
-                    
-                    <span class="text-sm font-medium text-gray-700">
-                      {{ currentImageNumber }}/{{ totalImages }}
-                    </span>
-                    
-                    <button
-                      type="button"
-                      (click)="nextImage()"
-                      [disabled]="!canGoNext()"
-                      class="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1">
-                      <span>Adelante</span>
-                      <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
-                    </button>
-                  </div>
-                }
-                
-                <!-- Lista de imágenes seleccionadas -->
-                <div class="pt-4 border-t border-gray-200">
-                  <p class="text-xs text-gray-500 mb-2">Imágenes seleccionadas:</p>
-                  <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    @for (file of selectedImages(); track $index; let i = $index) {
-                      <div class="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
-                        <app-icon icon="image" size="xs" color="slate-600"></app-icon>
-                        <span class="truncate flex-1" [title]="file.name">{{ file.name }}</span>
-                        <button
-                          type="button"
-                          (click)="removeImage(i)"
-                          class="text-red-600 hover:text-red-800 flex-shrink-0">
-                          <app-icon icon="close" size="xs" color="red-600"></app-icon>
-                        </button>
-                      </div>
-                    }
-                  </div>
+                <div class="text-left">
+                  <h3 class="text-base font-bold text-slate-900">Información Básica</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Complete los datos principales de la evidencia</p>
                 </div>
               </div>
-            }
+              <app-icon 
+                [icon]="seccionInformacionExpandida() ? 'expand_less' : 'expand_more'" 
+                size="md" 
+                class="text-emerald-600 transition-transform duration-200"
+                [class.rotate-180]="!seccionInformacionExpandida()"></app-icon>
+            </button>
             
-            <!-- Sección de Archivos Office -->
-            @if (selectedOfficeFiles().length > 0) {
-              <div class="mt-4 bg-white rounded-lg border border-gray-300 p-4">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                  <app-icon icon="insert_drive_file" size="sm" color="slate-600"></app-icon>
-                  Archivos Office ({{ selectedOfficeFiles().length }})
-                </h3>
+            <!-- Contenido del acordeón -->
+            @if (seccionInformacionExpandida()) {
+              <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
                 
-                <div class="space-y-2">
-                  @for (file of selectedOfficeFiles(); track $index; let i = $index) {
-                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
-                      <div class="flex items-center gap-3 flex-1 min-w-0">
-                        <app-icon [icon]="getFileIcon(file.name)" size="md" color="blue-600"></app-icon>
-                        <div class="flex-1 min-w-0">
-                          <p class="text-sm font-medium text-gray-900 truncate" [title]="file.name">
-                            {{ file.name }}
-                          </p>
-                          <p class="text-xs text-gray-500">
-                            {{ formatFileSize(file.size) }}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        (click)="removeOfficeFile(i)"
-                        class="ml-2 text-red-600 hover:text-red-800 flex-shrink-0 p-1">
-                        <app-icon icon="close" size="sm" color="red-600"></app-icon>
-                      </button>
+                <!-- Tipo de Evidencia -->
+                <div>
+                  <app-multi-select-dropdown
+                    [options]="getTiposEvidenciaOptions()"
+                    [selectedIds]="selectedTiposEvidencia()"
+                    [placeholder]="'Seleccione uno o más tipos...'"
+                    [label]="'Tipo de Evidencia *'"
+                    (selectionChange)="onTiposEvidenciaChange($event)">
+                  </app-multi-select-dropdown>
+                  @if (tiposEvidenciaPermitidos() && tiposEvidenciaPermitidos()!.length > 0) {
+                    <p class="mt-2 text-xs text-blue-600 flex items-center gap-1">
+                      <app-icon icon="info" size="xs"></app-icon>
+                      <span>Tipos de evidencia permitidos para esta actividad ({{ tiposEvidenciaPermitidos()!.length }} tipo(s)). Puedes seleccionar o deseleccionar los que necesites.</span>
+                    </p>
+                  }
+                  @if (selectedTiposEvidencia().length === 0 && form.touched) {
+                    <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                      <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                      <p class="text-xs text-red-800">Debe seleccionar al menos un tipo de evidencia</p>
                     </div>
                   }
                 </div>
+
+                <!-- Actividad y Subactividad -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                      <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+                      Actividad
+                    </label>
+                    <select 
+                      formControlName="idActividad"
+                      [disabled]="vieneDesdeActividad() || vieneDesdeSubactividad()"
+                      [class]="(vieneDesdeActividad() || vieneDesdeSubactividad()) ? 'w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none bg-gray-100 border-slate-300 text-gray-500 cursor-not-allowed' : 'w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none bg-white border-slate-300 text-slate-900 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'">
+                      <option [value]="null">Ninguna</option>
+                      @for (actividad of actividades(); track actividad.id) {
+                        <option [value]="actividad.id">{{ actividad.nombre }}</option>
+                      }
+                    </select>
+                    @if (vieneDesdeActividad() || vieneDesdeSubactividad()) {
+                      <p class="mt-2 text-xs text-slate-500 flex items-center gap-1">
+                        <app-icon icon="info" size="xs"></app-icon>
+                        <span>
+                          @if (vieneDesdeActividad()) {
+                            Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica
+                          } @else if (vieneDesdeSubactividad()) {
+                            Este campo no se puede modificar porque estás creando una evidencia para esta subactividad específica
+                          }
+                        </span>
+                      </p>
+                    }
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                      <app-icon icon="list" size="xs" class="text-emerald-600"></app-icon>
+                      Subactividad
+                    </label>
+                    <select 
+                      formControlName="idSubactividad"
+                      [disabled]="vieneDesdeActividad() || vieneDesdeSubactividad()"
+                      [class]="(vieneDesdeActividad() || vieneDesdeSubactividad()) ? 'w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none bg-gray-100 border-slate-300 text-gray-500 cursor-not-allowed' : 'w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none bg-white border-slate-300 text-slate-900 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'">
+                      <option [value]="null">Ninguna</option>
+                      @for (sub of subactividades(); track sub.idSubactividad) {
+                        <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
+                      }
+                    </select>
+                    @if (vieneDesdeActividad() || vieneDesdeSubactividad()) {
+                      <p class="mt-2 text-xs text-slate-500 flex items-center gap-1">
+                        <app-icon icon="info" size="xs"></app-icon>
+                        <span>
+                          @if (vieneDesdeActividad()) {
+                            Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica
+                          } @else if (vieneDesdeSubactividad()) {
+                            Este campo no se puede modificar porque estás creando una evidencia para esta subactividad específica
+                          }
+                        </span>
+                      </p>
+                    }
+                  </div>
+                </div>
+
+                <!-- Fecha de Evidencia -->
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                    Fecha de Evidencia
+                  </label>
+                  <input 
+                    type="date" 
+                    formControlName="fechaEvidencia"
+                    class="w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none bg-white border-slate-300 text-slate-900 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
+                </div>
+
+                <!-- Descripción -->
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                    Descripción
+                  </label>
+                  <textarea 
+                    formControlName="descripcion"
+                    rows="4"
+                    class="w-full px-3 py-2.5 border rounded-lg text-sm outline-none transition-all bg-white border-slate-300 text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
+                    placeholder="Descripción de la evidencia"></textarea>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Sección 2: Archivos -->
+          <div class="border border-slate-200 rounded-lg overflow-hidden">
+            <!-- Header del acordeón -->
+            <button
+              type="button"
+              (click)="seccionArchivosExpandida.set(!seccionArchivosExpandida())"
+              class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-white hover:from-emerald-100 hover:to-emerald-50 transition-all duration-200">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <app-icon icon="cloud_upload" size="sm"></app-icon>
+                </div>
+                <div class="text-left">
+                  <h3 class="text-base font-bold text-slate-900">Archivos</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Sube imágenes y documentos Office</p>
+                </div>
+              </div>
+              <app-icon 
+                [icon]="seccionArchivosExpandida() ? 'expand_less' : 'expand_more'" 
+                size="md" 
+                class="text-emerald-600 transition-transform duration-200"
+                [class.rotate-180]="!seccionArchivosExpandida()"></app-icon>
+            </button>
+            
+            <!-- Contenido del acordeón -->
+            @if (seccionArchivosExpandida()) {
+              <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
+                
+                <!-- Upload de Archivos -->
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                    <app-icon icon="attach_file" size="xs" class="text-emerald-600"></app-icon>
+                    Archivos (Imágenes y Documentos Office)
+                  </label>
+                  <div class="mt-2 flex justify-center px-6 pt-8 pb-8 border-2 border-slate-300 border-dashed rounded-lg hover:border-emerald-400 transition-all duration-200 bg-slate-50/50 hover:bg-emerald-50/30">
+                    <div class="space-y-2 text-center">
+                      <app-icon icon="cloud_upload" size="xl" color="slate-400"></app-icon>
+                      <div class="flex text-sm text-slate-600">
+                        <label for="file-upload" class="relative cursor-pointer rounded-md font-medium text-emerald-600 hover:text-emerald-700 transition-colors">
+                          <span>Seleccione imágenes o archivos Office</span>
+                          <input 
+                            id="file-upload" 
+                            name="file-upload" 
+                            type="file" 
+                            class="sr-only"
+                            (change)="onFileSelected($event)"
+                            accept="image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.pdf"
+                            multiple>
+                        </label>
+                        <p class="pl-1">o arrástrelos aquí</p>
+                      </div>
+                      <p class="text-xs text-slate-500">
+                        Formatos permitidos: Imágenes (JPG, PNG, GIF) y Documentos (Word, Excel, PowerPoint, PDF)
+                      </p>
+                      @if (selectedImages().length > 0 || selectedOfficeFiles().length > 0) {
+                        <p class="text-xs font-medium text-emerald-600 mt-2">
+                          {{ selectedImages().length }} imagen(es) y {{ selectedOfficeFiles().length }} archivo(s) Office seleccionado(s)
+                        </p>
+                      }
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Sección de Imágenes -->
+                @if (previewUrls().length > 0) {
+                  <div class="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <app-icon icon="image" size="sm" color="slate-600"></app-icon>
+                      Imágenes ({{ selectedImages().length }})
+                    </h3>
+                    
+                    <!-- Imagen Actual -->
+                    <div class="relative mb-4">
+                      <img 
+                        [src]="getCurrentPreviewUrl()!" 
+                        alt="Preview" 
+                        class="w-full h-auto rounded-lg border border-slate-300 max-h-96 object-contain mx-auto"
+                        (error)="previewUrls.set([])">
+                    </div>
+                    
+                    <!-- Controles de Navegación -->
+                    @if (previewUrls().length > 1) {
+                      <div class="flex items-center justify-center gap-4 mb-4">
+                        <button
+                          type="button"
+                          (click)="previousImage()"
+                          [disabled]="!canGoPrevious()"
+                          class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2 font-medium text-sm">
+                          <app-icon icon="chevron_left" size="sm" color="slate-600"></app-icon>
+                          <span>Atrás</span>
+                        </button>
+                        
+                        <span class="text-sm font-medium text-slate-700 px-4">
+                          {{ currentImageNumber }}/{{ totalImages }}
+                        </span>
+                        
+                        <button
+                          type="button"
+                          (click)="nextImage()"
+                          [disabled]="!canGoNext()"
+                          class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2 font-medium text-sm">
+                          <span>Adelante</span>
+                          <app-icon icon="chevron_right" size="sm" color="slate-600"></app-icon>
+                        </button>
+                      </div>
+                    }
+                    
+                    <!-- Lista de imágenes seleccionadas -->
+                    <div class="pt-4 border-t border-slate-200">
+                      <p class="text-xs text-slate-500 mb-2 font-medium">Imágenes seleccionadas:</p>
+                      <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                        @for (file of selectedImages(); track $index; let i = $index) {
+                          <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg text-xs text-slate-700 border border-slate-200 hover:bg-slate-100 transition">
+                            <app-icon icon="image" size="xs" color="slate-600"></app-icon>
+                            <span class="truncate flex-1" [title]="file.name">{{ file.name }}</span>
+                            <button
+                              type="button"
+                              (click)="removeImage(i)"
+                              class="text-red-600 hover:text-red-800 flex-shrink-0 p-0.5 hover:bg-red-50 rounded transition">
+                              <app-icon icon="close" size="xs" color="red-600"></app-icon>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+                
+                <!-- Sección de Archivos Office -->
+                @if (selectedOfficeFiles().length > 0) {
+                  <div class="bg-white rounded-lg border border-slate-200 p-4">
+                    <h3 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <app-icon icon="insert_drive_file" size="sm" color="slate-600"></app-icon>
+                      Archivos Office ({{ selectedOfficeFiles().length }})
+                    </h3>
+                    
+                    <div class="space-y-2">
+                      @for (file of selectedOfficeFiles(); track $index; let i = $index) {
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition">
+                          <div class="flex items-center gap-3 flex-1 min-w-0">
+                            <app-icon [icon]="getFileIcon(file.name)" size="md" color="emerald-600"></app-icon>
+                            <div class="flex-1 min-w-0">
+                              <p class="text-sm font-medium text-slate-900 truncate" [title]="file.name">
+                                {{ file.name }}
+                              </p>
+                              <p class="text-xs text-slate-500">
+                                {{ formatFileSize(file.size) }}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            (click)="removeOfficeFile(i)"
+                            class="ml-2 text-red-600 hover:text-red-800 flex-shrink-0 p-1.5 hover:bg-red-50 rounded-lg transition">
+                            <app-icon icon="close" size="sm" color="red-600"></app-icon>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             }
           </div>
         </div>
 
         <!-- Actions -->
-        <div [class]="isModalMode ? 'mt-4 pt-4 border-t border-slate-200 flex justify-end space-x-4' : 'mt-6 flex justify-end space-x-4'">
+        <div [class]="isModalMode ? 'mt-4 pt-4 border-t border-slate-200 flex justify-end space-x-4' : 'mt-6 pt-6 border-t border-slate-200 px-6 md:px-8 pb-6 flex justify-end space-x-4'">
           <button 
             type="button"
             (click)="onClose ? onClose() : router.navigate(['/evidencias'])"
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+            class="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition font-medium text-sm">
             Cancelar
           </button>
           <button 
             type="submit"
             [disabled]="form.invalid || loading()"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition">
+            class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium text-sm flex items-center gap-2">
             @if (loading()) {
-              <span class="flex items-center gap-2">
-                <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                Guardando...
-              </span>
+              <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+              <span>Guardando...</span>
             } @else {
-              Guardar
+              <span>Guardar</span>
             }
           </button>
         </div>
@@ -283,4 +386,3 @@
     }
   </div>
 </div>
-

@@ -241,6 +241,10 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   vieneDesdeActividad = signal<boolean>(false);
   vieneDesdeSubactividad = signal<boolean>(false);
   tiposPreSeleccionados = signal<boolean>(false); // Flag para evitar sobrescribir la selección del usuario
+  
+  // Signals para controlar secciones expandidas
+  seccionInformacionExpandida = signal<boolean>(true);
+  seccionArchivosExpandida = signal<boolean>(true);
 
   initializeForm(): void {
     this.form = this.fb.group({

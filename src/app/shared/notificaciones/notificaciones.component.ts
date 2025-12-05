@@ -15,7 +15,16 @@ import { IconComponent } from '../icon/icon.component';
         class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors relative"
         title="Notificaciones">
         <app-icon icon="notifications" size="sm"></app-icon>
-        @if (noLeidasCount() > 0) {
+        
+        <!-- Badge con número de notificaciones no leídas (solo cuando el dropdown está cerrado y no se ha abierto antes, o si se clickeó alguna) -->
+        @if (mostrarContador() > 0 && !isOpen()) {
+          <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white">
+            {{ mostrarContador() > 99 ? '99+' : mostrarContador() }}
+          </span>
+        }
+        
+        <!-- Puntito rojo: aparece si se ha abierto el dropdown pero no se ha clickeado ninguna notificación -->
+        @if (dropdownAbiertoAlgunaVez() && !notificacionClickeada() && noLeidasCount() > 0 && !isOpen() && mostrarContador() === 0) {
           <span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
         }
       </button>
@@ -23,15 +32,33 @@ import { IconComponent } from '../icon/icon.component';
       @if (isOpen()) {
         <div class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-lg border border-slate-200 z-50 max-h-[600px] flex flex-col">
           <!-- Header -->
-          <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50 rounded-t-xl">
-            <h3 class="text-sm font-semibold text-slate-900">Notificaciones</h3>
-            @if (noLeidasCount() > 0) {
+          <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 rounded-t-xl">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-semibold text-slate-900">Notificaciones</h3>
+              @if (noLeidasCount() > 0) {
+                <button
+                  (click)="marcarTodasComoLeidas()"
+                  class="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
+                  Marcar todas como leídas
+                </button>
+              }
+            </div>
+            <!-- Toggle para mostrar notificaciones en pantalla -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+              <label class="text-xs text-slate-700 font-medium cursor-pointer flex items-center gap-2" (click)="toggleMostrarToasts()">
+                <span>Mostrar notificaciones en Pantalla</span>
+              </label>
               <button
-                (click)="marcarTodasComoLeidas()"
-                class="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                Marcar todas como leídas
+                type="button"
+                (click)="toggleMostrarToasts()"
+                [class]="mostrarToasts() ? 'bg-emerald-600' : 'bg-slate-300'"
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                <span
+                  [class.translate-x-5]="mostrarToasts()"
+                  [class.translate-x-1]="!mostrarToasts()"
+                  class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform"></span>
               </button>
-            }
+            </div>
           </div>
 
           <!-- Lista de notificaciones -->
@@ -122,8 +149,17 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
   notificaciones = signal<Notificacion[]>([]);
   noLeidasCount = signal(0);
   loading = signal(false);
+  mostrarToasts = signal(this.notificacionesService.getMostrarToasts());
+  
+  // Rastrear si se ha abierto el dropdown y si se ha interactuado con alguna notificación
+  dropdownAbiertoAlgunaVez = signal(false);
+  notificacionClickeada = signal(false);
+  
+  // Contador visual: muestra el número solo cuando el dropdown está cerrado y hay notificaciones no leídas
+  mostrarContador = signal(0);
 
   private subscription: any;
+  private mostrarToastsSubscription: any;
 
   ngOnInit(): void {
     this.loading.set(true);
@@ -138,6 +174,22 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
     // Suscribirse al contador de no leídas
     this.notificacionesService.noLeidasCount$.subscribe(count => {
       this.noLeidasCount.set(count);
+      // Actualizar el contador visual solo si el dropdown está cerrado y no se ha abierto antes
+      // o si se ha abierto pero se ha clickeado alguna notificación
+      if (!this.isOpen()) {
+        if (!this.dropdownAbiertoAlgunaVez() || this.notificacionClickeada()) {
+          this.mostrarContador.set(count);
+        } else {
+          // Si se ha abierto pero no se ha clickeado, no mostrar el contador
+          this.mostrarContador.set(0);
+        }
+      }
+    });
+
+    // Cargar el valor inicial desde el servicio y suscribirse a cambios
+    this.mostrarToasts.set(this.notificacionesService.getMostrarToasts());
+    this.mostrarToastsSubscription = this.notificacionesService.mostrarToasts$.subscribe(mostrar => {
+      this.mostrarToasts.set(mostrar);
     });
   }
 
@@ -145,16 +197,46 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
     if (this.subscription) {
       this.subscription.unsubscribe();
     }
+    if (this.mostrarToastsSubscription) {
+      this.mostrarToastsSubscription.unsubscribe();
+    }
+  }
+
+  toggleMostrarToasts(): void {
+    const nuevoEstado = !this.mostrarToasts();
+    this.notificacionesService.setMostrarToasts(nuevoEstado);
   }
 
   toggleDropdown(): void {
-    this.isOpen.set(!this.isOpen());
-    if (this.isOpen()) {
+    const nuevoEstado = !this.isOpen();
+    this.isOpen.set(nuevoEstado);
+    
+    if (nuevoEstado) {
+      // Cuando se abre el dropdown
+      this.dropdownAbiertoAlgunaVez.set(true);
+      // No resetear notificacionClickeada aquí, solo cuando se cierra sin clickear
+      // Ocultar el contador cuando se abre (no mostrar el número)
+      this.mostrarContador.set(0);
       this.notificacionesService.loadNotificaciones();
+    } else {
+      // Cuando se cierra el dropdown
+      // Si no se clickeó ninguna notificación, mantener el contador en 0 (no mostrar)
+      // El puntito rojo se mostrará en su lugar
+      if (!this.notificacionClickeada()) {
+        this.mostrarContador.set(0);
+      } else {
+        // Si se clickeó alguna, mostrar el contador actualizado
+        this.mostrarContador.set(this.noLeidasCount());
+        // Resetear el flag para la próxima vez que se abra
+        this.notificacionClickeada.set(false);
+      }
     }
   }
 
   handleNotificacionClick(notificacion: Notificacion): void {
+    // Marcar que se ha clickeado una notificación
+    this.notificacionClickeada.set(true);
+    
     if (!notificacion.leida) {
       this.marcarComoLeida(notificacion.id);
     }
@@ -187,6 +269,7 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
   }
 
   marcarTodasComoLeidas(): void {
+    this.notificacionClickeada.set(true);
     this.notificacionesService.marcarTodasComoLeidas().subscribe();
   }
 
