@@ -11,6 +11,7 @@ export interface ActividadResponsableCreate {
   idDocente?: number;
   idAdmin?: number;
   idTipoResponsable: number;
+  idRolResponsable?: number; // ID del rol responsable (Coordinador, Evaluador, etc.)
   departamentoId?: number;
   fechaAsignacion?: string; // DateOnly: YYYY-MM-DD
   rolResponsable?: string;
@@ -140,11 +141,22 @@ export class ActividadResponsableService {
     if (data.fechaAsignacion && data.fechaAsignacion.trim()) {
       payload.FechaAsignacion = data.fechaAsignacion.trim();
     }
-    // NOTA: El backend actual NO acepta RolResponsable ni RolResponsableDetalle en Create
-    // El backend hardcodea RolResponsable = "Responsable" en CreateAsync
-    // Por lo tanto, no enviamos estos campos
+    // Enviar IdRolResponsable si está presente
+    if (data.idRolResponsable !== undefined && data.idRolResponsable !== null) {
+      payload.IdRolResponsable = Number(data.idRolResponsable);
+      console.log('✅ [CREATE] IdRolResponsable incluido en payload:', payload.IdRolResponsable);
+    } else {
+      console.warn('⚠️ [CREATE] IdRolResponsable NO está presente en data:', data);
+    }
+    // Enviar RolResponsable si está presente (nombre del rol)
+    if (data.rolResponsable && data.rolResponsable.trim()) {
+      payload.RolResponsable = data.rolResponsable.trim();
+      console.log('✅ [CREATE] RolResponsable incluido en payload:', payload.RolResponsable);
+    } else {
+      console.warn('⚠️ [CREATE] RolResponsable NO está presente en data:', data);
+    }
 
-    console.log('🔄 CREATE ActividadResponsable - Payload enviado:', JSON.stringify(payload, null, 2));
+    console.log('🔄 CREATE ActividadResponsable - Payload completo enviado al backend:', JSON.stringify(payload, null, 2));
     console.log('🔄 CREATE ActividadResponsable - URL:', this.apiUrl);
 
     return this.http.post<any>(this.apiUrl, payload).pipe(
@@ -348,7 +360,8 @@ export class ActividadResponsableService {
       nombreDepartamento: item.NombreDepartamento || item.nombreDepartamento,
       fechaAsignacion: formatDate(item.FechaAsignacion || item.fechaAsignacion),
       // Mapear RolResponsable y RolResponsableDetalle - el backend ahora los devuelve
-      rolResponsable: item.RolResponsable || item.rolResponsable || item.NombreRolResponsable || item.nombreRolResponsable || undefined,
+      // Prioridad: rolResponsable (camelCase) > RolResponsable (PascalCase) > nombreRolResponsable (camelCase) > NombreRolResponsable (PascalCase)
+      rolResponsable: item.rolResponsable || item.RolResponsable || item.nombreRolResponsable || item.NombreRolResponsable || undefined,
       rolResponsableDetalle: item.RolResponsableDetalle || item.rolResponsableDetalle || undefined,
       idRolResponsable: item.IdRolResponsable !== undefined && item.IdRolResponsable !== null ? item.IdRolResponsable : (item.idRolResponsable !== undefined && item.idRolResponsable !== null ? item.idRolResponsable : undefined),
       nombreRolResponsable: item.NombreRolResponsable || item.nombreRolResponsable || undefined,
@@ -379,7 +392,20 @@ export class ActividadResponsableService {
     };
 
     console.log('🔍 [ActividadResponsableService] Mapeo de responsable - Item original del backend:', JSON.stringify(item, null, 2));
+    console.log('🔍 [ActividadResponsableService] Campos de rol en item original:', {
+      'item.rolResponsable': item.rolResponsable,
+      'item.RolResponsable': item.RolResponsable,
+      'item.nombreRolResponsable': item.nombreRolResponsable,
+      'item.NombreRolResponsable': item.NombreRolResponsable,
+      'item.idRolResponsable': item.idRolResponsable,
+      'item.IdRolResponsable': item.IdRolResponsable
+    });
     console.log('🔍 [ActividadResponsableService] Mapeo de responsable - Resultado mapeado:', JSON.stringify(mapped, null, 2));
+    console.log('🎯 [ActividadResponsableService] Rol mapeado final:', {
+      rolResponsable: mapped.rolResponsable,
+      nombreRolResponsable: mapped.nombreRolResponsable,
+      idRolResponsable: mapped.idRolResponsable
+    });
     console.log('🔍 [ActividadResponsableService] IDs y campos extraídos:', {
       idActividadResponsable: mapped.idActividadResponsable,
       idActividad: mapped.idActividad,

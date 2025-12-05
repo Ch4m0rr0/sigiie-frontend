@@ -12,6 +12,8 @@ import { ActividadResponsableService, type ActividadResponsableCreate, type Acti
 import { EdicionService } from '../../core/services/edicion.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import { PersonasService } from '../../core/services/personas.service';
+import { UsuariosService } from '../../core/services/usuarios.service';
+import type { Usuario } from '../../core/models/usuario';
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { ImageStorageService } from '../../core/services/image-storage.service';
 import { ParticipacionService } from '../../core/services/participacion.service';
@@ -47,6 +49,7 @@ export class ActividadDetailComponent implements OnInit {
   private edicionService = inject(EdicionService);
   private catalogosService = inject(CatalogosService);
   private personasService = inject(PersonasService);
+  private usuariosService = inject(UsuariosService);
   private evidenciaService = inject(EvidenciaService);
   private imageStorageService = inject(ImageStorageService);
   private participacionService = inject(ParticipacionService);
@@ -126,6 +129,7 @@ export class ActividadDetailComponent implements OnInit {
   docentes = signal<Docente[]>([]);
   estudiantes = signal<Estudiante[]>([]);
   administrativos = signal<Administrativo[]>([]);
+  usuarios = signal<Usuario[]>([]);
   loadingPersonas = signal(false);
 
   // Signals para controlar el estado de las secciones (ocultar/mostrar)
@@ -390,13 +394,14 @@ export class ActividadDetailComponent implements OnInit {
   }
 
   getNombreResponsable(resp: ActividadResponsable): string {
-    // Buscar nombre en todos los campos posibles, incluyendo estudiantes
+    // Buscar nombre en todos los campos posibles según el tipo de responsable
+    // Prioridad según los campos que vienen del backend en /api/actividad-responsable/actividad/{id}
     return resp.nombrePersona || 
-           resp.nombreDocente || 
-           resp.nombreAdmin || 
-           resp.nombreUsuario || 
-           (resp as any).nombreEstudiante ||
-           (resp as any).nombreResponsableExterno || 
+           resp.nombreUsuario ||      // Para usuarios
+           resp.nombreDocente ||      // Para docentes
+           resp.nombreAdmin ||        // Para administrativos
+           resp.nombreEstudiante ||   // Para estudiantes
+           resp.nombreResponsableExterno || // Para responsables externos
            `Responsable ${resp.idActividadResponsable}`;
   }
 
@@ -1280,7 +1285,17 @@ export class ActividadDetailComponent implements OnInit {
             nombreAdmin: resp.nombreAdmin,
             nombreEstudiante: resp.nombreEstudiante,
             nombreResponsableExterno: resp.nombreResponsableExterno,
-            rolResponsable: resp.rolResponsable
+            rolResponsable: resp.rolResponsable,
+            nombreRolResponsable: resp.nombreRolResponsable,
+            cargo: resp.cargo
+          });
+          
+          // Log específico para verificar el rol
+          console.log(`🎯 [ActividadDetail] Rol del responsable ${resp.idActividadResponsable}:`, {
+            rolResponsable: resp.rolResponsable,
+            nombreRolResponsable: resp.nombreRolResponsable,
+            idRolResponsable: resp.idRolResponsable,
+            rolCalculado: this.getRolResponsable(resp)
           });
           
           // Verificar que el responsable pertenezca a la actividad correcta
@@ -2257,6 +2272,18 @@ export class ActividadDetailComponent implements OnInit {
   
   // Cargar todas las personas al iniciar para poder enriquecer los responsables
   loadTodasLasPersonas(): void {
+    // Cargar usuarios del sistema para obtener sus roles (rolNombre)
+    this.usuariosService.getAll().subscribe({
+      next: (usuarios) => {
+        this.usuarios.set(usuarios);
+        console.log(`✅ [ActividadDetail] Cargados ${usuarios.length} usuarios`);
+      },
+      error: (err) => {
+        console.error('Error loading usuarios:', err);
+        this.usuarios.set([]);
+      }
+    });
+    
     // Cargar docentes, estudiantes y administrativos en paralelo
     this.personasService.listDocentes().subscribe({
       next: (data) => this.docentes.set(data),
@@ -2738,71 +2765,131 @@ export class ActividadDetailComponent implements OnInit {
     return `${horas12.toString().padStart(2, '0')}:${minutos} ${ampm}`;
   }
 
+  // Función para obtener el rol del responsable (rol en la actividad: Coordinador, Evaluador, Organizador, etc.)
+  // Usa directamente los campos que vienen del backend en la respuesta de /api/actividad-responsable/actividad/{id}
+  getRolResponsable(resp: ActividadResponsable): string {
+    // Usar rolResponsable o nombreRolResponsable que vienen directamente del backend
+    return resp.rolResponsable || resp.nombreRolResponsable || 'Sin rol asignado';
+  }
+
+  // Función para obtener un identificador único del responsable
+  private getIdentificadorUnico(resp: ActividadResponsable): string {
+    // Crear un identificador único basado en el tipo de responsable
+    if (resp.idUsuario) {
+      return `usuario_${resp.idUsuario}`;
+    }
+    if (resp.idDocente) {
+      return `docente_${resp.idDocente}`;
+    }
+    if (resp.idAdmin) {
+      return `admin_${resp.idAdmin}`;
+    }
+    if (resp.idEstudiante) {
+      return `estudiante_${resp.idEstudiante}`;
+    }
+    if (resp.idResponsableExterno) {
+      return `externo_${resp.idResponsableExterno}`;
+    }
+    // Si no hay identificador, usar el idActividadResponsable como fallback
+    return `actividad_responsable_${resp.idActividadResponsable}`;
+  }
+
+  // Función para eliminar duplicados de responsables
+  private eliminarDuplicados(responsables: ActividadResponsable[]): ActividadResponsable[] {
+    const responsablesUnicos = new Map<string, ActividadResponsable>();
+    
+    responsables.forEach(resp => {
+      const identificador = this.getIdentificadorUnico(resp);
+      const rol = this.getRolResponsable(resp);
+      const tieneRolValido = rol !== 'Sin rol asignado' && rol !== null && rol !== undefined && rol.trim() !== '';
+      
+      // Si ya existe un responsable con este identificador
+      if (responsablesUnicos.has(identificador)) {
+        const existente = responsablesUnicos.get(identificador)!;
+        const rolExistente = this.getRolResponsable(existente);
+        const existenteTieneRolValido = rolExistente !== 'Sin rol asignado' && rolExistente !== null && rolExistente !== undefined && rolExistente.trim() !== '';
+        
+        // Priorizar el que tiene un rol válido
+        if (tieneRolValido && !existenteTieneRolValido) {
+          // El nuevo tiene rol válido y el existente no, reemplazar
+          responsablesUnicos.set(identificador, resp);
+        } else if (!tieneRolValido && existenteTieneRolValido) {
+          // El existente tiene rol válido y el nuevo no, mantener el existente
+          // No hacer nada
+        } else {
+          // Ambos tienen rol válido o ambos no tienen, mantener el primero (o el que tenga el idActividadResponsable más alto)
+          if (resp.idActividadResponsable > existente.idActividadResponsable) {
+            responsablesUnicos.set(identificador, resp);
+          }
+        }
+      } else {
+        // Primera vez que vemos este responsable, agregarlo
+        responsablesUnicos.set(identificador, resp);
+      }
+    });
+    
+    return Array.from(responsablesUnicos.values());
+  }
+
   // Función para agrupar responsables por rol
   getResponsablesAgrupadosPorRol(): { rol: string; responsables: ActividadResponsable[] }[] {
     const responsables = this.responsables();
+    
+    // Primero eliminar duplicados
+    const responsablesUnicos = this.eliminarDuplicados(responsables);
+    
+    console.log('🔍 [getResponsablesAgrupadosPorRol] Total responsables originales:', responsables.length);
+    console.log('🔍 [getResponsablesAgrupadosPorRol] Total responsables únicos después de eliminar duplicados:', responsablesUnicos.length);
+    
+    // Luego agrupar por rol
     const agrupados = new Map<string, ActividadResponsable[]>();
     
-    responsables.forEach(resp => {
-      const rol = resp.rolResponsable || resp.nombreRolResponsable || 'Sin rol';
+    responsablesUnicos.forEach(resp => {
+      const rol = this.getRolResponsable(resp);
       if (!agrupados.has(rol)) {
         agrupados.set(rol, []);
       }
       agrupados.get(rol)!.push(resp);
     });
     
-    return Array.from(agrupados.entries()).map(([rol, responsables]) => ({
+    // Filtrar el grupo "Sin rol asignado" si hay otros grupos con roles válidos
+    const grupos = Array.from(agrupados.entries()).map(([rol, responsables]) => ({
       rol,
       responsables
     }));
+    
+    // Si hay grupos con roles válidos, eliminar el grupo "Sin rol asignado"
+    const tieneRolesValidos = grupos.some(g => g.rol !== 'Sin rol asignado');
+    if (tieneRolesValidos) {
+      return grupos.filter(g => g.rol !== 'Sin rol asignado');
+    }
+    
+    return grupos;
   }
 
   // Función para obtener el cargo del responsable
+  // Usa directamente el campo 'cargo' que viene del backend
+  // Para usuarios: cargo contiene el rol del sistema (ej: "Director General del CUR-Carazo")
+  // Para docentes, estudiantes, administrativos, externos: cargo contiene su tipo o cargo específico
   getCargoResponsable(resp: ActividadResponsable): string {
-    const partes: string[] = [];
-    
-    // Si tiene cargo directo (tipo de responsable: Docente, Estudiante, Administrativo)
+    // Prioridad 1: Usar el campo 'cargo' que viene directamente del backend
+    // Este campo ya contiene el cargo/rol correcto según el tipo de responsable
     if (resp.cargo) {
-      partes.push(resp.cargo);
+      return resp.cargo;
     }
     
-    // Si es responsable externo, usar su cargo
+    // Prioridad 2: Si es responsable externo, usar su cargo específico
     if (resp.cargoResponsableExterno) {
-      partes.push(resp.cargoResponsableExterno);
+      return resp.cargoResponsableExterno;
     }
     
-    // Si tiene tipo de responsable y no es el mismo que cargo, agregarlo
-    if (resp.nombreTipoResponsable && resp.nombreTipoResponsable !== resp.cargo) {
-      partes.push(resp.nombreTipoResponsable);
+    // Prioridad 3: Si tiene tipo de responsable, usarlo como fallback
+    if (resp.nombreTipoResponsable) {
+      return resp.nombreTipoResponsable;
     }
     
-    // Si tiene rolResponsable (coordinador, organizador, etc.) y es diferente al cargo
-    if (resp.rolResponsable) {
-      const rolLower = resp.rolResponsable.toLowerCase();
-      // Si el rolResponsable es coordinador u organizador u otro rol específico
-      if (rolLower.includes('coordinador') || 
-          rolLower.includes('organizador') ||
-          rolLower.includes('responsable') ||
-          rolLower.includes('asistente')) {
-        // Solo agregar si no está ya en las partes
-        if (!partes.some(p => p.toLowerCase() === resp.rolResponsable!.toLowerCase())) {
-          partes.push(resp.rolResponsable);
-        }
-      }
-    }
-    
-    // Si no hay nada, intentar con nombreRolResponsable
-    if (partes.length === 0 && resp.nombreRolResponsable) {
-      partes.push(resp.nombreRolResponsable);
-    }
-    
-    // Si aún no hay nada, mostrar mensaje por defecto
-    if (partes.length === 0) {
-      return 'Sin cargo asignado';
-    }
-    
-    // Unir las partes con " - " para mostrar múltiples cargos/roles
-    return partes.join(' - ');
+    // Si no hay nada, mostrar mensaje por defecto
+    return 'Sin cargo asignado';
   }
 
 }

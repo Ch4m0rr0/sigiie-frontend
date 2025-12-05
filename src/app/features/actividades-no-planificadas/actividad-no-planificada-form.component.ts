@@ -891,7 +891,28 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             const indicadorId = this.indicadorIdFromQuery();
             const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
             
-            // Mostrar alerta de éxito inmediatamente después de crear la actividad
+            // Crear responsables para la actividad recién creada
+            if (actividadCreada.id) {
+              console.log('🔄 Actividad creada, ahora creando responsables...', actividadCreada.id);
+              this.loading.set(false); // Detener el loading
+              this.crearResponsablesParaActividad(actividadCreada.id);
+              // No mostrar alerta aquí, se mostrará en crearResponsablesParaActividad
+              
+              // Si hay un indicador adicional desde query params, asociarlo en segundo plano
+              if (indicadorId) {
+                this.actividadesService.agregarIndicador(actividadCreada.id, indicadorId).subscribe({
+                  next: () => {
+                    console.log('✅ Indicador asociado correctamente');
+                  },
+                  error: (errIndicador) => {
+                    console.error('Error al asociar indicador:', errIndicador);
+                  }
+                });
+              }
+              return; // Salir temprano, la alerta se mostrará después en crearResponsablesParaActividad
+            }
+            
+            // Si no hay ID de actividad, mostrar alerta y redirigir
             this.loading.set(false);
             this.alertService.success(
               '¡Actividad creada exitosamente!',
@@ -901,18 +922,6 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
               this.clearFormState();
               this.router.navigate(['/actividades']);
             });
-            
-            // Si hay un indicador adicional desde query params, asociarlo en segundo plano
-            if (actividadCreada.id && indicadorId) {
-              this.actividadesService.agregarIndicador(actividadCreada.id, indicadorId).subscribe({
-                next: () => {
-                  console.log('✅ Indicador asociado correctamente');
-                },
-                error: (errIndicador) => {
-                  console.error('Error al asociar indicador:', errIndicador);
-                }
-              });
-            }
           },
           error: (err: any) => {
             clearTimeout(timeoutId); // Limpiar timeout en caso de error
@@ -2438,64 +2447,130 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     console.log('📋 FormResponsable value:', formValue);
 
     // Agregar usuarios
-    this.usuariosArray.controls.forEach((control) => {
+    this.usuariosArray.controls.forEach((control, index) => {
       const idUsuario = control.get('idUsuario')?.value;
+      const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      console.log(`🔍 [Usuario ${index}] Valores del formulario:`, {
+        idUsuario,
+        idRolResponsableRaw,
+        tipoIdRolResponsable: typeof idRolResponsableRaw,
+        controlValido: control.valid,
+        errores: control.errors
+      });
+      
+      // Convertir idRolResponsable a número, manejando strings vacíos y null
+      let idRolResponsable: number | undefined = undefined;
+      if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
+        const numValue = Number(idRolResponsableRaw);
+        if (!isNaN(numValue) && numValue > 0) {
+          idRolResponsable = numValue;
+        }
+      }
+      
       if (idUsuario) {
-        responsables.push({
+        const nombreRol = idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined;
+        
+        const responsableData = {
           idActividad,
           idUsuario,
           idTipoResponsable: 1,
+          idRolResponsable,
+          rolResponsable: nombreRol,
           fechaAsignacion: fechaAsignacion
+        };
+        
+        console.log(`✅ [Usuario ${index}] Agregado a responsables:`, {
+          idUsuario,
+          idRolResponsable,
+          rolResponsable: nombreRol,
+          responsableData: JSON.stringify(responsableData, null, 2)
         });
-        console.log('✅ Usuario agregado a responsables:', idUsuario);
+        
+        responsables.push(responsableData);
+      } else {
+        console.warn(`⚠️ [Usuario ${index}] No se agregó porque falta idUsuario`);
       }
     });
 
     // Agregar docentes
     this.docentesArray.controls.forEach((control) => {
       const idDocente = control.get('idPersona')?.value;
-      const idRolResponsable = control.get('idRolResponsable')?.value;
+      const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      // Convertir idRolResponsable a número
+      let idRolResponsable: number | undefined = undefined;
+      if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
+        const numValue = Number(idRolResponsableRaw);
+        if (!isNaN(numValue) && numValue > 0) {
+          idRolResponsable = numValue;
+        }
+      }
+      
       if (idDocente) {
         responsables.push({
           idActividad,
           idDocente,
           idTipoResponsable: 2,
+          idRolResponsable,
           rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
           fechaAsignacion: fechaAsignacion
         });
-        console.log('✅ Docente agregado a responsables:', idDocente, 'Rol:', idRolResponsable);
+        console.log('✅ Docente agregado a responsables:', idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
       }
     });
 
     // Agregar estudiantes
     this.estudiantesArray.controls.forEach((control) => {
       const idDocente = control.get('idPersona')?.value;
-      const idRolResponsable = control.get('idRolResponsable')?.value;
+      const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      // Convertir idRolResponsable a número
+      let idRolResponsable: number | undefined = undefined;
+      if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
+        const numValue = Number(idRolResponsableRaw);
+        if (!isNaN(numValue) && numValue > 0) {
+          idRolResponsable = numValue;
+        }
+      }
+      
       if (idDocente && idRolResponsable) {
         responsables.push({
           idActividad,
           idDocente,
           idTipoResponsable: 3,
+          idRolResponsable,
           rolResponsable: this.getNombreRolResponsable(idRolResponsable),
           fechaAsignacion: fechaAsignacion
         });
-        console.log('✅ Estudiante agregado a responsables:', idDocente, 'Rol:', idRolResponsable);
+        console.log('✅ Estudiante agregado a responsables:', idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', this.getNombreRolResponsable(idRolResponsable));
       }
     });
 
     // Agregar administrativos
     this.administrativosArray.controls.forEach((control) => {
       const idAdmin = control.get('idPersona')?.value;
-      const idRolResponsable = control.get('idRolResponsable')?.value;
+      const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      // Convertir idRolResponsable a número
+      let idRolResponsable: number | undefined = undefined;
+      if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
+        const numValue = Number(idRolResponsableRaw);
+        if (!isNaN(numValue) && numValue > 0) {
+          idRolResponsable = numValue;
+        }
+      }
+      
       if (idAdmin) {
         responsables.push({
           idActividad,
           idAdmin,
           idTipoResponsable: 4,
+          idRolResponsable,
           rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
           fechaAsignacion: fechaAsignacion
         });
-        console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol:', idRolResponsable);
+        console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
       }
     });
 

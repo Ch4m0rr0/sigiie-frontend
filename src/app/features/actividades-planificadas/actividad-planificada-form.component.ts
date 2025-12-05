@@ -998,6 +998,13 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             clearTimeout(timeoutId); // Limpiar timeout si la operación fue exitosa
             const indicadorId = this.indicadorIdFromQuery();
             const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
+            const responsableActividad = formValue.responsableActividad?.trim();
+            
+            // Crear responsables para la actividad recién creada
+            if (actividadCreada.id) {
+              console.log('🔄 Actividad creada, ahora creando responsables...', actividadCreada.id);
+              this.crearResponsablesParaActividad(actividadCreada.id, responsableActividad, false);
+            }
             
             // Mostrar alerta de éxito inmediatamente después de crear la actividad
             this.loading.set(false);
@@ -2371,16 +2378,49 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     }
 
     // Agregar usuarios
-    this.usuariosArray.controls.forEach((control) => {
+    this.usuariosArray.controls.forEach((control, index) => {
       const idUsuario = control.get('idUsuario')?.value;
+      const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      console.log(`🔍 [Usuario ${index}] Valores del formulario:`, {
+        idUsuario,
+        idRolResponsableRaw,
+        tipoIdRolResponsable: typeof idRolResponsableRaw,
+        controlValido: control.valid,
+        errores: control.errors
+      });
+      
+      // Convertir idRolResponsable a número, manejando strings vacíos y null
+      let idRolResponsable: number | undefined = undefined;
+      if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
+        const numValue = Number(idRolResponsableRaw);
+        if (!isNaN(numValue) && numValue > 0) {
+          idRolResponsable = numValue;
+        }
+      }
+      
       if (idUsuario) {
-        responsables.push({
+        const nombreRol = idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined;
+        
+        const responsableData = {
           idActividad,
           idUsuario,
-          idTipoResponsable: 1, // Usuarios no requieren idRolResponsable según ejemplos
+          idTipoResponsable: 1,
+          idRolResponsable,
+          rolResponsable: nombreRol,
           fechaAsignacion: fechaAsignacion
+        };
+        
+        console.log(`✅ [Usuario ${index}] Agregado a responsables:`, {
+          idUsuario,
+          idRolResponsable,
+          rolResponsable: nombreRol,
+          responsableData: JSON.stringify(responsableData, null, 2)
         });
-        console.log('✅ Usuario agregado a responsables:', idUsuario);
+        
+        responsables.push(responsableData);
+      } else {
+        console.warn(`⚠️ [Usuario ${index}] No se agregó porque falta idUsuario`);
       }
     });
 
@@ -2798,7 +2838,13 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   private getNombreRolResponsable(idRolResponsable: number): string | undefined {
-    const rol = this.rolesResponsable().find(r => (r.id || r.idRolResponsable) === idRolResponsable);
+    const roles = this.rolesResponsable();
+    const rol = roles.find(r => (r.id || r.idRolResponsable) === idRolResponsable);
+    
+    console.log(`🔍 [getNombreRolResponsable] Buscando rol con ID:`, idRolResponsable);
+    console.log(`🔍 [getNombreRolResponsable] Roles disponibles:`, roles.map(r => ({ id: r.id || r.idRolResponsable, nombre: r.nombre })));
+    console.log(`🔍 [getNombreRolResponsable] Rol encontrado:`, rol ? { id: rol.id || rol.idRolResponsable, nombre: rol.nombre } : 'No encontrado');
+    
     return rol?.nombre || undefined;
   }
 
