@@ -3,10 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { PersonasService } from '../../core/services/personas.service';
+import { CatalogosService } from '../../core/services/catalogos.service';
 import type { Estudiante } from '../../core/models/estudiante';
 import type { Docente } from '../../core/models/docente';
 import type { Administrativo } from '../../core/models/administrativo';
 import type { ResponsableExterno } from '../../core/models/responsable-externo';
+import type { Genero } from '../../core/models/genero';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { forkJoin, of } from 'rxjs';
@@ -20,9 +22,12 @@ import { catchError, finalize } from 'rxjs/operators';
 })
 export class ListPersonasComponent implements OnInit {
   private personasService = inject(PersonasService);
+  private catalogosService = inject(CatalogosService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private searchTimeout: any;
+  
+  generos = signal<Genero[]>([]);
 
   selectedTipo = signal<'estudiantes' | 'docentes' | 'administrativos' | 'responsables-externos'>('estudiantes');
   busqueda = signal<string>('');
@@ -71,7 +76,16 @@ export class ListPersonasComponent implements OnInit {
       filtrados = estudiantes.filter(e => 
         e.nombreCompleto?.toLowerCase().includes(busqueda) ||
         e.numeroCarnet?.toLowerCase().includes(busqueda) ||
-        e.correo?.toLowerCase().includes(busqueda)
+        e.correo?.toLowerCase().includes(busqueda) ||
+        e.cedula?.toLowerCase().includes(busqueda) ||
+        e.numeroTelefono?.toLowerCase().includes(busqueda) ||
+        e.genero?.toLowerCase().includes(busqueda) ||
+        e.carrera?.toLowerCase().includes(busqueda) ||
+        e.departamento?.toLowerCase().includes(busqueda) ||
+        e.estadoEstudiante?.toLowerCase().includes(busqueda) ||
+        e.nivelFormacion?.toLowerCase().includes(busqueda) ||
+        e.categoriaParticipacion?.toLowerCase().includes(busqueda) ||
+        e.numeroOrcid?.toLowerCase().includes(busqueda)
       );
     }
     
@@ -101,7 +115,16 @@ export class ListPersonasComponent implements OnInit {
     return estudiantes.filter(e => 
       e.nombreCompleto?.toLowerCase().includes(busqueda) ||
       e.numeroCarnet?.toLowerCase().includes(busqueda) ||
-      e.correo?.toLowerCase().includes(busqueda)
+      e.correo?.toLowerCase().includes(busqueda) ||
+      e.cedula?.toLowerCase().includes(busqueda) ||
+      e.numeroTelefono?.toLowerCase().includes(busqueda) ||
+      e.genero?.toLowerCase().includes(busqueda) ||
+      e.carrera?.toLowerCase().includes(busqueda) ||
+      e.departamento?.toLowerCase().includes(busqueda) ||
+      e.estadoEstudiante?.toLowerCase().includes(busqueda) ||
+      e.nivelFormacion?.toLowerCase().includes(busqueda) ||
+      e.categoriaParticipacion?.toLowerCase().includes(busqueda) ||
+      e.numeroOrcid?.toLowerCase().includes(busqueda)
     ).length;
   });
 
@@ -120,7 +143,13 @@ export class ListPersonasComponent implements OnInit {
     if (busqueda) {
       filtrados = docentes.filter(d => 
         d.nombreCompleto?.toLowerCase().includes(busqueda) ||
-        d.correo?.toLowerCase().includes(busqueda)
+        d.correo?.toLowerCase().includes(busqueda) ||
+        d.cedula?.toLowerCase().includes(busqueda) ||
+        d.numeroTelefono?.toLowerCase().includes(busqueda) ||
+        d.genero?.toLowerCase().includes(busqueda) ||
+        d.departamento?.toLowerCase().includes(busqueda) ||
+        d.nombreNivelAcademico?.toLowerCase().includes(busqueda) ||
+        d.numeroOrcid?.toLowerCase().includes(busqueda)
       );
     }
     
@@ -149,7 +178,13 @@ export class ListPersonasComponent implements OnInit {
     if (!busqueda) return docentes.length;
     return docentes.filter(d => 
       d.nombreCompleto?.toLowerCase().includes(busqueda) ||
-      d.correo?.toLowerCase().includes(busqueda)
+      d.correo?.toLowerCase().includes(busqueda) ||
+      d.cedula?.toLowerCase().includes(busqueda) ||
+      d.numeroTelefono?.toLowerCase().includes(busqueda) ||
+      d.genero?.toLowerCase().includes(busqueda) ||
+      d.departamento?.toLowerCase().includes(busqueda) ||
+      d.nombreNivelAcademico?.toLowerCase().includes(busqueda) ||
+      d.numeroOrcid?.toLowerCase().includes(busqueda)
     ).length;
   });
 
@@ -168,7 +203,14 @@ export class ListPersonasComponent implements OnInit {
     if (busqueda) {
       filtrados = administrativos.filter(a => 
         a.nombreCompleto?.toLowerCase().includes(busqueda) ||
-        a.correo?.toLowerCase().includes(busqueda)
+        a.correo?.toLowerCase().includes(busqueda) ||
+        a.cedula?.toLowerCase().includes(busqueda) ||
+        a.numeroTelefono?.toLowerCase().includes(busqueda) ||
+        a.genero?.toLowerCase().includes(busqueda) ||
+        a.departamento?.toLowerCase().includes(busqueda) ||
+        a.puesto?.toLowerCase().includes(busqueda) ||
+        a.nombreNivelAcademico?.toLowerCase().includes(busqueda) ||
+        a.numeroOrcid?.toLowerCase().includes(busqueda)
       );
     }
     
@@ -197,7 +239,14 @@ export class ListPersonasComponent implements OnInit {
     if (!busqueda) return administrativos.length;
     return administrativos.filter(a => 
       a.nombreCompleto?.toLowerCase().includes(busqueda) ||
-      a.correo?.toLowerCase().includes(busqueda)
+      a.correo?.toLowerCase().includes(busqueda) ||
+      a.cedula?.toLowerCase().includes(busqueda) ||
+      a.numeroTelefono?.toLowerCase().includes(busqueda) ||
+      a.genero?.toLowerCase().includes(busqueda) ||
+      a.departamento?.toLowerCase().includes(busqueda) ||
+      a.puesto?.toLowerCase().includes(busqueda) ||
+      a.nombreNivelAcademico?.toLowerCase().includes(busqueda) ||
+      a.numeroOrcid?.toLowerCase().includes(busqueda)
     ).length;
   });
 
@@ -283,7 +332,41 @@ export class ListPersonasComponent implements OnInit {
       }
     });
     
+    // Cargar géneros para poder mapear idGenero a código
+    this.catalogosService.getGeneros().subscribe({
+      next: (generos) => {
+        console.log('✅ Géneros cargados en personas.component:', generos);
+        this.generos.set(generos);
+      },
+      error: (err) => {
+        console.error('❌ Error cargando géneros:', err);
+        console.error('❌ Error details:', err.error);
+        console.error('❌ Error status:', err.status);
+      }
+    });
+    
     this.loadAll();
+  }
+  
+  // Método helper para obtener el código del género (M o F) desde idGenero
+  getCodigoGenero(idGenero?: number): string {
+    if (!idGenero || idGenero <= 0) {
+      console.warn('⚠️ getCodigoGenero: idGenero inválido:', idGenero);
+      return '-';
+    }
+    
+    const generos = this.generos();
+    console.log('🔍 getCodigoGenero - Buscando idGenero:', idGenero, 'en géneros:', generos);
+    
+    const genero = generos.find(g => g.id === idGenero);
+    
+    if (!genero) {
+      console.warn('⚠️ getCodigoGenero: No se encontró género con id:', idGenero);
+      return '-';
+    }
+    
+    console.log('✅ getCodigoGenero - Género encontrado:', genero, 'Código:', genero.codigo);
+    return genero.codigo || '-';
   }
 
   loadAll() {

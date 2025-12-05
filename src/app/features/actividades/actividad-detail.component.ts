@@ -513,72 +513,109 @@ export class ActividadDetailComponent implements OnInit {
     
     const deptos: any[] = [];
     const actividadData = actividad as any;
+    const idsDepartamentosSet = new Set<number>();
     
     // Agregar departamento principal si existe
     if (actividad.departamentoId && actividad.nombreDepartamento) {
-      deptos.push({
-        id: actividad.departamentoId,
-        nombre: actividad.nombreDepartamento
-      });
+      const deptId = Number(actividad.departamentoId);
+      if (deptId > 0 && !idsDepartamentosSet.has(deptId)) {
+        idsDepartamentosSet.add(deptId);
+        deptos.push({
+          id: deptId,
+          nombre: actividad.nombreDepartamento
+        });
+      }
     }
     
     // Buscar departamentos responsables en diferentes formatos
-    let idsDepartamentos: number[] = [];
+    // IMPORTANTE: Verificar TODOS los formatos, no solo el primero (usar if en lugar de else if)
     
     // Formato 1: idDepartamentosResponsables (array)
     if (actividadData.idDepartamentosResponsables && Array.isArray(actividadData.idDepartamentosResponsables)) {
-      idsDepartamentos = actividadData.idDepartamentosResponsables.filter((id: any) => id != null && id > 0);
+      actividadData.idDepartamentosResponsables.forEach((id: any) => {
+        const numId = Number(id);
+        if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+          idsDepartamentosSet.add(numId);
+        }
+      });
     }
+    
     // Formato 2: IdDepartamentosResponsables (array, PascalCase)
-    else if (actividadData.IdDepartamentosResponsables && Array.isArray(actividadData.IdDepartamentosResponsables)) {
-      idsDepartamentos = actividadData.IdDepartamentosResponsables.filter((id: any) => id != null && id > 0);
+    if (actividadData.IdDepartamentosResponsables && Array.isArray(actividadData.IdDepartamentosResponsables)) {
+      actividadData.IdDepartamentosResponsables.forEach((id: any) => {
+        const numId = Number(id);
+        if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+          idsDepartamentosSet.add(numId);
+        }
+      });
     }
+    
     // Formato 3: departamentoResponsableId (single o array)
-    else if (actividad.departamentoResponsableId) {
-      idsDepartamentos = Array.isArray(actividad.departamentoResponsableId) 
-        ? actividad.departamentoResponsableId.filter((id: any) => id != null && id > 0)
-        : [actividad.departamentoResponsableId].filter((id: any) => id != null && id > 0);
+    if (actividad.departamentoResponsableId) {
+      const ids = Array.isArray(actividad.departamentoResponsableId) 
+        ? actividad.departamentoResponsableId
+        : [actividad.departamentoResponsableId];
+      ids.forEach((id: any) => {
+        const numId = Number(id);
+        if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+          idsDepartamentosSet.add(numId);
+        }
+      });
     }
+    
     // Formato 4: nombreDepartamentoResponsable (si hay nombre pero no ID, buscar por nombre)
-    else if (actividadData.nombreDepartamentoResponsable) {
+    if (actividadData.nombreDepartamentoResponsable) {
       const nombres = Array.isArray(actividadData.nombreDepartamentoResponsable)
         ? actividadData.nombreDepartamentoResponsable
         : [actividadData.nombreDepartamentoResponsable];
       
       nombres.forEach((nombre: string) => {
-        const dept = this.todosLosDepartamentos().find(d => 
-          d.nombre?.toLowerCase() === nombre.toLowerCase() || 
-          d.Nombre?.toLowerCase() === nombre.toLowerCase()
-        );
-        if (dept && !deptos.find(d => d.id === dept.id)) {
-          deptos.push(dept);
+        if (nombre && nombre.trim()) {
+          const dept = this.todosLosDepartamentos().find(d => 
+            d.nombre?.toLowerCase() === nombre.toLowerCase() || 
+            d.Nombre?.toLowerCase() === nombre.toLowerCase()
+          );
+          if (dept) {
+            const deptId = Number(dept.id || dept.idDepartamento);
+            if (deptId > 0 && !idsDepartamentosSet.has(deptId)) {
+              idsDepartamentosSet.add(deptId);
+            }
+          }
         }
       });
     }
     
-    // Mapear IDs a departamentos
-    idsDepartamentos.forEach(id => {
-      const dept = this.todosLosDepartamentos().find(d => d.id === id || d.idDepartamento === id);
-      if (dept && !deptos.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
-        deptos.push({
-          id: dept.id || dept.idDepartamento,
-          nombre: dept.nombre || dept.Nombre
-        });
+    // Mapear todos los IDs encontrados a departamentos
+    idsDepartamentosSet.forEach(id => {
+      const dept = this.todosLosDepartamentos().find(d => {
+        const dId = Number(d.id || d.idDepartamento);
+        return dId === id;
+      });
+      if (dept) {
+        const deptId = Number(dept.id || dept.idDepartamento);
+        if (!deptos.find(d => Number(d.id) === deptId)) {
+          deptos.push({
+            id: deptId,
+            nombre: dept.nombre || dept.Nombre
+          });
+        }
       }
     });
     
     // También usar los departamentos cargados directamente desde el servicio
     if (this.departamentos().length > 0) {
       this.departamentos().forEach(dept => {
-        if (!deptos.find(d => d.id === dept.id || d.id === dept.idDepartamento)) {
+        const deptId = Number(dept.id || dept.idDepartamento);
+        if (deptId > 0 && !deptos.find(d => Number(d.id) === deptId)) {
           deptos.push({
-            id: dept.id || dept.idDepartamento,
+            id: deptId,
             nombre: dept.nombre || dept.Nombre
           });
         }
       });
     }
     
+    console.log('📋 Departamentos responsables encontrados:', deptos);
     return deptos;
   }
 
