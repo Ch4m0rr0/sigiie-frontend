@@ -115,7 +115,7 @@
       </div>
 
       <!-- Botón Nueva Actividad con dropdown -->
-      <div class="relative dropdown-actividad" [class.hidden]="showEvidenciaModal()" style="z-index: 1000;">
+      <div *hasPermission="'actividades.crear'" class="relative dropdown-actividad" [class.hidden]="showEvidenciaModal()" style="z-index: 1000;">
         <button 
           type="button"
           (click)="toggleDropdownActividad(); $event.stopPropagation()"
@@ -2828,6 +2828,7 @@
                 </button>
             }
             <button 
+                *hasPermission="'actividades.crear'"
                 (click)="navigateToCreate()" 
                 class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2">
                 <app-icon icon="add" size="xs" color="white"></app-icon>

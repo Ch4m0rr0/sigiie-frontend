@@ -37,6 +37,7 @@
       }
 
       <div class="space-y-1">
+        <!-- Dashboard siempre visible para usuarios autenticados -->
         <a routerLink="/dashboard" 
            routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
            class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
@@ -60,7 +61,8 @@
         }
         
         <div class="space-y-1">
-          <a routerLink="/proyectos" 
+          <a *hasPermission="'proyectos.ver'" 
+             routerLink="/proyectos" 
              routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
              class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
              [class.justify-center]="isCollapsed()"
@@ -69,7 +71,8 @@
              @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Proyectos</span> }
           </a>
 
-          <a routerLink="/actividades" 
+          <a *hasPermission="'actividades.ver'" 
+             routerLink="/actividades" 
              routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
              class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
              [class.justify-center]="isCollapsed()"
@@ -78,7 +81,8 @@
              @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Actividades</span> }
           </a>
 
-        <a routerLink="/subactividades" 
+        <a *hasPermission="'subactividades.ver'" 
+           routerLink="/subactividades" 
            routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
            class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
            [class.justify-center]="isCollapsed()"
@@ -96,25 +100,31 @@
             <div class="w-8 h-[1px] bg-slate-800 mx-auto mb-4"></div>
         }
         <div class="space-y-1">
-            <a routerLink="/participaciones" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-             class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-             [class.justify-center]="isCollapsed()" title="Participaciones">
-             <app-icon icon="groups" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-             @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Participaciones</span> }
+            <a *hasPermission="'participaciones.ver'" 
+               routerLink="/participaciones" 
+               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+               [class.justify-center]="isCollapsed()" title="Participaciones">
+               <app-icon icon="groups" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Participaciones</span> }
             </a>
             
-            <a routerLink="/evidencias" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-             class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-             [class.justify-center]="isCollapsed()" title="Evidencias">
-             <app-icon icon="perm_media" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-             @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Evidencias</span> }
+            <a *hasPermission="'evidencias.ver'" 
+               routerLink="/evidencias" 
+               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+               [class.justify-center]="isCollapsed()" title="Evidencias">
+               <app-icon icon="perm_media" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Evidencias</span> }
             </a>
 
-            <a routerLink="/reportes" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-             class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-             [class.justify-center]="isCollapsed()" title="Reportes">
-             <app-icon icon="bar_chart" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-             @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Reportes</span> }
+            <a *hasPermission="'reportes.ver'" 
+               routerLink="/reportes" 
+               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+               [class.justify-center]="isCollapsed()" title="Reportes">
+               <app-icon icon="bar_chart" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Reportes</span> }
             </a>
         </div>
     </div>
@@ -126,25 +136,31 @@
             <div class="w-8 h-[1px] bg-slate-800 mx-auto mb-4"></div>
         }
         <div class="space-y-1">
-            <a routerLink="/personas" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-             class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-             [class.justify-center]="isCollapsed()" title="Personas">
-             <app-icon icon="badge" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-             @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Personas</span> }
+            <a *hasPermission="'personas.ver'" 
+               routerLink="/personas" 
+               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+               [class.justify-center]="isCollapsed()" title="Personas">
+               <app-icon icon="badge" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Personas</span> }
             </a>
 
-            <a routerLink="/usuarios" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-             class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-             [class.justify-center]="isCollapsed()" title="Usuarios">
-             <app-icon icon="manage_accounts" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-             @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Usuarios</span> }
+            <a *hasPermission="'usuarios.ver'" 
+               routerLink="/usuarios" 
+               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+               [class.justify-center]="isCollapsed()" title="Usuarios">
+               <app-icon icon="manage_accounts" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Usuarios</span> }
             </a>
             
-             <a routerLink="/catalogos" routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-             class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-             [class.justify-center]="isCollapsed()" title="Catálogos">
-             <app-icon icon="folder" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-             @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Catálogos</span> }
+            <a *hasPermission="'catalogos.ver'" 
+               routerLink="/catalogos" 
+               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+               [class.justify-center]="isCollapsed()" title="Catálogos">
+               <app-icon icon="folder" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Catálogos</span> }
             </a>
         </div>
     </div>
@@ -161,8 +177,10 @@
         
         @if (!isCollapsed()) {
             <div class="flex flex-col min-w-0 animate-fade-in">
-                <span class="text-sm font-semibold text-white truncate group-hover:text-blue-400 transition-colors">Admin</span>
-                <span class="text-xs text-slate-500 truncate">admin@unan.edu.ni</span>
+                <span class="text-sm font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
+                  {{ user()?.nombreCompleto || 'Usuario' }}
+                </span>
+                <span class="text-xs text-slate-500 truncate">{{ user()?.correo || '' }}</span>
             </div>
             
             <button (click)="logout()" class="ml-auto p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all" title="Cerrar Sesión">

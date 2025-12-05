@@ -15,6 +15,7 @@ interface BackendAuthResponse {
   nombre: string;
   correo: string;
   rol: string;
+  permisos?: string[]; // Permisos que vienen directamente en la respuesta
 }
 
 interface LoginRequest {
@@ -59,16 +60,40 @@ export class AuthService {
       'Content-Type': 'application/json'
     }
   }).pipe(
-    map(res => ({
-      token: res.token,
-      user: {
-        id: 0,
-        nombreCompleto: res.nombre,
-        correo: res.correo,
-        role: res.rol,
-        departamentoId: undefined
+    map(res => {
+      // Priorizar permisos de la respuesta directa, luego del JWT
+      let permisos: string[] = [];
+      let roles: string[] = [];
+      
+      // Si vienen permisos directamente en la respuesta, usarlos
+      if (res.permisos && res.permisos.length > 0) {
+        permisos = res.permisos;
+      } else {
+        // Si no, intentar decodificar el token JWT
+        try {
+          const tokenPayload = JSON.parse(atob(res.token.split('.')[1]));
+          permisos = tokenPayload.permisos || tokenPayload.permissions || [];
+        } catch (e) {
+          console.warn('⚠️ No se pudieron extraer permisos del token JWT');
+        }
       }
-    })),
+
+      // Mapear el rol
+      roles = [res.rol].filter(Boolean);
+
+      return {
+        token: res.token,
+        user: {
+          id: 0,
+          nombreCompleto: res.nombre,
+          correo: res.correo,
+          role: res.rol,
+          roles: roles,
+          permisos: permisos,
+          departamentoId: undefined
+        }
+      };
+    }),
     tap(authRes => {
       this.token.set(authRes.token);
       this.user.set(authRes.user);
