@@ -81,7 +81,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="idIndicador">
                             <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
-                            Indicador
+                            Indicador <span class="text-red-500">*</span>
                             @if (form.get('idIndicador')?.disabled) {
                                 <span class="text-xs text-slate-500 font-normal ml-1">(No editable)</span>
                             }
@@ -192,12 +192,18 @@
                             </div>
                         }
                     </div>
+                    @if (form.get('idIndicador')?.invalid && form.get('idIndicador')?.touched) {
+                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                            <p class="text-xs text-red-800">Debe seleccionar un indicador</p>
+                        </div>
+                    }
 
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <label class="block text-sm font-medium text-slate-700 flex items-center gap-2">
                                 <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                                Actividades anuales
+                                Actividades anuales <span class="text-red-500">*</span>
                             </label>
                             @if (form.get('idIndicador')?.value) {
                                 <button
@@ -293,12 +299,18 @@
                             </button>
                         }
                     </div>
+                    @if (form.get('idActividadAnual')?.invalid && form.get('idActividadAnual')?.touched) {
+                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                            <p class="text-xs text-red-800">Debe seleccionar al menos una actividad anual</p>
+                        </div>
+                    }
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                         <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
-                        Actividades Mensuales Institucionales
+                        Actividades Mensuales Institucionales <span class="text-red-500">*</span>
                     </label>
                     
                     <!-- Actividades Mensuales Seleccionadas (Chips) -->
@@ -383,6 +395,12 @@
                         </button>
                     }
                 </div>
+                    @if (form.get('idActividadMensualInst')?.invalid && form.get('idActividadMensualInst')?.touched) {
+                        <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                            <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                            <p class="text-xs text-red-800">Debe seleccionar al menos una actividad mensual</p>
+                        </div>
+                    }
                     </div>
                 }
             </div>
@@ -1444,7 +1462,7 @@
                                                         <app-icon icon="person" size="xs" class="text-indigo-600"></app-icon>
                                                         Usuario <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10">
+                                                    <div class="relative z-10" style="overflow: visible;">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownUsuario($index)"
@@ -1459,7 +1477,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownUsuario()[$index]) {
-                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-indigo-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-indigo-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                                     <div class="relative">
@@ -1485,7 +1503,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de usuarios -->
-                                                                <div class="p-2 max-h-48 overflow-y-auto">
+                                                                <div class="p-2 max-h-96 overflow-y-auto">
                                                                     @if (getUsuariosFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (usuario of getUsuariosFiltrados($index); track usuario.id || usuario.idUsuario || $index) {
@@ -1696,7 +1714,7 @@
                                                         <app-icon icon="person" size="xs" class="text-blue-600"></app-icon>
                                                         Docente <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10">
+                                                    <div class="relative z-10" style="overflow: visible;">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownDocente($index)"
@@ -1711,7 +1729,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownDocente()[$index]) {
-                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-blue-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-blue-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                     <div class="relative">
@@ -1737,7 +1755,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de docentes -->
-                                                                <div class="p-2 max-h-48 overflow-y-auto">
+                                                                <div class="p-2 max-h-96 overflow-y-auto">
                                                                     @if (getDocentesFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (docente of getDocentesFiltrados($index); track docente.id || $index) {
@@ -1942,7 +1960,7 @@
                                                         <app-icon icon="person" size="xs" class="text-purple-600"></app-icon>
                                                         Estudiante <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10">
+                                                    <div class="relative z-10" style="overflow: visible;">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownEstudiante($index)"
@@ -1957,7 +1975,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownEstudiante()[$index]) {
-                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-purple-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-purple-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                     <div class="relative">
@@ -1983,7 +2001,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de estudiantes -->
-                                                                <div class="p-2 max-h-48 overflow-y-auto">
+                                                                <div class="p-2 max-h-96 overflow-y-auto">
                                                                     @if (getEstudiantesFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (estudiante of getEstudiantesFiltrados($index); track estudiante.id || $index) {
@@ -2194,7 +2212,7 @@
                                                         <app-icon icon="person" size="xs" class="text-amber-600"></app-icon>
                                                         Administrativo <span class="text-red-500">*</span>
                                                     </label>
-                                                    <div class="relative z-10">
+                                                    <div class="relative z-10" style="overflow: visible;">
                                                         <button
                                                             type="button"
                                                             (click)="toggleDropdownAdministrativo($index)"
@@ -2209,7 +2227,7 @@
                                                             <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                         </button>
                                                         @if (mostrarDropdownAdministrativo()[$index]) {
-                                                            <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-amber-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
+                                                            <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-amber-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
                                                                 <!-- Buscador -->
                                                                 <div class="p-3 border-b border-gray-200">
                                                     <div class="relative">
@@ -2235,7 +2253,7 @@
                                                                     </div>
                                                                 </div>
                                                                 <!-- Lista de administrativos -->
-                                                                <div class="p-2 max-h-48 overflow-y-auto">
+                                                                <div class="p-2 max-h-96 overflow-y-auto">
                                                                     @if (getAdministrativosFiltrados($index).length > 0) {
                                                                         <div class="space-y-0.5">
                                                                             @for (admin of getAdministrativosFiltrados($index); track admin.id || $index) {
@@ -2379,7 +2397,7 @@
                                                             <app-icon icon="person" size="xs" class="text-teal-600"></app-icon>
                                                             Responsable Externo <span class="text-red-500">*</span>
                                                         </label>
-                                                        <div class="relative z-10">
+                                                        <div class="relative z-10" style="overflow: visible;">
                                                             <button
                                                                 type="button"
                                                                 (click)="toggleDropdownExterno($index)"
@@ -2395,7 +2413,7 @@
                                                                 <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
                                                             </button>
                                                             @if (mostrarDropdownExterno()[$index]) {
-                                                                <div class="absolute z-[9999] w-full mt-1 bg-white border-2 border-teal-200 rounded-lg shadow-lg animate-fade-in flex flex-col">
+                                                                <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-teal-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
                                                                     <!-- Buscador -->
                                                                     <div class="p-3 border-b border-gray-200">
                                                                         <div class="relative">
@@ -2421,7 +2439,7 @@
                                                                         </div>
                                                                     </div>
                                                                     <!-- Lista de responsables externos -->
-                                                                    <div class="p-2 max-h-48 overflow-y-auto">
+                                                                    <div class="p-2 max-h-96 overflow-y-auto">
                                                                         @if (getResponsablesExternosFiltrados($index).length > 0) {
                                                                             <div class="space-y-0.5">
                                                                                 @for (ext of getResponsablesExternosFiltrados($index); track ext.id) {

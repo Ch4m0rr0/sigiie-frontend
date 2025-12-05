@@ -420,11 +420,11 @@
                                 {{ getActividadesAnualesSeleccionadas().length }}
                               </span>
                             </div>
-                            <div class="space-y-2 max-h-48 overflow-y-auto">
+                            <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
                               @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
                                 <div class="bg-white rounded p-3 border border-blue-200 shadow-sm">
                                   <div class="text-sm font-semibold text-blue-800 mb-1">Año {{ anual.anio }}</div>
-                                  <div class="text-base font-semibold text-slate-900 line-clamp-2">
+                                  <div class="text-base font-semibold text-slate-900 break-words">
                                     {{ anual.nombre || 'Actividad ' + anual.idActividadAnual }}
                                   </div>
                             </div>
@@ -455,7 +455,7 @@
                                 {{ getActividadesMensualesSeleccionadas().length }}
                               </span>
                             </div>
-                            <div class="space-y-2 max-h-48 overflow-y-auto">
+                            <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
                               @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
                                 <div class="bg-white rounded p-3 border border-purple-200 shadow-sm">
                                   <div class="text-sm font-semibold text-purple-800 mb-1">
@@ -465,7 +465,7 @@
                                       Mensual
                           }
                         </div>
-                                  <div class="text-base font-semibold text-slate-900 line-clamp-2">
+                                  <div class="text-base font-semibold text-slate-900 break-words">
                                     {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}
                                   </div>
                       </div>
@@ -1622,8 +1622,8 @@
                         <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
                           <app-icon icon="calendar_today" size="sm"></app-icon>
                         </div>
-                        <div>
-                          <h3 class="text-base font-bold text-slate-900">
+                        <div class="flex-1 min-w-0">
+                          <h3 class="text-base font-bold text-slate-900 break-words">
                             {{ anual.nombre || anual.nombreIndicador || 'Actividad Anual' }}
                           </h3>
                           <p class="text-xs text-slate-500 mt-0.5">Actividad anual asociada</p>
@@ -1754,7 +1754,7 @@
                             <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
                             Actividades Mensuales
                           </label>
-                          <div class="space-y-3">
+                          <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
                             @for (mensual of getActividadesMensualesPorAnual(anual.idActividadAnual); track $index; let j = $index) {
                               <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
                                 <div class="space-y-2">
@@ -1762,7 +1762,7 @@
                                     <label class="block text-xs font-medium text-slate-500 mb-1 text-left">
                                       Mes
                                     </label>
-                                    <p class="text-sm text-slate-900 font-medium text-left">
+                                    <p class="text-sm text-slate-900 font-medium text-left break-words">
                                       {{ mensual.nombreMes || 'Mes ' + mensual.mes }}
                                     </p>
                                   </div>
@@ -1771,7 +1771,7 @@
                                       <label class="block text-xs font-medium text-slate-500 mb-1 text-left">
                                         Nombre
                                       </label>
-                                      <p class="text-sm text-slate-700 text-left">
+                                      <p class="text-sm text-slate-700 text-left break-words">
                                         {{ mensual.nombre }}
                                       </p>
                                     </div>
@@ -1838,8 +1838,8 @@
                         <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
                           <app-icon icon="calendar_month" size="sm"></app-icon>
                         </div>
-                        <div>
-                          <h3 class="text-base font-bold text-slate-900">
+                        <div class="flex-1 min-w-0">
+                          <h3 class="text-base font-bold text-slate-900 break-words">
                             {{ mensual.nombre || 'Actividad Mensual' }}
                           </h3>
                           <p class="text-xs text-slate-500 mt-0.5">Actividad mensual asociada</p>

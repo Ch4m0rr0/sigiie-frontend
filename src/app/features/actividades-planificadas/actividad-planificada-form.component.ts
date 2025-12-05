@@ -267,6 +267,15 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     return null;
   }
 
+  // Validador personalizado para arrays requeridos
+  arrayRequiredValidator(control: AbstractControl): ValidationErrors | null {
+    const value = control.value;
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+      return { arrayRequired: true };
+    }
+    return null;
+  }
+
   fechaFinValidator(control: AbstractControl): ValidationErrors | null {
     if (!control.parent) {
       return null;
@@ -349,10 +358,10 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       idCapacidadInstalada: [null, Validators.required],
       semanaMes: [null],
       codigoActividad: [''],
-      idActividadMensualInst: [[]], // Array para múltiples selecciones
+      idActividadMensualInst: [[], [Validators.required, this.arrayRequiredValidator.bind(this)]], // Array para múltiples selecciones - REQUERIDO para actividades planificadas
       esPlanificada: [true], // Siempre true para actividades planificadas
-      idIndicador: [null],
-      idActividadAnual: [[]],
+      idIndicador: [null, Validators.required], // REQUERIDO para actividades planificadas
+      idActividadAnual: [[], [Validators.required, this.arrayRequiredValidator.bind(this)]], // REQUERIDO para actividades planificadas
       objetivo: [''],
       cantidadParticipantesProyectados: [null, Validators.required],
       cantidadParticipantesEstudiantesProyectados: [null],
