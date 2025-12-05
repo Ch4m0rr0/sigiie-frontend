@@ -838,14 +838,25 @@ export class CatalogosService {
   }
 
   createTipoDocumentoDivulgado(tipo: Omit<TipoDocumentoDivulgado, 'id'>): Observable<TipoDocumentoDivulgado> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+    const data = { nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
     return this.http.post<any>(`${this.apiUrl}/tipo-documento-divulgado`, data).pipe(
-      map(item => ({ id: item.idTipoDocumentoDivulgado || item.Id, nombre: item.nombre || item.Nombre, descripcion: item.descripcion || item.Descripcion }))
+      map(response => {
+        const item = response.data || response;
+        return {
+          id: item.idTipoDocumentoDivulgado || item.IdTipoDocumentoDivulgado || item.Id || item.id || 0,
+          nombre: item.nombre || item.Nombre || tipo.nombre,
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+        };
+      }),
+      catchError(error => {
+        console.error('Error creating tipo documento divulgado:', error);
+        throw error;
+      })
     );
   }
 
   updateTipoDocumentoDivulgado(id: number, tipo: Omit<TipoDocumentoDivulgado, 'id'>): Observable<TipoDocumentoDivulgado> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+    const data = { nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
     return this.http.put<any>(`${this.apiUrl}/tipo-documento-divulgado/${id}`, data).pipe(
       map(response => {
         // Si la respuesta es null o undefined, retornar los datos enviados con el ID
@@ -1532,7 +1543,9 @@ export class CatalogosService {
           id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id 
             || item.id_instalacion || item.IdInstalacion || item.idInstalacion || 0,
           nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
+          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId,
+          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId
         })) : [];
       }),
       catchError(error => {
@@ -1557,7 +1570,9 @@ export class CatalogosService {
           id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id 
             || item.id_instalacion || item.IdInstalacion || item.idInstalacion || id,
           nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
+          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId,
+          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId
         };
       }),
       catchError(error => {
@@ -1567,18 +1582,28 @@ export class CatalogosService {
     );
   }
 
-  createCapacidadInstalada(data: { nombre: string, descripcion?: string }): Observable<any> {
-    const dto = {
-      NombreInstalacion: data.nombre,
-      Descripcion: data.descripcion || ''
+  createCapacidadInstalada(data: { nombreInstalacion: string, descripcionFuncionalidad?: string, departamentoId?: number, tipoUnidadId?: number }): Observable<any> {
+    const dto: any = {
+      NombreInstalacion: data.nombreInstalacion
     };
+    if (data.descripcionFuncionalidad !== undefined) {
+      dto.DescripcionFuncionalidad = data.descripcionFuncionalidad;
+    }
+    if (data.departamentoId !== undefined && data.departamentoId !== null) {
+      dto.DepartamentoId = data.departamentoId;
+    }
+    if (data.tipoUnidadId !== undefined && data.tipoUnidadId !== null) {
+      dto.TipoUnidadId = data.tipoUnidadId;
+    }
     return this.http.post<any>(`${this.apiUrl}/capacidad-instalaciones`, dto).pipe(
       map(response => {
         const item = response.data || response;
         return {
           id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
           nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
+          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId,
+          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId
         };
       }),
       catchError(error => {
@@ -1588,18 +1613,29 @@ export class CatalogosService {
     );
   }
 
-  updateCapacidadInstalada(id: number, data: { nombre: string, descripcion?: string }): Observable<any> {
-    const dto = {
-      NombreInstalacion: data.nombre,
-      Descripcion: data.descripcion || ''
-    };
+  updateCapacidadInstalada(id: number, data: { nombreInstalacion?: string, descripcionFuncionalidad?: string, departamentoId?: number, tipoUnidadId?: number }): Observable<any> {
+    const dto: any = {};
+    if (data.nombreInstalacion !== undefined) {
+      dto.NombreInstalacion = data.nombreInstalacion;
+    }
+    if (data.descripcionFuncionalidad !== undefined) {
+      dto.DescripcionFuncionalidad = data.descripcionFuncionalidad;
+    }
+    if (data.departamentoId !== undefined) {
+      dto.DepartamentoId = data.departamentoId;
+    }
+    if (data.tipoUnidadId !== undefined) {
+      dto.TipoUnidadId = data.tipoUnidadId;
+    }
     return this.http.put<any>(`${this.apiUrl}/capacidad-instalaciones/${id}`, dto).pipe(
       map(response => {
         const item = response.data || response;
         return {
           id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
           nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
+          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
+          departamentoId: item.departamentoId || item.DepartamentoId,
+          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId
         };
       }),
       catchError(error => {

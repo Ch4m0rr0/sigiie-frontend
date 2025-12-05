@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, signal, ChangeDetectorRef, afterNextRender } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -328,10 +328,13 @@ export class ActividadDetailComponent implements OnInit {
     if (capacidad) {
       const nombre = capacidad.nombre || capacidad.Nombre || capacidad.nombreCapacidadInstalada 
         || capacidad.nombreInstalacion || capacidad.NombreInstalacion || `ID: ${id}`;
-      // Guardar en cache
-      const newCache = new Map(cache);
-      newCache.set(id, nombre);
-      this.capacidadInstaladaCache.set(newCache);
+      // Guardar en cache de forma asíncrona para evitar escribir durante el renderizado
+      setTimeout(() => {
+        const currentCache = this.capacidadInstaladaCache();
+        const newCache = new Map(currentCache);
+        newCache.set(id, nombre);
+        this.capacidadInstaladaCache.set(newCache);
+      }, 0);
       return nombre;
     }
     

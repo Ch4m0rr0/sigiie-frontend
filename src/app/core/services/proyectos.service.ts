@@ -45,7 +45,13 @@ export class ProyectosService {
   // Alineado con IProyectoService.GetByIdAsync()
   getById(id: number): Observable<Proyecto | null> {
     return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
-      map(item => this.mapProyecto(item)),
+      map(item => {
+        console.log('📦 Proyecto RAW del backend (antes de mapear):', item);
+        console.log('📦 Claves del objeto proyecto:', Object.keys(item || {}));
+        const mapped = this.mapProyecto(item);
+        console.log('📦 Proyecto mapeado:', mapped);
+        return mapped;
+      }),
       catchError(error => {
         console.error('Error fetching proyecto by id:', error);
         return of(null);
@@ -236,6 +242,7 @@ export class ProyectosService {
   }
 
   // Alineado con IProyectoService.GetByEstadoAsync()
+  // Método legacy - mantener para compatibilidad
   getByEstado(activos: boolean): Observable<Proyecto[]> {
     return this.http.get<any>(`${this.apiUrl}/estado?activos=${activos}`).pipe(
       map(response => {
@@ -244,6 +251,33 @@ export class ProyectosService {
       }),
       catchError(error => {
         console.error('Error fetching proyectos by estado:', error);
+        return of([]);
+      })
+    );
+  }
+
+  // Obtener proyectos por ID de estado
+  // Como el endpoint /api/Proyecto/estado?activos=true retorna vacío y no hay endpoint específico,
+  // obtenemos todos los proyectos y filtramos en el cliente por idEstadoProyecto
+  getByEstadoId(idEstadoProyecto: number): Observable<Proyecto[]> {
+    console.log('🔄 GET Proyectos por Estado - Filtrando por ID:', idEstadoProyecto);
+    
+    return this.getAll().pipe(
+      map(proyectos => {
+        const filtered = proyectos.filter(p => {
+          const estadoId = p.idEstadoProyecto;
+          const matches = estadoId === idEstadoProyecto;
+          if (matches) {
+            console.log('✅ Proyecto encontrado:', p.nombreProyecto, 'Estado ID:', estadoId);
+          }
+          return matches;
+        });
+        console.log('✅ GET Proyectos por Estado - Total proyectos:', proyectos.length);
+        console.log('✅ GET Proyectos por Estado - Filtrados por estado', idEstadoProyecto, ':', filtered.length);
+        return filtered;
+      }),
+      catchError(error => {
+        console.error('❌ Error fetching proyectos by estado ID:', error);
         return of([]);
       })
     );

@@ -37,6 +37,36 @@ export const routes: Routes = [
           import('../features/proyectos').then(m => m.ProyectoFormComponent)
       },
       {
+        path: 'proyectos-actividad/nuevo',
+        loadComponent: () =>
+          import('../features/proyectos-actividad').then(m => m.ProyectoActividadFormComponent)
+      },
+      {
+        path: 'proyectos-administrativo/nuevo',
+        loadComponent: () =>
+          import('../features/proyectos-administrativo').then(m => m.ProyectoAdministrativoFormComponent)
+      },
+      {
+        path: 'proyectos-docente/nuevo',
+        loadComponent: () =>
+          import('../features/proyectos-docente').then(m => m.ProyectoDocenteFormComponent)
+      },
+      {
+        path: 'proyectos-estudiante/nuevo',
+        loadComponent: () =>
+          import('../features/proyectos-estudiante').then(m => m.ProyectoEstudianteFormComponent)
+      },
+      {
+        path: 'documentos-divulgados/nuevo',
+        loadComponent: () =>
+          import('../features/documentos-divulgados').then(m => m.DocumentoDivulgadoFormComponent)
+      },
+      {
+        path: 'documentos-divulgados/:id/editar',
+        loadComponent: () =>
+          import('../features/documentos-divulgados').then(m => m.DocumentoDivulgadoFormComponent)
+      },
+      {
         path: 'usuarios',
         loadComponent: () =>
           import('../features/usuarios').then(m => m.ListUsuariosComponent)

@@ -1,0 +1,207 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 animate-fade-in">
+    <div class="flex items-center gap-3 mb-2">
+      <button 
+        (click)="onCancel()"
+        class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+        <app-icon icon="arrow_back" size="sm"></app-icon>
+      </button>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+        Nuevo Proyecto Administrativo
+      </h1>
+    </div>
+    <p class="text-slate-500 text-sm ml-10">
+      Asocia un proyecto con un administrativo
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 animate-pulse">
+      <div class="space-y-4">
+        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div class="h-32 bg-slate-200 rounded"></div>
+      </div>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
+      
+      <!-- Alertas -->
+      @if (error()) {
+        <div class="p-6 pb-0">
+          <div class="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5"></app-icon>
+            <div>
+              <h3 class="text-sm font-bold text-red-800">Error</h3>
+              <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="p-6 md:p-8 space-y-6">
+        
+        <!-- Proyecto -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="folder" size="xs" class="text-emerald-600"></app-icon>
+            Proyecto <span class="text-red-500">*</span>
+          </label>
+          <div class="relative dropdown-proyecto">
+            @if (getProyectoSeleccionado()) {
+              <div class="flex items-center gap-2 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                <span class="flex-1 text-sm font-medium text-emerald-900">
+                  {{ getProyectoSeleccionado()?.nombreProyecto || getProyectoSeleccionado()?.nombre }}
+                </span>
+                <button
+                  type="button"
+                  (click)="eliminarProyecto(); $event.stopPropagation()"
+                  class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded transition-colors">
+                  <app-icon icon="close" size="xs"></app-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="relative">
+                <input
+                  type="text"
+                  [value]="filtroProyecto()"
+                  (input)="filtroProyecto.set($any($event.target).value)"
+                  (click)="toggleDropdownProyecto(); $event.stopPropagation()"
+                  (focus)="mostrarDropdownProyecto.set(true)"
+                  placeholder="Buscar proyecto..."
+                  class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                  autocomplete="off">
+                <app-icon icon="search" size="xs" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></app-icon>
+              </div>
+              @if (mostrarDropdownProyecto()) {
+                <div class="absolute z-50 w-full mt-1 bg-white border-2 border-slate-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  @if (filtrarProyectos().length === 0) {
+                    <div class="p-4 text-sm text-slate-500 text-center">No se encontraron proyectos</div>
+                  } @else {
+                    @for (proyecto of filtrarProyectos(); track proyecto.idProyecto || proyecto.id) {
+                      <button
+                        type="button"
+                        (click)="seleccionarProyecto(proyecto); $event.stopPropagation()"
+                        class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                        <div class="font-medium">{{ proyecto.nombreProyecto || proyecto.nombre }}</div>
+                        @if (proyecto.descripcion) {
+                          <div class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ proyecto.descripcion }}</div>
+                        }
+                      </button>
+                    }
+                  }
+                </div>
+              }
+            }
+          </div>
+          @if (form.get('idProyecto')?.invalid && form.get('idProyecto')?.touched) {
+            <p class="mt-1 text-xs text-red-600">Este campo es requerido</p>
+          }
+        </div>
+
+        <!-- Administrativo -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
+            Administrativo <span class="text-red-500">*</span>
+          </label>
+          <div class="relative dropdown-administrativo">
+            @if (getAdministrativoSeleccionado()) {
+              <div class="flex items-center gap-2 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                <span class="flex-1 text-sm font-medium text-emerald-900">
+                  {{ getAdministrativoSeleccionado()?.nombreCompleto }}
+                </span>
+                <button
+                  type="button"
+                  (click)="eliminarAdministrativo(); $event.stopPropagation()"
+                  class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded transition-colors">
+                  <app-icon icon="close" size="xs"></app-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="relative">
+                <input
+                  type="text"
+                  [value]="filtroAdministrativo()"
+                  (input)="filtroAdministrativo.set($any($event.target).value)"
+                  (click)="toggleDropdownAdministrativo(); $event.stopPropagation()"
+                  (focus)="mostrarDropdownAdministrativo.set(true)"
+                  placeholder="Buscar administrativo..."
+                  class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                  autocomplete="off">
+                <app-icon icon="search" size="xs" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></app-icon>
+              </div>
+              @if (mostrarDropdownAdministrativo()) {
+                <div class="absolute z-50 w-full mt-1 bg-white border-2 border-slate-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  @if (filtrarAdministrativos().length === 0) {
+                    <div class="p-4 text-sm text-slate-500 text-center">No se encontraron administrativos</div>
+                  } @else {
+                    @for (administrativo of filtrarAdministrativos(); track administrativo.id) {
+                      <button
+                        type="button"
+                        (click)="seleccionarAdministrativo(administrativo); $event.stopPropagation()"
+                        class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                        <div class="font-medium">{{ administrativo.nombreCompleto }}</div>
+                        @if (administrativo.puesto) {
+                          <div class="text-xs text-slate-500 mt-0.5">{{ administrativo.puesto }}</div>
+                        }
+                        @if (administrativo.departamento) {
+                          <div class="text-xs text-slate-400 mt-0.5">{{ administrativo.departamento }}</div>
+                        }
+                      </button>
+                    }
+                  }
+                </div>
+              }
+            }
+          </div>
+          @if (form.get('idAdmin')?.invalid && form.get('idAdmin')?.touched) {
+            <p class="mt-1 text-xs text-red-600">Este campo es requerido</p>
+          }
+        </div>
+
+        <!-- Rol en Proyecto -->
+        <div>
+          <label for="rolEnProyecto" class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="work" size="xs" class="text-emerald-600"></app-icon>
+            Rol en Proyecto
+          </label>
+          <input
+            id="rolEnProyecto"
+            type="text"
+            formControlName="rolEnProyecto"
+            placeholder="Ej: Coordinador, Asistente, etc."
+            class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm">
+        </div>
+
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="p-6 md:p-8 border-t border-slate-200 flex flex-col sm:flex-row gap-3 justify-end">
+        <button
+          type="button"
+          (click)="onCancel()"
+          class="px-6 py-2.5 border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="loading() || form.invalid"
+          class="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
+          @if (loading()) {
+            <span class="animate-spin">⏳</span>
+          } @else {
+            <app-icon icon="check" size="xs" color="white"></app-icon>
+          }
+          Crear Relación
+        </button>
+      </div>
+
+    </form>
+  }
+
+</div>
+

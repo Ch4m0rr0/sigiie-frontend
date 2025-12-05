@@ -260,6 +260,249 @@
 
       </div>
 
+      <!-- Sección de Actividades -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <app-icon icon="event" size="sm" class="text-slate-600"></app-icon>
+            Actividades Asociadas
+            @if (actividades().length > 0) {
+              <span class="text-sm font-normal text-slate-500">({{ actividades().length }})</span>
+            }
+          </h3>
+          <button
+            (click)="navigateToNuevaActividad()"
+            class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+          >
+            <app-icon icon="add" size="xs" color="white"></app-icon>
+            <span>Asociar Actividad</span>
+          </button>
+        </div>
+
+        @if (loadingActividades()) {
+          <div class="space-y-4 animate-pulse">
+            @for (i of [1,2,3]; track i) {
+              <div class="h-20 bg-slate-200 rounded-lg"></div>
+            }
+          </div>
+        } @else if (actividades().length > 0) {
+          <div class="space-y-3">
+            @for (actividad of actividades(); track actividad.id) {
+              <div class="border border-slate-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all duration-200">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                      <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        {{ (actividad.nombreActividad || actividad.nombre || 'A').charAt(0).toUpperCase() }}
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <h4 class="text-base font-bold text-slate-900 truncate">
+                          {{ actividad.nombreActividad || actividad.nombre }}
+                        </h4>
+                        @if (actividad.codigoActividad) {
+                          <p class="text-xs text-slate-500 mt-0.5">{{ actividad.codigoActividad }}</p>
+                        }
+                      </div>
+                    </div>
+                    
+                    @if (actividad.descripcion) {
+                      <p class="text-sm text-slate-600 line-clamp-2 mb-3">
+                        {{ actividad.descripcion }}
+                      </p>
+                    }
+
+                    <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                      @if (actividad.fechaInicio) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="calendar_today" size="xs"></app-icon>
+                          <span>Inicio: {{ actividad.fechaInicio | date:'dd MMM yyyy' }}</span>
+                        </div>
+                      }
+                      @if (actividad.fechaFin) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="event" size="xs"></app-icon>
+                          <span>Fin: {{ actividad.fechaFin | date:'dd MMM yyyy' }}</span>
+                        </div>
+                      }
+                      @if (actividad.nombreEstadoActividad) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="toggle_on" size="xs"></app-icon>
+                          <span>{{ actividad.nombreEstadoActividad }}</span>
+                        </div>
+                      }
+                      @if (actividad.nombreDepartamento) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="business" size="xs"></app-icon>
+                          <span>{{ actividad.nombreDepartamento }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      (click)="navigateToActividad(actividad.id)"
+                      class="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <app-icon icon="visibility" size="xs"></app-icon>
+                      <span>Ver</span>
+                    </button>
+                    <button
+                      (click)="desasociarActividad(actividad.id)"
+                      class="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Desasociar actividad"
+                    >
+                      <app-icon icon="close" size="xs"></app-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-lg">
+            <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <app-icon icon="event_busy" size="lg" class="text-slate-400"></app-icon>
+            </div>
+            <h4 class="text-base font-bold text-slate-900 mb-1">No hay actividades asociadas</h4>
+            <p class="text-sm text-slate-500 text-center mb-4 max-w-sm">
+              Este proyecto aún no tiene actividades asociadas. Puedes asociar actividades existentes o crear nuevas.
+            </p>
+            <button
+              (click)="navigateToNuevaActividad()"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2"
+            >
+              <app-icon icon="add" size="xs" color="white"></app-icon>
+              <span>Asociar Primera Actividad</span>
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Sección de Documentos Divulgados -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <app-icon icon="description" size="sm" class="text-slate-600"></app-icon>
+            Documentos Divulgados
+            @if (documentosDivulgados().length > 0) {
+              <span class="text-sm font-normal text-slate-500">({{ documentosDivulgados().length }})</span>
+            }
+          </h3>
+          <button
+            (click)="navigateToNuevoDocumentoDivulgado()"
+            class="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm"
+          >
+            <app-icon icon="add" size="xs" color="white"></app-icon>
+            <span>Nuevo Documento</span>
+          </button>
+        </div>
+
+        @if (loadingDocumentos()) {
+          <div class="space-y-4 animate-pulse">
+            @for (i of [1,2,3]; track i) {
+              <div class="h-20 bg-slate-200 rounded-lg"></div>
+            }
+          </div>
+        } @else if (documentosDivulgados().length > 0) {
+          <div class="space-y-3">
+            @for (documento of documentosDivulgados(); track documento.id) {
+              <div class="border border-slate-200 rounded-lg p-4 hover:border-emerald-300 hover:shadow-md transition-all duration-200">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 mb-2">
+                      <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        {{ (documento.nombreDocumento || 'D').charAt(0).toUpperCase() }}
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <h4 class="text-base font-bold text-slate-900 truncate">
+                          {{ documento.nombreDocumento }}
+                        </h4>
+                        @if (documento.nombreTipoDocumentoDivulgado) {
+                          <p class="text-xs text-slate-500 mt-0.5">{{ documento.nombreTipoDocumentoDivulgado }}</p>
+                        }
+                      </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 mb-3">
+                      @if (documento.cantidadEstudiantesParticipantes) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="person" size="xs"></app-icon>
+                          <span>{{ documento.cantidadEstudiantesParticipantes }} estudiantes</span>
+                        </div>
+                      }
+                      @if (documento.cantidadDocentesParticipantes) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="school" size="xs"></app-icon>
+                          <span>{{ documento.cantidadDocentesParticipantes }} docentes</span>
+                        </div>
+                      }
+                      @if (documento.cantidadProductos) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="inventory_2" size="xs"></app-icon>
+                          <span>{{ documento.cantidadProductos }} productos</span>
+                        </div>
+                      }
+                      @if (documento.nombreDepartamento) {
+                        <div class="flex items-center gap-1.5">
+                          <app-icon icon="business" size="xs"></app-icon>
+                          <span>{{ documento.nombreDepartamento }}</span>
+                        </div>
+                      }
+                    </div>
+
+                    @if (documento.linkAcceso) {
+                      <a 
+                        [href]="documento.linkAcceso" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        class="text-xs text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1">
+                        <app-icon icon="link" size="xs"></app-icon>
+                        Ver enlace
+                      </a>
+                    }
+                  </div>
+                  
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      (click)="navigateToDocumentoDivulgado(documento.id)"
+                      class="px-3 py-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1.5"
+                    >
+                      <app-icon icon="visibility" size="xs"></app-icon>
+                      <span>Ver</span>
+                    </button>
+                    <button
+                      (click)="eliminarDocumentoDivulgado(documento.id)"
+                      class="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Eliminar documento"
+                    >
+                      <app-icon icon="delete" size="xs"></app-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="flex flex-col items-center justify-center py-12 px-4 border-2 border-dashed border-slate-200 rounded-lg">
+            <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+              <app-icon icon="description" size="lg" class="text-slate-400"></app-icon>
+            </div>
+            <h4 class="text-base font-bold text-slate-900 mb-1">No hay documentos divulgados</h4>
+            <p class="text-sm text-slate-500 text-center mb-4 max-w-sm">
+              Este proyecto aún no tiene documentos divulgados asociados. Puedes crear uno nuevo.
+            </p>
+            <button
+              (click)="navigateToNuevoDocumentoDivulgado()"
+              class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm flex items-center gap-2"
+            >
+              <app-icon icon="add" size="xs" color="white"></app-icon>
+              <span>Crear Primer Documento</span>
+            </button>
+          </div>
+        }
+      </div>
+
     </div>
   }
 
