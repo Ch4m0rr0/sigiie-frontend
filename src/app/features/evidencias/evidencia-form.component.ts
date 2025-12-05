@@ -34,6 +34,7 @@ import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown
 export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   // Inputs opcionales para usar el componente en modal
   @Input() @Optional() actividadIdInput?: number | null;
+  @Input() @Optional() subactividadIdInput?: number | null;
   @Input() @Optional() tiposEvidenciaInput?: number[] | null;
   @Input() @Optional() onClose?: () => void;
   @Input() @Optional() onSuccess?: () => void;
@@ -99,13 +100,41 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
     
     // Usar input si está disponible, sino usar query param
     const actividadId = this.actividadIdInput !== undefined ? this.actividadIdInput : (actividadIdParam ? +actividadIdParam : null);
+    const subactividadIdValue = this.subactividadIdInput !== undefined ? this.subactividadIdInput : (subactividadId ? +subactividadId : null);
     
-    // Si viene desde una actividad, deshabilitar los campos de actividad y subactividad
-    if (actividadId) {
+    // Si viene desde una actividad, establecer el valor y bloquear los campos
+    if (actividadId && !subactividadIdValue) {
       this.vieneDesdeActividad.set(true);
       // Deshabilitar los campos
       this.form.get('idActividad')?.disable();
       this.form.get('idSubactividad')?.disable();
+      this.form.patchValue({ idActividad: actividadId });
+    }
+    
+    // Si viene desde una subactividad, establecer los valores y bloquear los campos
+    if (subactividadIdValue) {
+      this.vieneDesdeSubactividad.set(true);
+      // Deshabilitar los campos
+      this.form.get('idActividad')?.disable();
+      this.form.get('idSubactividad')?.disable();
+      this.form.patchValue({ idSubactividad: subactividadIdValue });
+      // Si la subactividad tiene una actividad asociada, también establecerla
+      if (actividadId) {
+        // Si ya viene el actividadId desde el input, usarlo directamente
+        this.form.patchValue({ idActividad: actividadId });
+      } else {
+        // Cargar la subactividad para obtener su idActividad
+        this.subactividadService.getById(subactividadIdValue).subscribe({
+          next: (subactividad) => {
+            if (subactividad.idActividad) {
+              this.form.patchValue({ idActividad: subactividad.idActividad });
+            }
+          },
+          error: (err) => {
+            console.error('Error al obtener subactividad:', err);
+          }
+        });
+      }
     }
     
     if (id) {
@@ -113,10 +142,11 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
       this.evidenciaId.set(+id);
       this.loadEvidencia(+id);
     } else {
-      if (subactividadId) {
-        this.form.patchValue({ idSubactividad: +subactividadId });
+      // Solo establecer valores si no estamos en modo edición
+      if (subactividadIdValue && !actividadId) {
+        this.form.patchValue({ idSubactividad: subactividadIdValue });
       }
-      if (actividadId) {
+      if (actividadId && !subactividadIdValue) {
         this.form.patchValue({ idActividad: actividadId });
       }
     }
@@ -146,6 +176,43 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
         this.actualizarFiltroTiposEvidencia();
       }
     }
+    
+    // Si cambia el input de subactividadId, establecer el valor en el formulario y bloquear los campos
+    if (changes['subactividadIdInput'] && !this.isEditMode()) {
+      const subactividadId = this.subactividadIdInput;
+      if (subactividadId) {
+        this.vieneDesdeSubactividad.set(true);
+        // Deshabilitar los campos
+        this.form.get('idActividad')?.disable();
+        this.form.get('idSubactividad')?.disable();
+        this.form.patchValue({ idSubactividad: subactividadId });
+        // Si la subactividad tiene una actividad asociada, también establecerla
+        if (!this.actividadIdInput) {
+          this.subactividadService.getById(subactividadId).subscribe({
+            next: (subactividad) => {
+              if (subactividad.idActividad) {
+                this.form.patchValue({ idActividad: subactividad.idActividad });
+              }
+            },
+            error: (err) => {
+              console.error('Error al obtener subactividad:', err);
+            }
+          });
+        }
+      }
+    }
+    
+    // Si cambia el input de actividadId, establecer el valor y bloquear los campos (solo si no viene desde subactividad)
+    if (changes['actividadIdInput'] && !this.isEditMode() && !this.subactividadIdInput) {
+      const actividadId = this.actividadIdInput;
+      if (actividadId) {
+        this.vieneDesdeActividad.set(true);
+        // Deshabilitar los campos
+        this.form.get('idActividad')?.disable();
+        this.form.get('idSubactividad')?.disable();
+        this.form.patchValue({ idActividad: actividadId });
+      }
+    }
   }
 
   private actualizarFiltroTiposEvidencia(): void {
@@ -172,6 +239,7 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
 
   selectedTiposEvidencia = signal<number[]>([]);
   vieneDesdeActividad = signal<boolean>(false);
+  vieneDesdeSubactividad = signal<boolean>(false);
   tiposPreSeleccionados = signal<boolean>(false); // Flag para evitar sobrescribir la selección del usuario
 
   initializeForm(): void {

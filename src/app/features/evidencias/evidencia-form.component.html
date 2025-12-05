@@ -58,15 +58,21 @@
               </label>
               <select 
                 formControlName="idActividad"
-                [disabled]="vieneDesdeActividad()"
-                [class]="vieneDesdeActividad() ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
+                [disabled]="vieneDesdeActividad() || vieneDesdeSubactividad()"
+                [class]="(vieneDesdeActividad() || vieneDesdeSubactividad()) ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
                 <option [value]="null">Ninguna</option>
                 @for (actividad of actividades(); track actividad.id) {
                   <option [value]="actividad.id">{{ actividad.nombre }}</option>
                 }
               </select>
-              @if (vieneDesdeActividad()) {
-                <p class="mt-1 text-xs text-gray-500">Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica</p>
+              @if (vieneDesdeActividad() || vieneDesdeSubactividad()) {
+                <p class="mt-1 text-xs text-gray-500">
+                  @if (vieneDesdeActividad()) {
+                    Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica
+                  } @else if (vieneDesdeSubactividad()) {
+                    Este campo no se puede modificar porque estás creando una evidencia para esta subactividad específica
+                  }
+                </p>
               }
             </div>
             <div>
@@ -75,15 +81,21 @@
               </label>
               <select 
                 formControlName="idSubactividad"
-                [disabled]="vieneDesdeActividad()"
-                [class]="vieneDesdeActividad() ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
+                [disabled]="vieneDesdeActividad() || vieneDesdeSubactividad()"
+                [class]="(vieneDesdeActividad() || vieneDesdeSubactividad()) ? 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed' : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500'">
                 <option [value]="null">Ninguna</option>
                 @for (sub of subactividades(); track sub.idSubactividad) {
                   <option [value]="sub.idSubactividad">{{ sub.nombre }}</option>
                 }
               </select>
-              @if (vieneDesdeActividad()) {
-                <p class="mt-1 text-xs text-gray-500">Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica</p>
+              @if (vieneDesdeActividad() || vieneDesdeSubactividad()) {
+                <p class="mt-1 text-xs text-gray-500">
+                  @if (vieneDesdeActividad()) {
+                    Este campo no se puede modificar porque estás creando una evidencia para esta actividad específica
+                  } @else if (vieneDesdeSubactividad()) {
+                    Este campo no se puede modificar porque estás creando una evidencia para esta subactividad específica
+                  }
+                </p>
               }
             </div>
           </div>
