@@ -128,6 +128,11 @@ export class ActividadDetailComponent implements OnInit {
   administrativos = signal<Administrativo[]>([]);
   loadingPersonas = signal(false);
 
+  // Signals para controlar el estado de las secciones (ocultar/mostrar)
+  seccionPlanificacionExpandida = signal(true);
+  seccionInformacionExpandida = signal(true);
+  seccionResponsablesExpandida = signal(true);
+
   ngOnInit(): void {
     this.initializeFormIndicador();
     this.initializeFormResponsable();
@@ -2679,6 +2684,125 @@ export class ActividadDetailComponent implements OnInit {
         this.loadingImportarParticipantes.set(false);
       }
     });
+  }
+
+  // Métodos para toggle de secciones
+  toggleSeccionPlanificacion(): void {
+    const nuevoEstado = !this.seccionPlanificacionExpandida();
+    this.seccionPlanificacionExpandida.set(nuevoEstado);
+    // Si se expande la sección de planificación, ocultar las otras
+    if (nuevoEstado) {
+      this.seccionInformacionExpandida.set(false);
+      this.seccionResponsablesExpandida.set(false);
+    }
+  }
+
+  toggleSeccionInformacion(): void {
+    const nuevoEstado = !this.seccionInformacionExpandida();
+    this.seccionInformacionExpandida.set(nuevoEstado);
+    // Si se expande la sección de información, ocultar las otras
+    if (nuevoEstado) {
+      this.seccionPlanificacionExpandida.set(false);
+      this.seccionResponsablesExpandida.set(false);
+    }
+  }
+
+  toggleSeccionResponsables(): void {
+    const nuevoEstado = !this.seccionResponsablesExpandida();
+    this.seccionResponsablesExpandida.set(nuevoEstado);
+    // Si se expande la sección de responsables, ocultar las otras
+    if (nuevoEstado) {
+      this.seccionPlanificacionExpandida.set(false);
+      this.seccionInformacionExpandida.set(false);
+    }
+  }
+
+  // Función para convertir hora de 24h a formato 12h AM/PM
+  convertir24hA12h(hora24h: string | null | undefined): string {
+    if (!hora24h || !hora24h.includes(':')) return hora24h || 'Sin hora';
+    
+    const [horas, minutos] = hora24h.split(':');
+    const horasNum = parseInt(horas, 10);
+    
+    if (isNaN(horasNum)) return hora24h;
+    
+    let horas12 = horasNum;
+    const ampm = horasNum >= 12 ? 'PM' : 'AM';
+    
+    if (horasNum === 0) {
+      horas12 = 12;
+    } else if (horasNum > 12) {
+      horas12 = horasNum - 12;
+    }
+    
+    return `${horas12.toString().padStart(2, '0')}:${minutos} ${ampm}`;
+  }
+
+  // Función para agrupar responsables por rol
+  getResponsablesAgrupadosPorRol(): { rol: string; responsables: ActividadResponsable[] }[] {
+    const responsables = this.responsables();
+    const agrupados = new Map<string, ActividadResponsable[]>();
+    
+    responsables.forEach(resp => {
+      const rol = resp.rolResponsable || resp.nombreRolResponsable || 'Sin rol';
+      if (!agrupados.has(rol)) {
+        agrupados.set(rol, []);
+      }
+      agrupados.get(rol)!.push(resp);
+    });
+    
+    return Array.from(agrupados.entries()).map(([rol, responsables]) => ({
+      rol,
+      responsables
+    }));
+  }
+
+  // Función para obtener el cargo del responsable
+  getCargoResponsable(resp: ActividadResponsable): string {
+    const partes: string[] = [];
+    
+    // Si tiene cargo directo (tipo de responsable: Docente, Estudiante, Administrativo)
+    if (resp.cargo) {
+      partes.push(resp.cargo);
+    }
+    
+    // Si es responsable externo, usar su cargo
+    if (resp.cargoResponsableExterno) {
+      partes.push(resp.cargoResponsableExterno);
+    }
+    
+    // Si tiene tipo de responsable y no es el mismo que cargo, agregarlo
+    if (resp.nombreTipoResponsable && resp.nombreTipoResponsable !== resp.cargo) {
+      partes.push(resp.nombreTipoResponsable);
+    }
+    
+    // Si tiene rolResponsable (coordinador, organizador, etc.) y es diferente al cargo
+    if (resp.rolResponsable) {
+      const rolLower = resp.rolResponsable.toLowerCase();
+      // Si el rolResponsable es coordinador u organizador u otro rol específico
+      if (rolLower.includes('coordinador') || 
+          rolLower.includes('organizador') ||
+          rolLower.includes('responsable') ||
+          rolLower.includes('asistente')) {
+        // Solo agregar si no está ya en las partes
+        if (!partes.some(p => p.toLowerCase() === resp.rolResponsable!.toLowerCase())) {
+          partes.push(resp.rolResponsable);
+        }
+      }
+    }
+    
+    // Si no hay nada, intentar con nombreRolResponsable
+    if (partes.length === 0 && resp.nombreRolResponsable) {
+      partes.push(resp.nombreRolResponsable);
+    }
+    
+    // Si aún no hay nada, mostrar mensaje por defecto
+    if (partes.length === 0) {
+      return 'Sin cargo asignado';
+    }
+    
+    // Unir las partes con " - " para mostrar múltiples cargos/roles
+    return partes.join(' - ');
   }
 
 }
