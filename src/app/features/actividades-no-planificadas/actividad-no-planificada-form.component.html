@@ -522,6 +522,42 @@
                                 </p>
                             </div>
                         }
+                        @if (form.get('fechaInicio')?.hasError('fechaInicioMayorFinAnio') && form.get('fechaInicio')?.touched) {
+                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                <p class="text-xs text-red-800">
+                                    @let inicioYear = getAnioFechaInicio();
+                                    @let finYear = getAnioFechaFin();
+                                    @if (inicioYear && finYear) {
+                                        La fecha de inicio (año {{ inicioYear }}) no puede ser de un año mayor al de fin (año {{ finYear }}). Por favor, verifica las fechas.
+                                    }
+                                </p>
+                            </div>
+                        }
+                        @if (form.get('fechaInicio')?.hasError('fechaInicioMayorFinMes') && form.get('fechaInicio')?.touched) {
+                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                <p class="text-xs text-red-800">
+                                    @let inicioMonth = getMesFechaInicio();
+                                    @let finMonth = getMesFechaFin();
+                                    @if (inicioMonth !== null && finMonth !== null) {
+                                        La fecha de inicio ({{ getNombreMes(inicioMonth) }}) no puede ser de un mes mayor al de fin ({{ getNombreMes(finMonth) }}). Por favor, verifica las fechas.
+                                    }
+                                </p>
+                            </div>
+                        }
+                        @if (form.get('fechaInicio')?.hasError('fechaInicioMayorFinDia') && form.get('fechaInicio')?.touched) {
+                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                <p class="text-xs text-red-800">
+                                    @let inicioDay = getDiaFechaInicio();
+                                    @let finDay = getDiaFechaFin();
+                                    @if (inicioDay !== null && finDay !== null) {
+                                        La fecha de inicio (día {{ inicioDay }}) no puede ser mayor al día de fin (día {{ finDay }}) en el mismo mes. Por favor, verifica las fechas.
+                                    }
+                                </p>
+                            </div>
+                        }
                         @if (form.get('fechaInicio')?.hasError('required') && form.get('fechaInicio')?.touched) {
                             <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                 <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
@@ -605,6 +641,18 @@
                                     @let finMonth = getMesFechaFin();
                                     @if (inicioMonth !== null && finMonth !== null) {
                                         La fecha de fin ({{ getNombreMes(finMonth) }}) no puede ser de un mes anterior al de inicio ({{ getNombreMes(inicioMonth) }}).
+                                    }
+                                </p>
+                            </div>
+                        }
+                        @if (form.get('fechaFin')?.hasError('fechaFinDiaAnterior') && form.get('fechaFin')?.touched) {
+                            <div class="mt-1 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                <p class="text-xs text-red-800">
+                                    @let inicioDay = getDiaFechaInicio();
+                                    @let finDay = getDiaFechaFin();
+                                    @if (inicioDay !== null && finDay !== null) {
+                                        La fecha de fin (día {{ finDay }}) no puede ser anterior al día de inicio (día {{ inicioDay }}) en el mismo mes. Por favor, verifica las fechas.
                                     }
                                 </p>
                             </div>

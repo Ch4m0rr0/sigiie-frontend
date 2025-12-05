@@ -264,6 +264,38 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       };
     }
 
+    // Validar que la fecha de inicio no sea mayor que la fecha de fin
+    if (control.parent) {
+      const fechaFin = control.parent.get('fechaFin')?.value;
+      if (fechaFin) {
+        const [finYear, finMonth, finDay] = fechaFin.split('-').map(Number);
+        
+        // Validar año: la fecha de inicio no puede ser de un año mayor al de fin
+        if (fechaYear > finYear) {
+          return { 
+            fechaInicioMayorFin: true,
+            fechaInicioMayorFinAnio: true
+          };
+        }
+        
+        // Validar mes: si es el mismo año, el mes de inicio no puede ser mayor al mes de fin
+        if (fechaYear === finYear && fechaMonth > finMonth) {
+          return { 
+            fechaInicioMayorFin: true,
+            fechaInicioMayorFinMes: true
+          };
+        }
+        
+        // Validar día: si es el mismo año y mes, el día de inicio no puede ser mayor al día de fin
+        if (fechaYear === finYear && fechaMonth === finMonth && fechaDay > finDay) {
+          return { 
+            fechaInicioMayorFin: true,
+            fechaInicioMayorFinDia: true
+          };
+        }
+      }
+    }
+
     return null;
   }
 
@@ -292,6 +324,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     const [inicioYear, inicioMonth, inicioDay] = fechaInicio.split('-').map(Number);
     const [finYear, finMonth, finDay] = fechaFin.split('-').map(Number);
     
+    if (isNaN(inicioYear) || isNaN(inicioMonth) || isNaN(inicioDay) || 
+        isNaN(finYear) || isNaN(finMonth) || isNaN(finDay)) {
+      return null; // Fechas inválidas serán manejadas por otros validadores
+    }
+    
     const inicio = new Date(inicioYear, inicioMonth - 1, inicioDay); // month - 1 porque Date usa 0-11
     const fin = new Date(finYear, finMonth - 1, finDay);
     
@@ -317,6 +354,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     if (finYear === inicioYear) {
       if (finMonth < inicioMonth) {
         return { fechaFinMesAnterior: true };
+      }
+      
+      // Validar día: si es el mismo año y mes, el día de fin no puede ser anterior al día de inicio
+      if (finMonth === inicioMonth && finDay < inicioDay) {
+        return { fechaFinDiaAnterior: true };
       }
     }
 
@@ -347,6 +389,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       departamentoResponsableId: [[], Validators.required],
       fechaInicio: ['', [Validators.required, this.fechaInicioValidator.bind(this)]],
       fechaFin: ['', [Validators.required, this.fechaFinValidator.bind(this)]],
+      fechaEvento: [''],
       horaRealizacion: [''], // Campo oculto que se actualiza desde los selects
       horaRealizacionHora: ['', Validators.required],
       horaRealizacionMinuto: ['', Validators.required],
@@ -354,6 +397,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       soporteDocumentoUrl: [null],
       idEstadoActividad: [null, Validators.required],
       idTipoActividad: [[]],
+      idTipoIniciativa: [null],
+      idArea: [null],
+      idNivel: [null],
+      idTipoDocumento: [null],
+      organizador: [''],
       modalidad: ['', Validators.required],
       idCapacidadInstalada: [null, Validators.required],
       semanaMes: [null],
@@ -366,11 +414,17 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       cantidadParticipantesProyectados: [null, Validators.required],
       cantidadParticipantesEstudiantesProyectados: [null],
       cantidadTotalParticipantesProtagonistas: [null, Validators.required],
+      cantidadMaximaParticipantesEstudiantes: [null],
       idTipoEvidencias: [[]],
-      anio: [''],
+      anio: ['', Validators.required],
       horaInicioPrevista: [''],
       idTipoProtagonista: [[], Validators.required],
       responsableActividad: [''],
+      metaAlcanzada: [null],
+      metaCumplimiento: [null],
+      valoracionIndicadorEstrategico: [''],
+      brechaEstrategica: [''],
+      tipoResumenAccion: [''],
       categoriaActividadId: [null],
       tipoUnidadId: [null],
       areaConocimientoId: [null],
@@ -393,6 +447,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     // Suscribirse a cambios en fechaInicio para revalidar fechaFin
     this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
       this.form.get('fechaFin')?.updateValueAndValidity();
+    });
+
+    // Suscribirse a cambios en fechaFin para revalidar fechaInicio
+    this.form.get('fechaFin')?.valueChanges.subscribe(() => {
+      this.form.get('fechaInicio')?.updateValueAndValidity();
     });
 
     // Sincronizar selectores de hora con el campo horaRealizacion
@@ -763,25 +822,34 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
 
         const nombreActividad = data.nombreActividad || data.nombre || '';
         
-        const departamentoResponsableIdArray = Array.isArray(data.departamentoResponsableId) 
-          ? data.departamentoResponsableId 
-          : (data.departamentoResponsableId ? [data.departamentoResponsableId] : []);
+        // Usar los arrays correctos que vienen del backend (mapeados por el servicio)
+        const departamentoResponsableIdArray = Array.isArray(data.idDepartamentosResponsables) 
+          ? data.idDepartamentosResponsables 
+          : (data.departamentoResponsableId 
+              ? (Array.isArray(data.departamentoResponsableId) ? data.departamentoResponsableId : [data.departamentoResponsableId])
+              : []);
         
-        const idActividadAnualArray = Array.isArray(data.idActividadAnual) 
-          ? data.idActividadAnual 
-          : (data.idActividadAnual ? [data.idActividadAnual] : []);
+        const idActividadAnualArray = Array.isArray(data.idActividadesAnuales) 
+          ? data.idActividadesAnuales 
+          : (data.idActividadAnual 
+              ? (Array.isArray(data.idActividadAnual) ? data.idActividadAnual : [data.idActividadAnual])
+              : []);
         
-        const idTipoProtagonistaArray = Array.isArray(data.idTipoProtagonista) 
-          ? data.idTipoProtagonista 
-          : (data.idTipoProtagonista ? [data.idTipoProtagonista] : []);
+        const idTipoProtagonistaArray = Array.isArray(data.idTiposProtagonistas) 
+          ? data.idTiposProtagonistas 
+          : (data.idTipoProtagonista 
+              ? (Array.isArray(data.idTipoProtagonista) ? data.idTipoProtagonista : [data.idTipoProtagonista])
+              : []);
         
         const idTipoActividadArray = Array.isArray(data.idTipoActividad) 
           ? data.idTipoActividad 
           : (data.idTipoActividad ? [data.idTipoActividad] : (data.categoriaActividadId ? [data.categoriaActividadId] : []));
         
-        const idActividadMensualInstArray = Array.isArray(data.idActividadMensualInst) 
-          ? data.idActividadMensualInst 
-          : (data.idActividadMensualInst ? [data.idActividadMensualInst] : []);
+        const idActividadMensualInstArray = Array.isArray(data.idActividadesMensualesInst) 
+          ? data.idActividadesMensualesInst 
+          : (data.idActividadMensualInst 
+              ? (Array.isArray(data.idActividadMensualInst) ? data.idActividadMensualInst : [data.idActividadMensualInst])
+              : []);
         
         const idTipoEvidenciasArray = Array.isArray(data.idTipoEvidencias) 
           ? data.idTipoEvidencias 
@@ -795,8 +863,15 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           departamentoResponsableId: departamentoResponsableIdArray,
           fechaInicio: data.fechaInicio || '',
           fechaFin: data.fechaFin || '',
+          fechaEvento: data.fechaEvento || '',
           idEstadoActividad: data.idEstadoActividad || null,
           idTipoActividad: idTipoActividadArray,
+          idTipoIniciativa: data.idTipoIniciativa || null,
+          idArea: data.idArea || null,
+          idNivel: data.idNivel || null,
+          idTipoDocumento: data.idTipoDocumento || null,
+          organizador: data.organizador || '',
+          soporteDocumentoUrl: data.soporteDocumentoUrl || null,
           modalidad: data.modalidad || '',
           idCapacidadInstalada: data.idCapacidadInstalada || null,
           semanaMes: data.semanaMes || null,
@@ -813,10 +888,16 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           horaRealizacionAmPm: horaRealizacionAmPm,
           cantidadParticipantesProyectados: data.cantidadParticipantesProyectados || null,
           cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados || null,
-          cantidadTotalParticipantesProtagonistas: (data as any).cantidadTotalParticipantesProtagonistas || null,
+          cantidadTotalParticipantesProtagonistas: data.cantidadTotalParticipantesProtagonistas || null,
+          cantidadMaximaParticipantesEstudiantes: data.cantidadMaximaParticipantesEstudiantes || null,
           idTipoProtagonista: idTipoProtagonistaArray,
           idTipoEvidencias: idTipoEvidenciasArray,
           responsableActividad: data.responsableActividad || '',
+          metaAlcanzada: data.metaAlcanzada || null,
+          metaCumplimiento: data.metaCumplimiento || null,
+          valoracionIndicadorEstrategico: data.valoracionIndicadorEstrategico || '',
+          brechaEstrategica: data.brechaEstrategica || '',
+          tipoResumenAccion: data.tipoResumenAccion || '',
           categoriaActividadId: data.idTipoActividad || data.categoriaActividadId || null,
           areaConocimientoId: data.idArea || data.areaConocimientoId || null,
           ubicacion: data.ubicacion || '',
@@ -857,9 +938,10 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           }
         }, 100);
 
-        if (this.isEditMode()) {
-          this.form.get('idIndicador')?.disable({ emitEvent: false });
-        }
+        // Permitir cambiar el indicador en modo edición
+        // if (this.isEditMode()) {
+        //   this.form.get('idIndicador')?.disable({ emitEvent: false });
+        // }
 
         if (data.idIndicador) {
           this.cargarActividadesPorIndicador(data.idIndicador, true);
@@ -869,11 +951,212 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           this.cargandoRelaciones = false;
           this.loading.set(false);
         }
+
+        // Cargar responsables si estamos en modo edición
+        // Usar setTimeout para asegurar que la carga de la actividad principal termine primero
+        if (this.isEditMode() && id) {
+          setTimeout(() => {
+            this.loadResponsablesDeActividad(id);
+          }, 500); // Esperar 500ms para asegurar que todo esté listo
+        }
       },
       error: (err) => {
         console.error('Error loading actividad:', err);
         this.error.set('Error al cargar la actividad');
         this.loading.set(false);
+      }
+    });
+  }
+
+  private cargandoResponsables = false;
+  private ultimaActividadCargada: number | null = null;
+
+  loadResponsablesDeActividad(idActividad: number): void {
+    // Evitar cargar múltiples veces la misma actividad
+    if (this.cargandoResponsables && this.ultimaActividadCargada === idActividad) {
+      console.log('⏭️ Ya se están cargando responsables para esta actividad, omitiendo...');
+      return;
+    }
+
+    console.log('🔄 Cargando responsables de la actividad:', idActividad);
+    this.cargandoResponsables = true;
+    this.ultimaActividadCargada = idActividad;
+    
+    // Limpiar arrays existentes PRIMERO, antes de hacer la petición
+    while (this.usuariosArray.length > 0) this.usuariosArray.removeAt(0);
+    while (this.docentesArray.length > 0) this.docentesArray.removeAt(0);
+    while (this.estudiantesArray.length > 0) this.estudiantesArray.removeAt(0);
+    while (this.administrativosArray.length > 0) this.administrativosArray.removeAt(0);
+    while (this.responsablesExternosArray.length > 0) this.responsablesExternosArray.removeAt(0);
+    this.tiposResponsableSeleccionados.set([]);
+    this.ordenTiposResponsables.set([]);
+    
+    this.responsableService.getByActividad(idActividad).subscribe({
+      next: (responsables) => {
+        console.log('👥 Responsables recibidos del backend:', responsables);
+        if (responsables && responsables.length > 0) {
+          // Esperar un momento para asegurar que las listas de personas estén cargadas
+          setTimeout(() => {
+            // Verificar nuevamente que los arrays estén limpios antes de agregar
+            if (this.usuariosArray.length > 0 || this.docentesArray.length > 0 || 
+                this.estudiantesArray.length > 0 || this.administrativosArray.length > 0 || 
+                this.responsablesExternosArray.length > 0) {
+              console.warn('⚠️ Los arrays no están limpios, limpiando nuevamente...');
+              while (this.usuariosArray.length > 0) this.usuariosArray.removeAt(0);
+              while (this.docentesArray.length > 0) this.docentesArray.removeAt(0);
+              while (this.estudiantesArray.length > 0) this.estudiantesArray.removeAt(0);
+              while (this.administrativosArray.length > 0) this.administrativosArray.removeAt(0);
+              while (this.responsablesExternosArray.length > 0) this.responsablesExternosArray.removeAt(0);
+            }
+
+            // Agrupar responsables por tipo para evitar duplicados
+            const usuariosUnicos = new Set<number>();
+            const docentesUnicos = new Set<number>();
+            const estudiantesUnicos = new Set<number>();
+            const administrativosUnicos = new Set<number>();
+            const externosUnicos = new Set<number>();
+
+            responsables.forEach((responsable) => {
+              console.log('👤 Procesando responsable:', responsable);
+              
+              if (responsable.idUsuario) {
+                // Es un usuario - verificar que no esté duplicado
+                if (usuariosUnicos.has(responsable.idUsuario)) {
+                  console.warn('⚠️ Usuario duplicado detectado, omitiendo:', responsable.idUsuario);
+                  return;
+                }
+                usuariosUnicos.add(responsable.idUsuario);
+                
+                if (!this.tiposResponsableSeleccionados().includes('usuario')) {
+                  this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'usuario']);
+                  this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'usuario']);
+                }
+                this.agregarPersona('usuario');
+                const usuarioIndex = this.usuariosArray.length - 1;
+                setTimeout(() => {
+                  if (this.usuariosArray.at(usuarioIndex)) {
+                    this.usuariosArray.at(usuarioIndex).patchValue({
+                      idUsuario: responsable.idUsuario,
+                      idRolResponsable: responsable.idRolResponsable || null
+                    }, { emitEvent: false });
+                  }
+                }, 100);
+                console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol:', responsable.idRolResponsable);
+              } else if (responsable.idDocente) {
+                // Es un docente - verificar que no esté duplicado
+                if (docentesUnicos.has(responsable.idDocente)) {
+                  console.warn('⚠️ Docente duplicado detectado, omitiendo:', responsable.idDocente);
+                  return;
+                }
+                docentesUnicos.add(responsable.idDocente);
+                
+                if (!this.tiposResponsableSeleccionados().includes('docente')) {
+                  this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'docente']);
+                  this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'docente']);
+                }
+                this.agregarPersona('docente');
+                const docenteIndex = this.docentesArray.length - 1;
+                setTimeout(() => {
+                  if (this.docentesArray.at(docenteIndex)) {
+                    this.docentesArray.at(docenteIndex).patchValue({
+                      idPersona: responsable.idDocente,
+                      idRolResponsable: responsable.idRolResponsable || null
+                    }, { emitEvent: false });
+                  }
+                }, 100);
+                console.log('✅ Docente agregado:', responsable.idDocente, 'Rol:', responsable.idRolResponsable);
+              } else if (responsable.idEstudiante) {
+                // Es un estudiante - verificar que no esté duplicado
+                if (estudiantesUnicos.has(responsable.idEstudiante)) {
+                  console.warn('⚠️ Estudiante duplicado detectado, omitiendo:', responsable.idEstudiante);
+                  return;
+                }
+                estudiantesUnicos.add(responsable.idEstudiante);
+                
+                if (!this.tiposResponsableSeleccionados().includes('estudiante')) {
+                  this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'estudiante']);
+                  this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'estudiante']);
+                }
+                this.agregarPersona('estudiante');
+                const estudianteIndex = this.estudiantesArray.length - 1;
+                setTimeout(() => {
+                  if (this.estudiantesArray.at(estudianteIndex)) {
+                    this.estudiantesArray.at(estudianteIndex).patchValue({
+                      idPersona: responsable.idEstudiante,
+                      idRolResponsable: responsable.idRolResponsable || null
+                    }, { emitEvent: false });
+                  }
+                }, 100);
+                console.log('✅ Estudiante agregado:', responsable.idEstudiante, 'Rol:', responsable.idRolResponsable);
+              } else if (responsable.idAdmin) {
+                // Es un administrativo - verificar que no esté duplicado
+                if (administrativosUnicos.has(responsable.idAdmin)) {
+                  console.warn('⚠️ Administrativo duplicado detectado, omitiendo:', responsable.idAdmin);
+                  return;
+                }
+                administrativosUnicos.add(responsable.idAdmin);
+                
+                if (!this.tiposResponsableSeleccionados().includes('administrativo')) {
+                  this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'administrativo']);
+                  this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'administrativo']);
+                }
+                this.agregarPersona('administrativo');
+                const adminIndex = this.administrativosArray.length - 1;
+                setTimeout(() => {
+                  if (this.administrativosArray.at(adminIndex)) {
+                    this.administrativosArray.at(adminIndex).patchValue({
+                      idPersona: responsable.idAdmin,
+                      idRolResponsable: responsable.idRolResponsable || null
+                    }, { emitEvent: false });
+                  }
+                }, 100);
+                console.log('✅ Administrativo agregado:', responsable.idAdmin, 'Rol:', responsable.idRolResponsable);
+              } else if (responsable.idResponsableExterno) {
+                // Es un responsable externo - verificar que no esté duplicado
+                if (externosUnicos.has(responsable.idResponsableExterno)) {
+                  console.warn('⚠️ Responsable externo duplicado detectado, omitiendo:', responsable.idResponsableExterno);
+                  return;
+                }
+                externosUnicos.add(responsable.idResponsableExterno);
+                
+                if (!this.tiposResponsableSeleccionados().includes('externo')) {
+                  this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'externo']);
+                  this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'externo']);
+                }
+                this.agregarResponsableExterno();
+                const externoIndex = this.responsablesExternosArray.length - 1;
+                setTimeout(() => {
+                  if (this.responsablesExternosArray.at(externoIndex)) {
+                    this.responsablesExternosArray.at(externoIndex).patchValue({
+                      idResponsableExterno: responsable.idResponsableExterno,
+                      esNuevo: false,
+                      nombre: responsable.nombreResponsableExterno || '',
+                      institucion: responsable.institucionResponsableExterno || '',
+                      cargo: responsable.cargoResponsableExterno || '',
+                      telefono: responsable.telefonoResponsableExterno || '',
+                      correo: responsable.correoResponsableExterno || '',
+                      idRolResponsable: responsable.idRolResponsable || null
+                    }, { emitEvent: false });
+                  }
+                }, 100);
+                console.log('✅ Responsable externo agregado:', responsable.idResponsableExterno, 'Rol:', responsable.idRolResponsable);
+              }
+            });
+            
+            console.log('✅ Total de responsables cargados:', responsables.length);
+            this.cargandoResponsables = false;
+            setTimeout(() => {
+              this.cdr.detectChanges(); // Forzar detección de cambios después de un delay
+            }, 300);
+          }, 300); // Esperar 300ms para que las listas de personas estén cargadas
+        } else {
+          console.log('ℹ️ No hay responsables para esta actividad');
+          this.cargandoResponsables = false;
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error cargando responsables:', err);
+        this.cargandoResponsables = false;
       }
     });
   }
@@ -887,10 +1170,105 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       this.form.patchValue({ nombre: nombreValue });
     }
 
-    // Validar que haya al menos un tipo de responsable seleccionado
-    if (!this.tieneAlMenosUnTipoResponsable()) {
-      this.error.set('Debe seleccionar al menos un tipo de responsable.');
+    // Validar que haya al menos un responsable completo
+    if (!this.tieneAlMenosUnResponsable()) {
+      this.alertService.error(
+        'Responsables requeridos',
+        'Debe asignar al menos un responsable con todos sus datos completos. Si elimina todos los responsables, debe agregar al menos uno nuevo.'
+      );
       this.form.markAllAsTouched();
+      this.seccionResponsablesExpandida.set(true); // Expandir sección de responsables para que el usuario vea el error
+      return;
+    }
+
+    // Validaciones específicas para actividades planificadas
+    const formValue = this.form.getRawValue();
+    if (!formValue.idIndicador) {
+      this.alertService.error(
+        'Indicador requerido',
+        'Las actividades planificadas deben estar asociadas a un indicador. Por favor, seleccione un indicador.'
+      );
+      this.form.get('idIndicador')?.markAsTouched();
+      this.seccionPlanificacionExpandida.set(true);
+      return;
+    }
+
+    const idActividadesAnuales = Array.isArray(formValue.idActividadAnual) ? formValue.idActividadAnual : (formValue.idActividadAnual ? [formValue.idActividadAnual] : []);
+    if (idActividadesAnuales.length === 0) {
+      this.alertService.error(
+        'Actividades anuales requeridas',
+        'Las actividades planificadas deben estar asociadas a al menos una actividad anual. Por favor, seleccione una actividad anual.'
+      );
+      this.form.get('idActividadAnual')?.markAsTouched();
+      this.seccionPlanificacionExpandida.set(true);
+      return;
+    }
+
+    const idActividadesMensuales = Array.isArray(formValue.idActividadMensualInst) ? formValue.idActividadMensualInst : (formValue.idActividadMensualInst ? [formValue.idActividadMensualInst] : []);
+    if (idActividadesMensuales.length === 0) {
+      this.alertService.error(
+        'Actividades mensuales requeridas',
+        'Las actividades planificadas deben estar asociadas a al menos una actividad mensual. Por favor, seleccione una actividad mensual.'
+      );
+      this.form.get('idActividadMensualInst')?.markAsTouched();
+      this.seccionPlanificacionExpandida.set(true);
+      return;
+    }
+
+    // Validar campos del formulario antes de continuar
+    if (!this.form.valid) {
+      // Marcar todos los campos como tocados para mostrar errores
+      this.form.markAllAsTouched();
+      
+      // Obtener el primer campo inválido para mostrar un mensaje específico
+      const camposInvalidos: string[] = [];
+      Object.keys(this.form.controls).forEach(key => {
+        const control = this.form.get(key);
+        if (control && control.invalid) {
+          camposInvalidos.push(key);
+        }
+      });
+      
+      if (camposInvalidos.length > 0) {
+        const primerCampo = camposInvalidos[0];
+        let mensajeError = 'Por favor, complete todos los campos requeridos.';
+        
+        // Mensajes específicos según el campo
+        if (primerCampo === 'nombreActividad') {
+          mensajeError = 'El nombre de la actividad es requerido y debe tener al menos 3 caracteres.';
+        } else if (primerCampo === 'departamentoResponsableId') {
+          mensajeError = 'Debe seleccionar al menos un departamento responsable.';
+        } else if (primerCampo === 'fechaInicio') {
+          mensajeError = 'La fecha de inicio es requerida y debe ser válida.';
+        } else if (primerCampo === 'fechaFin') {
+          mensajeError = 'La fecha de fin es requerida y debe ser válida.';
+        } else if (primerCampo === 'idEstadoActividad') {
+          mensajeError = 'Debe seleccionar un estado de actividad.';
+        } else if (primerCampo === 'modalidad') {
+          mensajeError = 'Debe seleccionar una modalidad.';
+        } else if (primerCampo === 'idCapacidadInstalada') {
+          mensajeError = 'Debe seleccionar un local/capacidad instalada.';
+        } else if (primerCampo === 'idIndicador') {
+          mensajeError = 'Las actividades planificadas deben estar asociadas a un indicador.';
+        } else if (primerCampo === 'idActividadAnual') {
+          mensajeError = 'Debe seleccionar al menos una actividad anual.';
+        } else if (primerCampo === 'idActividadMensualInst') {
+          mensajeError = 'Debe seleccionar al menos una actividad mensual.';
+        } else if (primerCampo === 'cantidadParticipantesProyectados') {
+          mensajeError = 'Debe especificar la cantidad de participantes proyectados.';
+        } else if (primerCampo === 'cantidadTotalParticipantesProtagonistas') {
+          mensajeError = 'Debe especificar la cantidad total de participantes protagonistas.';
+        } else if (primerCampo === 'idTipoProtagonista') {
+          mensajeError = 'Debe seleccionar al menos un tipo de protagonista.';
+        } else if (primerCampo === 'horaRealizacionHora' || primerCampo === 'horaRealizacionMinuto' || primerCampo === 'horaRealizacionAmPm') {
+          mensajeError = 'Debe especificar la hora de realización completa (hora, minuto y AM/PM).';
+        } else if (primerCampo === 'anio') {
+          mensajeError = 'Debe especificar el año de la actividad.';
+        }
+        
+        this.alertService.error('Campos requeridos', mensajeError);
+        this.error.set(mensajeError);
+      }
       return;
     }
 
@@ -958,7 +1336,8 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas !== null && formValue.cantidadTotalParticipantesProtagonistas !== undefined && formValue.cantidadTotalParticipantesProtagonistas !== '' ? Number(formValue.cantidadTotalParticipantesProtagonistas) : undefined,
         // Cambiar a idTiposProtagonistas (plural) como espera el backend
         idTiposProtagonistas: Array.isArray(formValue.idTipoProtagonista) && formValue.idTipoProtagonista.length > 0 ? formValue.idTipoProtagonista : undefined,
-        idTipoEvidencias: Array.isArray(formValue.idTipoEvidencias) && formValue.idTipoEvidencias.length > 0 ? formValue.idTipoEvidencias : undefined,
+        // idTipoEvidencias puede ser null/vacío - permitir arrays vacíos o null
+        idTipoEvidencias: Array.isArray(formValue.idTipoEvidencias) && formValue.idTipoEvidencias.length > 0 ? formValue.idTipoEvidencias : (formValue.idTipoEvidencias === null ? null : undefined),
         responsableActividad: formValue.responsableActividad || undefined,
         categoriaActividadId: Array.isArray(formValue.idTipoActividad) && formValue.idTipoActividad.length > 0 ? formValue.idTipoActividad[0] : (formValue.categoriaActividadId || undefined),
         areaConocimientoId: formValue.idArea || formValue.areaConocimientoId || undefined,
@@ -969,19 +1348,94 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       };
 
       if (this.isEditMode()) {
-        this.actividadesService.update(this.actividadId()!, data).subscribe({
-          next: () => {
-            const responsableActividad = formValue.responsableActividad?.trim();
-            if (this.actividadId()) {
-              this.crearResponsablesParaActividad(this.actividadId()!, responsableActividad);
+        // En modo edición, primero eliminar responsables existentes y luego crear los nuevos
+        const actividadId = this.actividadId()!;
+        const responsableActividad = formValue.responsableActividad?.trim();
+        
+        // Obtener responsables existentes para eliminarlos
+        this.responsableService.getByActividad(actividadId).subscribe({
+          next: (responsablesExistentes) => {
+            // Eliminar todos los responsables existentes
+            if (responsablesExistentes && responsablesExistentes.length > 0) {
+              const deleteRequests = responsablesExistentes.map(resp => 
+                this.responsableService.delete(resp.idActividadResponsable)
+              );
+              
+              forkJoin(deleteRequests).subscribe({
+                next: () => {
+                  console.log('✅ Responsables existentes eliminados');
+                  // Actualizar la actividad
+                  this.actividadesService.update(actividadId, data).subscribe({
+                    next: () => {
+                      // Crear los nuevos responsables y mostrar alerta después
+                      this.crearResponsablesParaActividad(actividadId, responsableActividad, false, () => {
+                        // Resetear el flag de carga para permitir recargar responsables
+                        this.cargandoResponsables = false;
+                        this.ultimaActividadCargada = null;
+                        // Recargar la actividad desde el backend para asegurar que los datos estén actualizados
+                        this.loadActividad(actividadId);
+                        this.mostrarAlertaExito();
+                      });
+                    },
+                    error: (err: any) => {
+                      console.error('Error saving actividad:', err);
+                      const errorMsg = err.error?.message || err.error?.details || err.message || 'Error desconocido al actualizar la actividad';
+                      this.alertService.error('Error al actualizar la actividad', errorMsg);
+                      this.error.set('Error al guardar la actividad');
+                      this.loading.set(false);
+                    }
+                  });
+                },
+                error: (err) => {
+                  console.error('Error eliminando responsables existentes:', err);
+                  // Continuar con la actualización aunque haya error al eliminar
+                  this.actividadesService.update(actividadId, data).subscribe({
+                    next: () => {
+                      this.crearResponsablesParaActividad(actividadId, responsableActividad, false, () => {
+                        this.mostrarAlertaExito();
+                      });
+                    },
+                    error: (err: any) => {
+                      console.error('Error saving actividad:', err);
+                      const errorMsg = err.error?.message || err.error?.details || err.message || 'Error desconocido al actualizar la actividad';
+                      this.alertService.error('Error al actualizar la actividad', errorMsg);
+                      this.error.set('Error al guardar la actividad');
+                      this.loading.set(false);
+                    }
+                  });
+                }
+              });
             } else {
-              this.router.navigate(['/actividades']);
+              // No hay responsables existentes, solo actualizar la actividad
+              this.actividadesService.update(actividadId, data).subscribe({
+                next: () => {
+                  this.crearResponsablesParaActividad(actividadId, responsableActividad, false, () => {
+                    this.mostrarAlertaExito();
+                  });
+                },
+                error: (err: any) => {
+                  console.error('Error saving actividad:', err);
+                  this.error.set('Error al guardar la actividad');
+                  this.loading.set(false);
+                }
+              });
             }
           },
-          error: (err: any) => {
-            console.error('Error saving actividad:', err);
-            this.error.set('Error al guardar la actividad');
-            this.loading.set(false);
+          error: (err) => {
+            console.error('Error obteniendo responsables existentes:', err);
+            // Continuar con la actualización aunque haya error
+            this.actividadesService.update(actividadId, data).subscribe({
+              next: () => {
+                this.crearResponsablesParaActividad(actividadId, responsableActividad, false, () => {
+                  this.mostrarAlertaExito();
+                });
+              },
+              error: (err: any) => {
+                console.error('Error saving actividad:', err);
+                this.error.set('Error al guardar la actividad');
+                this.loading.set(false);
+              }
+            });
           }
         });
       } else {
@@ -2181,6 +2635,13 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     return month ? month - 1 : null; // Convertir de 1-12 a 0-11 para getNombreMes
   }
 
+  getMesFechaInicioNumero(): number | null {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    if (!fechaInicio) return null;
+    const [, month] = fechaInicio.split('-').map(Number);
+    return month || null; // Devolver en formato 1-12
+  }
+
   getDiaFechaInicio(): number | null {
     const fechaInicio = this.form.get('fechaInicio')?.value;
     if (!fechaInicio) return null;
@@ -2200,6 +2661,13 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     if (!fechaFin) return null;
     const [, month] = fechaFin.split('-').map(Number);
     return month ? month - 1 : null; // Convertir de 1-12 a 0-11 para getNombreMes
+  }
+
+  getMesFechaFinNumero(): number | null {
+    const fechaFin = this.form.get('fechaFin')?.value;
+    if (!fechaFin) return null;
+    const [, month] = fechaFin.split('-').map(Number);
+    return month || null; // Devolver en formato 1-12
   }
 
   getDiaFechaFin(): number | null {
@@ -2368,7 +2836,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     return true;
   }
 
-  crearResponsablesParaActividad(idActividad: number, responsableActividad?: string, mostrarAlerta: boolean = true): void {
+  crearResponsablesParaActividad(idActividad: number, responsableActividad?: string, mostrarAlerta: boolean = true, onComplete?: () => void): void {
     const responsables: ActividadResponsableCreate[] = [];
     const formValue = this.formResponsable.value;
     const fechaAsignacion = formValue.fechaAsignacion || new Date().toISOString().split('T')[0];
@@ -2500,22 +2968,42 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         next: (responsablesCreados) => {
           console.log('✅ Responsables creados exitosamente:', responsablesCreados);
           console.log('📊 Total de responsables creados:', responsablesCreados.length);
-          // No hacer nada aquí, la alerta y navegación ya se hicieron
+          this.loading.set(false);
+          // Ejecutar callback si se proporciona
+          if (onComplete) {
+            onComplete();
+          } else if (mostrarAlerta) {
+            // Mostrar alerta solo si mostrarAlerta es true y no hay callback
+            this.mostrarAlertaExito();
+          }
         },
         error: (err) => {
           console.error('❌ Error creando responsables:', err);
           console.error('❌ Error details:', err.error);
           console.error('❌ Error status:', err.status);
-          // Mostrar alerta de advertencia pero no bloquear (la actividad ya se creó)
-          this.alertService.warning(
-            'Advertencia',
-            'La actividad se creó correctamente, pero hubo un problema al asignar algunos responsables. Puedes asignarlos manualmente más tarde.'
-          );
+          this.loading.set(false);
+          // Ejecutar callback incluso si hay error
+          if (onComplete) {
+            onComplete();
+          } else if (mostrarAlerta) {
+            // Mostrar alerta de advertencia pero no bloquear (la actividad ya se creó)
+            this.alertService.warning(
+              'Advertencia',
+              'La actividad se creó correctamente, pero hubo un problema al asignar algunos responsables. Puedes asignarlos manualmente más tarde.'
+            );
+          }
         }
       });
     } else {
       console.warn('⚠️ No hay responsables para crear');
-      // No hacer nada aquí, la alerta y navegación ya se hicieron
+      this.loading.set(false);
+      // Ejecutar callback si se proporciona
+      if (onComplete) {
+        onComplete();
+      } else if (mostrarAlerta) {
+        // Mostrar alerta solo si mostrarAlerta es true y no hay callback
+        this.mostrarAlertaExito();
+      }
     }
   }
 
@@ -2525,12 +3013,17 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     this.clearFormState();
     
     if (this.isEditMode()) {
-      // Mensaje para actividad actualizada
+      // Mensaje para actividad actualizada - navegar a vista de detalle
+      const actividadId = this.actividadId();
       this.alertService.success(
         '¡Actividad actualizada!',
         `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
       ).then(() => {
-        this.router.navigate(['/actividades']);
+        if (actividadId) {
+          this.router.navigate(['/actividades', actividadId]);
+        } else {
+          this.router.navigate(['/actividades']);
+        }
       });
     } else {
       // Mensaje para actividad creada

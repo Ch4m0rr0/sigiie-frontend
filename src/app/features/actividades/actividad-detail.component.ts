@@ -474,11 +474,32 @@ export class ActividadDetailComponent implements OnInit {
 
   getProtagonistasArray(): any[] {
     const actividad = this.actividad();
-    if (!actividad || !actividad.idTipoProtagonista) return [];
+    if (!actividad) return [];
     
-    const ids = Array.isArray(actividad.idTipoProtagonista) 
-      ? actividad.idTipoProtagonista 
-      : [actividad.idTipoProtagonista];
+    const actividadData = actividad as any;
+    let ids: number[] = [];
+    
+    // Buscar en diferentes formatos
+    // Formato 1: idTiposProtagonistas (array, plural) - formato preferido
+    if (actividadData.idTiposProtagonistas && Array.isArray(actividadData.idTiposProtagonistas)) {
+      ids = actividadData.idTiposProtagonistas.filter((id: any) => id != null && id > 0);
+    }
+    // Formato 2: IdTiposProtagonistas (array, PascalCase)
+    else if (actividadData.IdTiposProtagonistas && Array.isArray(actividadData.IdTiposProtagonistas)) {
+      ids = actividadData.IdTiposProtagonistas.filter((id: any) => id != null && id > 0);
+    }
+    // Formato 3: idTipoProtagonista (single o array, legacy)
+    else if (actividad.idTipoProtagonista) {
+      ids = Array.isArray(actividad.idTipoProtagonista) 
+        ? actividad.idTipoProtagonista.filter((id: any) => id != null && id > 0)
+        : [actividad.idTipoProtagonista].filter((id: any) => id != null && id > 0);
+    }
+    // Formato 4: IdTipoProtagonista (single, PascalCase, legacy)
+    else if (actividadData.IdTipoProtagonista) {
+      ids = [actividadData.IdTipoProtagonista].filter((id: any) => id != null && id > 0);
+    }
+    
+    if (ids.length === 0) return [];
     
     return ids.map(id => {
       const tipo = this.tiposProtagonista().find(t => (t.id || t.idTipoProtagonista) === id);

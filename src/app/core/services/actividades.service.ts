@@ -682,10 +682,37 @@ export class ActividadesService {
     if (actividad.departamentoId !== undefined) {
       dto.DepartamentoId = actividad.departamentoId;
     }
-    if (actividad.departamentoResponsableId !== undefined) {
+    // Manejar IdDepartamentosResponsables - el backend espera List<int>? (array) - usar plural
+    if (actividad.idDepartamentosResponsables !== undefined && actividad.idDepartamentosResponsables !== null) {
+      if (Array.isArray(actividad.idDepartamentosResponsables) && actividad.idDepartamentosResponsables.length > 0) {
+        const idsValidos = actividad.idDepartamentosResponsables
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdDepartamentosResponsables = idsValidos; // Siempre enviar como array
+        }
+      } else if (!Array.isArray(actividad.idDepartamentosResponsables)) {
+        const idNum = Number(actividad.idDepartamentosResponsables);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdDepartamentosResponsables = [idNum];
+        }
+      }
+    }
+    // También manejar departamentoResponsableId (singular) por compatibilidad
+    if (actividad.departamentoResponsableId !== undefined && actividad.departamentoResponsableId !== null && !dto.IdDepartamentosResponsables) {
       const deptId = getDepartamentoResponsableId(actividad.departamentoResponsableId);
       if (deptId !== undefined) {
-        dto.DepartamentoResponsableId = deptId;
+        if (Array.isArray(deptId)) {
+          const idsValidos = deptId.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+          if (idsValidos.length > 0) {
+            dto.IdDepartamentosResponsables = idsValidos;
+          }
+        } else {
+          const idNum = Number(deptId);
+          if (!isNaN(idNum) && idNum > 0) {
+            dto.IdDepartamentosResponsables = [idNum];
+          }
+        }
       }
     }
     if (actividad.idTipoIniciativa !== undefined) {
@@ -742,45 +769,77 @@ export class ActividadesService {
     if (actividad.codigoActividad !== undefined) {
       dto.CodigoActividad = actividad.codigoActividad;
     }
-    // Manejar idActividadMensualInst - puede ser número o array
-    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null) {
-      if (Array.isArray(actividad.idActividadMensualInst) && actividad.idActividadMensualInst.length > 0) {
+    // Manejar idActividadesMensualesInst - el backend espera List<int>? (array) - usar plural
+    if (actividad.idActividadesMensualesInst !== undefined && actividad.idActividadesMensualesInst !== null) {
+      if (Array.isArray(actividad.idActividadesMensualesInst) && actividad.idActividadesMensualesInst.length > 0) {
         // Si es un array, enviar el array completo con números válidos
+        const idsValidos = actividad.idActividadesMensualesInst
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdActividadesMensualesInst = idsValidos; // Siempre enviar como array
+        }
+      } else if (!Array.isArray(actividad.idActividadesMensualesInst)) {
+        // Si es un solo número, convertirlo a array
+        const idNum = Number(actividad.idActividadesMensualesInst);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdActividadesMensualesInst = [idNum];
+        }
+      }
+    }
+    // También manejar idActividadMensualInst (singular) por compatibilidad
+    if (actividad.idActividadMensualInst !== undefined && actividad.idActividadMensualInst !== null && !dto.IdActividadesMensualesInst) {
+      if (Array.isArray(actividad.idActividadMensualInst) && actividad.idActividadMensualInst.length > 0) {
         const idsValidos = actividad.idActividadMensualInst
           .map(id => Number(id))
           .filter(id => !isNaN(id) && id > 0);
         if (idsValidos.length > 0) {
-          dto.IdActividadMensualInst = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+          dto.IdActividadesMensualesInst = idsValidos;
         }
       } else if (!Array.isArray(actividad.idActividadMensualInst)) {
-        // Si es un solo número, enviarlo
         const idNum = Number(actividad.idActividadMensualInst);
         if (!isNaN(idNum) && idNum > 0) {
-          dto.IdActividadMensualInst = idNum;
+          dto.IdActividadesMensualesInst = [idNum];
         }
       }
     }
     if (actividad.esPlanificada !== undefined) {
       dto.EsPlanificada = actividad.esPlanificada;
     }
-    if (actividad.idIndicador !== undefined) {
-      dto.IdIndicador = actividad.idIndicador;
+    if (actividad.idIndicador !== undefined && actividad.idIndicador !== null) {
+      dto.IdIndicador = Number(actividad.idIndicador);
     }
-    // Manejar idActividadAnual - puede ser número o array
-    if (actividad.idActividadAnual !== undefined && actividad.idActividadAnual !== null) {
-      if (Array.isArray(actividad.idActividadAnual) && actividad.idActividadAnual.length > 0) {
+    // Manejar idActividadesAnuales - el backend espera List<int>? (array) - usar plural
+    if (actividad.idActividadesAnuales !== undefined && actividad.idActividadesAnuales !== null) {
+      if (Array.isArray(actividad.idActividadesAnuales) && actividad.idActividadesAnuales.length > 0) {
         // Si es un array, enviar el array completo con números válidos
+        const idsValidos = actividad.idActividadesAnuales
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdActividadesAnuales = idsValidos; // Siempre enviar como array
+        }
+      } else if (!Array.isArray(actividad.idActividadesAnuales)) {
+        // Si es un solo número, convertirlo a array
+        const idNum = Number(actividad.idActividadesAnuales);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdActividadesAnuales = [idNum];
+        }
+      }
+    }
+    // También manejar idActividadAnual (singular) por compatibilidad
+    if (actividad.idActividadAnual !== undefined && actividad.idActividadAnual !== null && !dto.IdActividadesAnuales) {
+      if (Array.isArray(actividad.idActividadAnual) && actividad.idActividadAnual.length > 0) {
         const idsValidos = actividad.idActividadAnual
           .map(id => Number(id))
           .filter(id => !isNaN(id) && id > 0);
         if (idsValidos.length > 0) {
-          dto.IdActividadAnual = idsValidos.length === 1 ? idsValidos[0] : idsValidos;
+          dto.IdActividadesAnuales = idsValidos;
         }
       } else if (!Array.isArray(actividad.idActividadAnual)) {
-        // Si es un solo número, enviarlo
         const idNum = Number(actividad.idActividadAnual);
         if (!isNaN(idNum) && idNum > 0) {
-          dto.IdActividadAnual = idNum;
+          dto.IdActividadesAnuales = [idNum];
         }
       }
     }
@@ -817,17 +876,63 @@ export class ActividadesService {
     if (actividad.cantidadParticipantesEstudiantesProyectados !== undefined) {
       dto.CantidadParticipantesEstudiantesProyectados = actividad.cantidadParticipantesEstudiantesProyectados;
     }
-    if (actividad.idTipoProtagonista !== undefined) {
+    // Manejar IdTiposProtagonistas - el backend espera List<int>? (array) - usar plural
+    if (actividad.idTiposProtagonistas !== undefined && actividad.idTiposProtagonistas !== null) {
+      if (Array.isArray(actividad.idTiposProtagonistas) && actividad.idTiposProtagonistas.length > 0) {
+        const idsValidos = actividad.idTiposProtagonistas
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdTiposProtagonistas = idsValidos; // Siempre enviar como array
+        }
+      } else if (!Array.isArray(actividad.idTiposProtagonistas)) {
+        const idNum = Number(actividad.idTiposProtagonistas);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdTiposProtagonistas = [idNum];
+        }
+      }
+    }
+    // También manejar idTipoProtagonista (singular) por compatibilidad
+    if (actividad.idTipoProtagonista !== undefined && actividad.idTipoProtagonista !== null && !dto.IdTiposProtagonistas) {
       const tipoProtagonistaId = getIdTipoProtagonista(actividad.idTipoProtagonista);
       if (tipoProtagonistaId !== undefined) {
-        dto.IdTipoProtagonista = tipoProtagonistaId;
+        if (Array.isArray(tipoProtagonistaId)) {
+          const idsValidos = tipoProtagonistaId.map(id => Number(id)).filter(id => !isNaN(id) && id > 0);
+          if (idsValidos.length > 0) {
+            dto.IdTiposProtagonistas = idsValidos;
+          }
+        } else {
+          const idNum = Number(tipoProtagonistaId);
+          if (!isNaN(idNum) && idNum > 0) {
+            dto.IdTiposProtagonistas = [idNum];
+          }
+        }
       }
     }
     if (actividad.responsableActividad !== undefined) {
       dto.ResponsableActividad = actividad.responsableActividad;
     }
+    // Manejar IdTipoEvidencias - puede ser null/vacío, enviar como array o null
     if (actividad.idTipoEvidencias !== undefined) {
-      dto.IdTipoEvidencias = actividad.idTipoEvidencias;
+      if (actividad.idTipoEvidencias === null || (Array.isArray(actividad.idTipoEvidencias) && actividad.idTipoEvidencias.length === 0)) {
+        dto.IdTipoEvidencias = null; // Permitir null/vacío
+      } else if (Array.isArray(actividad.idTipoEvidencias) && actividad.idTipoEvidencias.length > 0) {
+        const idsValidos = actividad.idTipoEvidencias
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdTipoEvidencias = idsValidos;
+        } else {
+          dto.IdTipoEvidencias = null; // Si no hay IDs válidos, enviar null
+        }
+      } else if (!Array.isArray(actividad.idTipoEvidencias)) {
+        const idNum = Number(actividad.idTipoEvidencias);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdTipoEvidencias = [idNum];
+        } else {
+          dto.IdTipoEvidencias = null; // Si no es válido, enviar null
+        }
+      }
     }
     if (actividad.responsables !== undefined) {
       dto.Responsables = actividad.responsables.map(r => {
