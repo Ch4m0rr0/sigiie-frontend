@@ -209,6 +209,8 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   filtroEstadoActividad = signal<number | null>(null);
   filtroActividadAnual = signal<number[]>([]);
   filtroActividadMensualInst = signal<number[]>([]);
+  filtroProyecto = signal<number | null>(null);
+  ordenFecha = signal<'reciente' | 'antigua'>('reciente'); // 'reciente' = más recientes primero, 'antigua' = menos recientes primero
   terminoBusqueda = signal<string>('');
   terminoBusquedaAnual = signal<string>('');
   mostrarDropdownFiltroAnual = signal(false);
