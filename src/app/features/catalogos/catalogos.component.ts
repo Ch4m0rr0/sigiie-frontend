@@ -29,7 +29,7 @@ import type { ActividadMensualInst } from '../../core/models/actividad-mensual-i
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
-type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras' | 'actividades-anuales' | 'actividades-mensuales';
+type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras' | 'actividades-anuales' | 'actividades-mensuales' | 'capacidadesinstaladas';
 
 interface CatalogoItem {
   id: number;
@@ -137,6 +137,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     idIndicador: new FormControl<number | null>(null), // Para actividades anuales
     idActividadAnual: new FormControl<number | null>(null), // Para actividades mensuales
     mes: new FormControl<number | null>(null), // Para actividades mensuales
+    tipoUnidadId: new FormControl<number | null>(null), // Para capacidades instaladas
   });
 
   // Signals for reactive data
@@ -166,6 +167,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   carreras = signal<any[]>([]);
   actividadesAnuales = signal<ActividadAnual[]>([]);
   actividadesMensuales = signal<ActividadMensualInst[]>([]);
+  capacidadesinstaladas = signal<any[]>([]);
   
   // Indicadores filtrados para el formulario de actividad anual
   indicadoresFiltradosForm = computed(() => {
@@ -282,6 +284,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       carreras: 'Carreras',
       'actividades-anuales': 'Actividades Anuales',
       'actividades-mensuales': 'Actividades Mensuales',
+      capacidadesinstaladas: 'Capacidades Instaladas',
     };
     return names[this.selectedCatalogo];
   }
@@ -314,6 +317,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       { value: 'carreras', label: 'Carreras' },
       { value: 'actividades-anuales', label: 'Actividades Anuales' },
       { value: 'actividades-mensuales', label: 'Actividades Mensuales' },
+      { value: 'capacidadesinstaladas', label: 'Capacidades Instaladas' },
     ];
     
     const searchTerm = this.searchCatalogo().toLowerCase().trim();
@@ -530,6 +534,13 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         const fin = inicio + this.itemsPorPagina;
         return actividades.slice(inicio, fin);
       }
+      case 'capacidadesinstaladas': return this.capacidadesinstaladas().map(({id, nombre, descripcion, departamentoId, tipoUnidadId}) => ({
+        id,
+        nombre,
+        descripcion,
+        departamentoId,
+        tipoUnidadId
+      }));
       default: return [];
     }
   }
@@ -782,6 +793,17 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
     
+    // Cargar capacidades instaladas
+    this.catalogosService.getCapacidadesInstaladas().subscribe({
+      next: data => {
+        console.log('✅ LOAD ALL CATALOGOS - Capacidades instaladas cargadas:', data);
+        this.capacidadesinstaladas.set(data);
+      },
+      error: error => {
+        console.error('❌ LOAD ALL CATALOGOS - Error cargando capacidades instaladas:', error);
+      }
+    });
+    
     this.isLoading.set(false);
   }
 
@@ -862,6 +884,19 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           descripcion: actividadCompleta.descripcion || '',
           idActividadAnual: actividadCompleta.idActividadAnual || null
           // No incluimos mes ni anio porque se manejan automáticamente
+        });
+        this.updateFormValidation();
+        return;
+      }
+    } else if (this.selectedCatalogo === 'capacidadesinstaladas') {
+      this.editingId = item.id;
+      const capacidadCompleta = this.capacidadesinstaladas().find(c => c.id === this.editingId);
+      if (capacidadCompleta) {
+        this.form.patchValue({
+          nombre: capacidadCompleta.nombre || '',
+          descripcion: capacidadCompleta.descripcion || '',
+          departamentoId: capacidadCompleta.departamentoId || null,
+          tipoUnidadId: capacidadCompleta.tipoUnidadId || null
         });
         this.updateFormValidation();
         return;
@@ -1040,6 +1075,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           nombreElemento = item?.nombre || nombreElemento;
           break;
         }
+        case 'capacidadesinstaladas': {
+          const item = this.capacidadesinstaladas().find(c => c.id === id);
+          nombreElemento = item?.nombre || nombreElemento;
+          break;
+        }
       }
     } catch (error) {
       console.error('Error obteniendo nombre del elemento:', error);
@@ -1079,6 +1119,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           case 'carreras': obs = this.catalogosService.deleteCarrera(id); break;
           case 'actividades-anuales': obs = this.actividadAnualService.delete(id); break;
           case 'actividades-mensuales': obs = this.actividadMensualInstService.delete(id); break;
+          case 'capacidadesinstaladas': obs = this.catalogosService.deleteCapacidadInstalada(id); break;
           default:
             console.error('Unknown catalog type for deletion:', this.selectedCatalogo);
             this.alertService.error('Error', 'Tipo de catálogo desconocido');
@@ -1475,6 +1516,18 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           // mes, anio y activo se agregan automáticamente en el backend
         });
         break;
+      case 'capacidadesinstaladas':
+        if (!data.nombre) {
+          this.alertService.error('Error de validación', 'El nombre de la instalación es requerido');
+          return;
+        }
+        obs = this.catalogosService.createCapacidadInstalada({
+          nombreInstalacion: data.nombre.trim(),
+          descripcionFuncionalidad: data.descripcion?.trim() || undefined,
+          departamentoId: (this.form.get('departamentoId')?.value as number) || undefined,
+          tipoUnidadId: (this.form.get('tipoUnidadId')?.value as number) || undefined
+        });
+        break;
       default:
         console.error('Unknown catalog type:', this.selectedCatalogo);
         return;
@@ -1834,6 +1887,18 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           descripcion: data.descripcion?.trim() || undefined,
           activo: actividadMensualActual?.activo !== undefined ? actividadMensualActual.activo : true
           // mes y anio se manejan automáticamente en el backend
+        });
+        break;
+      case 'capacidadesinstaladas':
+        if (!data.nombre) {
+          this.alertService.error('Error de validación', 'El nombre de la instalación es requerido');
+          return;
+        }
+        obs = this.catalogosService.updateCapacidadInstalada(id, {
+          nombreInstalacion: data.nombre.trim(),
+          descripcionFuncionalidad: data.descripcion?.trim() || undefined,
+          departamentoId: (this.form.get('departamentoId')?.value as number) || undefined,
+          tipoUnidadId: (this.form.get('tipoUnidadId')?.value as number) || undefined
         });
         break;
       default:

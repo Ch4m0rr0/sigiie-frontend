@@ -1,0 +1,296 @@
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 animate-fade-in">
+    <div class="flex items-center gap-3 mb-2">
+      <button 
+        (click)="onCancel()"
+        class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors">
+        <app-icon icon="arrow_back" size="sm"></app-icon>
+      </button>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+        Nuevo Proyecto Actividad
+      </h1>
+    </div>
+    <p class="text-slate-500 text-sm ml-10">
+      Asocia un proyecto con una actividad o subactividad
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 animate-pulse">
+      <div class="space-y-4">
+        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
+        <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div class="h-32 bg-slate-200 rounded"></div>
+      </div>
+    </div>
+  }
+
+  @if (!loading()) {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-xl shadow-sm border border-slate-200">
+      
+      <!-- Alertas -->
+      @if (error()) {
+        <div class="p-6 pb-0">
+          <div class="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5"></app-icon>
+            <div>
+              <h3 class="text-sm font-bold text-red-800">Error</h3>
+              <p class="text-sm text-red-600 mt-1">{{ error() }}</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="p-6 md:p-8 space-y-6">
+        
+        <!-- Proyecto -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="folder" size="xs" class="text-emerald-600"></app-icon>
+            Proyecto <span class="text-red-500">*</span>
+          </label>
+          <div class="relative dropdown-proyecto">
+            @if (getProyectoSeleccionado()) {
+              <div class="flex items-center gap-2 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                <span class="flex-1 text-sm font-medium text-emerald-900">
+                  {{ getProyectoSeleccionado()?.nombreProyecto || getProyectoSeleccionado()?.nombre }}
+                </span>
+                <button
+                  type="button"
+                  (click)="eliminarProyecto(); $event.stopPropagation()"
+                  class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded transition-colors">
+                  <app-icon icon="close" size="xs"></app-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="relative">
+                <input
+                  type="text"
+                  [value]="filtroProyecto()"
+                  (input)="filtroProyecto.set($any($event.target).value)"
+                  (click)="toggleDropdownProyecto(); $event.stopPropagation()"
+                  (focus)="mostrarDropdownProyecto.set(true)"
+                  placeholder="Buscar proyecto..."
+                  class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                  autocomplete="off">
+                <app-icon icon="search" size="xs" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></app-icon>
+              </div>
+              @if (mostrarDropdownProyecto()) {
+                <div class="absolute z-50 w-full mt-1 bg-white border-2 border-slate-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  @if (filtrarProyectos().length === 0) {
+                    <div class="p-4 text-sm text-slate-500 text-center">No se encontraron proyectos</div>
+                  } @else {
+                    @for (proyecto of filtrarProyectos(); track proyecto.idProyecto || proyecto.id) {
+                      <button
+                        type="button"
+                        (click)="seleccionarProyecto(proyecto); $event.stopPropagation()"
+                        class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                        <div class="font-medium">{{ proyecto.nombreProyecto || proyecto.nombre }}</div>
+                        @if (proyecto.descripcion) {
+                          <div class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ proyecto.descripcion }}</div>
+                        }
+                      </button>
+                    }
+                  }
+                </div>
+              }
+            }
+          </div>
+          @if (form.get('idProyecto')?.invalid && form.get('idProyecto')?.touched) {
+            <p class="mt-1 text-xs text-red-600">Este campo es requerido</p>
+          }
+        </div>
+
+        <!-- Actividad -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+            Actividad <span class="text-red-500">*</span>
+          </label>
+          <div class="relative dropdown-actividad">
+            @if (getActividadSeleccionada()) {
+              <div class="flex items-center gap-2 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                <span class="flex-1 text-sm font-medium text-emerald-900">
+                  {{ getActividadSeleccionada()?.nombreActividad || getActividadSeleccionada()?.nombre }}
+                </span>
+                <button
+                  type="button"
+                  (click)="eliminarActividad(); $event.stopPropagation()"
+                  class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded transition-colors">
+                  <app-icon icon="close" size="xs"></app-icon>
+                </button>
+              </div>
+            } @else {
+              <div class="relative">
+                <input
+                  type="text"
+                  [value]="filtroActividad()"
+                  (input)="filtroActividad.set($any($event.target).value)"
+                  (click)="toggleDropdownActividad(); $event.stopPropagation()"
+                  (focus)="mostrarDropdownActividad.set(true)"
+                  placeholder="Buscar actividad..."
+                  class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                  autocomplete="off">
+                <app-icon icon="search" size="xs" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></app-icon>
+              </div>
+              @if (mostrarDropdownActividad()) {
+                <div class="absolute z-50 w-full mt-1 bg-white border-2 border-slate-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  @if (filtrarActividades().length === 0) {
+                    <div class="p-4 text-sm text-slate-500 text-center">No se encontraron actividades</div>
+                  } @else {
+                    @for (actividad of filtrarActividades(); track actividad.idActividad || actividad.id) {
+                      <button
+                        type="button"
+                        (click)="seleccionarActividad(actividad); $event.stopPropagation()"
+                        class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                        <div class="font-medium">{{ actividad.nombreActividad || actividad.nombre }}</div>
+                        @if (actividad.descripcion) {
+                          <div class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ actividad.descripcion }}</div>
+                        }
+                      </button>
+                    }
+                  }
+                </div>
+              }
+            }
+          </div>
+          @if (form.get('idActividad')?.invalid && form.get('idActividad')?.touched) {
+            <p class="mt-1 text-xs text-red-600">Este campo es requerido</p>
+          }
+        </div>
+
+        <!-- Es Subactividad -->
+        <div class="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+          <input
+            type="checkbox"
+            id="esSubactividad"
+            formControlName="esSubactividad"
+            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 focus:ring-2">
+          <label for="esSubactividad" class="text-sm font-medium text-slate-700 cursor-pointer">
+            Es una subactividad
+          </label>
+        </div>
+
+        <!-- Subactividad (solo visible si esSubactividad es true) -->
+        @if (form.get('esSubactividad')?.value) {
+          <div class="animate-fade-in">
+            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+              <app-icon icon="list" size="xs" class="text-emerald-600"></app-icon>
+              Subactividad <span class="text-red-500">*</span>
+            </label>
+            <div class="relative dropdown-subactividad">
+              @if (getSubactividadSeleccionada()) {
+                <div class="flex items-center gap-2 p-3 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                  <span class="flex-1 text-sm font-medium text-emerald-900">
+                    {{ getSubactividadSeleccionada()?.nombreSubactividad || getSubactividadSeleccionada()?.nombre }}
+                  </span>
+                  <button
+                    type="button"
+                    (click)="eliminarSubactividad(); $event.stopPropagation()"
+                    class="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded transition-colors">
+                    <app-icon icon="close" size="xs"></app-icon>
+                  </button>
+                </div>
+              } @else {
+                <div class="relative">
+                  <input
+                    type="text"
+                    [value]="filtroSubactividad()"
+                    (input)="filtroSubactividad.set($any($event.target).value)"
+                    (click)="toggleDropdownSubactividad(); $event.stopPropagation()"
+                    (focus)="mostrarDropdownSubactividad.set(true)"
+                    placeholder="Buscar subactividad..."
+                    class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                    autocomplete="off">
+                  <app-icon icon="search" size="xs" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></app-icon>
+                </div>
+                @if (mostrarDropdownSubactividad()) {
+                  <div class="absolute z-50 w-full mt-1 bg-white border-2 border-slate-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                    @if (filtrarSubactividades().length === 0) {
+                      <div class="p-4 text-sm text-slate-500 text-center">
+                        @if (subactividades().length === 0) {
+                          No hay subactividades disponibles para esta actividad
+                        } @else {
+                          No se encontraron subactividades
+                        }
+                      </div>
+                    } @else {
+                      @for (subactividad of filtrarSubactividades(); track subactividad.idSubactividad) {
+                        <button
+                          type="button"
+                          (click)="seleccionarSubactividad(subactividad); $event.stopPropagation()"
+                          class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
+                          <div class="font-medium">{{ subactividad.nombreSubactividad || subactividad.nombre }}</div>
+                          @if (subactividad.descripcion) {
+                            <div class="text-xs text-slate-500 mt-0.5 line-clamp-1">{{ subactividad.descripcion }}</div>
+                          }
+                        </button>
+                      }
+                    }
+                  </div>
+                }
+              }
+            </div>
+            @if (form.get('idSubactividad')?.invalid && form.get('idSubactividad')?.touched) {
+              <p class="mt-1 text-xs text-red-600">Este campo es requerido cuando se selecciona "Es una subactividad"</p>
+            }
+          </div>
+        }
+
+        <!-- Tipo de Relación -->
+        <div>
+          <label for="tipoRelacion" class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="link" size="xs" class="text-emerald-600"></app-icon>
+            Tipo de Relación
+          </label>
+          <input
+            id="tipoRelacion"
+            type="text"
+            formControlName="tipoRelacion"
+            placeholder="Ej: Principal, Secundaria, etc."
+            class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm">
+        </div>
+
+        <!-- Comentario -->
+        <div>
+          <label for="comentario" class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+            <app-icon icon="comment" size="xs" class="text-emerald-600"></app-icon>
+            Comentario
+          </label>
+          <textarea
+            id="comentario"
+            formControlName="comentario"
+            rows="4"
+            placeholder="Agrega un comentario sobre esta relación..."
+            class="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm resize-none"></textarea>
+        </div>
+
+      </div>
+
+      <!-- Botones de acción -->
+      <div class="p-6 md:p-8 border-t border-slate-200 flex flex-col sm:flex-row gap-3 justify-end">
+        <button
+          type="button"
+          (click)="onCancel()"
+          class="px-6 py-2.5 border-2 border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          [disabled]="loading() || form.invalid"
+          class="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2">
+          @if (loading()) {
+            <span class="animate-spin">⏳</span>
+          } @else {
+            <app-icon icon="check" size="xs" color="white"></app-icon>
+          }
+          Crear Relación
+        </button>
+      </div>
+
+    </form>
+  }
+
+</div>
+

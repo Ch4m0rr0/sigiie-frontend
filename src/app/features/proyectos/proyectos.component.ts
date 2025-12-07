@@ -1,19 +1,22 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { ProyectosService } from '../../core/services/proyectos.service';
+import { CatalogosService } from '../../core/services/catalogos.service';
 import type { Proyecto } from '../../core/models/proyecto';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
 @Component({
   standalone: true,
   selector: 'app-list-proyectos',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, HasPermissionDirective, ...BrnButtonImports],
   templateUrl: './proyectos.component.html',
 })
 export class ListProyectosComponent implements OnInit {
   private proyectosService = inject(ProyectosService);
+  private catalogosService = inject(CatalogosService);
   private router = inject(Router);
 
   proyectos = signal<Proyecto[]>([]);
@@ -22,19 +25,41 @@ export class ListProyectosComponent implements OnInit {
 
   // Filtros
   filtroBusqueda = signal<string>('');
-  filtroEstado = signal<boolean | null>(null); // null = todos, true = activos, false = inactivos
+  filtroEstado = signal<number | null>(null); // null = todos, number = ID del estado de proyecto
+
+  // Estados de proyecto para el filtro
+  estadosProyecto = signal<any[]>([]);
+
+  // Dropdown de nuevo proyecto
+  mostrarDropdownTipoProyecto = signal(false);
+
+  // Modo de vista: 'cards' | 'lista'
+  modoVista = signal<'cards' | 'lista'>('lista');
 
   ngOnInit(): void {
+    this.loadEstadosProyecto();
     this.loadProyectos();
+  }
+
+  loadEstadosProyecto(): void {
+    this.catalogosService.getEstadosProyecto().subscribe({
+      next: (data) => {
+        this.estadosProyecto.set(data);
+      },
+      error: (err) => {
+        console.error('Error loading estados proyecto:', err);
+        this.estadosProyecto.set([]);
+      }
+    });
   }
 
   loadProyectos(): void {
     this.loading.set(true);
     this.error.set(null);
 
-    // Si hay filtro por estado, usar GetByEstadoAsync
+    // Si hay filtro por estado, usar el endpoint /api/EstadoProyecto/{id}
     if (this.filtroEstado() !== null) {
-      this.proyectosService.getByEstado(this.filtroEstado()!).subscribe({
+      this.proyectosService.getByEstadoId(this.filtroEstado()!).subscribe({
         next: (data) => {
           // Aplicar filtro de búsqueda del lado del cliente
           let filtered = data;
@@ -113,6 +138,58 @@ export class ListProyectosComponent implements OnInit {
     this.router.navigate(['/proyectos/nuevo']);
   }
 
+  toggleDropdownTipoProyecto(): void {
+    this.mostrarDropdownTipoProyecto.set(!this.mostrarDropdownTipoProyecto());
+  }
+
+  seleccionarTipoProyecto(tipo: 'actividad' | 'administrativo' | 'docente' | 'estudiante' | 'planificado' | 'no-planificado'): void {
+    this.mostrarDropdownTipoProyecto.set(false);
+    
+    // Navegar a la ruta correspondiente según el tipo
+    if (tipo === 'actividad') {
+      this.router.navigate(['/proyectos-actividad/nuevo']);
+    } else if (tipo === 'administrativo') {
+      this.router.navigate(['/proyectos-administrativo/nuevo']);
+    } else if (tipo === 'docente') {
+      this.router.navigate(['/proyectos-docente/nuevo']);
+    } else if (tipo === 'estudiante') {
+      this.router.navigate(['/proyectos-estudiante/nuevo']);
+    } else if (tipo === 'planificado' || tipo === 'no-planificado') {
+      // Proyectos planificados y no planificados van al formulario de proyecto normal
+      this.router.navigate(['/proyectos/nuevo'], { 
+        queryParams: { tipo: tipo } 
+      });
+    } else {
+      // Por ahora los demás tipos van al formulario de proyecto normal
+      this.router.navigate(['/proyectos/nuevo'], { 
+        queryParams: { tipo: tipo } 
+      });
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    
+    // Verificar si el clic fue dentro del dropdown de proyectos
+    const isInsideDropdown = target.closest('.dropdown-proyecto');
+    
+    // Si el clic fue fuera del dropdown, cerrarlo
+    if (!isInsideDropdown) {
+      this.mostrarDropdownTipoProyecto.set(false);
+    }
+  }
+
+  onEstadoChange(value: string): void {
+    if (value === '') {
+      this.filtroEstado.set(null);
+    } else {
+      const estadoId = parseInt(value, 10);
+      this.filtroEstado.set(isNaN(estadoId) ? null : estadoId);
+    }
+    this.onFiltroChange();
+  }
+
   onFiltroChange(): void {
     this.loadProyectos();
   }
@@ -121,6 +198,10 @@ export class ListProyectosComponent implements OnInit {
     this.filtroBusqueda.set('');
     this.filtroEstado.set(null);
     this.loadProyectos();
+  }
+
+  cambiarModoVista(modo: 'cards' | 'lista'): void {
+    this.modoVista.set(modo);
   }
 
   getEstadoBadgeClass(estado?: string): string {

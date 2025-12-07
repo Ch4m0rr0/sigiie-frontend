@@ -625,11 +625,18 @@ export class ReportesService {
               
               // Si el texto contiene información del reporte, el backend está devolviendo metadatos en lugar del archivo
               if (text.includes('Reporte:') || text.includes('Tipo:') || text.includes('Ruta:')) {
+                // Intentar extraer la ruta del archivo del texto
+                const rutaMatch = text.match(/Ruta:\s*(.+)/i);
+                const rutaArchivo = rutaMatch ? rutaMatch[1].trim() : null;
+                
+                console.warn('⚠️ GET Descargar Reporte - El backend devolvió metadatos en lugar del archivo. Ruta extraída:', rutaArchivo);
+                
                 return throwError(() => ({
                   status: 500,
                   error: errorData,
-                  message: 'El servidor devolvió información del reporte en lugar del archivo Excel. Por favor, verifica que el endpoint GET /api/Reportes/descargar/{id} esté configurado para devolver el archivo binario con el Content-Type correcto.',
-                  backendMessage: 'El endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend debe devolver el archivo binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                  message: `El reporte se generó exitosamente (ID: ${idReporte}) pero el endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend está devolviendo información del reporte en lugar del archivo binario.`,
+                  backendMessage: `El endpoint GET /api/Reportes/descargar/${idReporte} debe devolver el archivo binario Excel con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet. Actualmente está devolviendo texto plano.${rutaArchivo ? ` Ruta del archivo: ${rutaArchivo}` : ''}`,
+                  rutaArchivo: rutaArchivo
                 }));
               }
               
@@ -662,11 +669,18 @@ export class ReportesService {
                   
                   // Si el texto contiene información del reporte, el backend está devolviendo metadatos en lugar del archivo
                   if (text.includes('Reporte:') || text.includes('Tipo:') || text.includes('Ruta:')) {
+                    // Intentar extraer la ruta del archivo del texto
+                    const rutaMatch = text.match(/Ruta:\s*(.+)/i);
+                    const rutaArchivo = rutaMatch ? rutaMatch[1].trim() : null;
+                    
+                    console.warn('⚠️ GET Descargar Reporte - El backend devolvió metadatos en lugar del archivo. Ruta extraída:', rutaArchivo);
+                    
                     return throwError(() => ({
                       status: 500,
                       error: { message: text },
-                      message: 'El servidor devolvió información del reporte en lugar del archivo Excel. Por favor, verifica que el endpoint GET /api/Reportes/descargar/{id} esté configurado para devolver el archivo binario con el Content-Type correcto.',
-                      backendMessage: 'El endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend debe devolver el archivo binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                      message: `El reporte se generó exitosamente (ID: ${idReporte}) pero el endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend está devolviendo información del reporte en lugar del archivo binario.`,
+                      backendMessage: `El endpoint GET /api/Reportes/descargar/${idReporte} debe devolver el archivo binario Excel con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet. Actualmente está devolviendo texto plano.${rutaArchivo ? ` Ruta del archivo: ${rutaArchivo}` : ''}`,
+                      rutaArchivo: rutaArchivo
                     }));
                   }
                   

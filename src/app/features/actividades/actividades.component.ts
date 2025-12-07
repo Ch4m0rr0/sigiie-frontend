@@ -13,7 +13,10 @@ import { ActividadMensualInstService } from '../../core/services/actividad-mensu
 import { ActividadResponsableService, type ActividadResponsableCreate } from '../../core/services/actividad-responsable.service';
 import { PersonasService } from '../../core/services/personas.service';
 import { UsuariosService } from '../../core/services/usuarios.service';
+import { ProyectosService } from '../../core/services/proyectos.service';
+import { ProyectoActividadService } from '../../core/services/proyecto-actividad.service';
 import type { Actividad } from '../../core/models/actividad';
+import type { Proyecto } from '../../core/models/proyecto';
 import type { Indicador } from '../../core/models/indicador';
 import type { ActividadAnual } from '../../core/models/actividad-anual';
 import type { ActividadMensualInst } from '../../core/models/actividad-mensual-inst';
@@ -27,6 +30,7 @@ import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { es } from 'date-fns/locale';
 import { format, startOfWeek, addDays, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 import { EvidenciaFormComponent } from '../evidencias/evidencia-form.component';
+import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 
 // Formateador personalizado para usar locale español
 class CustomCalendarDateFormatter extends CalendarDateFormatter {
@@ -75,7 +79,8 @@ class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
     ReactiveFormsModule, 
     IconComponent, 
     CalendarModule,
-    EvidenciaFormComponent
+    EvidenciaFormComponent,
+    HasPermissionDirective
   ],
   providers: [
     CalendarUtils,
@@ -104,6 +109,8 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   private responsableService = inject(ActividadResponsableService);
   private personasService = inject(PersonasService);
   private usuariosService = inject(UsuariosService);
+  private proyectosService = inject(ProyectosService);
+  private proyectoActividadService = inject(ProyectoActividadService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
@@ -115,6 +122,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   actividadesMensualesInst = signal<ActividadMensualInst[]>([]);
   actividadesAnualesFiltradas = signal<ActividadAnual[]>([]);
   actividadesMensualesFiltradas = signal<ActividadMensualInst[]>([]);
+  proyectos = signal<Proyecto[]>([]);
   mostrarDropdownActividad = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
@@ -201,7 +209,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   filtroEstadoActividad = signal<number | null>(null);
   filtroActividadAnual = signal<number[]>([]);
   filtroActividadMensualInst = signal<number[]>([]);
-  ordenFecha = signal<'reciente' | 'antigua'>('reciente'); // 'reciente' = más recientes primero, 'antigua' = menos recientes primero
   terminoBusqueda = signal<string>('');
   terminoBusquedaAnual = signal<string>('');
   mostrarDropdownFiltroAnual = signal(false);
@@ -209,6 +216,8 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   mostrarDropdownFiltroMensual = signal(false);
   terminoBusquedaEstado = signal<string>('');
   mostrarDropdownFiltroEstado = signal(false);
+  terminoBusquedaProyecto = signal<string>('');
+  mostrarDropdownFiltroProyecto = signal(false);
 
   // Actividades anuales disponibles según filtro de mensuales
   actividadesAnualesDisponibles = computed(() => {
@@ -562,6 +571,9 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       ),
       indicadores: this.indicadorService.getAll().pipe(
         catchError(err => handleError(err, []))
+      ),
+      proyectos: this.proyectosService.getAll().pipe(
+        catchError(err => handleError(err, []))
       )
     });
 
@@ -602,6 +614,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         this.actividadesAnuales.set(results.datos.actividadesAnuales);
         this.actividadesMensualesInst.set(results.datos.actividadesMensualesInst);
         this.indicadores.set(results.datos.indicadores);
+        this.proyectos.set(results.datos.proyectos);
         
         // Actualizar actividades mensuales filtradas después de cargar los datos
         this.actualizarActividadesMensualesFiltradas();
@@ -2343,10 +2356,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.filtroEstadoActividad.set(null);
     this.filtroActividadAnual.set([]);
     this.filtroActividadMensualInst.set([]);
-    this.ordenFecha.set('reciente'); // Resetear a orden por defecto
     this.terminoBusqueda.set('');
     this.terminoBusquedaAnual.set('');
     this.terminoBusquedaMensual.set('');
+    this.terminoBusquedaProyecto.set('');
     this.error.set(null);
     this.showRetryButton = false;
     this.paginaActual.set(1);
@@ -3947,6 +3960,26 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       const estadoId = e.idEstadoActividad || e.id;
       return estadoId !== undefined && Number(estadoId) === filtroId;
     });
+  }
+
+  getProyectosFiltrados(): Proyecto[] {
+    const termino = this.terminoBusquedaProyecto().toLowerCase().trim();
+    if (!termino) {
+      return this.proyectos();
+    }
+    return this.proyectos().filter(proyecto => {
+      const nombre = (proyecto.nombreProyecto || proyecto.nombre || '').toLowerCase();
+      const descripcion = (proyecto.descripcion || '').toLowerCase();
+      return nombre.includes(termino) || descripcion.includes(termino);
+    });
+  }
+
+  getProyectoSeleccionado(): Proyecto | undefined {
+    const idFiltro = this.filtroProyecto();
+    if (idFiltro === null) {
+      return undefined;
+    }
+    return this.proyectos().find(p => p.id === idFiltro || p.idProyecto === idFiltro);
   }
 
   getEstadosFiltrados(): any[] {

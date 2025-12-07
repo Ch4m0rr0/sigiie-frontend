@@ -4,9 +4,24 @@ export interface Usuario {
   nombreCompleto: string;
   correo: string;
   rolNombre: string;
-  permisos: string[];
+  permisos: string[]; // Permisos del rol (nombres como strings)
+  permisosPersonalizados?: Array<{ // Permisos adicionales asignados directamente al usuario
+    idPermiso: number;
+    nombre: string;
+    descripcion?: string | null;
+    modulo?: string | null;
+    activo: boolean;
+  }>;
   activo: boolean;
   departamentoId?: number;
+}
+
+export interface PermisoBackend {
+  idPermiso: number;
+  nombre: string | null;
+  descripcion: string | null;
+  modulo: string | null;
+  activo: boolean;
 }
 
 export interface UsuarioCreate {
@@ -15,7 +30,7 @@ export interface UsuarioCreate {
   contraseña: string;
   idRol: number;
   departamentoId?: number;
-  permisos?: number[]; // IDs de permisos a asignar
+  permisos?: number[] | PermisoBackend[]; // IDs o objetos completos de permisos
 }
 
 export interface UsuarioUpdate {
@@ -24,5 +39,5 @@ export interface UsuarioUpdate {
   idRol: number;
   activo: boolean;
   departamentoId?: number;
-  permisos?: number[]; // IDs de permisos a asignar
+  permisos?: number[] | PermisoBackend[]; // IDs o objetos completos de permisos
 }

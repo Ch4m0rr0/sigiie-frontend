@@ -1,29 +1,74 @@
-<div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
-  <!-- Header -->
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-slate-900 mb-2">Subactividades</h1>
-        <p class="text-sm text-slate-600">Gestiona las subactividades del sistema</p>
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in relative" style="z-index: 1000; position: relative;">
+    <div>
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+        Subactividades
+      </h1>
+    </div>
+    
+    <div class="flex gap-3 flex-wrap items-center" [class.hidden]="showEvidenciaModal()">
+      <!-- Selector de modo de vista -->
+      <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+        <button
+          type="button"
+          (click)="cambiarModoVista('lista')"
+          [class.bg-emerald-600]="modoVista() === 'lista'"
+          [class.text-white]="modoVista() === 'lista'"
+          [class.text-slate-600]="modoVista() !== 'lista'"
+          [class.shadow-sm]="modoVista() === 'lista'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de lista">
+          <app-icon icon="list" size="xs"></app-icon>
+          <span>Lista</span>
+        </button>
+        <button
+          type="button"
+          (click)="cambiarModoVista('calendario')"
+          [class.bg-emerald-600]="modoVista() === 'calendario'"
+          [class.text-white]="modoVista() === 'calendario'"
+          [class.text-slate-600]="modoVista() !== 'calendario'"
+          [class.shadow-sm]="modoVista() === 'calendario'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de calendario">
+          <app-icon icon="calendar_month" size="xs"></app-icon>
+          <span>Calendario</span>
+        </button>
+        <button
+          type="button"
+          (click)="cambiarModoVista('cards')"
+          [class.bg-emerald-600]="modoVista() === 'cards'"
+          [class.text-white]="modoVista() === 'cards'"
+          [class.text-slate-600]="modoVista() !== 'cards'"
+          [class.shadow-sm]="modoVista() === 'cards'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de tarjetas">
+          <app-icon icon="grid_view" size="xs"></app-icon>
+          <span>Tarjetas</span>
+        </button>
       </div>
+
+      <!-- Botón Nueva Subactividad -->
       <button 
+        type="button"
         (click)="navigateToCreate()"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition flex items-center gap-2">
+        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
+        title="Crear nueva subactividad">
         <app-icon icon="add" size="sm" color="white"></app-icon>
-        Nueva Subactividad
+        <span>Nueva Subactividad</span>
       </button>
     </div>
   </div>
 
   <!-- Filtros -->
-  <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
+  <div class="bg-white rounded-xl border border-slate-200 p-6 mb-6 shadow-sm">
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Actividad</label>
+        <label class="block text-sm font-medium text-slate-700 mb-2">Actividad</label>
         <select 
           [value]="filtroActividad() ?? ''"
           (change)="filtroActividad.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="">Todas</option>
           @for (actividad of actividades(); track actividad.id) {
             <option [value]="actividad.id">{{ actividad.nombre }}</option>
@@ -32,11 +77,11 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+        <label class="block text-sm font-medium text-slate-700 mb-2">Tipo</label>
         <select 
           [value]="filtroTipo() ?? ''"
           (change)="filtroTipo.set($any($event.target).value ? +$any($event.target).value : null); onFiltroChange()"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="">Todos</option>
           @for (tipo of tiposSubactividad(); track tipo.idTipoSubactividad) {
             <option [value]="tipo.idTipoSubactividad">{{ tipo.nombre }}</option>
@@ -45,11 +90,11 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+        <label class="block text-sm font-medium text-slate-700 mb-2">Estado</label>
         <select 
           [value]="filtroActivo() === null ? '' : filtroActivo() ? 'true' : 'false'"
           (change)="filtroActivo.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="">Todos</option>
           <option value="true">Activas</option>
           <option value="false">Inactivas</option>
@@ -59,7 +104,8 @@
       <div class="flex items-end">
         <button 
           (click)="clearFilters()"
-          class="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition">
+          class="w-full px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+          <app-icon icon="restart_alt" size="xs"></app-icon>
           Limpiar Filtros
         </button>
       </div>
@@ -69,103 +115,460 @@
   <!-- Loading State -->
   @if (loading()) {
     <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
     </div>
   }
 
   <!-- Error State -->
   @if (error() && !loading()) {
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-      <p class="text-red-800">{{ error() }}</p>
+    <div class="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+      <div class="flex items-start gap-3">
+        <app-icon icon="error_outline" size="md" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+        <div class="flex-1">
+          <h3 class="text-sm font-bold text-red-800 mb-2">Error al cargar subactividades</h3>
+          <p class="text-sm text-red-700">{{ error() }}</p>
+        </div>
+      </div>
     </div>
   }
 
-  <!-- Lista de Subactividades -->
-  @if (!loading() && !error()) {
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      @for (subactividad of subactividades(); track subactividad.idSubactividad) {
-        <div 
-          (click)="navigateToDetail(subactividad.idSubactividad)"
-          class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
-          
-          <!-- Header -->
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex-1">
-              <h3 class="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                {{ subactividad.nombre }}
-              </h3>
-              @if (subactividad.nombreActividad) {
-                <p class="text-sm text-slate-600 mt-1">
-                  Actividad: {{ subactividad.nombreActividad }}
-                </p>
-              }
-              @if (subactividad.nombreTipoSubactividad) {
-                <span class="inline-block mt-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
-                  {{ subactividad.nombreTipoSubactividad }}
-                </span>
-              }
-            </div>
-            @if (subactividad.activo) {
-              <span class="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                Activa
-              </span>
-            } @else {
-              <span class="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                Inactiva
-              </span>
-            }
-          </div>
-
-          <!-- Descripción -->
-          @if (subactividad.descripcion) {
-            <p class="text-sm text-slate-600 mb-4 line-clamp-2">
-              {{ subactividad.descripcion }}
-            </p>
-          }
-
-          <!-- Información -->
-          <div class="space-y-2 mb-4">
-            @if (subactividad.fechaInicio && subactividad.fechaFin) {
-              <div class="flex items-center gap-2 text-sm text-slate-600">
-                <app-icon icon="date_range" size="sm" color="slate-500"></app-icon>
-                <span>{{ subactividad.fechaInicio | date:'short' }} - {{ subactividad.fechaFin | date:'short' }}</span>
-              </div>
-            }
-            @if (subactividad.nombreDepartamentoResponsable) {
-              <div class="flex items-center gap-2 text-sm text-slate-600">
-                <app-icon icon="business" size="sm" color="slate-500"></app-icon>
-                <span>{{ subactividad.nombreDepartamentoResponsable }}</span>
-              </div>
-            }
-            @if (subactividad.ubicacion) {
-              <div class="flex items-center gap-2 text-sm text-slate-600">
-                <app-icon icon="place" size="sm" color="slate-500"></app-icon>
-                <span>{{ subactividad.ubicacion }}</span>
-              </div>
-            }
-            @if (subactividad.modalidad) {
-              <div class="flex items-center gap-2 text-sm text-slate-600">
-                <app-icon icon="computer" size="sm" color="slate-500"></app-icon>
-                <span>{{ subactividad.modalidad }}</span>
-              </div>
-            }
-          </div>
-
-          <!-- Footer -->
-          <div class="flex items-center justify-between pt-4 border-t border-slate-200">
-            <span class="text-xs text-slate-500">
-              Creada: {{ subactividad.fechaCreacion | date:'short' }}
-            </span>
-            <app-icon icon="chevron_right" size="sm" color="slate-400" className="group-hover:text-blue-500 transition-colors"></app-icon>
-          </div>
-        </div>
-      } @empty {
-        <div class="col-span-full text-center py-12">
-          <app-icon icon="assignment" size="lg" color="slate-400"></app-icon>
-          <p class="mt-4 text-slate-600">No se encontraron subactividades</p>
-        </div>
+  @if (!loading() && !error() && subactividades().length > 0) {
+    <!-- Contador de resultados -->
+    <div class="mb-4 flex items-center justify-between">
+      <p class="text-sm text-slate-600">
+        <span class="font-semibold text-slate-900">{{ subactividadesFiltradas().length }}</span>
+        {{ subactividadesFiltradas().length === 1 ? 'subactividad encontrada' : 'subactividades encontradas' }}
+        @if (terminoBusqueda() && subactividadesFiltradas().length !== subactividades().length) {
+          <span class="text-slate-400"> (de {{ subactividades().length }} totales)</span>
+        }
+      </p>
+      @if (terminoBusqueda()) {
+        <button 
+          (click)="terminoBusqueda.set('')"
+          class="text-xs text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-colors">
+          <app-icon icon="close" size="xs"></app-icon>
+          Limpiar búsqueda
+        </button>
       }
+    </div>
+
+    <!-- Vista de Cards -->
+    @if (modoVista() === 'cards') {
+      <!-- Buscador -->
+      <div class="mb-4 animate-fade-in">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <app-icon icon="search" size="sm" class="text-slate-400"></app-icon>
+            </div>
+            <input
+              type="text"
+              [value]="terminoBusqueda()"
+              (input)="terminoBusqueda.set($any($event.target).value)"
+              placeholder="Buscar por nombre de subactividad..."
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+            />
+            @if (terminoBusqueda()) {
+              <button
+                type="button"
+                (click)="terminoBusqueda.set('')"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                title="Limpiar búsqueda">
+                <app-icon icon="close" size="sm"></app-icon>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @for (subactividad of subactividadesFiltradas(); track subactividad.idSubactividad; let i = $index) {
+          <div 
+            (click)="navigateToDetail(subactividad.idSubactividad)"
+            [style.animation-delay.ms]="i * 50"
+            class="bg-white rounded-xl border border-slate-200 p-5 hover:border-emerald-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col h-full animate-fade-in">
+            
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex items-start gap-3 overflow-hidden">
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <app-icon icon="assignment" size="sm"></app-icon>
+                </div>
+                
+                <div class="min-w-0">
+                  <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                    {{ subactividad.nombre || subactividad.nombreSubactividad }}
+                  </h3>
+                  @if (subactividad.nombreActividad) {
+                    <p class="text-xs text-slate-500 mt-1 line-clamp-1">
+                      {{ subactividad.nombreActividad }}
+                    </p>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3 flex flex-wrap gap-2">
+              @let estadoMostrar = obtenerEstadoParaMostrar(subactividad);
+              @let coloresBadge = getColoresBadgeEstado(estadoMostrar.color || '#3B82F6');
+              <span 
+                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border"
+                [style.background-color]="coloresBadge.fondo"
+                [style.color]="coloresBadge.texto"
+                [style.border-color]="coloresBadge.borde">
+                <span 
+                  class="w-1.5 h-1.5 rounded-full mr-1"
+                  [style.background-color]="coloresBadge.punto">
+                </span>
+                {{ estadoMostrar.nombre }}
+              </span>
+            </div>
+
+            <div class="mb-4">
+              <p class="text-sm text-slate-500 line-clamp-2">
+                {{ subactividad.descripcion || 'Sin descripción detallada.' }}
+              </p>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 mt-auto">
+              <span class="text-[10px] text-slate-400">
+                Creado: {{ subactividad.fechaCreacion | date:'dd/MM/yy' }}
+              </span>
+              <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  (click)="navigateToCrearEvidencia(subactividad); $event.stopPropagation()"
+                  class="px-2.5 py-1 bg-white text-blue-600 rounded-lg text-[10px] font-medium flex items-center gap-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-blue-700"
+                  title="Agregar evidencias">
+                  <app-icon icon="perm_media" size="xs"></app-icon>
+                  Evidencias
+                </button>
+                <button
+                  (click)="navigateToDetail(subactividad.idSubactividad); $event.stopPropagation()"
+                  class="px-2.5 py-1 bg-white text-emerald-600 rounded-lg text-[10px] font-medium flex items-center gap-1 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
+                  Detalles
+                  <app-icon icon="arrow_forward" size="xs"></app-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Vista de Lista -->
+    @if (modoVista() === 'lista') {
+      <!-- Buscador -->
+      <div class="mb-4 animate-fade-in">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <app-icon icon="search" size="sm" class="text-slate-400"></app-icon>
+            </div>
+            <input
+              type="text"
+              [value]="terminoBusqueda()"
+              (input)="terminoBusqueda.set($any($event.target).value)"
+              placeholder="Buscar por nombre de subactividad..."
+              class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
+            />
+            @if (terminoBusqueda()) {
+              <button
+                type="button"
+                (click)="terminoBusqueda.set('')"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                title="Limpiar búsqueda">
+                <app-icon icon="close" size="sm"></app-icon>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-slate-50 border-b border-slate-200 sticky top-0">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Subactividad</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fecha</th>
+                <th class="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
+                <th class="px-4 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              @for (subactividad of subactividadesFiltradas(); track subactividad.idSubactividad; let i = $index) {
+                <tr 
+                  (click)="navigateToDetail(subactividad.idSubactividad)"
+                  [style.animation-delay.ms]="i * 30"
+                  class="hover:bg-emerald-50 cursor-pointer transition-all duration-200 animate-fade-in">
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <app-icon icon="assignment" size="xs"></app-icon>
+                      </div>
+                      <div class="min-w-0 flex-1">
+                        <div class="text-sm font-medium text-slate-900 truncate">{{ subactividad.nombre || subactividad.nombreSubactividad || 'Sin nombre' }}</div>
+                        @if (subactividad.nombreActividad) {
+                          <div class="text-xs text-slate-500 truncate">{{ subactividad.nombreActividad }}</div>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-3 py-2.5 whitespace-nowrap">
+                    <span class="text-xs text-slate-600">
+                      @if (subactividad.fechaInicio) {
+                        {{ subactividad.fechaInicio | date:'dd/MM/yyyy' }}
+                      } @else {
+                        {{ subactividad.fechaCreacion | date:'dd/MM/yyyy' }}
+                      }
+                    </span>
+                  </td>
+                  <td class="px-3 py-2.5">
+                    @let estadoMostrar = obtenerEstadoParaMostrar(subactividad);
+                    @let coloresBadge = getColoresBadgeEstado(estadoMostrar.color || '#3B82F6');
+                    <span 
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border"
+                      [style.background-color]="coloresBadge.fondo"
+                      [style.color]="coloresBadge.texto"
+                      [style.border-color]="coloresBadge.borde">
+                      <span 
+                        class="w-1 h-1 rounded-full mr-1"
+                        [style.background-color]="coloresBadge.punto">
+                      </span>
+                      {{ estadoMostrar.nombre }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-2.5 whitespace-nowrap text-right">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        (click)="navigateToCrearEvidencia(subactividad); $event.stopPropagation()"
+                        class="px-3 py-1.5 bg-white text-blue-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-blue-700"
+                        title="Agregar evidencias">
+                        <app-icon icon="perm_media" size="xs"></app-icon>
+                        Evidencias
+                      </button>
+                      <button
+                        (click)="navigateToDetail(subactividad.idSubactividad); $event.stopPropagation()"
+                        class="px-3 py-1.5 bg-white text-emerald-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
+                        Detalles
+                        <app-icon icon="arrow_forward" size="xs"></app-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- Vista de Calendario -->
+    @if (modoVista() === 'calendario') {
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <!-- Controles del calendario -->
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-4">
+            <button
+              type="button"
+              (click)="cambiarMes('anterior')"
+              class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+              title="Mes anterior">
+              <app-icon icon="chevron_left" size="sm"></app-icon>
+            </button>
+            <h2 class="text-xl font-bold text-slate-900 capitalize">
+              {{ viewDate | date:'MMMM yyyy':'es-ES' }}
+            </h2>
+            <button
+              type="button"
+              (click)="cambiarMes('siguiente')"
+              class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+              title="Mes siguiente">
+              <app-icon icon="chevron_right" size="sm"></app-icon>
+            </button>
+          </div>
+          <button
+            type="button"
+            (click)="irAHoy()"
+            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 hover:shadow-md transition-all duration-200 active:scale-95 text-sm font-medium flex items-center gap-2"
+            title="Ir al mes actual">
+            <app-icon icon="today" size="xs" color="white"></app-icon>
+            Hoy
+          </button>
+        </div>
+
+        <!-- Calendario -->
+        <div class="calendar-container relative" (mouseleave)="onEventMouseLeave()">
+          <mwl-calendar-month-view
+            [viewDate]="viewDate"
+            [events]="eventosCalendario()"
+            [locale]="locale"
+            (eventClicked)="eventoClicked($event)"
+            [activeDayIsOpen]="false"
+            class="calendar-month-view">
+          </mwl-calendar-month-view>
+          
+          <!-- Tooltip para eventos -->
+          @if (eventoHovered && hoverPosition()) {
+            <div 
+              class="calendar-event-tooltip fixed z-[9999] pointer-events-none"
+              [style.left.px]="getTooltipLeft()"
+              [style.top.px]="getTooltipTop()">
+              <div class="bg-white rounded-xl shadow-2xl border border-slate-200/80 p-5 max-w-sm backdrop-blur-sm">
+                <div class="flex items-start gap-4 mb-4">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white"
+                       [style.backgroundColor]="eventoHovered.color?.secondary || '#d1fae5'"
+                       [style.color]="eventoHovered.color?.primary || '#10b981'">
+                    <app-icon icon="assignment" size="sm"></app-icon>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
+                      {{ eventoHovered.meta?.subactividad?.nombre || eventoHovered.title }}
+                    </h4>
+                    @if (eventoHovered.meta?.subactividad?.descripcion) {
+                      <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                        {{ eventoHovered.meta.subactividad.descripcion }}
+                      </p>
+                    }
+                  </div>
+                </div>
+                
+                @if (eventoHovered.meta?.subactividad) {
+                  <div class="space-y-2.5 mb-4">
+                    @if (eventoHovered.start) {
+                      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <app-icon icon="calendar_today" size="xs"></app-icon>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-500 mb-0.5 font-medium">Fecha</p>
+                          @if (eventoHovered.end) {
+                            <p class="text-sm font-semibold text-slate-900">
+                              Del {{ eventoHovered.start | date:'dd/MM/yyyy':'es-ES' }} al {{ eventoHovered.end | date:'dd/MM/yyyy':'es-ES' }}
+                            </p>
+                          } @else {
+                            <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.start | date:'dd \'de\' MMMM \'de\' yyyy':'es-ES' }}</p>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+                
+                <div class="pt-4 border-t border-slate-200">
+                  <div class="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50/50 px-3 py-2 rounded-lg">
+                    <app-icon icon="info" size="xs"></app-icon>
+                    <span>Haz clic para ver más detalles</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Leyenda de Estados -->
+        <div class="mt-6 flex items-center gap-4 text-sm flex-wrap">
+          @if (estadosActividad().length > 0) {
+            @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+              @let estadoColor = getEstadoColor(estado);
+              <div class="flex items-center gap-2">
+                <div 
+                  class="w-4 h-4 rounded" 
+                  [style.backgroundColor]="estadoColor"
+                  [style.border]="'1px solid ' + estadoColor">
+                </div>
+                <span class="text-slate-600">{{ estado.nombre }}</span>
+              </div>
+            }
+          } @else {
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded bg-slate-400"></div>
+              <span class="text-slate-600 text-xs italic">Cargando estados...</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  @if (!loading() && !error() && subactividades().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-xl border border-slate-200 border-dashed animate-fade-in">
+      <div class="w-20 h-20 bg-gradient-to-br from-slate-50 to-slate-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+        <app-icon icon="assignment_late" size="xl" class="text-slate-400"></app-icon>
+      </div>
+      <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron subactividades</h3>
+      <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
+        Aún no hay subactividades registradas. Comienza creando tu primera subactividad.
+      </p>
+      <button 
+        (click)="navigateToCreate()" 
+        class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2">
+        <app-icon icon="add" size="xs" color="white"></app-icon>
+        Crear Subactividad
+      </button>
+    </div>
+  }
+
+  <!-- Mensaje cuando hay subactividades pero la búsqueda no devuelve resultados -->
+  @if (!loading() && !error() && subactividades().length > 0 && subactividadesFiltradas().length === 0) {
+    <div class="flex flex-col items-center justify-center py-20 px-4 bg-white rounded-xl border border-slate-200 border-dashed animate-fade-in">
+      <div class="w-20 h-20 bg-gradient-to-br from-slate-50 to-slate-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+        <app-icon icon="search_off" size="xl" class="text-slate-400"></app-icon>
+      </div>
+      <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron resultados</h3>
+      <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
+        No hay subactividades que coincidan con el término de búsqueda "<span class="font-semibold text-slate-700">{{ terminoBusqueda() }}</span>".
+      </p>
+      <button 
+        (click)="terminoBusqueda.set('')" 
+        class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">
+        <app-icon icon="close" size="xs"></app-icon>
+        Limpiar Búsqueda
+      </button>
+    </div>
+  }
+
+  <!-- Modal de Evidencia -->
+  @if (showEvidenciaModal() && subactividadParaEvidencia()) {
+    <div class="fixed inset-0 z-[9999] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <!-- Overlay -->
+      <div class="fixed inset-0 bg-slate-500 bg-opacity-75 transition-opacity z-[9998]" (click)="cerrarEvidenciaModal()"></div>
+      
+      <!-- Modal Container -->
+      <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0 z-[9999]">
+        <div class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl w-full max-h-[90vh] flex flex-col z-[10000]" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="bg-white px-6 py-4 border-b border-slate-200 flex-shrink-0">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-lg font-semibold text-slate-900" id="modal-title">
+                  Nueva Evidencia
+                </h3>
+                <p class="text-sm text-slate-500 mt-1">
+                  {{ subactividadParaEvidencia()?.nombre || subactividadParaEvidencia()?.nombreSubactividad }}
+                </p>
+              </div>
+              <button
+                type="button"
+                (click)="cerrarEvidenciaModal()"
+                class="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg">
+                <app-icon icon="close" size="sm"></app-icon>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Content - Scrollable -->
+          <div class="bg-white overflow-y-auto flex-1 px-6 py-4">
+            <app-evidencia-form
+              [actividadIdInput]="subactividadParaEvidencia()?.idActividad || null"
+              [subactividadIdInput]="subactividadParaEvidencia()?.idSubactividad || null"
+              [tiposEvidenciaInput]="getTiposEvidenciaDeSubactividad()"
+              [onClose]="cerrarEvidenciaModal.bind(this)"
+              [onSuccess]="onEvidenciaCreada.bind(this)"
+              [isModalMode]="true">
+            </app-evidencia-form>
+          </div>
+        </div>
+      </div>
     </div>
   }
 </div>
-

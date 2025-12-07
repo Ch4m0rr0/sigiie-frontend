@@ -95,14 +95,16 @@ export class NotificacionesAutomaticasService {
       const mensaje = `La actividad "${actividad.nombreActividad}" inicia mañana`;
       const titulo = 'Actividad próxima a iniciar';
 
-      // Mostrar toast
-      this.toastService.info(mensaje, titulo, 5000, {
-        texto: 'Ver actividad',
-        callback: () => {
-          // Navegar a la actividad
-          window.location.href = `/actividades/${actividad.id}`;
-        }
-      });
+      // Mostrar toast solo si está habilitado
+      if (this.notificacionesService.getMostrarToasts()) {
+        this.toastService.info(mensaje, titulo, 5000, {
+          texto: 'Ver actividad',
+          callback: () => {
+            // Navegar a la actividad
+            window.location.href = `/actividades/${actividad.id}`;
+          }
+        });
+      }
 
       // Crear notificación persistente (si el backend está disponible)
       this.crearNotificacionBackend({
@@ -143,13 +145,16 @@ export class NotificacionesAutomaticasService {
       const mensaje = `La actividad "${actividad.nombreActividad}" finalizó hace ${diasTranscurridos} día${diasTranscurridos > 1 ? 's' : ''}`;
       const titulo = 'Actividad finalizada';
 
-      this.toastService.success(mensaje, titulo, 5000, {
-        texto: 'Ver actividad',
-        callback: () => {
-          // Navegar a la actividad
-          window.location.href = `/actividades/${actividad.id}`;
-        }
-      });
+      // Mostrar toast solo si está habilitado
+      if (this.notificacionesService.getMostrarToasts()) {
+        this.toastService.success(mensaje, titulo, 5000, {
+          texto: 'Ver actividad',
+          callback: () => {
+            // Navegar a la actividad
+            window.location.href = `/actividades/${actividad.id}`;
+          }
+        });
+      }
 
           this.crearNotificacionBackend({
             titulo,
@@ -191,13 +196,16 @@ export class NotificacionesAutomaticasService {
           const mensaje = `La actividad "${actividad.nombreActividad}" finalizó pero no tiene participaciones registradas`;
           const titulo = 'Actividad sin participación';
 
-          this.toastService.warning(mensaje, titulo, 6000, {
-            texto: 'Agregar participación',
-            callback: () => {
-              // Navegar a la actividad en el tab de participantes
-              window.location.href = `/actividades/${actividad.id}?tab=participantes`;
-            }
-          });
+          // Mostrar toast solo si está habilitado
+          if (this.notificacionesService.getMostrarToasts()) {
+            this.toastService.warning(mensaje, titulo, 6000, {
+              texto: 'Agregar participación',
+              callback: () => {
+                // Navegar a la actividad en el tab de participantes
+                window.location.href = `/actividades/${actividad.id}?tab=participantes`;
+              }
+            });
+          }
 
           this.crearNotificacionBackend({
             titulo,
@@ -243,13 +251,16 @@ export class NotificacionesAutomaticasService {
           const mensaje = `La actividad "${actividad.nombreActividad}" finalizó pero no tiene evidencias registradas`;
           const titulo = 'Actividad sin evidencia';
 
-          this.toastService.warning(mensaje, titulo, 6000, {
-            texto: 'Agregar evidencia',
-            callback: () => {
-              // Navegar a la actividad en el tab de evidencias
-              window.location.href = `/actividades/${actividad.id}?tab=evidencias`;
-            }
-          });
+          // Mostrar toast solo si está habilitado
+          if (this.notificacionesService.getMostrarToasts()) {
+            this.toastService.warning(mensaje, titulo, 6000, {
+              texto: 'Agregar evidencia',
+              callback: () => {
+                // Navegar a la actividad en el tab de evidencias
+                window.location.href = `/actividades/${actividad.id}?tab=evidencias`;
+              }
+            });
+          }
 
           this.crearNotificacionBackend({
             titulo,
@@ -275,13 +286,16 @@ export class NotificacionesAutomaticasService {
       : `Se creó una nueva actividad: "${actividad.nombreActividad}"`;
     const titulo = 'Nueva actividad creada';
 
-    this.toastService.info(mensaje, titulo, 5000, {
-      texto: 'Ver actividad',
-      callback: () => {
-        // Navegar a la actividad
-        window.location.href = `/actividades/${actividad.id}`;
-      }
-    });
+    // Mostrar toast solo si está habilitado
+    if (this.notificacionesService.getMostrarToasts()) {
+      this.toastService.info(mensaje, titulo, 5000, {
+        texto: 'Ver actividad',
+        callback: () => {
+          // Navegar a la actividad
+          window.location.href = `/actividades/${actividad.id}`;
+        }
+      });
+    }
 
     this.crearNotificacionBackend({
       titulo,

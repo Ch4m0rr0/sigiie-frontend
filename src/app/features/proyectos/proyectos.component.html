@@ -1,6 +1,6 @@
-<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900">
+<div class="min-h-screen bg-slate-50/50 p-6 lg:p-8 font-sans text-slate-900" style="position: relative;">
   
-  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in relative" style="z-index: 10000; position: relative;">
     <div>
       <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
         Proyectos
@@ -10,12 +10,100 @@
       </p>
     </div>
     
-    <button 
-      (click)="navigateToCreate()"
-      class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow transition-all duration-200 active:scale-95">
-      <app-icon icon="add" size="sm" color="white"></app-icon>
-      <span>Nuevo Proyecto</span>
-    </button>
+    <div class="flex gap-3 flex-wrap items-center relative" style="z-index: 10000; isolation: isolate;">
+      <!-- Selector de modo de vista -->
+      <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm relative z-10">
+        <button
+          type="button"
+          (click)="cambiarModoVista('lista')"
+          [class.bg-emerald-600]="modoVista() === 'lista'"
+          [class.text-white]="modoVista() === 'lista'"
+          [class.text-slate-600]="modoVista() !== 'lista'"
+          [class.shadow-sm]="modoVista() === 'lista'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de lista">
+          <app-icon icon="list" size="xs"></app-icon>
+          <span>Lista</span>
+        </button>
+        <button
+          type="button"
+          (click)="cambiarModoVista('cards')"
+          [class.bg-emerald-600]="modoVista() === 'cards'"
+          [class.text-white]="modoVista() === 'cards'"
+          [class.text-slate-600]="modoVista() !== 'cards'"
+          [class.shadow-sm]="modoVista() === 'cards'"
+          class="px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 hover:bg-emerald-50 flex items-center gap-1.5"
+          title="Vista de tarjetas">
+          <app-icon icon="grid_view" size="xs"></app-icon>
+          <span>Tarjetas</span>
+        </button>
+      </div>
+
+      <!-- Botón Nuevo Proyecto con dropdown -->
+      <div *hasPermission="'proyectos.crear'" class="relative dropdown-proyecto" style="z-index: 10000; position: relative; isolation: isolate;">
+      <button 
+        type="button"
+        (click)="toggleDropdownTipoProyecto(); $event.stopPropagation()"
+        class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95 relative z-10"
+        title="Crear nuevo proyecto">
+        <span>Nuevo Proyecto</span>
+        <app-icon icon="add" size="sm" color="white" [class.rotate-180]="mostrarDropdownTipoProyecto()" class="transition-transform duration-200"></app-icon>
+      </button>
+      
+      <!-- Dropdown de opciones de proyecto -->
+      @if (mostrarDropdownTipoProyecto()) {
+        <div class="absolute z-[99999] mt-1 left-0 w-full min-w-[200px] bg-white border border-slate-300 rounded-lg shadow-2xl"
+             style="position: absolute; z-index: 99999;"
+             (click)="$event.stopPropagation()">
+          <div class="py-1">
+            <button
+              type="button"
+              (click)="seleccionarTipoProyecto('actividad'); $event.stopPropagation()"
+              class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+              <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
+              Proyecto Actividad
+            </button>
+            <button
+              type="button"
+              (click)="seleccionarTipoProyecto('administrativo'); $event.stopPropagation()"
+              class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+              <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
+              Proyecto Administrativo
+            </button>
+            <button
+              type="button"
+              (click)="seleccionarTipoProyecto('docente'); $event.stopPropagation()"
+              class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+              <app-icon icon="school" size="xs" class="text-emerald-600"></app-icon>
+              Proyecto Docente
+            </button>
+            <button
+              type="button"
+              (click)="seleccionarTipoProyecto('estudiante'); $event.stopPropagation()"
+              class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+              <app-icon icon="person" size="xs" class="text-emerald-600"></app-icon>
+              Proyecto Estudiante
+            </button>
+            <div class="border-t border-slate-200 my-1"></div>
+            <button
+              type="button"
+              (click)="seleccionarTipoProyecto('planificado'); $event.stopPropagation()"
+              class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+              <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+              Proyecto Planificado
+            </button>
+            <button
+              type="button"
+              (click)="seleccionarTipoProyecto('no-planificado'); $event.stopPropagation()"
+              class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
+              <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
+              Proyecto No Planificado
+            </button>
+          </div>
+        </div>
+      }
+      </div>
+    </div>
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8">
@@ -32,7 +120,7 @@
                 [value]="filtroBusqueda()"
                 (input)="filtroBusqueda.set($any($event.target).value); onFiltroChange()"
                 placeholder="Nombre, responsable o descripción..."
-                class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
+                class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
             >
         </div>
       </div>
@@ -44,12 +132,13 @@
                 <app-icon icon="toggle_on" size="xs"></app-icon>
             </span>
             <select
-                [value]="filtroEstado() === null ? '' : (filtroEstado() ? 'true' : 'false')"
-                (change)="filtroEstado.set($any($event.target).value === '' ? null : $any($event.target).value === 'true'); onFiltroChange()"
-                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer">
+                [value]="filtroEstado() === null ? '' : filtroEstado()!.toString()"
+                (change)="onEstadoChange($any($event.target).value)"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none appearance-none cursor-pointer">
                 <option value="">Todos los estados</option>
-                <option value="true">Activos</option>
-                <option value="false">Inactivos</option>
+                @for (estado of estadosProyecto(); track estado.id) {
+                  <option [value]="estado.id">{{ estado.nombre }}</option>
+                }
             </select>
             <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
                 <app-icon icon="expand_more" size="xs"></app-icon>
@@ -86,13 +175,14 @@
     </div>
   }
 
-  @if (!loading() && !error() && proyectos().length > 0) {
+  <!-- Vista de Cards -->
+  @if (modoVista() === 'cards' && !loading() && !error() && proyectos().length > 0) {
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       @for (proyecto of proyectos(); track proyecto.id) {
         
         <div 
           (click)="navigateToDetail(proyecto.id)"
-          class="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-400 hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col h-full">
+          class="bg-white rounded-xl border border-slate-200 p-5 hover:border-emerald-400 hover:shadow-md transition-all duration-200 cursor-pointer group flex flex-col h-full">
           
           <div class="flex justify-between items-start mb-4">
             <div class="flex items-center gap-3">
@@ -100,7 +190,7 @@
                     {{ ((proyecto.nombreProyecto || proyecto.nombre || '').charAt(0) || 'P').toUpperCase() }}
                 </div>
                 <div>
-                   <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
+                   <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-1 group-hover:text-emerald-600 transition-colors">
                        {{ proyecto.nombreProyecto || proyecto.nombre }}
                    </h3>
                    @if (proyecto.estado) {
@@ -170,6 +260,96 @@
     </div>
   }
 
+  <!-- Vista de Lista -->
+  @if (modoVista() === 'lista' && !loading() && !error() && proyectos().length > 0) {
+    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm relative" style="z-index: 1;">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-slate-50 border-b border-slate-200 sticky top-0" style="z-index: 1;">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Proyecto</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Departamento</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Estado</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fecha Inicio</th>
+              <th class="px-3 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Responsable</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200">
+            @for (proyecto of proyectos(); track proyecto.id; let i = $index) {
+              <tr 
+                (click)="navigateToDetail(proyecto.id)"
+                [style.animation-delay.ms]="i * 30"
+                class="hover:bg-emerald-50 cursor-pointer transition-all duration-200 animate-fade-in">
+                <td class="px-4 py-3">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                      {{ ((proyecto.nombreProyecto || proyecto.nombre || '').charAt(0) || 'P').toUpperCase() }}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="text-sm font-semibold text-slate-900 truncate">{{ proyecto.nombreProyecto || proyecto.nombre || 'Sin nombre' }}</div>
+                      @if (proyecto.descripcion) {
+                        <div class="text-xs text-slate-500 truncate mt-0.5">{{ proyecto.descripcion }}</div>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td class="px-3 py-3">
+                  <span class="text-xs text-slate-600">
+                    {{ proyecto.departamento || '--' }}
+                  </span>
+                </td>
+                <td class="px-3 py-3">
+                  @if (proyecto.estado) {
+                    <span 
+                      class="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium"
+                      [ngClass]="getEstadoBadgeClass(proyecto.estado)">
+                      <span 
+                        class="w-1.5 h-1.5 rounded-full mr-1.5"
+                        [class.bg-emerald-500]="proyecto.estado === 'Activo'"
+                        [class.bg-slate-400]="proyecto.estado !== 'Activo'">
+                      </span>
+                      {{ proyecto.estado }}
+                    </span>
+                  } @else {
+                    <span class="text-xs text-slate-400">--</span>
+                  }
+                </td>
+                <td class="px-3 py-3 whitespace-nowrap">
+                  <span class="text-xs text-slate-600">
+                    @if (proyecto.fechaInicio) {
+                      {{ proyecto.fechaInicio | date:'dd/MM/yyyy' }}
+                    } @else {
+                      --
+                    }
+                  </span>
+                </td>
+                <td class="px-3 py-3">
+                  <span class="text-xs text-slate-600 truncate block max-w-[150px]">
+                    {{ proyecto.responsableNombre || 
+                       (proyecto.docentes?.length ? proyecto.docentes?.[0]?.nombreCompleto : '') ||
+                       (proyecto.estudiantes?.length ? proyecto.estudiantes?.[0]?.nombreCompleto : '') ||
+                       (proyecto.administrativos?.length ? proyecto.administrativos?.[0]?.nombreCompleto : '') || '--' }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      (click)="navigateToDetail(proyecto.id); $event.stopPropagation()"
+                      class="px-3 py-1.5 bg-white text-emerald-600 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-2px_-2px_4px_rgba(255,255,255,0.9)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.9)] active:shadow-[inset_3px_3px_6px_rgba(0,0,0,0.15),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] border border-slate-200/50 transition-all duration-200 hover:text-emerald-700">
+                      Detalles
+                      <app-icon icon="arrow_forward" size="xs"></app-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
   @if (!loading() && !error() && proyectos().length === 0) {
     <div class="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-xl border border-slate-200 border-dashed">
         <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -179,8 +359,12 @@
         <p class="text-slate-500 text-sm max-w-sm text-center mt-1 mb-6">
             Actualmente no hay datos que coincidan con tu búsqueda. Comienza creando un nuevo proyecto.
         </p>
-        <button (click)="navigateToCreate()" class="px-5 py-2.5 bg-blue-600 rounded-lg text-white text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm hover:shadow">
-            Crear Primer Proyecto
+        <button 
+            *hasPermission="'proyectos.crear'"
+            (click)="toggleDropdownTipoProyecto()" 
+            class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md flex items-center gap-2">
+            <app-icon icon="add" size="xs" color="white"></app-icon>
+            <span>Crear Primer Proyecto</span>
         </button>
     </div>
   }
