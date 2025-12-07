@@ -5,12 +5,13 @@ import { ProyectosService } from '../../core/services/proyectos.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
 import type { Proyecto } from '../../core/models/proyecto';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
 @Component({
   standalone: true,
   selector: 'app-list-proyectos',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, HasPermissionDirective, ...BrnButtonImports],
   templateUrl: './proyectos.component.html',
 })
 export class ListProyectosComponent implements OnInit {

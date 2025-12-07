@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import type { Usuario, UsuarioCreate, UsuarioUpdate } from '../models/usuario';
 import type { Rol } from '../models/rol';
@@ -14,14 +14,33 @@ export class UsuariosService {
 
   // Usuarios
   getAll(): Observable<Usuario[]> {
+    console.log(`📡 Llamando a GET ${this.apiUrl}...`);
     return this.http.get<any>(this.apiUrl).pipe(
       map(response => {
+        console.log('📥 Respuesta del servidor (raw):', response);
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => this.mapUsuario(item)) : [];
+        console.log('📦 Items extraídos:', items);
+        
+        if (!Array.isArray(items)) {
+          console.warn('⚠️ La respuesta no es un array:', typeof items, items);
+          return [];
+        }
+        
+        const usuariosMapeados = items.map(item => this.mapUsuario(item));
+        console.log(`✅ ${usuariosMapeados.length} usuarios mapeados correctamente`);
+        return usuariosMapeados;
       }),
       catchError(error => {
-        console.error('Error fetching usuarios:', error);
-        return of([]);
+        console.error('❌ Error fetching usuarios:', error);
+        console.error('Detalles del error:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error,
+          url: this.apiUrl
+        });
+        // Lanzar el error en lugar de devolver array vacío para que el componente pueda manejarlo
+        throw error;
       })
     );
   }
@@ -68,8 +87,28 @@ export class UsuariosService {
     }
 
     // Agregar permisos si están presentes
+    // El backend espera un array de objetos Permiso completos
     if (usuario.permisos && usuario.permisos.length > 0) {
-      dto.Permisos = usuario.permisos;
+      dto.Permisos = usuario.permisos.map((permiso: any) => {
+        // Si ya es un objeto, usarlo directamente
+        if (typeof permiso === 'object' && permiso !== null) {
+          return {
+            idPermiso: permiso.idPermiso || permiso.id || permiso.IdPermiso || permiso.Id,
+            nombre: permiso.nombre || permiso.Nombre || null,
+            descripcion: permiso.descripcion || permiso.Descripcion || null,
+            modulo: permiso.modulo || permiso.Modulo || null,
+            activo: permiso.activo !== undefined ? permiso.activo : (permiso.Activo !== undefined ? permiso.Activo : true)
+          };
+        }
+        // Si es un número (ID), crear un objeto mínimo
+        return {
+          idPermiso: Number(permiso),
+          nombre: null,
+          descripcion: null,
+          modulo: null,
+          activo: true
+        };
+      });
     }
 
     return this.http.post<any>(this.apiUrl, dto).pipe(
@@ -91,15 +130,60 @@ export class UsuariosService {
     }
 
     // Agregar permisos si están presentes
-    if (usuario.permisos !== undefined) {
-      dto.Permisos = usuario.permisos;
+    // El backend espera objetos completos de Permiso (igual que para roles)
+    if (usuario.permisos !== undefined && usuario.permisos.length > 0) {
+      dto.Permisos = usuario.permisos.map((permiso: any) => {
+        // Si ya es un objeto, usarlo directamente pero asegurar el formato correcto
+        if (typeof permiso === 'object' && permiso !== null) {
+          return {
+            idPermiso: permiso.idPermiso || permiso.id || permiso.IdPermiso || permiso.Id,
+            nombre: permiso.nombre || permiso.Nombre || null,
+            descripcion: permiso.descripcion || permiso.Descripcion || null,
+            modulo: permiso.modulo || permiso.Modulo || null,
+            activo: permiso.activo !== undefined ? permiso.activo : (permiso.Activo !== undefined ? permiso.Activo : true)
+          };
+        }
+        // Si es un número (ID), crear un objeto mínimo
+        // El backend debería poder buscar el permiso por idPermiso
+        return {
+          idPermiso: Number(permiso),
+          nombre: null,
+          descripcion: null,
+          modulo: null,
+          activo: true
+        };
+      });
+      
+      console.log(`🔐 Agregando ${dto.Permisos.length} permisos al DTO (formato objetos):`, dto.Permisos);
+    } else {
+      console.warn('⚠️ No se están enviando permisos (permisos es undefined o vacío)');
+      dto.Permisos = []; // Enviar array vacío explícitamente
     }
 
+    console.log(`📤 Enviando PUT a ${this.apiUrl}/${id} con DTO:`, JSON.stringify(dto, null, 2));
+
     return this.http.put<any>(`${this.apiUrl}/${id}`, dto).pipe(
-      map(() => true),
+      tap((response) => {
+        console.log('🔔 Tap ejecutado - Respuesta del servidor:', response);
+      }),
+      map((response) => {
+        console.log('✅ Map ejecutado - Respuesta del servidor al actualizar usuario:', response);
+        // Si la respuesta es null o undefined, aún consideramos éxito si no hay error HTTP
+        // Muchos backends devuelven null en PUT exitosos
+        return true;
+      }),
       catchError(error => {
-        console.error('Error updating usuario:', error);
-        return of(false);
+        console.error('❌ Error updating usuario:', error);
+        console.error('Detalles del error:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error,
+          url: `${this.apiUrl}/${id}`,
+          body: dto
+        });
+        // Lanzar el error para que el componente pueda manejarlo
+        throw error;
       })
     );
   }
@@ -153,13 +237,35 @@ export class UsuariosService {
   private mapUsuario(item: any): Usuario {
     const idUsuario: number = Number(item.IdUsuario ?? item.idUsuario ?? item.id ?? item.Id ?? 0);
     const id: number = idUsuario > 0 ? idUsuario : 0;
+    
+    // Obtener permisos del rol (array de strings)
+    const permisosRol: string[] = Array.isArray(item.Permisos ?? item.permisos) 
+      ? (item.Permisos ?? item.permisos) 
+      : [];
+    
+    // Obtener permisos personalizados (array de objetos)
+    const permisosPersonalizados = Array.isArray(item.PermisosPersonalizados ?? item.permisosPersonalizados)
+      ? (item.PermisosPersonalizados ?? item.permisosPersonalizados).map((p: any) => ({
+          idPermiso: p.IdPermiso ?? p.idPermiso ?? p.Id ?? p.id ?? 0,
+          nombre: p.Nombre ?? p.nombre ?? '',
+          descripcion: p.Descripcion ?? p.descripcion ?? null,
+          modulo: p.Modulo ?? p.modulo ?? null,
+          activo: p.Activo !== undefined ? p.Activo : (p.activo !== undefined ? p.activo : true)
+        }))
+      : [];
+    
+    // Combinar permisos del rol con nombres de permisos personalizados para mostrar en la lista
+    const nombresPermisosPersonalizados = permisosPersonalizados.map((p: Permiso) => p.nombre);
+    const todosLosPermisos = [...permisosRol, ...nombresPermisosPersonalizados];
+    
     return {
       idUsuario: id,
       id: id, // Alias
       nombreCompleto: item.NombreCompleto ?? item.nombreCompleto ?? '',
       correo: item.Correo ?? item.correo ?? '',
       rolNombre: item.RolNombre ?? item.rolNombre ?? 'Sin rol',
-      permisos: Array.isArray(item.Permisos ?? item.permisos) ? (item.Permisos ?? item.permisos) : [],
+      permisos: todosLosPermisos, // Combinar permisos del rol y personalizados
+      permisosPersonalizados: permisosPersonalizados.length > 0 ? permisosPersonalizados : undefined,
       activo: item.Activo !== undefined ? item.Activo : (item.activo !== undefined ? item.activo : true),
       departamentoId: item.DepartamentoId ?? item.departamentoId
     };

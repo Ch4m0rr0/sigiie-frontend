@@ -6,6 +6,7 @@ import { IconComponent } from './icon/icon.component';
 import { NotificacionesComponent } from './notificaciones/notificaciones.component';
 import { ToastComponent } from './toast/toast.component';
 import { NotificacionesAutomaticasService } from '../core/services/notificaciones-automaticas.service';
+import { PermisosService } from '../core/services/permisos.service';
 
 @Component({
   standalone: true,
@@ -75,10 +76,14 @@ import { NotificacionesAutomaticasService } from '../core/services/notificacione
 })
 export class LayoutComponent implements OnInit, OnDestroy {
   private notificacionesAutomaticas = inject(NotificacionesAutomaticasService);
+  private permisosService = inject(PermisosService);
 
   ngOnInit(): void {
     // Iniciar el servicio de notificaciones automáticas
     this.notificacionesAutomaticas.iniciar();
+    // El PermisosService se inicializa automáticamente en su constructor
+    // pero forzamos la carga inicial de permisos
+    this.permisosService.loadPermisosUsuarioActual();
   }
 
   ngOnDestroy(): void {

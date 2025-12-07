@@ -11,6 +11,7 @@ import type { Permiso } from '../../core/models/permiso';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -120,20 +121,56 @@ export class UsuarioFormComponent implements OnInit {
           return;
         }
         
-        // Buscar el rol por nombre
+        // Buscar el rol por nombre (búsqueda más robusta)
         let idRol: number | null = null;
         if (usuario.rolNombre && this.roles().length > 0) {
-          const rol = this.roles().find(r => r.nombre === usuario.rolNombre);
+          // Primero intentar búsqueda exacta
+          let rol = this.roles().find(r => r.nombre === usuario.rolNombre);
+          
+          // Si no se encuentra, intentar búsqueda case-insensitive
+          if (!rol) {
+            rol = this.roles().find(r => 
+              r.nombre.toLowerCase().trim() === usuario.rolNombre!.toLowerCase().trim()
+            );
+          }
+          
+          // Si aún no se encuentra, intentar búsqueda parcial
+          if (!rol) {
+            rol = this.roles().find(r => 
+              r.nombre.toLowerCase().includes(usuario.rolNombre!.toLowerCase()) ||
+              usuario.rolNombre!.toLowerCase().includes(r.nombre.toLowerCase())
+            );
+          }
+          
           if (rol) {
             idRol = rol.id;
+            console.log(`✅ Rol encontrado: "${rol.nombre}" (ID: ${rol.id}) para usuario "${usuario.rolNombre}"`);
+          } else {
+            console.warn(`⚠️ No se encontró el rol "${usuario.rolNombre}" en la lista de roles disponibles.`);
+            console.warn(`📋 Roles disponibles:`, this.roles().map(r => `"${r.nombre}" (ID: ${r.id})`));
+            this.error.set(`⚠️ Advertencia: No se pudo encontrar el rol "${usuario.rolNombre}" en la lista. Por favor, selecciona un rol manualmente.`);
           }
+        } else if (!usuario.rolNombre) {
+          console.warn('⚠️ El usuario no tiene un rol asignado.');
+          this.error.set('⚠️ El usuario no tiene un rol asignado. Por favor, selecciona un rol.');
         }
         
         // Mapear permisos de nombres a IDs
+        // El backend devuelve permisos del rol en 'permisos' (strings) y permisos personalizados en 'permisosPersonalizados' (objetos)
         let permisosIds: number[] = [];
-        if (usuario.permisos && usuario.permisos.length > 0 && this.permisos().length > 0) {
+        
+        // Obtener nombres de permisos del rol
+        const nombresPermisosRol = usuario.permisos || [];
+        
+        // Obtener nombres de permisos personalizados
+        const nombresPermisosPersonalizados = usuario.permisosPersonalizados?.map(p => p.nombre) || [];
+        
+        // Combinar todos los nombres de permisos
+        const todosLosNombresPermisos = [...nombresPermisosRol, ...nombresPermisosPersonalizados];
+        
+        if (todosLosNombresPermisos.length > 0 && this.permisos().length > 0) {
           permisosIds = this.permisos()
-            .filter(p => usuario.permisos.includes(p.nombre))
+            .filter(p => todosLosNombresPermisos.includes(p.nombre))
             .map(p => p.id);
         }
         
@@ -170,6 +207,37 @@ export class UsuarioFormComponent implements OnInit {
     const formValue = this.form.value;
 
     if (this.isEditMode() && this.usuarioId()) {
+      // Convertir IDs de permisos a objetos completos de Permiso
+      let permisosCompletos: any[] = [];
+      if (formValue.permisos && Array.isArray(formValue.permisos) && formValue.permisos.length > 0) {
+        permisosCompletos = formValue.permisos
+          .map((permisoId: any) => {
+            const permisoIdNum = +permisoId;
+            if (isNaN(permisoIdNum)) return null;
+            
+            // Buscar el permiso completo en la lista cargada
+            const permisoCompleto = this.permisos().find(p => p.id === permisoIdNum);
+            if (permisoCompleto) {
+              return {
+                idPermiso: permisoCompleto.id,
+                nombre: permisoCompleto.nombre,
+                descripcion: permisoCompleto.descripcion || null,
+                modulo: null, // El backend puede completar esto
+                activo: true
+              };
+            }
+            // Si no se encuentra, crear un objeto mínimo con el ID
+            return {
+              idPermiso: permisoIdNum,
+              nombre: null,
+              descripcion: null,
+              modulo: null,
+              activo: true
+            };
+          })
+          .filter((p: any) => p !== null);
+      }
+
       // Actualizar usuario
       const updateData: UsuarioUpdate = {
         nombreCompleto: formValue.nombreCompleto,
@@ -177,27 +245,120 @@ export class UsuarioFormComponent implements OnInit {
         idRol: +formValue.idRol,
         activo: formValue.activo ?? true,
         departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
-        permisos: formValue.permisos && Array.isArray(formValue.permisos) 
-          ? formValue.permisos.map((p: any) => +p).filter((p: number) => !isNaN(p))
-          : []
+        permisos: permisosCompletos // Enviar objetos completos, no solo IDs
       };
 
+      console.log('📤 Enviando actualización de usuario:', updateData);
+      
       this.usuariosService.update(this.usuarioId()!, updateData).subscribe({
-        next: (success) => {
+        next: async (success) => {
           if (success) {
+            console.log('✅ Usuario actualizado exitosamente');
+            
+            // Verificar que los permisos se guardaron correctamente
+            if (permisosCompletos.length > 0) {
+              console.log('🔍 Verificando que los permisos se guardaron...');
+              await new Promise(resolve => setTimeout(resolve, 500)); // Esperar a que el backend procese
+              
+              try {
+                const usuarioVerificado = await firstValueFrom(this.usuariosService.getById(this.usuarioId()!));
+                if (usuarioVerificado) {
+                  // El backend devuelve permisos personalizados en 'permisosPersonalizados'
+                  const permisosPersonalizadosGuardados = usuarioVerificado.permisosPersonalizados || [];
+                  const nombresPermisosEnviados = permisosCompletos.map(p => p.nombre).filter(n => n);
+                  
+                  console.log(`📊 Permisos enviados: ${permisosCompletos.length}`, nombresPermisosEnviados);
+                  console.log(`📊 Permisos personalizados guardados: ${permisosPersonalizadosGuardados.length}`, permisosPersonalizadosGuardados);
+                  
+                  // Verificar que los permisos personalizados se guardaron
+                  const nombresPermisosPersonalizadosGuardados = permisosPersonalizadosGuardados.map(p => p.nombre);
+                  const permisosGuardadosCorrectamente = nombresPermisosEnviados.every(nombre => 
+                    nombresPermisosPersonalizadosGuardados.includes(nombre)
+                  );
+                  
+                  if (permisosPersonalizadosGuardados.length === 0) {
+                    console.warn('⚠️ ADVERTENCIA: Los permisos personalizados no se guardaron. El backend puede no estar procesando el campo Permisos.');
+                    alert(`⚠️ Usuario actualizado, pero los permisos personalizados pueden no haberse guardado.\n\nPermisos enviados: ${permisosCompletos.length}\nPermisos personalizados encontrados: ${permisosPersonalizadosGuardados.length}\n\nNota: Los permisos del rol se asignan automáticamente. Los permisos personalizados adicionales deben guardarse en 'permisosPersonalizados'.\n\nPor favor, verifica en el backend si el endpoint procesa el campo Permisos.`);
+                  } else if (!permisosGuardadosCorrectamente) {
+                    console.warn(`⚠️ Algunos permisos no coinciden. Enviados: ${nombresPermisosEnviados.join(', ')}, Guardados: ${nombresPermisosPersonalizadosGuardados.join(', ')}`);
+                    alert(`⚠️ Usuario actualizado, pero algunos permisos pueden no haberse guardado correctamente.\n\nPermisos enviados: ${permisosCompletos.length}\nPermisos personalizados guardados: ${permisosPersonalizadosGuardados.length}`);
+                  } else {
+                    console.log('✅ Permisos personalizados verificados correctamente');
+                  }
+                }
+              } catch (verifyError) {
+                console.warn('⚠️ No se pudo verificar los permisos:', verifyError);
+              }
+            }
+            
             this.router.navigate(['/usuarios']);
           } else {
-            this.error.set('Error al actualizar el usuario.');
+            this.error.set('Error al actualizar el usuario. El servidor no confirmó la actualización.');
             this.saving.set(false);
           }
         },
-        error: (err) => {
-          console.error('Error updating usuario:', err);
-          this.error.set('Error al actualizar el usuario. Por favor, intenta de nuevo.');
+        error: (err: any) => {
+          console.error('❌ Error updating usuario:', err);
+          console.error('Detalles del error:', {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            error: err.error
+          });
+          
+          // Mostrar mensaje de error más específico
+          let errorMessage = 'Error al actualizar el usuario.';
+          
+          if (err.status === 403) {
+            errorMessage = 'No tienes permisos para actualizar este usuario. Solo los administradores pueden editar usuarios.';
+          } else if (err.status === 401) {
+            errorMessage = 'No estás autenticado. Por favor, inicia sesión nuevamente.';
+          } else if (err.status === 400) {
+            errorMessage = err.error?.message || 'Datos inválidos. Por favor, verifica la información ingresada.';
+          } else if (err.status === 404) {
+            errorMessage = 'Usuario no encontrado.';
+          } else if (err.status >= 500) {
+            errorMessage = 'Error del servidor. Por favor, intenta más tarde.';
+          } else if (err.error?.message) {
+            errorMessage = err.error.message;
+          }
+          
+          this.error.set(errorMessage);
           this.saving.set(false);
         }
       });
     } else {
+      // Convertir IDs de permisos a objetos completos de Permiso para crear usuario
+      let permisosCompletos: any[] = [];
+      if (formValue.permisos && Array.isArray(formValue.permisos) && formValue.permisos.length > 0) {
+        permisosCompletos = formValue.permisos
+          .map((permisoId: any) => {
+            const permisoIdNum = +permisoId;
+            if (isNaN(permisoIdNum)) return null;
+            
+            // Buscar el permiso completo en la lista cargada
+            const permisoCompleto = this.permisos().find(p => p.id === permisoIdNum);
+            if (permisoCompleto) {
+              return {
+                idPermiso: permisoCompleto.id,
+                nombre: permisoCompleto.nombre,
+                descripcion: permisoCompleto.descripcion || null,
+                modulo: null,
+                activo: true
+              };
+            }
+            // Si no se encuentra, crear un objeto mínimo con el ID
+            return {
+              idPermiso: permisoIdNum,
+              nombre: null,
+              descripcion: null,
+              modulo: null,
+              activo: true
+            };
+          })
+          .filter((p: any) => p !== null);
+      }
+
       // Crear nuevo usuario
       const createData: UsuarioCreate = {
         nombreCompleto: formValue.nombreCompleto,
@@ -205,9 +366,7 @@ export class UsuarioFormComponent implements OnInit {
         contraseña: formValue.contraseña,
         idRol: +formValue.idRol,
         departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
-        permisos: formValue.permisos && Array.isArray(formValue.permisos) 
-          ? formValue.permisos.map((p: any) => +p).filter((p: number) => !isNaN(p))
-          : []
+        permisos: permisosCompletos // Enviar objetos completos, no solo IDs
       };
 
       this.usuariosService.create(createData).subscribe({

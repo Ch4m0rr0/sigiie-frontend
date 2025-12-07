@@ -27,9 +27,58 @@ export class NotificacionesService {
   private noLeidasCountSubject = new BehaviorSubject<number>(0);
   public noLeidasCount$ = this.noLeidasCountSubject.asObservable();
 
+  // Estado de mostrar notificaciones en pantalla (toasts)
+  private readonly STORAGE_KEY_MOSTRAR_TOASTS = 'notificaciones_mostrar_toasts';
+  private mostrarToastsSubject = new BehaviorSubject<boolean>(this.getMostrarToastsFromStorage());
+  public mostrarToasts$ = this.mostrarToastsSubject.asObservable();
+
   constructor() {
     // Cargar notificaciones al inicializar el servicio
     this.loadNotificaciones();
+    // Asegurar que el valor inicial esté sincronizado con localStorage
+    const valorInicial = this.getMostrarToastsFromStorage();
+    if (this.mostrarToastsSubject.value !== valorInicial) {
+      this.mostrarToastsSubject.next(valorInicial);
+    }
+  }
+
+  /**
+   * Obtiene el estado de mostrar toasts desde localStorage
+   */
+  private getMostrarToastsFromStorage(): boolean {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY_MOSTRAR_TOASTS);
+      // Por defecto, mostrar toasts está activado (true) solo si no hay valor guardado
+      if (stored === null) {
+        return true; // Valor por defecto
+      }
+      return stored === 'true';
+    } catch (error) {
+      console.warn('⚠️ Error leyendo localStorage para mostrar toasts:', error);
+      return true; // Valor por defecto en caso de error
+    }
+  }
+
+  /**
+   * Obtiene si se deben mostrar toasts
+   */
+  getMostrarToasts(): boolean {
+    return this.mostrarToastsSubject.value;
+  }
+
+  /**
+   * Establece si se deben mostrar toasts
+   */
+  setMostrarToasts(mostrar: boolean): void {
+    try {
+      localStorage.setItem(this.STORAGE_KEY_MOSTRAR_TOASTS, mostrar.toString());
+      this.mostrarToastsSubject.next(mostrar);
+      console.log('✅ Preferencia de mostrar toasts guardada:', mostrar);
+    } catch (error) {
+      console.error('❌ Error guardando preferencia de mostrar toasts:', error);
+      // Aún así actualizar el subject para que la UI se actualice
+      this.mostrarToastsSubject.next(mostrar);
+    }
   }
 
   /**

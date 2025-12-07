@@ -139,7 +139,13 @@
             </span>
           </div>
           @if (form.get('idRol')?.invalid && form.get('idRol')?.touched) {
-            <p class="mt-1.5 text-sm text-red-600">El rol es requerido</p>
+            <p class="mt-1.5 text-sm text-red-600">
+              El rol es requerido. Por favor, selecciona un rol de la lista.
+            </p>
+          } @else if (form.get('idRol')?.invalid && !form.get('idRol')?.touched && isEditMode()) {
+            <p class="mt-1.5 text-sm text-amber-600">
+              ⚠️ No se pudo cargar el rol automáticamente. Por favor, selecciona el rol manualmente.
+            </p>
           }
         </div>
 

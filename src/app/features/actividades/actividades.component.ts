@@ -30,6 +30,7 @@ import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { es } from 'date-fns/locale';
 import { format, startOfWeek, addDays, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 import { EvidenciaFormComponent } from '../evidencias/evidencia-form.component';
+import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 
 // Formateador personalizado para usar locale español
 class CustomCalendarDateFormatter extends CalendarDateFormatter {
@@ -78,7 +79,8 @@ class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
     ReactiveFormsModule, 
     IconComponent, 
     CalendarModule,
-    EvidenciaFormComponent
+    EvidenciaFormComponent,
+    HasPermissionDirective
   ],
   providers: [
     CalendarUtils,

@@ -40,7 +40,7 @@
       </div>
 
       <!-- Botón Nuevo Proyecto con dropdown -->
-      <div class="relative dropdown-proyecto" style="z-index: 10000; position: relative; isolation: isolate;">
+      <div *hasPermission="'proyectos.crear'" class="relative dropdown-proyecto" style="z-index: 10000; position: relative; isolation: isolate;">
       <button 
         type="button"
         (click)="toggleDropdownTipoProyecto(); $event.stopPropagation()"
@@ -359,7 +359,10 @@
         <p class="text-slate-500 text-sm max-w-sm text-center mt-1 mb-6">
             Actualmente no hay datos que coincidan con tu búsqueda. Comienza creando un nuevo proyecto.
         </p>
-        <button (click)="toggleDropdownTipoProyecto()" class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md flex items-center gap-2">
+        <button 
+            *hasPermission="'proyectos.crear'"
+            (click)="toggleDropdownTipoProyecto()" 
+            class="px-5 py-2.5 bg-emerald-600 rounded-lg text-white text-sm font-medium hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md flex items-center gap-2">
             <app-icon icon="add" size="xs" color="white"></app-icon>
             <span>Crear Primer Proyecto</span>
         </button>
