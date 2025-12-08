@@ -261,16 +261,8 @@ export class ReporteGenerarComponent implements OnInit {
             }
           } else if (err.status === 500) {
             // Verificar si el error es específico sobre el endpoint de descarga
-            if (err.backendMessage && (err.backendMessage.includes('endpoint de descarga') || err.backendMessage.includes('devuelve información del reporte'))) {
-              // El reporte se generó pero el endpoint de descarga no funciona correctamente
-              errorMessage = `El reporte se generó exitosamente pero no se pudo descargar.\n\n` +
-                           `Problema: El backend está devolviendo información del reporte en lugar del archivo Excel.\n\n` +
-                           `Solución: El endpoint GET /api/Reportes/descargar/{id} debe devolver el archivo binario Excel ` +
-                           `con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\n\n` +
-                           (err.rutaArchivo ? `Ruta del archivo en el servidor: ${err.rutaArchivo}\n\n` : '') +
-                           `Por favor, contacta al administrador del sistema para corregir el endpoint de descarga.`;
-            } else if (err.message && err.message.includes('se generó exitosamente')) {
-              errorMessage = err.message;
+            if (err.backendMessage && err.backendMessage.includes('endpoint de descarga')) {
+              errorMessage = err.backendMessage;
             } else {
               errorMessage = 'Error interno del servidor al generar el reporte. Por favor, intenta nuevamente más tarde.';
             }
