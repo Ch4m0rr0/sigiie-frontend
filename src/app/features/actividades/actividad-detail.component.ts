@@ -345,7 +345,6 @@ export class ActividadDetailComponent implements OnInit {
     if (capacidad) {
       const nombre = capacidad.nombre || capacidad.Nombre || capacidad.nombreCapacidadInstalada 
         || capacidad.nombreInstalacion || capacidad.NombreInstalacion || `ID: ${id}`;
-      // Guardar en cache de forma asíncrona para evitar escribir durante el renderizado
       // Guardar en cache después del renderizado para evitar error NG0600
       setTimeout(() => {
         const currentCache = this.capacidadInstaladaCache();

@@ -236,15 +236,6 @@ export class PermisosService {
       return;
     }
 
-    // Convertir permisos del formato del backend al formato del frontend
-    let permisosConvertidos: string[] = [];
-    if (user.permisos && user.permisos.length > 0) {
-      permisosConvertidos = this.convertirPermisos(user.permisos);
-      this.permisos.set(permisosConvertidos);
-      this.permisosSubject.next(permisosConvertidos);
-      console.log('✅ Permisos convertidos:', permisosConvertidos);
-    }
-
     // Convertir roles del formato del backend al formato del frontend
     let rolesConvertidos: string[] = [];
     if (user.role) {
@@ -259,33 +250,80 @@ export class PermisosService {
       });
     }
     
+    // Verificar si el usuario es administrador (por rol o por correo especial)
+    const esAdmin = rolesConvertidos.includes('Administrador del Sistema') ||
+                    user.role?.toLowerCase().includes('admin') ||
+                    user.correo?.toLowerCase() === 'admin@sigii.com';
+    
+    if (esAdmin) {
+      // Si es administrador, asignar automáticamente todos los permisos del rol por defecto
+      const rolAdminDefault = this.getRolDefault('Administrador del Sistema');
+      if (rolAdminDefault) {
+        const permisosAdmin = rolAdminDefault.permisos;
+        this.permisos.set(permisosAdmin);
+        this.permisosSubject.next(permisosAdmin);
+        console.log('✅ Usuario administrador detectado. Permisos completos asignados:', permisosAdmin);
+        
+        // Asegurar que el rol esté correctamente asignado
+        if (!rolesConvertidos.includes('Administrador del Sistema')) {
+          rolesConvertidos = ['Administrador del Sistema'];
+        }
+      }
+    } else {
+      // Convertir permisos del formato del backend al formato del frontend
+      let permisosConvertidos: string[] = [];
+      if (user.permisos && user.permisos.length > 0) {
+        permisosConvertidos = this.convertirPermisos(user.permisos);
+        this.permisos.set(permisosConvertidos);
+        this.permisosSubject.next(permisosConvertidos);
+        console.log('✅ Permisos convertidos:', permisosConvertidos);
+      }
+    }
+    
     if (rolesConvertidos.length > 0) {
       this.roles.set(rolesConvertidos);
       this.rolesSubject.next(rolesConvertidos);
       console.log('✅ Roles convertidos:', rolesConvertidos);
     }
 
-    // También intentar cargar desde el endpoint (opcional, ya tenemos los permisos del login)
-    // Si ya tenemos permisos convertidos, no es necesario hacer otra llamada
-    if (permisosConvertidos.length > 0) {
+    // Si ya tenemos permisos (ya sea del admin o convertidos), no necesitamos hacer otra llamada
+    const permisosActuales = this.permisos();
+    if (permisosActuales.length > 0) {
       this.loading.set(false);
-      // Ya tenemos los permisos, no necesitamos hacer otra llamada
       return;
     }
     
     this.loading.set(true);
     this.http.get<{ permisos: string[], roles: string[] }>(`${this.baseUrl}/api/auth/permissions`).pipe(
       map(response => {
-        // Convertir permisos del backend al formato del frontend
-        const permisosBackend = response.permisos || user.permisos || [];
-        const permisosConvertidos = this.convertirPermisos(permisosBackend);
-        
         // Convertir roles
         let rolesConvertidos: string[] = [];
         if (response.roles && response.roles.length > 0) {
           rolesConvertidos = response.roles;
         } else if (user.role) {
           rolesConvertidos = this.convertirRoles(user.role);
+        }
+        
+        // Verificar si el usuario es administrador
+        const esAdmin = rolesConvertidos.includes('Administrador del Sistema') ||
+                        user.role?.toLowerCase().includes('admin') ||
+                        user.correo?.toLowerCase() === 'admin@sigii.com';
+        
+        let permisosConvertidos: string[] = [];
+        
+        if (esAdmin) {
+          // Si es administrador, asignar todos los permisos del rol por defecto
+          const rolAdminDefault = this.getRolDefault('Administrador del Sistema');
+          if (rolAdminDefault) {
+            permisosConvertidos = rolAdminDefault.permisos;
+            if (!rolesConvertidos.includes('Administrador del Sistema')) {
+              rolesConvertidos = ['Administrador del Sistema'];
+            }
+          }
+        } else {
+          // Convertir permisos del backend al formato del frontend
+          const permisosBackend = response.permisos || user.permisos || [];
+          permisosConvertidos = this.convertirPermisos(permisosBackend);
         }
         
         return {
@@ -310,10 +348,12 @@ export class PermisosService {
         }
       }),
       catchError(error => {
-        console.warn('⚠️ Error cargando permisos desde /api/auth/permissions, usando permisos del login:', error);
-        // Si falla, ya tenemos los permisos convertidos del login (definidos arriba)
+        console.warn('⚠️ Error cargando permisos desde /api/auth/permissions, usando permisos actuales:', error);
+        // Si falla, usar los permisos y roles que ya se cargaron anteriormente
+        const permisosActuales = this.permisos();
+        const rolesActuales = this.roles();
         this.loading.set(false);
-        return of({ permisos: permisosConvertidos, roles: rolesConvertidos });
+        return of({ permisos: permisosActuales, roles: rolesActuales });
       })
     ).subscribe({
       next: () => this.loading.set(false),
@@ -323,8 +363,14 @@ export class PermisosService {
 
   /**
    * Verifica si el usuario tiene un permiso específico
+   * Los administradores siempre tienen todos los permisos
    */
   tienePermiso(permiso: string): boolean {
+    // Si es administrador, siempre tiene todos los permisos
+    if (this.esAdministrador()) {
+      return true;
+    }
+    
     const permisos = this.permisos();
     return permisos.includes(permiso);
   }
@@ -383,11 +429,36 @@ export class PermisosService {
    * Verifica si el usuario es administrador
    */
   esAdministrador(): boolean {
+    const user = this.authService.user();
+    if (!user) {
+      return false;
+    }
+    
     const roles = this.roles();
-    return roles.includes('Administrador del Sistema') || 
-           roles.includes('Administrador') || 
-           roles.includes('Admin') ||
-           this.tieneTodosLosPermisos(['usuarios.crear', 'usuarios.editar', 'proyectos.crear', 'proyectos.editar']);
+    
+    // Verificar por correo especial
+    if (user.correo?.toLowerCase() === 'admin@sigii.com') {
+      return true;
+    }
+    
+    // Verificar por roles
+    if (roles.includes('Administrador del Sistema') || 
+        roles.includes('Administrador') || 
+        roles.includes('Admin')) {
+      return true;
+    }
+    
+    // Verificar por rol del usuario directamente
+    if (user.role?.toLowerCase().includes('admin')) {
+      return true;
+    }
+    
+    // Verificar por permisos directamente (sin usar tienePermiso para evitar recursión)
+    const permisos = this.permisos();
+    const permisosAdmin = ['usuarios.crear', 'usuarios.editar', 'proyectos.crear', 'proyectos.editar'];
+    const tienePermisosAdmin = permisosAdmin.every(permiso => permisos.includes(permiso));
+    
+    return tienePermisosAdmin;
   }
 
   /**
