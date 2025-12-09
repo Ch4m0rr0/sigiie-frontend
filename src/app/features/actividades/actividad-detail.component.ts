@@ -345,11 +345,8 @@ export class ActividadDetailComponent implements OnInit {
     if (capacidad) {
       const nombre = capacidad.nombre || capacidad.Nombre || capacidad.nombreCapacidadInstalada 
         || capacidad.nombreInstalacion || capacidad.NombreInstalacion || `ID: ${id}`;
-<<<<<<< HEAD
       // Guardar en cache de forma asíncrona para evitar escribir durante el renderizado
-=======
       // Guardar en cache después del renderizado para evitar error NG0600
->>>>>>> 8e0a8ebbfe2735742b50b8bf4c8a069433e3d852
       setTimeout(() => {
         const currentCache = this.capacidadInstaladaCache();
         const newCache = new Map(currentCache);
