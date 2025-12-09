@@ -589,9 +589,18 @@ export class ReportesService {
   /**
    * GET /api/Reportes/descargar/{idReporte}
    * Descargar un reporte por ID
+   * 
+   * IMPORTANTE: Este endpoint debe GENERAR el reporte dinámicamente basándose en la configuración
+   * almacenada en la base de datos (usando el idReporte), NO debe buscar un archivo almacenado.
+   * 
+   * El backend debe:
+   * 1. Obtener la configuración del reporte desde la BD usando idReporte
+   * 2. Generar el archivo Excel dinámicamente con los datos actuales
+   * 3. Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
    */
   descargar(idReporte: number): Observable<Blob> {
     console.log('🔄 GET Descargar Reporte - URL:', `${this.apiUrl}/descargar/${idReporte}`);
+    console.log('📋 El backend debe GENERAR el reporte dinámicamente basándose en la configuración del reporte con ID:', idReporte);
     return this.http.get<Blob>(`${this.apiUrl}/descargar/${idReporte}`, {
       responseType: 'blob' as 'json',
       observe: 'response',
@@ -623,21 +632,12 @@ export class ReportesService {
               
               console.error('❌ GET Descargar Reporte - El servidor devolvió un error o metadatos en lugar del archivo:', errorData);
               
-              // Si el texto contiene información del reporte, el backend está devolviendo metadatos en lugar del archivo
-              if (text.includes('Reporte:') || text.includes('Tipo:') || text.includes('Ruta:')) {
-                return throwError(() => ({
-                  status: 500,
-                  error: errorData,
-                  message: 'El servidor devolvió información del reporte en lugar del archivo Excel. Por favor, verifica que el endpoint GET /api/Reportes/descargar/{id} esté configurado para devolver el archivo binario con el Content-Type correcto.',
-                  backendMessage: 'El endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend debe devolver el archivo binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                }));
-              }
-              
+              // El backend debe generar el reporte dinámicamente, no devolver metadatos
               return throwError(() => ({
                 status: response.status,
                 error: errorData,
-                message: errorData.message || errorData.title || errorData.detail || 'Error al descargar el reporte',
-                backendMessage: errorData.message || errorData.title || errorData.detail
+                message: errorData.message || errorData.title || errorData.detail || 'Error al generar/descargar el reporte. El backend debe generar el reporte Excel dinámicamente y devolverlo como archivo binario.',
+                backendMessage: errorData.message || errorData.title || errorData.detail || 'El endpoint GET /api/Reportes/descargar/{id} debe generar el reporte dinámicamente y devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
               }));
             })
           );
@@ -660,21 +660,18 @@ export class ReportesService {
                 switchMap((text: string) => {
                   console.error('❌ GET Descargar Reporte - El archivo no es un Excel válido. Contenido recibido:', text);
                   
-                  // Si el texto contiene información del reporte, el backend está devolviendo metadatos en lugar del archivo
-                  if (text.includes('Reporte:') || text.includes('Tipo:') || text.includes('Ruta:')) {
-                    return throwError(() => ({
-                      status: 500,
-                      error: { message: text },
-                      message: 'El servidor devolvió información del reporte en lugar del archivo Excel. Por favor, verifica que el endpoint GET /api/Reportes/descargar/{id} esté configurado para devolver el archivo binario con el Content-Type correcto.',
-                      backendMessage: 'El endpoint de descarga no está devolviendo el archivo Excel correctamente. El backend debe devolver el archivo binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    }));
+                  let errorData: any;
+                  try {
+                    errorData = JSON.parse(text);
+                  } catch {
+                    errorData = { message: text || 'El servidor no devolvió un archivo Excel válido' };
                   }
                   
                   return throwError(() => ({
                     status: 500,
-                    error: { message: text },
-                    message: 'El archivo recibido no es un Excel válido. El servidor puede haber devuelto un error.',
-                    backendMessage: text.substring(0, 200)
+                    error: errorData,
+                    message: errorData.message || 'El servidor no devolvió un archivo Excel válido. El backend debe generar el reporte dinámicamente y devolver el archivo Excel binario.',
+                    backendMessage: errorData.message || 'El endpoint GET /api/Reportes/descargar/{id} debe generar el reporte dinámicamente y devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                   }));
                 })
               );
@@ -685,8 +682,41 @@ export class ReportesService {
           })
         );
       }),
-      catchError(error => {
+      catchError((error: any) => {
         console.error('❌ GET Descargar Reporte - Error:', error);
+        
+        // Si el error es 404, el backend puede estar devolviendo un JSON con el mensaje de error
+        if (error.status === 404 && error.error) {
+          // Si error.error es un Blob (porque responseType es 'blob'), leerlo como texto
+          if (error.error instanceof Blob) {
+            return from(error.error.text() as Promise<string>).pipe(
+              switchMap((text: string) => {
+                let errorData: any;
+                try {
+                  errorData = JSON.parse(text);
+                } catch {
+                  errorData = { message: text || 'El reporte no se encontró o no se pudo generar' };
+                }
+                
+                return throwError(() => ({
+                  status: 404,
+                  error: errorData,
+                  message: errorData.message || `El endpoint GET /api/reportes/descargar/${idReporte} no existe o no está configurado. El backend debe implementar este endpoint para generar el reporte dinámicamente basándose en la configuración almacenada en la base de datos.`,
+                  backendMessage: errorData.message || `El endpoint GET /api/reportes/descargar/${idReporte} debe: 1) Obtener la configuración del reporte desde la BD usando idReporte=${idReporte}, 2) Generar el Excel dinámicamente con los datos actuales, 3) Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+                }));
+              })
+            );
+          } else if (typeof error.error === 'object' && error.error.message) {
+            // Si ya es un objeto JSON
+            return throwError(() => ({
+              status: 404,
+              error: error.error,
+              message: error.error.message || `El endpoint GET /api/reportes/descargar/${idReporte} no existe o no está configurado. El backend debe implementar este endpoint para generar el reporte dinámicamente basándose en la configuración almacenada en la base de datos.`,
+              backendMessage: error.error.message || `El endpoint GET /api/reportes/descargar/${idReporte} debe: 1) Obtener la configuración del reporte desde la BD usando idReporte=${idReporte}, 2) Generar el Excel dinámicamente con los datos actuales, 3) Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+            }));
+          }
+        }
+        
         return throwError(() => error);
       })
     );
