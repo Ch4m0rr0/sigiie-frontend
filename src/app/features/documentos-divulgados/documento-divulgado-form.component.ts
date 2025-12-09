@@ -62,7 +62,8 @@ export class DocumentoDivulgadoFormComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     const proyectoId = this.route.snapshot.queryParamMap.get('proyectoId');
     
-    if (id) {
+    // Solo cargar documento si el ID es válido y mayor que 0
+    if (id && id !== '0' && !isNaN(+id) && +id > 0) {
       this.isEditMode.set(true);
       this.documentoId.set(+id);
       this.loadDocumentoDivulgado(+id);
