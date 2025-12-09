@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, catchError } from 'rxjs';
 import { map, tap, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -26,20 +26,36 @@ export class CatalogosService {
 
   // Departamentos
   // Endpoint: /api/departamentos
-  getDepartamentos(): Observable<Departamento[]> {
-    return this.http.get<any>(`${this.apiUrl}/departamentos`).pipe(
+  getDepartamentos(soloActivos: boolean = true): Observable<Departamento[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/departamentos`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => {
           // Log para debugging
           console.log('📦 Departamento recibido del backend:', item);
+          // Convertir activo de número (1/0) a booleano si es necesario
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          } else if (item.id_departamento !== undefined && item.activo !== undefined) {
+            // Caso especial: si viene como id_departamento (snake_case)
+            activoValue = item.activo === 1 || item.activo === true;
+          }
+          
           return {
-            id: item.idDepartamento || item.Id || item.id, 
+            id: item.idDepartamento || item.Id || item.id || item.id_departamento, 
             nombre: item.nombre || item.Nombre, 
             descripcion: item.descripcion || item.Descripcion || '',
             nombreJefe: item.nombreJefe || item.NombreJefe || item.nombreJefeDepartamento || item.NombreJefeDepartamento || '',
             correoJefe: item.correoJefe || item.CorreoJefe || item.correoJefeDepartamento || item.CorreoJefeDepartamento || '',
-            telefonoJefe: item.telefonoJefe || item.TelefonoJefe || item.telefonoJefeDepartamento || item.TelefonoJefeDepartamento || ''
+            telefonoJefe: item.telefonoJefe || item.TelefonoJefe || item.telefonoJefeDepartamento || item.TelefonoJefeDepartamento || '',
+            activo: activoValue
           };
         }) : [];
       }),
@@ -80,15 +96,63 @@ export class CatalogosService {
     );
   }
 
-  updateDepartamento(id: number, departamento: Omit<Departamento, 'id'>): Observable<void> {
-    const data = { 
+  updateDepartamento(id: number, departamento: Omit<Departamento, 'id'> & { activo?: boolean }): Observable<any> {
+    const data: any = { 
       Nombre: departamento.nombre, 
       Descripcion: departamento.descripcion,
       NombreJefe: departamento.nombreJefe,
       CorreoJefe: departamento.correoJefe,
       TelefonoJefe: departamento.telefonoJefe
     };
-    return this.http.put<void>(`${this.apiUrl}/departamentos/${id}`, data);
+    if ((departamento as any).activo !== undefined) {
+      data.Activo = (departamento as any).activo;
+    }
+    return this.http.put<any>(`${this.apiUrl}/departamentos/${id}`, data).pipe(
+      map(response => {
+        if (!response) {
+          return {
+            id,
+            nombre: departamento.nombre,
+            descripcion: departamento.descripcion || '',
+            nombreJefe: departamento.nombreJefe || '',
+            correoJefe: departamento.correoJefe || '',
+            telefonoJefe: departamento.telefonoJefe || '',
+            activo: (departamento as any).activo !== undefined ? (departamento as any).activo : true
+          };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return {
+            id,
+            nombre: departamento.nombre,
+            descripcion: departamento.descripcion || '',
+            nombreJefe: departamento.nombreJefe || '',
+            correoJefe: departamento.correoJefe || '',
+            telefonoJefe: departamento.telefonoJefe || '',
+            activo: (departamento as any).activo !== undefined ? (departamento as any).activo : true
+          };
+        }
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((departamento as any).activo !== undefined) {
+          activoValue = (departamento as any).activo;
+        } else {
+          activoValue = true;
+        }
+        return {
+          id: item.idDepartamento || item.Id || item.id || item.id_departamento || id,
+          nombre: item.nombre || item.Nombre || departamento.nombre,
+          descripcion: item.descripcion || item.Descripcion || departamento.descripcion || '',
+          nombreJefe: item.nombreJefe || item.NombreJefe || item.nombreJefeDepartamento || item.NombreJefeDepartamento || departamento.nombreJefe || '',
+          correoJefe: item.correoJefe || item.CorreoJefe || item.correoJefeDepartamento || item.CorreoJefeDepartamento || departamento.correoJefe || '',
+          telefonoJefe: item.telefonoJefe || item.TelefonoJefe || item.telefonoJefeDepartamento || item.TelefonoJefeDepartamento || departamento.telefonoJefe || '',
+          activo: activoValue
+        };
+      })
+    );
   }
 
   deleteDepartamento(id: number): Observable<void> {
@@ -380,15 +444,28 @@ export class CatalogosService {
   }
 
   // Categoria Participacion
-  getCategoriasParticipacion(): Observable<CategoriaParticipacion[]> {
-    return this.http.get<any>(`${this.apiUrl}/categorias-participacion`).pipe(
+  getCategoriasParticipacion(soloActivos: boolean = true): Observable<CategoriaParticipacion[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/categorias-participacion`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({ 
-          id: item.idCategoria || item.idCategoriaParticipacion || item.Id || item.id, 
-          nombre: item.nombre || item.Nombre, 
-          descripcion: item.descripcion || item.Descripcion || '' 
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idCategoria || item.idCategoriaParticipacion || item.Id || item.id, 
+            nombre: item.nombre || item.Nombre, 
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         console.error('Error fetching categorias participacion:', error);
@@ -404,15 +481,19 @@ export class CatalogosService {
     );
   }
 
-  updateCategoriaParticipacion(id: number, categoria: Omit<CategoriaParticipacion, 'id'>): Observable<CategoriaParticipacion> {
-    const data = { Nombre: categoria.nombre, Descripcion: categoria.descripcion };
+  updateCategoriaParticipacion(id: number, categoria: Omit<CategoriaParticipacion, 'id'> & { activo?: boolean }): Observable<CategoriaParticipacion> {
+    const data: any = { Nombre: categoria.nombre, Descripcion: categoria.descripcion };
+    if ((categoria as any).activo !== undefined) {
+      data.Activo = (categoria as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/categorias-participacion/${id}`, data).pipe(
       map(response => {
         if (!response) {
           return {
             id: id,
             nombre: categoria.nombre,
-            descripcion: categoria.descripcion || ''
+            descripcion: categoria.descripcion || '',
+            activo: (categoria as any).activo !== undefined ? (categoria as any).activo : true
           };
         }
         
@@ -421,14 +502,27 @@ export class CatalogosService {
           return {
             id: id,
             nombre: categoria.nombre,
-            descripcion: categoria.descripcion || ''
+            descripcion: categoria.descripcion || '',
+            activo: (categoria as any).activo !== undefined ? (categoria as any).activo : true
           };
+        }
+        
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((categoria as any).activo !== undefined) {
+          activoValue = (categoria as any).activo;
+        } else {
+          activoValue = true;
         }
         
         return {
           id: item.idCategoria || item.idCategoriaParticipacion || item.IdCategoria || item.IdCategoriaParticipacion || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || categoria.nombre,
-          descripcion: item.descripcion || item.Descripcion || categoria.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || categoria.descripcion || '',
+          activo: activoValue
         };
       }),
       catchError(error => {
@@ -447,8 +541,12 @@ export class CatalogosService {
 
   // Categoria Actividad - Alineado con ICategoriaActividadService
   // Endpoint: /api/categorias-actividad
-  getAllCategoriasActividad(): Observable<CategoriaActividad[]> {
-    return this.http.get<any>(`${this.apiUrl}/categorias-actividad`).pipe(
+  getAllCategoriasActividad(soloActivos: boolean = true): Observable<CategoriaActividad[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/categorias-actividad`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => this.mapCategoriaActividad(item)) : [];
@@ -468,8 +566,8 @@ export class CatalogosService {
   }
 
   // Método legacy - mantener para compatibilidad
-  getCategoriasActividad(): Observable<CategoriaActividad[]> {
-    return this.getAllCategoriasActividad();
+  getCategoriasActividad(soloActivos: boolean = true): Observable<CategoriaActividad[]> {
+    return this.getAllCategoriasActividad(soloActivos);
   }
 
   getCategoriaActividadById(id: number): Observable<CategoriaActividad | null> {
@@ -497,21 +595,46 @@ export class CatalogosService {
     );
   }
 
-  updateCategoriaActividad(id: number, categoria: Omit<CategoriaActividad, 'id' | 'idCategoriaActividad'>): Observable<boolean> {
+  updateCategoriaActividad(id: number, categoria: Omit<CategoriaActividad, 'id' | 'idCategoriaActividad'> & { activo?: boolean }): Observable<any> {
     // El backend espera CategoriaActividadUpdateDto con PascalCase
-    const dto = {
+    const dto: any = {
       Nombre: categoria.nombre,
       Descripcion: categoria.descripcion || null
     };
     
+    if ((categoria as any).activo !== undefined) {
+      dto.Activo = (categoria as any).activo;
+    }
+    
     return this.http.put<any>(`${this.apiUrl}/categorias-actividad/${id}`, dto).pipe(
-      map(() => true),
+      map(response => {
+        if (!response) {
+          return {
+            id,
+            idCategoriaActividad: id,
+            nombre: categoria.nombre,
+            descripcion: categoria.descripcion || '',
+            activo: (categoria as any).activo !== undefined ? (categoria as any).activo : true
+          };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return {
+            id,
+            idCategoriaActividad: id,
+            nombre: categoria.nombre,
+            descripcion: categoria.descripcion || '',
+            activo: (categoria as any).activo !== undefined ? (categoria as any).activo : true
+          };
+        }
+        return this.mapCategoriaActividad(item);
+      }),
       catchError(error => {
         if (error.status === 404) {
-          return of(false);
+          throw error;
         }
         console.error('Error updating categoria actividad:', error);
-        return of(false);
+        throw error;
       })
     );
   }
@@ -529,30 +652,48 @@ export class CatalogosService {
     );
   }
 
-  private mapCategoriaActividad(item: any): CategoriaActividad {
+  private mapCategoriaActividad(item: any): CategoriaActividad & { activo?: boolean } {
     const id = item.IdCategoriaActividad || item.idCategoriaActividad || item.id || item.Id || 0;
+    let activoValue: boolean | undefined = undefined;
+    if (item.activo !== undefined) {
+      activoValue = item.activo === 1 || item.activo === true;
+    } else if (item.Activo !== undefined) {
+      activoValue = item.Activo === 1 || item.Activo === true;
+    }
     return {
       id: id,
       idCategoriaActividad: id,
       nombre: item.Nombre || item.nombre || '',
-      descripcion: item.Descripcion || item.descripcion
+      descripcion: item.Descripcion || item.descripcion,
+      activo: activoValue
     };
   }
 
   // Tipo Unidad - Endpoint: /api/tipo-unidad
-  getTiposUnidad(): Observable<TipoUnidad[]> {
+  getTiposUnidad(soloActivos: boolean = true): Observable<TipoUnidad[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
     console.log('🔄 GET TiposUnidad - URL:', `${this.apiUrl}/tipo-unidad`);
     
-    return this.http.get<any>(`${this.apiUrl}/tipo-unidad`).pipe(
+    return this.http.get<any>(`${this.apiUrl}/tipo-unidad`, { params }).pipe(
       map(response => {
         console.log('✅ GET TiposUnidad - Response:', response);
         const items = response.data || response;
         const result = Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
           // Mapear según diferentes posibles estructuras del backend
           const mapped = {
             id: item.idTipoUnidad || item.IdTipoUnidad || item.id || item.Id,
             nombre: item.nombre || item.Nombre || '',
-            descripcion: item.descripcion || item.Descripcion || ''
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
           };
           console.log('📦 Mapped item:', mapped);
           return mapped;
@@ -598,13 +739,50 @@ export class CatalogosService {
     );
   }
 
-  updateTipoUnidad(id: number, tipo: Omit<TipoUnidad, 'id'>): Observable<boolean> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion || '' };
+  updateTipoUnidad(id: number, tipo: Omit<TipoUnidad, 'id'> & { activo?: boolean }): Observable<any> {
+    const data: any = { Nombre: tipo.nombre, Descripcion: tipo.descripcion || '' };
+    if ((tipo as any).activo !== undefined) {
+      data.Activo = (tipo as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/tipo-unidad/${id}`, data).pipe(
-      map(() => true),
+      map(response => {
+        if (!response) {
+          return {
+            id,
+            nombre: tipo.nombre,
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
+          };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return {
+            id,
+            nombre: tipo.nombre,
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
+          };
+        }
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((tipo as any).activo !== undefined) {
+          activoValue = (tipo as any).activo;
+        } else {
+          activoValue = true;
+        }
+        return {
+          id: item.idTipoUnidad || item.IdTipoUnidad || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || tipo.nombre,
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: activoValue
+        };
+      }),
       catchError(error => {
         console.error('Error updating tipo unidad:', error);
-        return of(false);
+        throw error;
       })
     );
   }
@@ -620,15 +798,28 @@ export class CatalogosService {
   }
 
   // Tipo Iniciativa
-  getTiposIniciativa(): Observable<TipoIniciativa[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-iniciativa`).pipe(
+  getTiposIniciativa(soloActivos: boolean = true): Observable<TipoIniciativa[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-iniciativa`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({ 
-          id: item.idTipoIniciativa || item.Id || item.id, 
-          nombre: item.nombre || item.Nombre, 
-          descripcion: item.descripcion || item.Descripcion || '' 
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idTipoIniciativa || item.Id || item.id, 
+            nombre: item.nombre || item.Nombre, 
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -650,15 +841,19 @@ export class CatalogosService {
     );
   }
 
-  updateTipoIniciativa(id: number, tipo: Omit<TipoIniciativa, 'id'>): Observable<TipoIniciativa> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+  updateTipoIniciativa(id: number, tipo: Omit<TipoIniciativa, 'id'> & { activo?: boolean }): Observable<TipoIniciativa> {
+    const data: any = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+    if ((tipo as any).activo !== undefined) {
+      data.Activo = (tipo as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/tipo-iniciativa/${id}`, data).pipe(
       map(response => {
         if (!response) {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
         }
         
@@ -667,14 +862,27 @@ export class CatalogosService {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
+        }
+        
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((tipo as any).activo !== undefined) {
+          activoValue = (tipo as any).activo;
+        } else {
+          activoValue = true;
         }
         
         return {
           id: item.idTipoIniciativa || item.IdTipoIniciativa || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: activoValue
         };
       }),
       catchError(error => {
@@ -692,14 +900,19 @@ export class CatalogosService {
   }
 
   // Tipo Investigacion
-  getTiposInvestigacion(): Observable<TipoInvestigacion[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-investigacion`).pipe(
+  getTiposInvestigacion(soloActivos: boolean = true): Observable<TipoInvestigacion[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-investigacion`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({ 
           id: item.idTipoInvestigacion || item.Id || item.id, 
           nombre: item.nombre || item.Nombre, 
-          descripcion: item.descripcion || item.Descripcion || '' 
+          descripcion: item.descripcion || item.Descripcion || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
         })) : [];
       }),
       catchError(error => {
@@ -716,15 +929,19 @@ export class CatalogosService {
     );
   }
 
-  updateTipoInvestigacion(id: number, tipo: Omit<TipoInvestigacion, 'id'>): Observable<TipoInvestigacion> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+  updateTipoInvestigacion(id: number, tipo: Omit<TipoInvestigacion, 'id'> & { activo?: boolean }): Observable<TipoInvestigacion> {
+    const data: any = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+    if ((tipo as any).activo !== undefined) {
+      data.Activo = (tipo as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/tipo-investigacion/${id}`, data).pipe(
       map(response => {
         if (!response) {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
         }
         
@@ -733,14 +950,27 @@ export class CatalogosService {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
+        }
+        
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((tipo as any).activo !== undefined) {
+          activoValue = (tipo as any).activo;
+        } else {
+          activoValue = true;
         }
         
         return {
           id: item.idTipoInvestigacion || item.IdTipoInvestigacion || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: activoValue
         };
       }),
       catchError(error => {
@@ -758,15 +988,28 @@ export class CatalogosService {
   }
 
   // Tipo Documento
-  getTiposDocumento(): Observable<TipoDocumento[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-documento`).pipe(
+  getTiposDocumento(soloActivos: boolean = true): Observable<TipoDocumento[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-documento`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({ 
-          id: item.idTipoDocumento || item.Id || item.id, 
-          nombre: item.nombre || item.Nombre, 
-          descripcion: item.descripcion || item.Descripcion || '' 
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idTipoDocumento || item.Id || item.id, 
+            nombre: item.nombre || item.Nombre, 
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -788,15 +1031,19 @@ export class CatalogosService {
     );
   }
 
-  updateTipoDocumento(id: number, tipo: Omit<TipoDocumento, 'id'>): Observable<TipoDocumento> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+  updateTipoDocumento(id: number, tipo: Omit<TipoDocumento, 'id'> & { activo?: boolean }): Observable<TipoDocumento> {
+    const data: any = { Nombre: tipo.nombre, Descripcion: tipo.descripcion };
+    if ((tipo as any).activo !== undefined) {
+      data.Activo = (tipo as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/tipo-documento/${id}`, data).pipe(
       map(response => {
         if (!response) {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
         }
         
@@ -805,14 +1052,27 @@ export class CatalogosService {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
+        }
+        
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((tipo as any).activo !== undefined) {
+          activoValue = (tipo as any).activo;
+        } else {
+          activoValue = true;
         }
         
         return {
           id: item.idTipoDocumento || item.IdTipoDocumento || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: activoValue
         };
       }),
       catchError(error => {
@@ -830,15 +1090,28 @@ export class CatalogosService {
   }
 
   // Tipo Documento Divulgado
-  getTiposDocumentoDivulgado(): Observable<TipoDocumentoDivulgado[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-documento-divulgado`).pipe(
+  getTiposDocumentoDivulgado(soloActivos: boolean = true): Observable<TipoDocumentoDivulgado[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-documento-divulgado`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({ 
-          id: item.idTipoDocumentoDivulgado || item.Id || item.id, 
-          nombre: item.nombre || item.Nombre, 
-          descripcion: item.descripcion || item.Descripcion || '' 
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idTipoDocumentoDivulgado || item.Id || item.id, 
+            nombre: item.nombre || item.Nombre, 
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         console.error('Error fetching tipos documento divulgado:', error);
@@ -865,8 +1138,11 @@ export class CatalogosService {
     );
   }
 
-  updateTipoDocumentoDivulgado(id: number, tipo: Omit<TipoDocumentoDivulgado, 'id'>): Observable<TipoDocumentoDivulgado> {
-    const data = { nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+  updateTipoDocumentoDivulgado(id: number, tipo: Omit<TipoDocumentoDivulgado, 'id'> & { activo?: boolean }): Observable<TipoDocumentoDivulgado> {
+    const data: any = { nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+    if ((tipo as any).activo !== undefined) {
+      data.activo = (tipo as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/tipo-documento-divulgado/${id}`, data).pipe(
       map(response => {
         // Si la respuesta es null o undefined, retornar los datos enviados con el ID
@@ -874,7 +1150,8 @@ export class CatalogosService {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
         }
         
@@ -886,15 +1163,28 @@ export class CatalogosService {
           return {
             id: id,
             nombre: tipo.nombre,
-            descripcion: tipo.descripcion || ''
+            descripcion: tipo.descripcion || '',
+            activo: (tipo as any).activo !== undefined ? (tipo as any).activo : true
           };
+        }
+        
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((tipo as any).activo !== undefined) {
+          activoValue = (tipo as any).activo;
+        } else {
+          activoValue = true;
         }
         
         // Mapear según diferentes posibles estructuras del backend
         return {
           id: item.idTipoDocumentoDivulgado || item.IdTipoDocumentoDivulgado || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: activoValue
         };
       }),
       catchError(error => {
@@ -913,10 +1203,14 @@ export class CatalogosService {
   }
 
   // Area Conocimiento - Endpoint: /api/area-conocimiento
-  getAreasConocimiento(): Observable<AreaConocimiento[]> {
+  getAreasConocimiento(soloActivos: boolean = true): Observable<AreaConocimiento[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
     console.log('🔄 GET AreasConocimiento - URL:', `${this.apiUrl}/area-conocimiento`);
     
-    return this.http.get<any>(`${this.apiUrl}/area-conocimiento`).pipe(
+    return this.http.get<any>(`${this.apiUrl}/area-conocimiento`, { params }).pipe(
       map(response => {
         console.log('✅ GET AreasConocimiento - Response:', response);
         const items = response.data || response;
@@ -925,7 +1219,8 @@ export class CatalogosService {
           const mapped = {
             id: item.idArea || item.idAreaConocimiento || item.IdArea || item.IdAreaConocimiento || item.Id || item.id,
             nombre: item.nombre || item.Nombre || '',
-            descripcion: item.descripcion || item.Descripcion || ''
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
           };
           console.log('📦 Mapped item:', mapped);
           return mapped;
@@ -971,13 +1266,50 @@ export class CatalogosService {
     );
   }
 
-  updateAreaConocimiento(id: number, area: Omit<AreaConocimiento, 'id'>): Observable<boolean> {
-    const data = { Nombre: area.nombre, Descripcion: area.descripcion || '' };
+  updateAreaConocimiento(id: number, area: Omit<AreaConocimiento, 'id'> & { activo?: boolean }): Observable<any> {
+    const data: any = { Nombre: area.nombre, Descripcion: area.descripcion || '' };
+    if ((area as any).activo !== undefined) {
+      data.Activo = (area as any).activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/area-conocimiento/${id}`, data).pipe(
-      map(() => true),
+      map(response => {
+        if (!response) {
+          return {
+            id,
+            nombre: area.nombre,
+            descripcion: area.descripcion || '',
+            activo: (area as any).activo !== undefined ? (area as any).activo : true
+          };
+        }
+        const item = response.data || response;
+        if (!item) {
+          return {
+            id,
+            nombre: area.nombre,
+            descripcion: area.descripcion || '',
+            activo: (area as any).activo !== undefined ? (area as any).activo : true
+          };
+        }
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if ((area as any).activo !== undefined) {
+          activoValue = (area as any).activo;
+        } else {
+          activoValue = true;
+        }
+        return {
+          id: item.idArea || item.idAreaConocimiento || item.IdArea || item.IdAreaConocimiento || item.Id || item.id || id,
+          nombre: item.nombre || item.Nombre || area.nombre,
+          descripcion: item.descripcion || item.Descripcion || area.descripcion || '',
+          activo: activoValue
+        };
+      }),
       catchError(error => {
         console.error('Error updating area conocimiento:', error);
-        return of(false);
+        throw error;
       })
     );
   }
@@ -994,8 +1326,12 @@ export class CatalogosService {
 
   // Nivel Actividad
   // Endpoint: /api/nivel-actividad
-  getNivelesActividad(): Observable<NivelActividad[]> {
-    return this.http.get<any>(`${this.apiUrl}/nivel-actividad`).pipe(
+  getNivelesActividad(soloActivos: boolean = true): Observable<NivelActividad[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/nivel-actividad`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => this.mapNivelActividad(item)) : [];
@@ -1182,8 +1518,12 @@ export class CatalogosService {
   }
 
   // Tipo Evidencia
-  getTiposEvidencia(): Observable<TipoEvidencia[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-evidencia`).pipe(
+  getTiposEvidencia(soloActivos: boolean = true): Observable<TipoEvidencia[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-evidencia`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
@@ -1258,8 +1598,12 @@ export class CatalogosService {
   }
 
   // Rol Equipo
-  getRolesEquipo(): Observable<RolEquipo[]> {
-    return this.http.get<any>(`${this.apiUrl}/rol-equipo`).pipe(
+  getRolesEquipo(soloActivos: boolean = true): Observable<RolEquipo[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/rol-equipo`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
@@ -1470,8 +1814,12 @@ export class CatalogosService {
 
 
   // Tipo Protagonista - Endpoint: /api/tipo-protagonista
-  getTiposProtagonista(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-protagonista`).pipe(
+  getTiposProtagonista(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-protagonista`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
@@ -1521,8 +1869,12 @@ export class CatalogosService {
   // Roles Responsable - Endpoint: /api/rol-responsable
   // Roles específicos para actividades (Coordinador, Logística, Organizador, etc.)
   // Diferente de Roles de usuarios (Jefe, Supervisor, Director)
-  getRolesResponsable(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/rol-responsable`).pipe(
+  getRolesResponsable(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/rol-responsable`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
@@ -1545,18 +1897,31 @@ export class CatalogosService {
   }
 
   // Capacidades Instaladas - Endpoint: /api/capacidad-instalaciones
-  getCapacidadesInstaladas(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/capacidad-instalaciones`).pipe(
+  getCapacidadesInstaladas(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/capacidad-instalaciones`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({
-          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id 
-            || item.id_instalacion || item.IdInstalacion || item.idInstalacion || 0,
-          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
-          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
-          departamentoId: item.departamentoId || item.DepartamentoId,
-          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id 
+              || item.id_instalacion || item.IdInstalacion || item.idInstalacion || 0,
+            nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
+            descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
+            departamentoId: item.departamentoId || item.DepartamentoId,
+            tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId,
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -1623,7 +1988,7 @@ export class CatalogosService {
     );
   }
 
-  updateCapacidadInstalada(id: number, data: { nombreInstalacion?: string, descripcionFuncionalidad?: string, departamentoId?: number, tipoUnidadId?: number }): Observable<any> {
+  updateCapacidadInstalada(id: number, data: { nombreInstalacion?: string, descripcionFuncionalidad?: string, departamentoId?: number, tipoUnidadId?: number, activo?: boolean }): Observable<any> {
     const dto: any = {};
     if (data.nombreInstalacion !== undefined) {
       dto.NombreInstalacion = data.nombreInstalacion;
@@ -1637,15 +2002,48 @@ export class CatalogosService {
     if (data.tipoUnidadId !== undefined) {
       dto.TipoUnidadId = data.tipoUnidadId;
     }
+    if (data.activo !== undefined) {
+      dto.Activo = data.activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/capacidad-instalaciones/${id}`, dto).pipe(
       map(response => {
+        if (!response || (!response.data && !response.idCapacidadInstalada && !response.IdCapacidadInstalada)) {
+          // Si la respuesta es nula o vacía, devolver los datos enviados con el ID
+          return {
+            id: id,
+            nombre: data.nombreInstalacion || '',
+            descripcion: data.descripcionFuncionalidad || '',
+            departamentoId: data.departamentoId,
+            tipoUnidadId: data.tipoUnidadId,
+            activo: data.activo !== undefined ? data.activo : true
+          };
+        }
         const item = response.data || response;
+        if (!item) {
+          return {
+            id: id,
+            nombre: data.nombreInstalacion || '',
+            descripcion: data.descripcionFuncionalidad || '',
+            departamentoId: data.departamentoId,
+            tipoUnidadId: data.tipoUnidadId,
+            activo: data.activo !== undefined ? data.activo : true
+          };
+        }
+        let activoValue: boolean = true;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if (data.activo !== undefined) {
+          activoValue = data.activo;
+        }
         return {
-          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || 0,
-          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || '',
-          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || '',
-          departamentoId: item.departamentoId || item.DepartamentoId,
-          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId
+          id: item.idCapacidadInstalada || item.IdCapacidadInstalada || item.id || item.Id || id,
+          nombre: item.nombreInstalacion || item.NombreInstalacion || item.nombre || item.Nombre || data.nombreInstalacion || '',
+          descripcion: item.descripcionFuncionalidad || item.DescripcionFuncionalidad || item.descripcion || item.Descripcion || data.descripcionFuncionalidad || '',
+          departamentoId: item.departamentoId || item.DepartamentoId || data.departamentoId,
+          tipoUnidadId: item.tipoUnidadId || item.TipoUnidadId || data.tipoUnidadId,
+          activo: activoValue
         };
       }),
       catchError(error => {
@@ -1722,15 +2120,28 @@ export class CatalogosService {
   }
 
   // Tipo Actividad - Endpoint: /api/tipo-actividad
-  getTiposActividad(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-actividad`).pipe(
+  getTiposActividad(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/tipo-actividad`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({
-          id: item.idTipoActividad || item.IdTipoActividad || item.id || item.Id || 0,
-          nombre: item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idTipoActividad || item.IdTipoActividad || item.id || item.Id || 0,
+            nombre: item.nombre || item.Nombre || '',
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -1754,21 +2165,45 @@ export class CatalogosService {
     );
   }
 
-  updateTipoActividad(id: number, tipo: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: tipo.nombre, Descripcion: tipo.descripcion || '' };
+  updateTipoActividad(id: number, tipo: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
+    const data: any = { Nombre: tipo.nombre, Descripcion: tipo.descripcion || '' };
+    if (tipo.activo !== undefined) {
+      data.Activo = tipo.activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/tipo-actividad/${id}`, data).pipe(
       map(response => {
         if (!response) {
-          return { id, nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+          return { 
+            id, 
+            nombre: tipo.nombre, 
+            descripcion: tipo.descripcion || '',
+            activo: tipo.activo !== undefined ? tipo.activo : true
+          };
         }
         const item = response.data || response;
         if (!item) {
-          return { id, nombre: tipo.nombre, descripcion: tipo.descripcion || '' };
+          return { 
+            id, 
+            nombre: tipo.nombre, 
+            descripcion: tipo.descripcion || '',
+            activo: tipo.activo !== undefined ? tipo.activo : true
+          };
+        }
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if (tipo.activo !== undefined) {
+          activoValue = tipo.activo;
+        } else {
+          activoValue = true;
         }
         return {
           id: item.idTipoActividad || item.IdTipoActividad || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || tipo.nombre,
-          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || tipo.descripcion || '',
+          activo: activoValue
         };
       })
     );
@@ -1779,13 +2214,18 @@ export class CatalogosService {
   }
 
   // Nivel Académico - Endpoint: /api/nivel-academico
-  getNivelesAcademico(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/nivel-academico`).pipe(
+  getNivelesAcademico(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/nivel-academico`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
           id: item.idNivelAcademico || item.IdNivelAcademico || item.id || item.Id || 0,
-          nombre: item.nombre || item.Nombre || ''
+          nombre: item.nombre || item.Nombre || '',
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
         })) : [];
       }),
       catchError(error => {
@@ -1890,15 +2330,28 @@ export class CatalogosService {
   }
 
   // Role (Rol) - Endpoint: /api/roles
-  getRoles(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/roles`).pipe(
+  getRoles(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/roles`, { params }).pipe(
       map(response => {
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => ({
-          id: item.idRol || item.IdRol || item.id || item.Id || 0,
-          nombre: item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
-        })) : [];
+        return Array.isArray(items) ? items.map(item => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idRol || item.IdRol || item.id || item.Id || 0,
+            nombre: item.nombre || item.Nombre || '',
+            descripcion: item.descripcion || item.Descripcion || '',
+            activo: activoValue
+          };
+        }) : [];
       }),
       catchError(error => {
         if (error.status === 404) {
@@ -1922,21 +2375,45 @@ export class CatalogosService {
     );
   }
 
-  updateRole(id: number, rol: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: rol.nombre, Descripcion: rol.descripcion || '' };
+  updateRole(id: number, rol: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
+    const data: any = { Nombre: rol.nombre, Descripcion: rol.descripcion || '' };
+    if (rol.activo !== undefined) {
+      data.Activo = rol.activo;
+    }
     return this.http.put<any>(`${this.apiUrl}/roles/${id}`, data).pipe(
       map(response => {
         if (!response) {
-          return { id, nombre: rol.nombre, descripcion: rol.descripcion || '' };
+          return { 
+            id, 
+            nombre: rol.nombre, 
+            descripcion: rol.descripcion || '',
+            activo: rol.activo !== undefined ? rol.activo : true
+          };
         }
         const item = response.data || response;
         if (!item) {
-          return { id, nombre: rol.nombre, descripcion: rol.descripcion || '' };
+          return { 
+            id, 
+            nombre: rol.nombre, 
+            descripcion: rol.descripcion || '',
+            activo: rol.activo !== undefined ? rol.activo : true
+          };
+        }
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        } else if (rol.activo !== undefined) {
+          activoValue = rol.activo;
+        } else {
+          activoValue = true;
         }
         return {
           id: item.idRol || item.IdRol || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || rol.nombre,
-          descripcion: item.descripcion || item.Descripcion || rol.descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || rol.descripcion || '',
+          activo: activoValue
         };
       })
     );
@@ -2063,8 +2540,12 @@ export class CatalogosService {
   }
 
   // Carreras - Endpoint: /api/carreras
-  getCarreras(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/carreras`).pipe(
+  getCarreras(soloActivos: boolean = true): Observable<any[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(`${this.apiUrl}/carreras`, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({

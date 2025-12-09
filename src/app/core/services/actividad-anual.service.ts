@@ -10,8 +10,15 @@ export class ActividadAnualService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/actividades-anuales`;
 
-  getAll(filters?: ActividadAnualFilterDto): Observable<ActividadAnual[]> {
+  getAll(filters?: ActividadAnualFilterDto, soloActivos: boolean = true): Observable<ActividadAnual[]> {
     let params = new HttpParams();
+    
+    // Agregar soloActivos por defecto (solo si no se especifica en filters)
+    if (!filters || filters.activo === undefined) {
+      if (!soloActivos) {
+        params = params.set('soloActivos', 'false');
+      }
+    }
     
     if (filters) {
       if (filters.idIndicador !== undefined) {

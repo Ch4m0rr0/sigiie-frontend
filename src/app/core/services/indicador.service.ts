@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -11,8 +11,12 @@ export class IndicadorService {
   private apiUrl = `${environment.apiUrl}/indicadores`;
 
   // Endpoint: /api/indicadores
-  getAll(): Observable<Indicador[]> {
-    return this.http.get<any>(this.apiUrl).pipe(
+  getAll(soloActivos: boolean = true): Observable<Indicador[]> {
+    let params = new HttpParams();
+    if (!soloActivos) {
+      params = params.set('soloActivos', 'false');
+    }
+    return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => this.mapIndicador(item)) : [];
@@ -326,6 +330,12 @@ export class IndicadorService {
   }
 
   private mapIndicador(item: any): Indicador {
+    let activoValue: boolean = true;
+    if (item.activo !== undefined) {
+      activoValue = item.activo === 1 || item.activo === true;
+    } else if (item.Activo !== undefined) {
+      activoValue = item.Activo === 1 || item.Activo === true;
+    }
     return {
       idIndicador: item.idIndicador || item.IdIndicador || item.id,
       codigo: item.codigo || item.Codigo,
@@ -335,7 +345,7 @@ export class IndicadorService {
       objetivoEstrategico: item.objetivoEstrategico || item.ObjetivoEstrategico,
       accionEstrategica: item.accionEstrategica || item.AccionEstrategica,
       unidadMedida: item.unidadMedida || item.UnidadMedida,
-      activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true),
+      activo: activoValue,
       fechaCreacion: item.fechaCreacion || item.FechaCreacion || new Date().toISOString(),
       idIndicadorPadre: item.idIndicadorPadre || item.IdIndicadorPadre || undefined,
       nivel: item.nivel || item.Nivel || undefined,

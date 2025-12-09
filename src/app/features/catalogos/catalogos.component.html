@@ -386,17 +386,6 @@
                   <option *ngFor="let dept of departamentos()" [value]="dept.id">{{ dept.nombre }}</option>
                 </select>
               </div>
-              <!-- Campo Activo solo visible al editar (al crear se crea activa por defecto) -->
-              <div *ngIf="isEditing" class="mb-4">
-                <label class="flex items-center gap-2">
-                  <input 
-                    type="checkbox" 
-                    formControlName="activo" 
-                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  >
-                  <span class="text-sm font-medium text-gray-700">Activo</span>
-                </label>
-              </div>
             </div>
             <!-- Campos para Capacidades Instaladas -->
             <div *ngIf="selectedCatalogo === 'capacidadesinstaladas'" class="mb-4">
@@ -409,7 +398,7 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option [value]="null">Seleccione un departamento</option>
-                  <option *ngFor="let dept of departamentos()" [value]="dept.id">{{ dept.nombre }}</option>
+                  <option *ngFor="let dept of departamentosActivos()" [value]="dept.id">{{ dept.nombre }}</option>
                 </select>
               </div>
               <div class="mb-4">
@@ -421,9 +410,21 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option [value]="null">Seleccione un tipo de unidad</option>
-                  <option *ngFor="let tipo of tiposunidad()" [value]="tipo.id">{{ tipo.nombre }}</option>
+                  <option *ngFor="let tipo of tiposUnidadActivos()" [value]="tipo.id">{{ tipo.nombre }}</option>
                 </select>
               </div>
+            </div>
+            <!-- Campo Activo para todos los catálogos que lo tienen (solo visible al editar) -->
+            <div *ngIf="hasEstadoData() && isEditing" class="mb-4">
+              <label class="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  formControlName="activo" 
+                  class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                >
+                <span class="text-sm font-medium text-gray-700">Activo</span>
+              </label>
+              <p class="text-xs text-gray-500 mt-1">Desmarca esta opción para desactivar este registro</p>
             </div>
             <div class="flex justify-end space-x-3">
               <button type="button" (click)="cancelEdit()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancelar</button>
@@ -658,6 +659,7 @@
                       </th>
                       <th *ngIf="hasDescriptionData()" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                       <th *ngIf="selectedCatalogo === 'carreras'" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
+                      <th *ngIf="hasEstadoData()" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                     </tr>
                   </thead>
@@ -680,6 +682,11 @@
                       </td>
                       <td *ngIf="selectedCatalogo === 'carreras'" class="px-6 py-4 text-sm text-gray-500">
                         <span>{{ item.departamento || 'N/A' }}</span>
+                      </td>
+                      <td *ngIf="hasEstadoData()" class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span [class]="getEstadoClass(item)">
+                          {{ getEstadoDisplay(item) }}
+                        </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button (click)="editItem(item)" class="text-blue-600 hover:text-blue-900 mr-3" title="Editar">

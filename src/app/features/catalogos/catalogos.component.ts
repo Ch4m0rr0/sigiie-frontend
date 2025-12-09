@@ -388,35 +388,218 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
 
   currentItems(): any[] {
     switch (this.selectedCatalogo) {
-      case 'departamentos': return this.departamentos().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
+      case 'departamentos': return this.departamentos().map((item: any) => {
+        // Convertir activo de número (1/0) a booleano si es necesario
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        }
+        
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
       case 'generos': return this.generos().map(({id, codigo, descripcion}) => ({id, codigo, descripcion}));
       case 'estadoestudiantes': return this.estadoestudiantes().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'estadoparticipaciones': return this.estadoparticipaciones().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
       case 'estadosproyecto': return this.estadosproyecto().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'categoriaparticipaciones': return this.categoriaparticipaciones().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'categoriaactividades': return this.categoriaactividades().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposactividad': return this.tiposactividad().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposunidad': return this.tiposunidad().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposiniciativas': return this.tiposiniciativas().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposinvestigaciones': return this.tiposinvestigaciones().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposdocumentos': return this.tiposdocumentos().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposdocumentosdivulgados': return this.tiposdocumentosdivulgados().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'tiposevidencia': return this.tiposevidencia().map(({idTipoEvidencia, nombre, descripcion}) => ({id: idTipoEvidencia, nombre, descripcion}));
-      case 'tiposprotagonista': return this.tiposprotagonista().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'areasconocimiento': return this.areasconocimiento().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
+      case 'categoriaparticipaciones': return this.categoriaparticipaciones().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'categoriaactividades': return this.categoriaactividades().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposactividad': return this.tiposactividad().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposunidad': return this.tiposunidad().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposiniciativas': return this.tiposiniciativas().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposinvestigaciones': return this.tiposinvestigaciones().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposdocumentos': return this.tiposdocumentos().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposdocumentosdivulgados': return this.tiposdocumentosdivulgados().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
+      case 'tiposevidencia': return this.tiposevidencia().map((item: any) => ({
+        id: item.idTipoEvidencia,
+        nombre: item.nombre,
+        descripcion: item.descripcion,
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
+      }));
+      case 'tiposprotagonista': return this.tiposprotagonista().map((item: any) => ({
+        id: item.id,
+        nombre: item.nombre,
+        descripcion: item.descripcion,
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
+      }));
+      case 'areasconocimiento': return this.areasconocimiento().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
       case 'estadosactividad': return this.estadosactividad().map(item => ({
         id: item.id,
         nombre: item.nombre || (item as any).NombreEstado || '',
         descripcion: item.descripcion || '',
         color: (item as any).color || (item as any).Color || '#3B82F6'
       }));
-      case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion}) => ({id: idNivel, nombre, descripcion}));
-      case 'nivelesacademico': return this.nivelesacademico().map(({id, nombre}) => ({id, nombre}));
-      case 'rolesequipo': return this.rolesequipo().map(({idRolEquipo, nombre, descripcion}) => ({id: idRolEquipo, nombre, descripcion}));
-      case 'rolesresponsable': return this.rolesresponsable().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
-      case 'roles': return this.roles().map(({id, nombre, descripcion}) => ({id, nombre, descripcion}));
+      case 'nivelesactividad': return this.nivelesactividad().map(({idNivel, nombre, descripcion, activo}) => ({id: idNivel, nombre, descripcion, activo}));
+      case 'nivelesacademico': return this.nivelesacademico().map((item: any) => ({
+        id: item.id,
+        nombre: item.nombre,
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
+      }));
+      case 'rolesequipo': return this.rolesequipo().map((item: any) => ({
+        id: item.idRolEquipo,
+        nombre: item.nombre,
+        descripcion: item.descripcion,
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
+      }));
+      case 'rolesresponsable': return this.rolesresponsable().map((item: any) => ({
+        id: item.id,
+        nombre: item.nombre,
+        descripcion: item.descripcion,
+        activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
+      }));
+      case 'roles': return this.roles().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          activo: activoValue
+        };
+      });
       case 'indicadores': {
-        let indicadores = this.indicadores().map(({idIndicador, codigo, nombre, descripcion, anio, meta}) => ({id: idIndicador, codigo, nombre, descripcion, anio, meta}));
+        let indicadores = this.indicadores().map((item: any) => {
+          let activoValue: boolean | undefined = undefined;
+          if (item.activo !== undefined) {
+            activoValue = item.activo === 1 || item.activo === true;
+          } else if (item.Activo !== undefined) {
+            activoValue = item.Activo === 1 || item.Activo === true;
+          }
+          return {
+            id: item.idIndicador,
+            codigo: item.codigo,
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            anio: item.anio,
+            meta: item.meta,
+            activo: activoValue
+          };
+        });
         
         // Filtrar por año si hay un filtro activo
         const filtroAnio = this.filtroAnioIndicadores();
@@ -443,14 +626,14 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         return indicadores.slice(inicio, fin);
       }
       case 'carreras': {
-        let carreras = this.carreras().map(({idCarrera, nombre, codigo, descripcion, departamentoId, departamento, activo}) => ({
-          id: idCarrera,
-          nombre,
-          codigo,
-          descripcion,
-          departamentoId,
-          departamento,
-          activo
+        let carreras = this.carreras().map((item: any) => ({
+          id: item.idCarrera,
+          nombre: item.nombre,
+          codigo: item.codigo,
+          descripcion: item.descripcion,
+          departamentoId: item.departamentoId,
+          departamento: item.departamento,
+          activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : undefined)
         }));
         
         // Filtrar por búsqueda (nombre o código)
@@ -472,14 +655,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         return carreras.slice(inicio, fin);
       }
       case 'actividades-anuales': {
-        let actividades = this.actividadesAnuales().map(({idActividadAnual, nombre, descripcion, anio, idIndicador, nombreIndicador, codigoIndicador}) => ({
-          id: idActividadAnual,
-          nombre: nombre || nombreIndicador,
-          descripcion,
-          anio,
-          idIndicador,
-          codigoIndicador,
-          nombreIndicador
+        let actividades = this.actividadesAnuales().map((item: any) => ({
+          id: item.idActividadAnual,
+          nombre: item.nombre || item.nombreIndicador,
+          descripcion: item.descripcion,
+          anio: item.anio,
+          idIndicador: item.idIndicador,
+          codigoIndicador: item.codigoIndicador,
+          nombreIndicador: item.nombreIndicador,
+          activo: (() => {
+            let activoValue: boolean | undefined = undefined;
+            if (item.activo !== undefined) {
+              activoValue = item.activo === 1 || item.activo === true;
+            } else if (item.Activo !== undefined) {
+              activoValue = item.Activo === 1 || item.Activo === true;
+            }
+            return activoValue;
+          })()
         }));
         
         // Filtrar por año si hay un filtro activo
@@ -507,14 +699,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         return actividades.slice(inicio, fin);
       }
       case 'actividades-mensuales': {
-        let actividades = this.actividadesMensuales().map(({idActividadMensualInst, nombre, descripcion, mes, nombreMes, idActividadAnual, actividadAnual}) => ({
-          id: idActividadMensualInst,
-          nombre: nombre || actividadAnual?.nombreIndicador,
-          descripcion,
-          mes,
-          nombreMes,
-          idActividadAnual,
-          actividadAnual
+        let actividades = this.actividadesMensuales().map((item: any) => ({
+          id: item.idActividadMensualInst,
+          nombre: item.nombre || item.actividadAnual?.nombreIndicador,
+          descripcion: item.descripcion,
+          mes: item.mes,
+          nombreMes: item.nombreMes,
+          idActividadAnual: item.idActividadAnual,
+          actividadAnual: item.actividadAnual,
+          activo: (() => {
+            let activoValue: boolean | undefined = undefined;
+            if (item.activo !== undefined) {
+              activoValue = item.activo === 1 || item.activo === true;
+            } else if (item.Activo !== undefined) {
+              activoValue = item.Activo === 1 || item.Activo === true;
+            }
+            return activoValue;
+          })()
         }));
         
         // Filtrar por búsqueda (nombre)
@@ -534,13 +735,22 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         const fin = inicio + this.itemsPorPagina;
         return actividades.slice(inicio, fin);
       }
-      case 'capacidadesinstaladas': return this.capacidadesinstaladas().map(({id, nombre, descripcion, departamentoId, tipoUnidadId}) => ({
-        id,
-        nombre,
-        descripcion,
-        departamentoId,
-        tipoUnidadId
-      }));
+      case 'capacidadesinstaladas': return this.capacidadesinstaladas().map((item: any) => {
+        let activoValue: boolean | undefined = undefined;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        return {
+          id: item.id,
+          nombre: item.nombre,
+          descripcion: item.descripcion,
+          departamentoId: item.departamentoId,
+          tipoUnidadId: item.tipoUnidadId,
+          activo: activoValue
+        };
+      });
       default: return [];
     }
   }
@@ -596,11 +806,95 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     return this.currentItems().some(item => item.descripcion && item.descripcion.trim() !== '');
   }
 
+  // Métodos para obtener solo los activos para dropdowns
+  departamentosActivos(): Departamento[] {
+    return this.departamentos().filter(d => {
+      const activo = (d as any).activo;
+      return activo === true || activo === 1;
+    });
+  }
+
+  tiposUnidadActivos(): any[] {
+    return this.tiposunidad().filter(t => {
+      const activo = (t as any).activo;
+      return activo === true || activo === 1;
+    });
+  }
+
+  hasEstadoData(): boolean {
+    // Catálogos que tienen campo activo según el usuario
+    const catalogosConEstado: CatalogoType[] = [
+      'capacidadesinstaladas',
+      'actividades-mensuales',
+      'actividades-anuales',
+      'carreras',
+      'indicadores',
+      'roles',
+      'rolesresponsable',
+      'rolesequipo',
+      'nivelesacademico',
+      'nivelesactividad',
+      'areasconocimiento',
+      'tiposprotagonista',
+      'tiposiniciativas',
+      'tiposinvestigaciones',
+      'tiposdocumentos',
+      'tiposdocumentosdivulgados',
+      'tiposevidencia',
+      'categoriaparticipaciones',
+      'categoriaactividades',
+      'tiposactividad',
+      'tiposunidad',
+      'departamentos'
+    ];
+    return catalogosConEstado.includes(this.selectedCatalogo);
+  }
+
+  getEstadoDisplay(item: any): string {
+    if (!this.hasEstadoData()) {
+      return '';
+    }
+    // El campo activo puede venir como activo, Activo, o no estar definido
+    // También puede venir como número (1/0) o booleano (true/false)
+    const activoRaw = item.activo !== undefined ? item.activo : 
+                   (item as any).Activo !== undefined ? (item as any).Activo :
+                   (item as any).activo !== undefined ? (item as any).activo : undefined;
+    
+    if (activoRaw === undefined || activoRaw === null) {
+      return 'N/A';
+    }
+    
+    // Convertir número (1/0) a booleano si es necesario
+    const activo = activoRaw === 1 || activoRaw === true || activoRaw === '1';
+    return activo ? 'Activo' : 'Inactivo';
+  }
+
+  getEstadoClass(item: any): string {
+    if (!this.hasEstadoData()) {
+      return '';
+    }
+    // Intentar diferentes variantes del nombre del campo
+    const activoRaw = item.activo !== undefined ? item.activo : 
+                   (item as any).Activo !== undefined ? (item as any).Activo :
+                   (item as any).activo !== undefined ? (item as any).activo : undefined;
+    
+    if (activoRaw === undefined || activoRaw === null) {
+      return 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800';
+    }
+    
+    // Convertir número (1/0) a booleano si es necesario
+    const activo = activoRaw === 1 || activoRaw === true || activoRaw === '1';
+    return activo 
+      ? 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800'
+      : 'px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800';
+  }
+
   loadAllCatalogos() {
     console.log('🔄 LOAD ALL CATALOGOS - Iniciando carga de todos los catálogos');
     this.isLoading.set(true);
     
-    this.catalogosService.getDepartamentos().subscribe({
+    // En catálogos, cargar todos (activos e inactivos) para poder editarlos
+    this.catalogosService.getDepartamentos(false).subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Departamentos cargados:', data);
         console.log('✅ LOAD ALL CATALOGOS - Primer departamento (ejemplo):', data[0]);
@@ -635,57 +929,58 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       error: error => console.error('Error loading estados proyecto:', error)
     });
     
-    this.catalogosService.getCategoriasParticipacion().subscribe({
+    // En catálogos, cargar todos (activos e inactivos) para poder editarlos
+    this.catalogosService.getCategoriasParticipacion(false).subscribe({
       next: data => this.categoriaparticipaciones.set(data),
       error: error => console.error('Error loading categorias participacion:', error)
     });
     
-    this.catalogosService.getCategoriasActividad().subscribe({
+    this.catalogosService.getCategoriasActividad(false).subscribe({
       next: data => this.categoriaactividades.set(data),
       error: error => console.error('Error loading categorias actividad:', error)
     });
     
-    this.catalogosService.getTiposActividad().subscribe({
+    this.catalogosService.getTiposActividad(false).subscribe({
       next: data => this.tiposactividad.set(data),
       error: error => console.error('Error loading tipos actividad:', error)
     });
     
-    this.catalogosService.getTiposUnidad().subscribe({
+    this.catalogosService.getTiposUnidad(false).subscribe({
       next: data => this.tiposunidad.set(data),
       error: error => console.error('Error loading tipos unidad:', error)
     });
     
-    this.catalogosService.getTiposIniciativa().subscribe({
+    this.catalogosService.getTiposIniciativa(false).subscribe({
       next: data => this.tiposiniciativas.set(data),
       error: error => console.error('Error loading tipos iniciativa:', error)
     });
     
-    this.catalogosService.getTiposInvestigacion().subscribe({
+    this.catalogosService.getTiposInvestigacion(false).subscribe({
       next: data => this.tiposinvestigaciones.set(data),
       error: error => console.error('Error loading tipos investigacion:', error)
     });
     
-    this.catalogosService.getTiposDocumento().subscribe({
+    this.catalogosService.getTiposDocumento(false).subscribe({
       next: data => this.tiposdocumentos.set(data),
       error: error => console.error('Error loading tipos documento:', error)
     });
     
-    this.catalogosService.getTiposDocumentoDivulgado().subscribe({
+    this.catalogosService.getTiposDocumentoDivulgado(false).subscribe({
       next: data => this.tiposdocumentosdivulgados.set(data),
       error: error => console.error('Error loading tipos documento divulgado:', error)
     });
     
-    this.catalogosService.getTiposEvidencia().subscribe({
+    this.catalogosService.getTiposEvidencia(false).subscribe({
       next: data => this.tiposevidencia.set(data),
       error: error => console.error('Error loading tipos evidencia:', error)
     });
     
-    this.catalogosService.getTiposProtagonista().subscribe({
+    this.catalogosService.getTiposProtagonista(false).subscribe({
       next: data => this.tiposprotagonista.set(data),
       error: error => console.error('Error loading tipos protagonista:', error)
     });
     
-    this.catalogosService.getAreasConocimiento().subscribe({
+    this.catalogosService.getAreasConocimiento(false).subscribe({
       next: data => {
         this.areasconocimiento.set(data);
       },
@@ -704,7 +999,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     });
     
     
-    this.catalogosService.getNivelesActividad().subscribe({
+    // En catálogos, cargar todos (activos e inactivos) para poder editarlos
+    this.catalogosService.getNivelesActividad(false).subscribe({
       next: data => {
         this.nivelesactividad.set(data);
       },
@@ -713,7 +1009,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
 
-    this.catalogosService.getNivelesAcademico().subscribe({
+    this.catalogosService.getNivelesAcademico(false).subscribe({
       next: data => {
         this.nivelesacademico.set(data);
       },
@@ -722,7 +1018,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
 
-    this.catalogosService.getRolesEquipo().subscribe({
+    this.catalogosService.getRolesEquipo(false).subscribe({
       next: data => {
         this.rolesequipo.set(data);
       },
@@ -731,7 +1027,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
 
-    this.catalogosService.getRolesResponsable().subscribe({
+    this.catalogosService.getRolesResponsable(false).subscribe({
       next: data => {
         this.rolesresponsable.set(data);
       },
@@ -740,7 +1036,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
 
-    this.catalogosService.getRoles().subscribe({
+    this.catalogosService.getRoles(false).subscribe({
       next: data => {
         this.roles.set(data);
       },
@@ -749,8 +1045,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
 
-    // Cargar indicadores
-    this.indicadorService.getAll().subscribe({
+    // Cargar indicadores - todos para poder editarlos
+    this.indicadorService.getAll(false).subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Indicadores cargados:', data);
         this.indicadores.set(data);
@@ -760,8 +1056,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
     
-    // Cargar carreras
-    this.catalogosService.getCarreras().subscribe({
+    // Cargar carreras - todas para poder editarlas
+    this.catalogosService.getCarreras(false).subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Carreras cargadas:', data);
         this.carreras.set(data);
@@ -771,8 +1067,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
     
-    // Cargar actividades anuales
-    this.actividadAnualService.getAll().subscribe({
+    // Cargar actividades anuales - todas para poder editarlas
+    this.actividadAnualService.getAll(undefined, false).subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Actividades anuales cargadas:', data);
         this.actividadesAnuales.set(data);
@@ -782,8 +1078,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
     
-    // Cargar actividades mensuales
-    this.actividadMensualInstService.getAll().subscribe({
+    // Cargar actividades mensuales - todas para poder editarlas
+    this.actividadMensualInstService.getAll(undefined, false).subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Actividades mensuales cargadas:', data);
         this.actividadesMensuales.set(data);
@@ -793,8 +1089,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
     
-    // Cargar capacidades instaladas
-    this.catalogosService.getCapacidadesInstaladas().subscribe({
+    // Cargar capacidades instaladas - todas para poder editarlas
+    this.catalogosService.getCapacidadesInstaladas(false).subscribe({
       next: data => {
         console.log('✅ LOAD ALL CATALOGOS - Capacidades instaladas cargadas:', data);
         this.capacidadesinstaladas.set(data);
@@ -831,12 +1127,25 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       // Obtener el indicador completo desde la lista para tener acceso a todos los campos
       const indicadorCompleto = this.indicadores().find(ind => ind.idIndicador === this.editingId);
       if (indicadorCompleto) {
+        // Convertir activo de 1/0 a boolean correctamente
+        let activoValue: boolean = true;
+        const activoRaw = (indicadorCompleto as any).activo !== undefined ? (indicadorCompleto as any).activo : 
+                         ((indicadorCompleto as any).Activo !== undefined ? (indicadorCompleto as any).Activo : undefined);
+        if (activoRaw !== undefined) {
+          // Manejar tanto boolean como number (1/0)
+          if (typeof activoRaw === 'number') {
+            activoValue = activoRaw === 1;
+          } else {
+            activoValue = activoRaw === true;
+          }
+        }
         this.form.patchValue({ 
           codigo: indicadorCompleto.codigo || '', 
           nombre: indicadorCompleto.nombre || '', 
           descripcion: indicadorCompleto.descripcion || '',
           anio: indicadorCompleto.anio !== undefined && indicadorCompleto.anio !== null ? indicadorCompleto.anio : null,
           meta: indicadorCompleto.meta !== undefined && indicadorCompleto.meta !== null ? indicadorCompleto.meta : null,
+          activo: activoValue
         });
         this.updateFormValidation();
         return;
@@ -866,10 +1175,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       this.editingId = item.id || (item as any).idActividadAnual;
       const actividadCompleta = this.actividadesAnuales().find(a => a.idActividadAnual === this.editingId);
       if (actividadCompleta) {
+        const activoValue = actividadCompleta.activo !== undefined ? actividadCompleta.activo : true;
         this.form.patchValue({
           nombre: actividadCompleta.nombre || '',
           descripcion: actividadCompleta.descripcion || '',
-          idIndicador: actividadCompleta.idIndicador || null
+          idIndicador: actividadCompleta.idIndicador || null,
+          activo: activoValue === true
           // No incluimos anio porque se maneja automáticamente
         });
         this.updateFormValidation();
@@ -879,10 +1190,12 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       this.editingId = item.id || (item as any).idActividadMensualInst;
       const actividadCompleta = this.actividadesMensuales().find(a => a.idActividadMensualInst === this.editingId);
       if (actividadCompleta) {
+        const activoValue = actividadCompleta.activo !== undefined ? actividadCompleta.activo : true;
         this.form.patchValue({
           nombre: actividadCompleta.nombre || '',
           descripcion: actividadCompleta.descripcion || '',
-          idActividadAnual: actividadCompleta.idActividadAnual || null
+          idActividadAnual: actividadCompleta.idActividadAnual || null,
+          activo: activoValue === true
           // No incluimos mes ni anio porque se manejan automáticamente
         });
         this.updateFormValidation();
@@ -892,11 +1205,13 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       this.editingId = item.id;
       const capacidadCompleta = this.capacidadesinstaladas().find(c => c.id === this.editingId);
       if (capacidadCompleta) {
+        const activoValue = (capacidadCompleta as any).activo !== undefined ? (capacidadCompleta as any).activo : true;
         this.form.patchValue({
           nombre: capacidadCompleta.nombre || '',
           descripcion: capacidadCompleta.descripcion || '',
           departamentoId: capacidadCompleta.departamentoId || null,
-          tipoUnidadId: capacidadCompleta.tipoUnidadId || null
+          tipoUnidadId: capacidadCompleta.tipoUnidadId || null,
+          activo: activoValue === true
         });
         this.updateFormValidation();
         return;
@@ -911,14 +1226,33 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       ? (item.nombre || (item as any).NombreEstado || '')
       : item.nombre;
     
-    this.form.patchValue({ 
+    // Obtener el valor de activo si el catálogo lo tiene
+    let activoValue: boolean | undefined = undefined;
+    if (this.hasEstadoData()) {
+      const activo = (item as any).activo !== undefined ? (item as any).activo : undefined;
+      if (activo !== undefined && activo !== null) {
+        // Convertir número (1/0) a boolean si es necesario
+        activoValue = activo === true || activo === 1;
+      } else {
+        activoValue = true; // Por defecto activo
+      }
+    }
+    
+    const patchValue: any = { 
       codigo: item.codigo || '', 
       nombre: nombreValue || '', 
       descripcion: item.descripcion || '',
       anio: (item as any).anio !== undefined ? (item as any).anio : ((item as any).Anio !== undefined ? (item as any).Anio : null),
       meta: (item as any).meta !== undefined ? (item as any).meta : ((item as any).Meta !== undefined ? (item as any).Meta : null),
       color: (item as any).color || (item as any).Color || '#3B82F6'
-    });
+    };
+    
+    // Agregar activo solo si el catálogo lo tiene
+    if (activoValue !== undefined) {
+      patchValue.activo = activoValue;
+    }
+    
+    this.form.patchValue(patchValue);
   }
 
   ngAfterViewChecked() {
@@ -1208,6 +1542,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const anio = this.form.value.anio;
     const meta = this.form.value.meta;
     const color = this.form.value.color as string;
+    const activo = this.form.value.activo as boolean | undefined;
     
     // Validar año antes de enviar
     if (this.selectedCatalogo === 'indicadores' && anio !== null && anio !== undefined) {
@@ -1233,7 +1568,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         nombre, 
         descripcion,
         anio: anio !== null && anio !== undefined ? Number(anio) : undefined,
-        meta: meta !== null && meta !== undefined ? Number(meta) : undefined
+        meta: meta !== null && meta !== undefined ? Number(meta) : undefined,
+        activo: activo !== undefined ? activo : true
       };
     } else if (this.selectedCatalogo === 'estadosactividad') {
       // Para estadosactividad, incluir color
@@ -1241,7 +1577,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     } else if (this.selectedCatalogo === 'carreras') {
       // Para carreras, incluir código y departamentoId
       const departamentoId = (this.form.get('departamentoId')?.value as number) || null;
-      data = { nombre, codigo, descripcion, departamentoId };
+      data = { nombre, codigo, descripcion, departamentoId, activo };
+    } else if (this.hasEstadoData()) {
+      // Para catálogos con campo activo, incluir el valor
+      data = { nombre, descripcion, activo };
     } else {
       data = { nombre, descripcion };
     }
@@ -1270,8 +1609,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         }
         obs = this.catalogosService.createDepartamento({ 
           nombre: data.nombre, 
-          descripcion: data.descripcion || ''
-        }); 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'generos': 
@@ -1323,7 +1663,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for categoria participacion:', data);
           return;
         }
-        obs = this.catalogosService.createCategoriaParticipacion({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createCategoriaParticipacion({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'categoriaactividades': 
@@ -1331,7 +1675,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for categoria actividad:', data);
           return;
         }
-        obs = this.catalogosService.createCategoriaActividad({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createCategoriaActividad({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposactividad': 
@@ -1339,7 +1687,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo actividad:', data);
           return;
         }
-        obs = this.catalogosService.createTipoActividad({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createTipoActividad({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposunidad': 
@@ -1347,7 +1699,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo unidad:', data);
           return;
         }
-        obs = this.catalogosService.createTipoUnidad({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createTipoUnidad({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposiniciativas': 
@@ -1355,7 +1711,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo iniciativa:', data);
           return;
         }
-        obs = this.catalogosService.createTipoIniciativa({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createTipoIniciativa({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposinvestigaciones': 
@@ -1363,7 +1723,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo investigacion:', data);
           return;
         }
-        obs = this.catalogosService.createTipoInvestigacion({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createTipoInvestigacion({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposdocumentos': 
@@ -1371,7 +1735,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo documento:', data);
           return;
         }
-        obs = this.catalogosService.createTipoDocumento({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createTipoDocumento({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposdocumentosdivulgados': 
@@ -1379,7 +1747,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo documento divulgado:', data);
           return;
         }
-        obs = this.catalogosService.createTipoDocumentoDivulgado({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createTipoDocumentoDivulgado({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'tiposevidencia': 
@@ -1403,7 +1775,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for area conocimiento:', data);
           return;
         }
-        obs = this.catalogosService.createAreaConocimiento({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createAreaConocimiento({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'estadosactividad': 
@@ -1433,7 +1809,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for nivel academico:', data);
           return;
         }
-        obs = this.catalogosService.createNivelAcademico({ nombre: data.nombre }); 
+        obs = this.catalogosService.createNivelAcademico({ 
+          nombre: data.nombre,
+          activo: true
+        } as any); 
         break;
         
       case 'rolesequipo': 
@@ -1457,7 +1836,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for role:', data);
           return;
         }
-        obs = this.catalogosService.createRole({ nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.createRole({ 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: true
+        } as any); 
         break;
         
       case 'indicadores':
@@ -1486,8 +1869,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           nombre: data.nombre.trim(), 
           codigo: data.codigo?.trim() || undefined,
           descripcion: data.descripcion?.trim() || undefined,
-          departamentoId: departamentoId
-        });
+          departamentoId: departamentoId,
+          activo: true
+        } as any);
         break;
       case 'actividades-anuales':
         const idIndicador = (this.form.get('idIndicador')?.value as number) || null;
@@ -1498,9 +1882,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         obs = this.actividadAnualService.create({
           idIndicador,
           nombre: data.nombre.trim(),
-          descripcion: data.descripcion?.trim() || undefined
+          descripcion: data.descripcion?.trim() || undefined,
+          activo: true
           // anio se agrega automáticamente (año actual) en el servicio
-          // activo se agrega automáticamente (true) en el servicio
         });
         break;
       case 'actividades-mensuales':
@@ -1513,7 +1897,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           idActividadAnual,
           nombre: data.nombre.trim(),
           descripcion: data.descripcion?.trim() || undefined,
-          // mes, anio y activo se agregan automáticamente en el backend
+          activo: true
+          // mes y anio se agregan automáticamente en el backend
         });
         break;
       case 'capacidadesinstaladas':
@@ -1525,8 +1910,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           nombreInstalacion: data.nombre.trim(),
           descripcionFuncionalidad: data.descripcion?.trim() || undefined,
           departamentoId: (this.form.get('departamentoId')?.value as number) || undefined,
-          tipoUnidadId: (this.form.get('tipoUnidadId')?.value as number) || undefined
-        });
+          tipoUnidadId: (this.form.get('tipoUnidadId')?.value as number) || undefined,
+          activo: true
+        } as any);
         break;
       default:
         console.error('Unknown catalog type:', this.selectedCatalogo);
@@ -1585,7 +1971,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     });
   }
 
-  updateItem(id: number, data: { nombre?: string, codigo?: string, descripcion?: string, anio?: number, meta?: number, nombreJefe?: string, correoJefe?: string, telefonoJefe?: string }) {
+  updateItem(id: number, data: { nombre?: string, codigo?: string, descripcion?: string, anio?: number, meta?: number, nombreJefe?: string, correoJefe?: string, telefonoJefe?: string, activo?: boolean }) {
     console.log('🔄 UPDATE ITEM - Iniciando actualización');
     console.log('🔄 UPDATE ITEM - ID:', id);
     console.log('🔄 UPDATE ITEM - Datos:', data);
@@ -1601,8 +1987,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         }
         obs = this.catalogosService.updateDepartamento(id, { 
           nombre: data.nombre, 
-          descripcion: data.descripcion || ''
-        }); 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'generos': 
@@ -1643,7 +2030,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for categoria participacion:', data);
           return;
         }
-        obs = this.catalogosService.updateCategoriaParticipacion(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateCategoriaParticipacion(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'categoriaactividades': 
@@ -1651,7 +2042,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for categoria actividad:', data);
           return;
         }
-        obs = this.catalogosService.updateCategoriaActividad(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateCategoriaActividad(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposactividad': 
@@ -1659,7 +2054,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo actividad:', data);
           return;
         }
-        obs = this.catalogosService.updateTipoActividad(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateTipoActividad(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposunidad': 
@@ -1667,7 +2066,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo unidad:', data);
           return;
         }
-        obs = this.catalogosService.updateTipoUnidad(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateTipoUnidad(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposiniciativas': 
@@ -1675,7 +2078,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo iniciativa:', data);
           return;
         }
-        obs = this.catalogosService.updateTipoIniciativa(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateTipoIniciativa(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposinvestigaciones': 
@@ -1683,7 +2090,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo investigacion:', data);
           return;
         }
-        obs = this.catalogosService.updateTipoInvestigacion(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateTipoInvestigacion(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposdocumentos': 
@@ -1691,7 +2102,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo documento:', data);
           return;
         }
-        obs = this.catalogosService.updateTipoDocumento(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateTipoDocumento(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposdocumentosdivulgados': 
@@ -1699,7 +2114,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo documento divulgado:', data);
           return;
         }
-        obs = this.catalogosService.updateTipoDocumentoDivulgado(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateTipoDocumentoDivulgado(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'tiposevidencia': 
@@ -1707,11 +2126,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo evidencia:', data);
           return;
         }
-        const tipoEvidenciaActual = this.tiposevidencia().find(t => t.idTipoEvidencia === id);
         obs = this.catalogosService.updateTipoEvidencia(id, { 
           nombre: data.nombre, 
           descripcion: data.descripcion || '', 
-          activo: tipoEvidenciaActual?.activo !== undefined ? tipoEvidenciaActual.activo : true 
+          activo: data.activo !== undefined ? data.activo : true
         }); 
         break;
         
@@ -1720,11 +2138,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for tipo protagonista:', data);
           return;
         }
-        const tipoProtagonistaActual = this.tiposprotagonista().find(t => t.id === id);
         obs = this.catalogosService.updateTipoProtagonista(id, { 
           nombre: data.nombre, 
           descripcion: data.descripcion || '', 
-          activo: tipoProtagonistaActual?.activo !== undefined ? tipoProtagonistaActual.activo : true 
+          activo: data.activo !== undefined ? data.activo : true
         }); 
         break;
         
@@ -1733,7 +2150,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for area conocimiento:', data);
           return;
         }
-        obs = this.catalogosService.updateAreaConocimiento(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateAreaConocimiento(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'estadosactividad': 
@@ -1755,12 +2176,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for nivel actividad:', data);
           return;
         }
-        // Obtener el nivel actual para mantener el estado activo
-        const nivelActual = this.nivelesactividad().find(n => n.idNivel === id);
         obs = this.catalogosService.updateNivelActividad(id, { 
           nombre: data.nombre, 
           descripcion: data.descripcion || '', 
-          activo: nivelActual?.activo !== undefined ? nivelActual.activo : true 
+          activo: data.activo !== undefined ? data.activo : true
         }); 
         break;
         
@@ -1769,7 +2188,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for nivel academico:', data);
           return;
         }
-        obs = this.catalogosService.updateNivelAcademico(id, { nombre: data.nombre }); 
+        obs = this.catalogosService.updateNivelAcademico(id, { 
+          nombre: data.nombre,
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'rolesequipo': 
@@ -1777,11 +2199,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for rol equipo:', data);
           return;
         }
-        const rolEquipoActual = this.rolesequipo().find(r => r.idRolEquipo === id);
         obs = this.catalogosService.updateRolEquipo(id, { 
           nombre: data.nombre, 
           descripcion: data.descripcion || '', 
-          activo: rolEquipoActual?.activo !== undefined ? rolEquipoActual.activo : true 
+          activo: data.activo !== undefined ? data.activo : true
         }); 
         break;
         
@@ -1790,11 +2211,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for rol responsable:', data);
           return;
         }
-        const rolResponsableActual = this.rolesresponsable().find(r => r.id === id);
         obs = this.catalogosService.updateRolResponsable(id, { 
           nombre: data.nombre, 
           descripcion: data.descripcion || '', 
-          activo: rolResponsableActual?.activo !== undefined ? rolResponsableActual.activo : true 
+          activo: data.activo !== undefined ? data.activo : true
         }); 
         break;
         
@@ -1803,7 +2223,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for role:', data);
           return;
         }
-        obs = this.catalogosService.updateRole(id, { nombre: data.nombre, descripcion: data.descripcion || '' }); 
+        obs = this.catalogosService.updateRole(id, { 
+          nombre: data.nombre, 
+          descripcion: data.descripcion || '',
+          activo: data.activo !== undefined ? data.activo : true
+        } as any); 
         break;
         
       case 'indicadores':
@@ -1811,16 +2235,13 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for indicador:', data);
           return;
         }
-        // Obtener el indicador actual para mantener el estado activo y otros campos
-        const indicadorActual = this.indicadores().find(ind => ind.idIndicador === id);
-        
         // Preparar los datos para actualizar
         // El backend manejará la lógica: si mismo código y año -> actualizar, si mismo código pero año diferente -> crear nuevo
         const updateData: any = {
           codigo: data.codigo.trim(),
           nombre: data.nombre.trim(),
           descripcion: data.descripcion?.trim() || undefined,
-          activo: indicadorActual?.activo !== undefined ? indicadorActual.activo : true
+          activo: data.activo !== undefined ? data.activo : true
         };
         
         // Incluir año si está presente (puede ser null/undefined para usar año actual por defecto)
@@ -1835,7 +2256,6 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         
         console.log('🔄 UPDATE Indicador - Datos a enviar:', JSON.stringify(updateData, null, 2));
         console.log('🔄 UPDATE Indicador - ID:', id);
-        console.log('🔄 UPDATE Indicador - Indicador actual:', indicadorActual);
         console.log('🔄 UPDATE Indicador - Año en datos:', data.anio);
         console.log('🔄 UPDATE Indicador - Año en updateData:', updateData.anio);
         
@@ -1864,13 +2284,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           alert('El indicador y el nombre son requeridos');
           return;
         }
-        // Obtener la actividad actual para mantener el estado activo
-        const actividadAnualActual = this.actividadesAnuales().find(a => a.idActividadAnual === id);
         obs = this.actividadAnualService.update(id, {
           idIndicador: idIndicadorUpdate,
           nombre: data.nombre.trim(),
           descripcion: data.descripcion?.trim() || undefined,
-          activo: actividadAnualActual?.activo !== undefined ? actividadAnualActual.activo : true
+          activo: data.activo !== undefined ? data.activo : true
         });
         break;
       case 'actividades-mensuales':
@@ -1879,13 +2297,11 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           this.alertService.error('Error de validación', 'La actividad anual y el nombre son requeridos');
           return;
         }
-        // Obtener la actividad actual para mantener el estado activo
-        const actividadMensualActual = this.actividadesMensuales().find(a => a.idActividadMensualInst === id);
         obs = this.actividadMensualInstService.update(id, {
           idActividadAnual: idActividadAnualUpdate,
           nombre: data.nombre.trim(),
           descripcion: data.descripcion?.trim() || undefined,
-          activo: actividadMensualActual?.activo !== undefined ? actividadMensualActual.activo : true
+          activo: data.activo !== undefined ? data.activo : true
           // mes y anio se manejan automáticamente en el backend
         });
         break;
@@ -1898,8 +2314,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           nombreInstalacion: data.nombre.trim(),
           descripcionFuncionalidad: data.descripcion?.trim() || undefined,
           departamentoId: (this.form.get('departamentoId')?.value as number) || undefined,
-          tipoUnidadId: (this.form.get('tipoUnidadId')?.value as number) || undefined
-        });
+          tipoUnidadId: (this.form.get('tipoUnidadId')?.value as number) || undefined,
+          activo: data.activo !== undefined ? data.activo : true
+        } as any);
         break;
       default:
         console.error('Unknown catalog type:', this.selectedCatalogo);
@@ -1910,7 +2327,36 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const nombreElemento = data.nombre || data.codigo || 'el elemento';
     
     obs.subscribe({
-      next: () => {
+      next: (updatedItem: any) => {
+        // Actualizar el estado inmediatamente si se recibe el objeto actualizado
+        if (updatedItem && this.selectedCatalogo === 'capacidadesinstaladas') {
+          const currentItems = this.capacidadesinstaladas();
+          const index = currentItems.findIndex((item: any) => item.id === id);
+          if (index !== -1) {
+            const updated = [...currentItems];
+            updated[index] = {
+              ...updated[index],
+              ...updatedItem,
+              nombre: updatedItem.nombre || updatedItem.nombreInstalacion || updated[index].nombre,
+              descripcion: updatedItem.descripcion || updatedItem.descripcionFuncionalidad || updated[index].descripcion,
+              activo: updatedItem.activo !== undefined ? updatedItem.activo : updated[index].activo
+            };
+            this.capacidadesinstaladas.set(updated);
+          }
+        } else if (updatedItem && this.selectedCatalogo === 'indicadores') {
+          const currentItems = this.indicadores();
+          const index = currentItems.findIndex((item: any) => item.idIndicador === id);
+          if (index !== -1) {
+            const updated = [...currentItems];
+            updated[index] = {
+              ...updated[index],
+              ...updatedItem
+            };
+            this.indicadores.set(updated);
+          }
+        }
+        
+        // Recargar todos los catálogos para asegurar consistencia
         this.loadAllCatalogos();
         this.cancelEdit();
         // Mostrar alerta de éxito
