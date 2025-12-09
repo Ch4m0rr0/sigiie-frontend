@@ -1852,30 +1852,10 @@
   }
 
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8 relative" style="z-index: 1;">
-    <div class="flex flex-wrap gap-4 items-end">
+    <div class="flex flex-wrap gap-4 items-end justify-center">
       
-      <!-- Filtro Orden por Fecha -->
-      <div class="flex-shrink-0" style="min-width: 180px;">
-        <label class="block text-xs font-medium text-slate-500 mb-1.5">Orden por Fecha</label>
-        <div class="relative">
-          <select
-            [value]="ordenFecha()"
-            (change)="onOrdenFechaChange($event)"
-            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer appearance-none">
-            <option value="reciente">Más recientes primero</option>
-            <option value="antigua">Menos recientes primero</option>
-          </select>
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-            <app-icon icon="sort" size="xs"></app-icon>
-          </span>
-          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-            <app-icon icon="expand_more" size="xs"></app-icon>
-          </span>
-        </div>
-      </div>
-
       <!-- Filtro Planificada/No Planificada -->
-      <div class="flex-shrink-0" style="min-width: 200px;">
+      <div class="flex-shrink-0" style="min-width: 200px; max-width: 220px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Tipo de Actividad</label>
         <div class="relative">
           <select
@@ -1895,7 +1875,7 @@
         </div>
       </div>
 
-      <div class="flex-shrink-0" style="min-width: 200px;">
+      <div class="flex-shrink-0" style="min-width: 200px; max-width: 220px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Estado</label>
         <div class="relative" data-dropdown-filtro-estado>
           <button
@@ -2003,101 +1983,7 @@
         </div>
       </div>
 
-      <div class="md:col-span-3">
-        <label class="block text-xs font-medium text-slate-500 mb-1.5">Proyecto</label>
-        <div class="relative" data-dropdown-filtro-proyecto>
-          <button
-            type="button"
-            (click)="mostrarDropdownFiltroProyecto.set(!mostrarDropdownFiltroProyecto())"
-            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer text-left flex items-center gap-2 hover:bg-white">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-              <app-icon icon="folder" size="xs"></app-icon>
-            </span>
-            <span class="flex-1 min-w-0 truncate pl-6 flex items-center gap-2">
-              @if (filtroProyecto() !== null) {
-                @let proyectoSeleccionado = getProyectoSeleccionado();
-                @if (proyectoSeleccionado) {
-                  <span class="truncate">{{ proyectoSeleccionado.nombreProyecto || proyectoSeleccionado.nombre }}</span>
-                } @else {
-                  <span class="text-slate-400">Proyecto seleccionado</span>
-                }
-              } @else {
-                <span class="text-slate-400">Todos los proyectos</span>
-              }
-            </span>
-            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-              <app-icon icon="expand_more" size="xs" [class.rotate-180]="mostrarDropdownFiltroProyecto()"></app-icon>
-            </span>
-          </button>
-
-          <!-- Dropdown -->
-          @if (mostrarDropdownFiltroProyecto()) {
-            <div class="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-96 flex flex-col animate-fade-in" style="min-width: 100%; max-width: 400px;">
-              <!-- Buscador -->
-              <div class="p-3 border-b border-slate-200">
-                <div class="relative">
-                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <app-icon icon="search" size="xs" class="text-slate-400"></app-icon>
-                  </div>
-                  <input
-                    type="text"
-                    [value]="terminoBusquedaProyecto()"
-                    (input)="terminoBusquedaProyecto.set($any($event.target).value)"
-                    (click)="$event.stopPropagation()"
-                    placeholder="Buscar por nombre..."
-                    class="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                  />
-                  @if (terminoBusquedaProyecto()) {
-                    <button
-                      type="button"
-                      (click)="terminoBusquedaProyecto.set(''); $event.stopPropagation()"
-                      class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                      title="Limpiar búsqueda">
-                      <app-icon icon="close" size="xs"></app-icon>
-                    </button>
-                  }
-                </div>
-              </div>
-
-              <!-- Lista de opciones -->
-              <div class="overflow-y-auto max-h-80">
-                <button
-                  type="button"
-                  (click)="filtroProyecto.set(null); onFiltroChange(); mostrarDropdownFiltroProyecto.set(false)"
-                  [class.bg-emerald-50]="filtroProyecto() === null"
-                  [class.text-emerald-700]="filtroProyecto() === null"
-                  class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2">
-                  <app-icon icon="check" size="xs" [class.opacity-0]="filtroProyecto() !== null"></app-icon>
-                  <span>Todos los proyectos</span>
-                </button>
-                @if (getProyectosFiltrados().length > 0) {
-                  @for (proyecto of getProyectosFiltrados(); track proyecto.id) {
-                    @let idProyecto = proyecto.id || proyecto.idProyecto;
-                    <button
-                      type="button"
-                      (click)="filtroProyecto.set(idProyecto); onFiltroChange(); mostrarDropdownFiltroProyecto.set(false)"
-                      [class.bg-emerald-50]="filtroProyecto() === idProyecto"
-                      [class.text-emerald-700]="filtroProyecto() === idProyecto"
-                      class="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition-colors flex items-center gap-2 group">
-                      <app-icon icon="check" size="xs" [class.opacity-0]="filtroProyecto() !== idProyecto" class="flex-shrink-0"></app-icon>
-                      <span class="flex-1 min-w-0 truncate">
-                        {{ proyecto.nombreProyecto || proyecto.nombre }}
-                      </span>
-                    </button>
-                  }
-                } @else {
-                  <div class="px-4 py-8 text-center text-sm text-slate-500">
-                    <app-icon icon="search_off" size="sm" class="mx-auto mb-2 text-slate-400"></app-icon>
-                    <p>No se encontraron proyectos</p>
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="md:col-span-3">
+      <div class="flex-shrink-0" style="min-width: 240px; max-width: 280px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Anual</label>
         <div class="relative" data-dropdown-filtro-anual>
           <button
@@ -2193,7 +2079,7 @@
         </div>
       </div>
 
-      <div class="flex-shrink-0" style="min-width: 200px;">
+      <div class="flex-shrink-0" style="min-width: 240px; max-width: 280px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Mensual Institucional</label>
         <div class="relative" data-dropdown-filtro-mensual>
           <button
@@ -2289,10 +2175,10 @@
         </div>
       </div>
 
-      <div class="flex-shrink-0">
+      <div class="flex-shrink-0 flex items-end">
         <button 
           (click)="clearFilters()"
-          class="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          class="p-2.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors h-[42px] flex items-center justify-center"
           title="Limpiar filtros">
           <app-icon icon="restart_alt" size="sm"></app-icon>
         </button>
@@ -2368,14 +2254,6 @@
           <span class="text-slate-400"> (de {{ actividades().length }} totales)</span>
         }
       </p>
-      @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda() || ordenFecha() !== 'reciente') {
-        <button 
-          (click)="clearFilters()"
-          class="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
-          title="Limpiar filtros">
-          <app-icon icon="close" size="sm"></app-icon>
-        </button>
-      }
     </div>
 
     <!-- Vista de Cards -->
@@ -2642,27 +2520,51 @@
       </div>
 
       <!-- Paginación -->
-      @if (actividadesFiltradas().length > 10 && !mostrarTodas()) {
-        <div class="mt-4 flex items-center justify-center gap-3">
-          <p class="text-sm text-slate-600">
-            Mostrando {{ (paginaActual() - 1) * 10 + 1 }} - {{ Math.min(paginaActual() * 10, actividadesFiltradas().length) }} de {{ actividadesFiltradas().length }} actividades
-          </p>
-          <div class="flex items-center gap-2">
-            @if (paginaActual() < totalPaginas()) {
+      @if (actividadesFiltradas().length > 10) {
+        <div class="mt-4 flex items-center justify-center gap-3 flex-wrap">
+          @if (!mostrarTodas()) {
+            <!-- Vista paginada -->
+            <p class="text-sm text-slate-600">
+              Mostrando {{ (paginaActual() - 1) * 10 + 1 }} - {{ Math.min(paginaActual() * 10, actividadesFiltradas().length) }} de {{ actividadesFiltradas().length }} actividades
+            </p>
+            <div class="flex items-center gap-2">
+              @if (paginaActual() > 1) {
+                <button
+                  (click)="verAnterior()"
+                  class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium flex items-center gap-2">
+                  <app-icon icon="arrow_back" size="xs"></app-icon>
+                  <span>Anterior</span>
+                </button>
+              }
+              @if (paginaActual() < totalPaginas()) {
+                <button
+                  (click)="verSiguiente()"
+                  class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2">
+                  <span>Siguiente</span>
+                  <app-icon icon="arrow_forward" size="xs" color="white"></app-icon>
+                </button>
+              }
               <button
-                (click)="verSiguiente()"
-                class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2">
-                <span>Ver siguiente</span>
-                <app-icon icon="arrow_forward" size="xs" color="white"></app-icon>
+                (click)="verTodas()"
+                class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium flex items-center gap-2">
+                <span>Ver todas</span>
+                <app-icon icon="unfold_more" size="xs"></app-icon>
               </button>
-            }
-            <button
-              (click)="verTodas()"
-              class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium flex items-center gap-2">
-              <span>Ver todas</span>
-              <app-icon icon="unfold_more" size="xs"></app-icon>
-            </button>
-          </div>
+            </div>
+          } @else {
+            <!-- Vista todas -->
+            <p class="text-sm text-slate-600">
+              Mostrando todas las {{ actividadesFiltradas().length }} actividades
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                (click)="verPaginado()"
+                class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium flex items-center gap-2">
+                <app-icon icon="unfold_less" size="xs" color="white"></app-icon>
+                <span>Ver de 10 en 10</span>
+              </button>
+            </div>
+          }
         </div>
       }
     }
@@ -2823,7 +2725,7 @@
         </div>
         <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
         <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
-            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda() || ordenFecha() !== 'reciente') {
+            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
                 @if (filtroActividadMensualInst().length > 0) {
                     No hay actividades asociadas a esta actividad mensual. Las actividades mensuales son contenedores que agrupan actividades. 
                     Para ver actividades aquí, necesitas crear actividades normales y asociarlas a esta actividad mensual.
@@ -2835,7 +2737,7 @@
             }
         </p>
         <div class="flex gap-3 flex-wrap justify-center">
-            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda() || ordenFecha() !== 'reciente') {
+            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
                 <button 
                     (click)="clearFilters()" 
                     class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">

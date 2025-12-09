@@ -209,8 +209,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   filtroEstadoActividad = signal<number | null>(null);
   filtroActividadAnual = signal<number[]>([]);
   filtroActividadMensualInst = signal<number[]>([]);
-  filtroProyecto = signal<number | null>(null);
-  ordenFecha = signal<'reciente' | 'antigua'>('reciente'); // 'reciente' = más recientes primero, 'antigua' = menos recientes primero
   terminoBusqueda = signal<string>('');
   terminoBusquedaAnual = signal<string>('');
   mostrarDropdownFiltroAnual = signal(false);
@@ -218,8 +216,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   mostrarDropdownFiltroMensual = signal(false);
   terminoBusquedaEstado = signal<string>('');
   mostrarDropdownFiltroEstado = signal(false);
-  terminoBusquedaProyecto = signal<string>('');
-  mostrarDropdownFiltroProyecto = signal(false);
 
   // Actividades anuales disponibles según filtro de mensuales
   actividadesAnualesDisponibles = computed(() => {
@@ -298,7 +294,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   itemsPorPagina = 10;
   mostrarTodas = signal<boolean>(false);
 
-  // Actividades filtradas por búsqueda y ordenadas por fecha
+  // Actividades filtradas por búsqueda y ordenadas
   actividadesFiltradas = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
     let filtradas = this.actividades();
@@ -311,27 +307,44 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       });
     }
     
-    // Ordenar por fecha según el filtro seleccionado
-    // Usar fechaInicio si existe, sino fechaCreacion
-    const orden = this.ordenFecha();
+    // Ordenar por fecha de creación (más recientes primero) por defecto
     filtradas = filtradas.sort((a, b) => {
-      const fechaA = a.fechaInicio || a.fechaCreacion || '';
-      const fechaB = b.fechaInicio || b.fechaCreacion || '';
+      // Ordenar por fecha (fechaInicio, fechaEvento, fechaCreacion)
+      const fechaA = a.fechaInicio || a.fechaEvento || a.fechaCreacion || '';
+      const fechaB = b.fechaInicio || b.fechaEvento || b.fechaCreacion || '';
       
       if (!fechaA && !fechaB) return 0;
       if (!fechaA) return 1; // Sin fecha al final
       if (!fechaB) return -1; // Sin fecha al final
       
-      const tiempoA = new Date(fechaA).getTime();
-      const tiempoB = new Date(fechaB).getTime();
+      // Función helper para parsear fechas
+      const parsearFecha = (fecha: string): number => {
+        if (!fecha) return 0;
+        
+        // Intentar diferentes formatos de fecha
+        // Formato ISO: YYYY-MM-DD o YYYY-MM-DDTHH:mm:ss
+        let fechaParsed = new Date(fecha);
+        
+        // Si el formato es YYYY-MM-DD sin hora, agregar hora para evitar problemas de zona horaria
+        if (fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          fechaParsed = new Date(fecha + 'T00:00:00');
+        }
+        
+        const tiempo = fechaParsed.getTime();
+        
+        // Verificar si la fecha es válida
+        if (isNaN(tiempo)) {
+          return 0; // Fecha inválida al final
+        }
+        
+        return tiempo;
+      };
       
-      // Si orden es 'reciente', más recientes primero (descendente)
-      // Si orden es 'antigua', menos recientes primero (ascendente)
-      if (orden === 'reciente') {
-        return tiempoB - tiempoA;
-      } else {
-        return tiempoA - tiempoB;
-      }
+      const tiempoA = parsearFecha(fechaA);
+      const tiempoB = parsearFecha(fechaB);
+      
+      // Más recientes primero (descendente)
+      return tiempoB - tiempoA;
     });
     
     return filtradas;
@@ -360,13 +373,32 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
+  paginaAnterior(): void {
+    if (this.paginaActual() > 1) {
+      this.paginaActual.set(this.paginaActual() - 1);
+    }
+  }
+
   verTodas(): void {
     this.mostrarTodas.set(true);
+  }
+
+  verPaginado(): void {
+    this.mostrarTodas.set(false);
+    // Mantener la página actual o resetear a la primera si es necesario
+    if (this.paginaActual() > this.totalPaginas()) {
+      this.paginaActual.set(1);
+    }
   }
 
   verSiguiente(): void {
     this.mostrarTodas.set(false);
     this.siguientePagina();
+  }
+
+  verAnterior(): void {
+    this.mostrarTodas.set(false);
+    this.paginaAnterior();
   }
 
   // Métodos Math para usar en el template
@@ -2361,7 +2393,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.terminoBusqueda.set('');
     this.terminoBusquedaAnual.set('');
     this.terminoBusquedaMensual.set('');
-    this.terminoBusquedaProyecto.set('');
     this.error.set(null);
     this.showRetryButton = false;
     this.paginaActual.set(1);
@@ -2369,12 +2400,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.loadActividades();
   }
 
-  onOrdenFechaChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const value = select.value as 'reciente' | 'antigua';
-    this.ordenFecha.set(value);
-    // No necesitamos recargar, el computed se actualizará automáticamente
-  }
 
   onPlanificadaFiltroChange(event: Event): void {
     const select = event.target as HTMLSelectElement;
@@ -3964,25 +3989,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 
-  getProyectosFiltrados(): Proyecto[] {
-    const termino = this.terminoBusquedaProyecto().toLowerCase().trim();
-    if (!termino) {
-      return this.proyectos();
-    }
-    return this.proyectos().filter(proyecto => {
-      const nombre = (proyecto.nombreProyecto || proyecto.nombre || '').toLowerCase();
-      const descripcion = (proyecto.descripcion || '').toLowerCase();
-      return nombre.includes(termino) || descripcion.includes(termino);
-    });
-  }
-
-  getProyectoSeleccionado(): Proyecto | undefined {
-    const idFiltro = this.filtroProyecto();
-    if (idFiltro === null) {
-      return undefined;
-    }
-    return this.proyectos().find(p => p.id === idFiltro || p.idProyecto === idFiltro);
-  }
 
   getEstadosFiltrados(): any[] {
     const termino = this.terminoBusquedaEstado().toLowerCase().trim();
