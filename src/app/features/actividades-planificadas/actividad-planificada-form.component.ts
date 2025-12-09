@@ -4,10 +4,7 @@ import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, Abs
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
-import { ProyectosService } from '../../core/services/proyectos.service';
-import { ProyectoActividadService } from '../../core/services/proyecto-actividad.service';
 import type { ActividadCreate, ResponsableCreate } from '../../core/models/actividad';
-import type { Proyecto } from '../../core/models/proyecto';
 import type { Departamento } from '../../core/models/departamento';
 import type { CategoriaActividad } from '../../core/models/categoria-actividad';
 import type { EstadoActividad } from '../../core/models/estado-actividad';
@@ -54,8 +51,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   private responsableService = inject(ActividadResponsableService);
   private personasService = inject(PersonasService);
   private usuariosService = inject(UsuariosService);
-  private proyectosService = inject(ProyectosService);
-  private proyectoActividadService = inject(ProyectoActividadService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
@@ -65,7 +60,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   departamentos = signal<Departamento[]>([]);
   categoriasActividad = signal<CategoriaActividad[]>([]);
   estadosActividad = signal<EstadoActividad[]>([]);
-  proyectos = signal<Proyecto[]>([]);
   
   // Estados filtrados para creación (excluye Suspendido, Cancelado y Finalizado)
   estadosActividadParaCreacion = computed(() => {
@@ -118,8 +112,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   mostrarDropdownLocal = signal(true);
   mostrarDropdownIndicador = signal(false);
   terminoBusquedaIndicador = signal<string>('');
-  mostrarDropdownProyecto = signal(true);
-  terminoBusquedaProyecto = signal<string>('');
   
   // Acordeones para secciones del formulario
   seccionPlanificacionExpandida = signal(false);
@@ -177,7 +169,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     this.loadTiposEvidencia();
     this.initializeFormResponsable();
     this.loadTodasLasPersonas();
-    this.loadProyectos();
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -191,13 +182,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       this.indicadorIdFromQuery.set(+idIndicador);
     }
 
-    const idProyecto = this.route.snapshot.queryParams['idProyecto'];
-    if (idProyecto) {
-      // Preseleccionar proyecto si viene desde el detalle del proyecto
-      setTimeout(() => {
-        this.form.patchValue({ idProyecto: +idProyecto });
-      }, 500);
-    }
 
     // Suscribirse a cambios del formulario para guardar automáticamente (solo después de inicializar)
     if (!this.isEditMode()) {
@@ -447,7 +431,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       areaConocimientoId: [null],
       ubicacion: [''],
       activo: [true],
-      idProyecto: [null] // Proyecto asociado (opcional)
     });
 
     this.form.get('nombreActividad')?.valueChanges.subscribe(value => {
@@ -646,32 +629,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadProyectos(): void {
-    this.proyectosService.getAll().subscribe({
-      next: (data) => this.proyectos.set(data),
-      error: (err) => console.error('Error loading proyectos:', err)
-    });
-  }
-
-  getProyectosFiltrados(): Proyecto[] {
-    const termino = this.terminoBusquedaProyecto().toLowerCase().trim();
-    if (!termino) {
-      return this.proyectos();
-    }
-    return this.proyectos().filter(proyecto => {
-      const nombre = (proyecto.nombreProyecto || proyecto.nombre || '').toLowerCase();
-      const descripcion = (proyecto.descripcion || '').toLowerCase();
-      return nombre.includes(termino) || descripcion.includes(termino);
-    });
-  }
-
-  getProyectoSeleccionado(): Proyecto | undefined {
-    const idProyecto = this.form.get('idProyecto')?.value;
-    if (!idProyecto) {
-      return undefined;
-    }
-    return this.proyectos().find(p => p.id === idProyecto || p.idProyecto === idProyecto);
-  }
 
   cargarActividadesPorIndicador(idIndicador: number, skipCheck: boolean = false): void {
     if (!skipCheck && this.cargandoRelaciones) return;
@@ -1525,22 +1482,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
               });
             }
 
-            // Si hay un proyecto seleccionado, asociarlo en segundo plano
-            const idProyecto = formValue.idProyecto;
-            if (actividadCreada.id && idProyecto) {
-              this.proyectoActividadService.create({
-                idProyecto: idProyecto,
-                idActividad: actividadCreada.id,
-                esSubactividad: false
-              }).subscribe({
-                next: () => {
-                  console.log('✅ Proyecto asociado correctamente');
-                },
-                error: (errProyecto) => {
-                  console.error('Error al asociar proyecto:', errProyecto);
-                }
-              });
-            }
           },
           error: (err: any) => {
             clearTimeout(timeoutId); // Limpiar timeout en caso de error

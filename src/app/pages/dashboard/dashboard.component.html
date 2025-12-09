@@ -228,7 +228,7 @@
                       <div class="flex items-center justify-center mb-5">
                         <div class="text-center">
                           <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-2">Cumplimiento</div>
-                          <div class="text-5xl font-bold leading-none" [class]="getEstadoColor(cumplimiento.porcentajeCumplimiento)">
+                          <div class="text-5xl font-bold leading-none" [class]="getColorEstadoIndicador(cumplimiento.porcentajeCumplimiento)">
                             {{ cumplimiento.porcentajeCumplimiento.toFixed(1) }}%
                           </div>
                         </div>
@@ -442,6 +442,156 @@
         }
       </div>
     }
+
+    <!-- Sección de Calendario -->
+    <div class="mb-8">
+      <div class="bg-white rounded-xl border border-slate-200 p-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-6">Calendario de Actividades</h2>
+        
+        <!-- Controles del calendario -->
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-4">
+            <button
+              type="button"
+              (click)="cambiarMes('anterior')"
+              class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+              title="Mes anterior"
+              aria-label="Mes anterior">
+              <app-icon icon="chevron_left" size="sm"></app-icon>
+            </button>
+            <h3 class="text-xl font-bold text-slate-900 capitalize">
+              {{ viewDate | date:'MMMM yyyy':'es-ES' }}
+            </h3>
+            <button
+              type="button"
+              (click)="cambiarMes('siguiente')"
+              class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+              title="Mes siguiente"
+              aria-label="Mes siguiente">
+              <app-icon icon="chevron_right" size="sm"></app-icon>
+            </button>
+          </div>
+          <button
+            type="button"
+            (click)="irAHoy()"
+            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 hover:shadow-md transition-all duration-200 active:scale-95 text-sm font-medium flex items-center gap-2"
+            title="Ir al mes actual">
+            <app-icon icon="today" size="xs" color="white"></app-icon>
+            Hoy
+          </button>
+        </div>
+
+        <!-- Calendario -->
+        <div class="calendar-container relative" (mouseleave)="onEventMouseLeave()">
+          <mwl-calendar-month-view
+            [viewDate]="viewDate"
+            [events]="eventosCalendario()"
+            [locale]="locale"
+            (eventClicked)="eventoClicked($event)"
+            [activeDayIsOpen]="false"
+            class="calendar-month-view">
+          </mwl-calendar-month-view>
+          
+          <!-- Tooltip para eventos -->
+          @if (eventoHovered && hoverPosition()) {
+            <div 
+              class="calendar-event-tooltip fixed z-[9999] pointer-events-none"
+              [style.left.px]="getTooltipLeft()"
+              [style.top.px]="getTooltipTop()">
+              <div class="bg-white rounded-xl shadow-2xl border border-slate-200/80 p-5 max-w-sm backdrop-blur-sm">
+                <!-- Header con color -->
+                <div class="flex items-start gap-4 mb-4">
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white"
+                       [style.backgroundColor]="eventoHovered.color?.secondary || '#d1fae5'"
+                       [style.color]="eventoHovered.color?.primary || '#10b981'">
+                    <app-icon icon="assignment" size="sm"></app-icon>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    @if (eventoHovered.meta?.actividad?.codigoActividad) {
+                      <p class="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded inline-block mb-2">
+                        {{ eventoHovered.meta.actividad.codigoActividad }}
+                      </p>
+                    }
+                    <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
+                      {{ eventoHovered.meta?.actividad?.nombreActividad || eventoHovered.meta?.actividad?.nombre || eventoHovered.title }}
+                    </h4>
+                    @if (eventoHovered.meta?.actividad?.descripcion) {
+                      <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                        {{ eventoHovered.meta.actividad.descripcion }}
+                      </p>
+                    }
+                  </div>
+                </div>
+                
+                <!-- Información detallada -->
+                @if (eventoHovered.meta?.actividad) {
+                  <div class="space-y-2.5 mb-4">
+                    @if (eventoHovered.meta.actividad.horaRealizacion) {
+                      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                        <div class="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <app-icon icon="schedule" size="xs"></app-icon>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-500 mb-0.5 font-medium">Hora</p>
+                          <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.meta.actividad.horaRealizacion }}</p>
+                        </div>
+                      </div>
+                    }
+                    @if (eventoHovered.start) {
+                      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <app-icon icon="calendar_today" size="xs"></app-icon>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-xs text-slate-500 mb-0.5 font-medium">Fecha</p>
+                          @if (eventoHovered.end) {
+                            <p class="text-sm font-semibold text-slate-900">
+                              Del {{ eventoHovered.start | date:'dd/MM/yyyy':'es-ES' }} al {{ eventoHovered.end | date:'dd/MM/yyyy':'es-ES' }}
+                            </p>
+                          } @else {
+                            <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.start | date:'dd \'de\' MMMM \'de\' yyyy':'es-ES' }}</p>
+                          }
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+                
+                <!-- Footer -->
+                <div class="pt-4 border-t border-slate-200">
+                  <div class="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50/50 px-3 py-2 rounded-lg">
+                    <app-icon icon="info" size="xs"></app-icon>
+                    <span>Haz clic para ver más detalles</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Leyenda de Estados -->
+        <div class="mt-6 flex items-center gap-4 text-sm flex-wrap">
+          @if (estadosActividad().length > 0) {
+            @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+              @let estadoColor = getEstadoColor(estado);
+              <div class="flex items-center gap-2">
+                <div 
+                  class="w-4 h-4 rounded" 
+                  [style.backgroundColor]="estadoColor"
+                  [style.border]="'1px solid ' + estadoColor">
+                </div>
+                <span class="text-slate-600">{{ estado.nombre }}</span>
+              </div>
+            }
+          } @else {
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded bg-slate-400"></div>
+              <span class="text-slate-600 text-xs italic">Cargando estados...</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
 
     <!-- Cards organizadas en grid debajo de los botones -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
