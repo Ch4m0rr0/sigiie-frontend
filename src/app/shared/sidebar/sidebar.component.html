@@ -61,7 +61,8 @@
         }
         
         <div class="space-y-1">
-          <a *hasPermission="'proyectos.ver'" 
+          <!-- Proyectos oculto -->
+          <!-- <a *hasPermission="'proyectos.ver'" 
              routerLink="/proyectos" 
              routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
              class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
@@ -69,7 +70,7 @@
              title="Proyectos">
              <app-icon icon="folder_open" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
              @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Proyectos</span> }
-          </a>
+          </a> -->
 
           <a *hasPermission="'actividades.ver'" 
              routerLink="/actividades" 
@@ -172,15 +173,14 @@
          [class.justify-center]="isCollapsed()">
         
         <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shadow-md flex-shrink-0">
-            AD
+            {{ getIniciales() }}
         </div>
         
         @if (!isCollapsed()) {
             <div class="flex flex-col min-w-0 animate-fade-in">
                 <span class="text-sm font-semibold text-white truncate group-hover:text-blue-400 transition-colors">
-                  {{ user()?.nombreCompleto || 'Usuario' }}
+                  {{ getNombreCompleto() }}
                 </span>
-                <span class="text-xs text-slate-500 truncate">{{ user()?.correo || '' }}</span>
             </div>
             
             <button (click)="logout()" class="ml-auto p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all" title="Cerrar Sesión">

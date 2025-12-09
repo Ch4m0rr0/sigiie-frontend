@@ -33,6 +33,41 @@ export class SidebarComponent {
   // Exponer el usuario para el template
   user = this.authService.user;
 
+  // Obtener el nombre completo del usuario (concatenado)
+  getNombreCompleto(): string {
+    const usuario = this.user();
+    if (!usuario) return 'Usuario';
+    
+    // Si ya tiene nombreCompleto, usarlo
+    if (usuario.nombreCompleto) {
+      return usuario.nombreCompleto.trim();
+    }
+    
+    return 'Usuario';
+  }
+
+  // Obtener las iniciales del nombre para el avatar
+  getIniciales(): string {
+    const nombre = this.getNombreCompleto();
+    if (!nombre || nombre === 'Usuario') return 'U';
+    
+    // Dividir el nombre en palabras
+    const palabras = nombre.trim().split(/\s+/);
+    
+    if (palabras.length === 0) return 'U';
+    
+    // Si hay una sola palabra, tomar las primeras 2 letras
+    if (palabras.length === 1) {
+      return palabras[0].substring(0, 2).toUpperCase();
+    }
+    
+    // Si hay múltiples palabras, tomar la primera letra de las primeras 2 palabras
+    const primeraLetra = palabras[0].charAt(0).toUpperCase();
+    const segundaLetra = palabras[1].charAt(0).toUpperCase();
+    
+    return primeraLetra + segundaLetra;
+  }
+
   // 3. Método para cambiar el estado (llamado por el botón de la flecha)
   toggleSidebar() {
     this.isCollapsed.update((val) => !val);

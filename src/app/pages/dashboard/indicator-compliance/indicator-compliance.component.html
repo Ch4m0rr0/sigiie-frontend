@@ -1,0 +1,275 @@
+@if (indicadoresCumplimiento().length > 0) {
+  <div class="mb-8">
+    <!-- Botón para expandir/colapsar -->
+    <button 
+      (click)="toggleCumplimientoIndicadores()"
+      class="w-full mb-6 flex items-center justify-between p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-200 group">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 rounded-xl group-hover:from-blue-600 group-hover:to-blue-700 group-hover:text-white transition-all duration-200 shadow-sm">
+          <app-icon icon="assessment" size="md"></app-icon>
+        </div>
+        <div class="text-left">
+          <h2 class="text-lg md:text-xl font-bold text-slate-900">
+            Cumplimiento de Indicadores
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            {{ indicadoresOrdenados().length }} de {{ indicadoresCumplimiento().length }} indicador{{ indicadoresCumplimiento().length !== 1 ? 'es' : '' }} mostrado{{ indicadoresOrdenados().length !== 1 ? 's' : '' }}
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="toggleFiltrosIndicadores(); $event.stopPropagation()"
+          class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-xs font-medium flex items-center gap-1.5"
+          [class.bg-blue-50]="mostrarFiltrosIndicadores()"
+          [class.border-blue-300]="mostrarFiltrosIndicadores()"
+          [class.text-blue-700]="mostrarFiltrosIndicadores()">
+          <app-icon icon="filter_list" size="xs"></app-icon>
+          <span>Filtros</span>
+        </button>
+        <span class="text-sm font-medium text-slate-600 hidden sm:inline">
+          {{ mostrarCumplimientoIndicadores() ? 'Ocultar' : 'Ver detalles' }}
+        </span>
+        <app-icon 
+          [icon]="mostrarCumplimientoIndicadores() ? 'expand_less' : 'expand_more'" 
+          size="md" 
+          class="text-slate-400 group-hover:text-blue-600 transition-colors">
+        </app-icon>
+      </div>
+    </button>
+
+    <!-- Contenido expandible -->
+    @if (mostrarCumplimientoIndicadores()) {
+      <div class="transition-all duration-300 ease-in-out">
+        <!-- Filtros de búsqueda y porcentaje -->
+        @if (mostrarFiltrosIndicadores()) {
+          <div class="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Filtro por código/nombre -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Buscar por código o nombre</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <app-icon icon="search" size="sm" class="text-slate-400"></app-icon>
+                  </div>
+                  <input
+                    type="text"
+                    [value]="filtroIndicadoresCodigo()"
+                    (input)="onFiltroCodigoChange($event)"
+                    placeholder="Ej: 6.1.1 o nombre del indicador..."
+                    class="w-full pl-10 pr-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                </div>
+              </div>
+              
+              <!-- Filtro por porcentaje -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">Estado de cumplimiento</label>
+                <select
+                  [value]="filtroIndicadoresPorcentaje()"
+                  (change)="onFiltroPorcentajeChange($event)"
+                  class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                  <option value="todos">Todos</option>
+                  <option value="cumplidos">Cumplidos (100%)</option>
+                  <option value="pendientes">Pendientes (&lt;100%)</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Botón Limpiar Filtros -->
+            @if (filtroIndicadoresCodigo() || filtroIndicadoresPorcentaje() !== 'todos') {
+              <div class="flex justify-end mt-3">
+                <button
+                  type="button"
+                  (click)="limpiarFiltrosIndicadores()"
+                  class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+                  <app-icon icon="clear" size="xs"></app-icon>
+                  <span>Limpiar filtros</span>
+                </button>
+              </div>
+            }
+          </div>
+        }
+        
+        <!-- Filtros de ordenamiento -->
+        <div class="mb-6 bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+              <app-icon icon="sort" size="sm" class="text-slate-500"></app-icon>
+              <span class="text-sm font-semibold text-slate-700">Ordenar por:</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- Ordenar por cumplimiento: Más cumplidos -->
+              <button
+                (click)="cambiarOrdenamiento('cumplimiento-desc')"
+                [class.bg-blue-600]="tipoOrdenamiento() === 'cumplimiento-desc'"
+                [class.text-white]="tipoOrdenamiento() === 'cumplimiento-desc'"
+                [class.bg-slate-100]="tipoOrdenamiento() !== 'cumplimiento-desc'"
+                [class.text-slate-700]="tipoOrdenamiento() !== 'cumplimiento-desc'"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-sm flex items-center gap-1.5">
+                <app-icon 
+                  [icon]="tipoOrdenamiento() === 'cumplimiento-desc' ? 'check_circle' : 'arrow_downward'" 
+                  size="xs">
+                </app-icon>
+                <span>Más cumplidos</span>
+              </button>
+
+              <!-- Ordenar por cumplimiento: Menos cumplidos -->
+              <button
+                (click)="cambiarOrdenamiento('cumplimiento-asc')"
+                [class.bg-blue-600]="tipoOrdenamiento() === 'cumplimiento-asc'"
+                [class.text-white]="tipoOrdenamiento() === 'cumplimiento-asc'"
+                [class.bg-slate-100]="tipoOrdenamiento() !== 'cumplimiento-asc'"
+                [class.text-slate-700]="tipoOrdenamiento() !== 'cumplimiento-asc'"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-sm flex items-center gap-1.5">
+                <app-icon 
+                  [icon]="tipoOrdenamiento() === 'cumplimiento-asc' ? 'check_circle' : 'arrow_upward'" 
+                  size="xs">
+                </app-icon>
+                <span>Menos cumplidos</span>
+              </button>
+
+              <!-- Ordenar por código: Ascendente -->
+              <button
+                (click)="cambiarOrdenamiento('codigo-asc')"
+                [class.bg-blue-600]="tipoOrdenamiento() === 'codigo-asc'"
+                [class.text-white]="tipoOrdenamiento() === 'codigo-asc'"
+                [class.bg-slate-100]="tipoOrdenamiento() !== 'codigo-asc'"
+                [class.text-slate-700]="tipoOrdenamiento() !== 'codigo-asc'"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-sm flex items-center gap-1.5">
+                <app-icon 
+                  [icon]="tipoOrdenamiento() === 'codigo-asc' ? 'check_circle' : 'sort_by_alpha'" 
+                  size="xs">
+                </app-icon>
+                <span>Código ↑</span>
+              </button>
+
+              <!-- Ordenar por código: Descendente -->
+              <button
+                (click)="cambiarOrdenamiento('codigo-desc')"
+                [class.bg-blue-600]="tipoOrdenamiento() === 'codigo-desc'"
+                [class.text-white]="tipoOrdenamiento() === 'codigo-desc'"
+                [class.bg-slate-100]="tipoOrdenamiento() !== 'codigo-desc'"
+                [class.text-slate-700]="tipoOrdenamiento() !== 'codigo-desc'"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 hover:shadow-sm flex items-center gap-1.5">
+                <app-icon 
+                  [icon]="tipoOrdenamiento() === 'codigo-desc' ? 'check_circle' : 'sort_by_alpha'" 
+                  size="xs">
+                </app-icon>
+                <span>Código ↓</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        @if (loadingIndicadores()) {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (i of [1,2,3]; track i) {
+              <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-pulse">
+                <div class="h-48 bg-slate-200 rounded-lg mb-4"></div>
+                <div class="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                <div class="h-4 bg-slate-200 rounded w-1/2"></div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (cumplimiento of indicadoresOrdenados(); track trackByIndicadorId($index, cumplimiento)) {
+              <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-all duration-200 flex flex-col h-full">
+                <!-- Header del indicador -->
+                <div class="px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
+                  <div class="space-y-1.5">
+                    <h3 class="font-semibold text-slate-900 text-sm leading-tight line-clamp-2 break-words">
+                      {{ cumplimiento.indicador.nombre }}
+                    </h3>
+                    @if (cumplimiento.indicador.codigo) {
+                      <p class="text-xs text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded inline-block">
+                        {{ cumplimiento.indicador.codigo }}
+                      </p>
+                    }
+                  </div>
+                </div>
+
+                <!-- Contenido principal -->
+                <div class="p-5 flex-1 flex flex-col min-h-0">
+                  <!-- Porcentaje de cumplimiento destacado -->
+                  <div class="flex items-center justify-center mb-5">
+                    <div class="text-center">
+                      <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-2">Cumplimiento</div>
+                      <div class="text-5xl font-bold leading-none" [class]="getColorEstadoIndicador(cumplimiento.porcentajeCumplimiento)">
+                        {{ cumplimiento.porcentajeCumplimiento.toFixed(1) }}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Gráfica de cumplimiento -->
+                  <div class="h-[180px] w-full relative mb-5 flex-shrink-0 overflow-hidden" style="min-height: 180px; max-height: 180px;">
+                    <app-chart 
+                      [data]="getChartDataForIndicador(cumplimiento)" 
+                      [config]="getChartConfigForIndicador(cumplimiento)">
+                    </app-chart>
+                  </div>
+
+                  <!-- Métricas -->
+                  <div class="space-y-3 mt-auto">
+                    <!-- Barra de progreso visual -->
+                    <div class="w-full bg-slate-200 rounded-full h-3.5 overflow-hidden border border-slate-300 shadow-inner">
+                      <div 
+                        class="h-full rounded-full transition-all duration-700 ease-out shadow-sm"
+                        [class.bg-emerald-500]="cumplimiento.porcentajeCumplimiento >= 100"
+                        [class.bg-amber-500]="cumplimiento.porcentajeCumplimiento >= 50 && cumplimiento.porcentajeCumplimiento < 100"
+                        [class.bg-red-500]="cumplimiento.porcentajeCumplimiento < 50"
+                        [style.width.%]="min(cumplimiento.porcentajeCumplimiento, 100)">
+                      </div>
+                    </div>
+
+                    <!-- Meta vs Alcanzado -->
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="p-3 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200 shadow-sm hover:shadow transition-shadow">
+                        <div class="text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide">Meta</div>
+                        <div class="text-lg font-bold text-slate-900 leading-tight">
+                          {{ cumplimiento.meta.toFixed(0) }}
+                          @if (cumplimiento.mideNumeroActividades) {
+                            <span class="text-xs text-slate-500 font-normal block mt-0.5">actividades</span>
+                          } @else if (cumplimiento.indicador.unidadMedida) {
+                            <span class="text-xs text-slate-500 font-normal block mt-0.5">{{ cumplimiento.indicador.unidadMedida }}</span>
+                          }
+                        </div>
+                      </div>
+                      <div class="p-3 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg border border-slate-200 shadow-sm hover:shadow transition-shadow">
+                        <div class="text-xs text-slate-500 mb-1.5 font-semibold uppercase tracking-wide">Alcanzado</div>
+                        <div class="text-lg font-bold text-slate-900 leading-tight">
+                          @if (cumplimiento.mideNumeroActividades) {
+                            {{ cumplimiento.totalActividades }}
+                            <span class="text-xs text-slate-500 font-normal block mt-0.5">actividades</span>
+                          } @else {
+                            {{ cumplimiento.metaAlcanzada.toFixed(0) }}
+                            @if (cumplimiento.indicador.unidadMedida) {
+                              <span class="text-xs text-slate-500 font-normal block mt-0.5">{{ cumplimiento.indicador.unidadMedida }}</span>
+                            }
+                          }
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Actividades relacionadas -->
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 shadow-sm">
+                      <div class="flex items-center gap-2">
+                        <app-icon icon="assignment" size="sm" class="text-slate-500 flex-shrink-0"></app-icon>
+                        <span class="text-xs text-slate-600 font-semibold">Total Actividades</span>
+                      </div>
+                      <span class="text-base font-bold text-slate-700 bg-white px-2 py-1 rounded border border-slate-200">
+                        {{ cumplimiento.totalActividades }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+}
+

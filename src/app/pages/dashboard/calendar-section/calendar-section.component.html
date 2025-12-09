@@ -1,0 +1,240 @@
+<div class="mb-8">
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- Header del Calendario -->
+    <div class="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 mb-1">Calendario de Actividades y Subactividades</h2>
+          <p class="text-sm text-slate-500">Visualiza todas tus actividades y subactividades programadas</p>
+        </div>
+        <button
+          type="button"
+          (click)="toggleFiltrosCalendario()"
+          class="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-sm font-medium flex items-center gap-2"
+          [class.bg-blue-50]="mostrarFiltrosCalendario()"
+          [class.border-blue-300]="mostrarFiltrosCalendario()"
+          [class.text-blue-700]="mostrarFiltrosCalendario()">
+          <app-icon icon="filter_list" size="sm"></app-icon>
+          <span>Filtros</span>
+        </button>
+      </div>
+      
+      <!-- Filtros del Calendario -->
+      @if (mostrarFiltrosCalendario()) {
+        <div class="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <!-- Filtro por Estado -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">Estado</label>
+                  <select
+                    [value]="filtroCalendarioEstado() ?? ''"
+                    (change)="onFiltroEstadoChange($event)"
+                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                <option value="">Todos los estados</option>
+                @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                  <option [value]="estado.idEstadoActividad || estado.id">{{ estado.nombre }}</option>
+                }
+              </select>
+            </div>
+            
+            <!-- Filtro por Tipo -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de Actividad</label>
+                  <select
+                    [value]="filtroCalendarioTipo() ?? ''"
+                    (change)="onFiltroTipoChange($event)"
+                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                <option value="">Todos los tipos</option>
+                @for (tipo of tiposActividad(); track tipo.id) {
+                  <option [value]="tipo.id">{{ tipo.nombre }}</option>
+                }
+              </select>
+            </div>
+            
+            <!-- Filtro Mostrar Solo -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1.5">Mostrar</label>
+                  <select
+                    [value]="filtroCalendarioMostrarSolo()"
+                    (change)="onFiltroMostrarSoloChange($event)"
+                class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+                <option value="todos">Actividades y Subactividades</option>
+                <option value="actividades">Solo Actividades</option>
+                <option value="subactividades">Solo Subactividades</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Botón Limpiar Filtros -->
+          @if (filtroCalendarioEstado() !== null || filtroCalendarioTipo() !== null || filtroCalendarioMostrarSolo() !== 'todos') {
+            <div class="flex justify-end">
+              <button
+                type="button"
+                (click)="limpiarFiltrosCalendario()"
+                class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+                <app-icon icon="clear" size="xs"></app-icon>
+                <span>Limpiar filtros</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+    
+    <div class="p-6">
+      <!-- Controles del calendario -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+          <button
+            type="button"
+            (click)="cambiarMes('anterior')"
+            class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+            title="Mes anterior"
+            aria-label="Mes anterior">
+            <app-icon icon="chevron_left" size="sm"></app-icon>
+          </button>
+          <h3 class="text-xl font-bold text-slate-900 capitalize">
+            {{ viewDate | date:'MMMM yyyy':'es-ES' }}
+          </h3>
+          <button
+            type="button"
+            (click)="cambiarMes('siguiente')"
+            class="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 active:scale-95"
+            title="Mes siguiente"
+            aria-label="Mes siguiente">
+            <app-icon icon="chevron_right" size="sm"></app-icon>
+          </button>
+        </div>
+        <button
+          type="button"
+          (click)="irAHoy()"
+          class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 hover:shadow-md transition-all duration-200 active:scale-95 text-sm font-medium flex items-center gap-2"
+          title="Ir al mes actual">
+          <app-icon icon="today" size="xs" color="white"></app-icon>
+          Hoy
+        </button>
+      </div>
+
+      <!-- Calendario -->
+      <div class="calendar-container relative" (mouseleave)="onEventMouseLeave()">
+        <mwl-calendar-month-view
+          [viewDate]="viewDate"
+          [events]="eventosCalendarioFiltrados()"
+          [locale]="locale"
+          (eventClicked)="eventoClicked($event)"
+          [activeDayIsOpen]="false"
+          class="calendar-month-view">
+        </mwl-calendar-month-view>
+        
+        <!-- Tooltip para eventos -->
+        @if (eventoHovered && hoverPosition()) {
+          <div 
+            class="calendar-event-tooltip fixed z-[9999] pointer-events-none"
+            [style.left.px]="getTooltipLeft()"
+            [style.top.px]="getTooltipTop()">
+            <div class="bg-white rounded-xl shadow-2xl border border-slate-200/80 p-5 max-w-sm backdrop-blur-sm">
+              <!-- Header con color -->
+              <div class="flex items-start gap-4 mb-4">
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white"
+                     [style.backgroundColor]="eventoHovered.color?.secondary || '#d1fae5'"
+                     [style.color]="eventoHovered.color?.primary || '#10b981'">
+                  <app-icon icon="assignment" size="sm"></app-icon>
+                </div>
+                <div class="flex-1 min-w-0">
+                  @if (eventoHovered.meta?.actividad?.codigoActividad) {
+                    <p class="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-1 rounded inline-block mb-2">
+                      {{ eventoHovered.meta.actividad.codigoActividad }}
+                    </p>
+                  }
+                  @if (eventoHovered.meta?.subactividad?.codigoSubactividad) {
+                    <p class="text-xs font-mono font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded inline-block mb-2">
+                      {{ eventoHovered.meta.subactividad.codigoSubactividad }}
+                    </p>
+                  }
+                  <h4 class="text-base font-bold text-slate-900 mb-2 leading-tight">
+                    {{ eventoHovered.meta?.actividad?.nombreActividad || eventoHovered.meta?.actividad?.nombre || eventoHovered.meta?.subactividad?.nombre || eventoHovered.meta?.subactividad?.nombreSubactividad || eventoHovered.title }}
+                  </h4>
+                  @if (eventoHovered.meta?.actividad?.descripcion) {
+                    <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                      {{ eventoHovered.meta.actividad.descripcion }}
+                    </p>
+                  }
+                  @if (eventoHovered.meta?.subactividad?.descripcion) {
+                    <p class="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                      {{ eventoHovered.meta.subactividad.descripcion }}
+                    </p>
+                  }
+                </div>
+              </div>
+              
+              <!-- Información detallada -->
+              @if (eventoHovered.meta?.actividad || eventoHovered.meta?.subactividad) {
+                <div class="space-y-2.5 mb-4">
+                  @if (eventoHovered.meta?.actividad?.horaRealizacion || eventoHovered.meta?.subactividad?.horaRealizacion) {
+                    <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                      <div class="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <app-icon icon="schedule" size="xs"></app-icon>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-xs text-slate-500 mb-0.5 font-medium">Hora</p>
+                        <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.meta?.actividad?.horaRealizacion || eventoHovered.meta?.subactividad?.horaRealizacion }}</p>
+                      </div>
+                    </div>
+                  }
+                  @if (eventoHovered.start) {
+                    <div class="flex items-center gap-3 p-2.5 rounded-lg bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+                      <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <app-icon icon="calendar_today" size="xs"></app-icon>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-xs text-slate-500 mb-0.5 font-medium">Fecha</p>
+                        @if (eventoHovered.end) {
+                          <p class="text-sm font-semibold text-slate-900">
+                            Del {{ eventoHovered.start | date:'dd/MM/yyyy':'es-ES' }} al {{ eventoHovered.end | date:'dd/MM/yyyy':'es-ES' }}
+                          </p>
+                        } @else {
+                          <p class="text-sm font-semibold text-slate-900">{{ eventoHovered.start | date:'dd \'de\' MMMM \'de\' yyyy':'es-ES' }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+              
+              <!-- Footer -->
+              <div class="pt-4 border-t border-slate-200">
+                <div class="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50/50 px-3 py-2 rounded-lg">
+                  <app-icon icon="info" size="xs"></app-icon>
+                  <span>Haz clic para ver más detalles</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Leyenda de Estados -->
+      <div class="mt-6 flex items-center gap-4 text-sm flex-wrap">
+        @if (estadosActividad().length > 0) {
+          @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+            @let estadoColor = getEstadoColor(estado);
+            <div class="flex items-center gap-2">
+              <div 
+                class="w-4 h-4 rounded" 
+                [style.backgroundColor]="estadoColor"
+                [style.border]="'1px solid ' + estadoColor">
+              </div>
+              <span class="text-slate-600">{{ estado.nombre }}</span>
+            </div>
+          }
+        } @else {
+          <div class="flex items-center gap-2">
+            <div class="w-4 h-4 rounded bg-slate-400"></div>
+            <span class="text-slate-600 text-xs italic">Cargando estados...</span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
