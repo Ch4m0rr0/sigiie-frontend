@@ -2868,16 +2868,13 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'usuario']);
                   this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'usuario']);
                 }
-                this.agregarPersona('usuario');
-                const usuarioIndex = this.usuariosArray.length - 1;
-                setTimeout(() => {
-                  if (this.usuariosArray.at(usuarioIndex)) {
-                    this.usuariosArray.at(usuarioIndex).patchValue({
-                      idUsuario: responsable.idUsuario,
-                      idRolResponsable: responsable.idRolResponsable || null
-                    }, { emitEvent: false });
-                  }
-                }, 100);
+                // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
+                const usuarioFormGroup = this.crearUsuarioFormGroup();
+                usuarioFormGroup.patchValue({
+                  idUsuario: responsable.idUsuario,
+                  idRolResponsable: responsable.idRolResponsable || null
+                }, { emitEvent: false });
+                this.usuariosArray.push(usuarioFormGroup);
                 console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol:', responsable.idRolResponsable);
               } else if (responsable.idDocente) {
                 // Es un docente - verificar que no esté duplicado
@@ -2891,16 +2888,13 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'docente']);
                   this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'docente']);
                 }
-                this.agregarPersona('docente');
-                const docenteIndex = this.docentesArray.length - 1;
-                setTimeout(() => {
-                  if (this.docentesArray.at(docenteIndex)) {
-                    this.docentesArray.at(docenteIndex).patchValue({
-                      idPersona: responsable.idDocente,
-                      idRolResponsable: responsable.idRolResponsable || null
-                    }, { emitEvent: false });
-                  }
-                }, 100);
+                // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
+                const docenteFormGroup = this.crearPersonaFormGroup('docente');
+                docenteFormGroup.patchValue({
+                  idPersona: responsable.idDocente,
+                  idRolResponsable: responsable.idRolResponsable || null
+                }, { emitEvent: false });
+                this.docentesArray.push(docenteFormGroup);
                 console.log('✅ Docente agregado:', responsable.idDocente, 'Rol:', responsable.idRolResponsable);
               } else if (responsable.idEstudiante) {
                 // Es un estudiante - verificar que no esté duplicado
@@ -2914,16 +2908,13 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'estudiante']);
                   this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'estudiante']);
                 }
-                this.agregarPersona('estudiante');
-                const estudianteIndex = this.estudiantesArray.length - 1;
-                setTimeout(() => {
-                  if (this.estudiantesArray.at(estudianteIndex)) {
-                    this.estudiantesArray.at(estudianteIndex).patchValue({
-                      idPersona: responsable.idEstudiante,
-                      idRolResponsable: responsable.idRolResponsable || null
-                    }, { emitEvent: false });
-                  }
-                }, 100);
+                // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
+                const estudianteFormGroup = this.crearPersonaFormGroup('estudiante');
+                estudianteFormGroup.patchValue({
+                  idPersona: responsable.idEstudiante,
+                  idRolResponsable: responsable.idRolResponsable || null
+                }, { emitEvent: false });
+                this.estudiantesArray.push(estudianteFormGroup);
                 console.log('✅ Estudiante agregado:', responsable.idEstudiante, 'Rol:', responsable.idRolResponsable);
               } else if (responsable.idAdmin) {
                 // Es un administrativo - verificar que no esté duplicado
@@ -2937,16 +2928,13 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'administrativo']);
                   this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'administrativo']);
                 }
-                this.agregarPersona('administrativo');
-                const adminIndex = this.administrativosArray.length - 1;
-                setTimeout(() => {
-                  if (this.administrativosArray.at(adminIndex)) {
-                    this.administrativosArray.at(adminIndex).patchValue({
-                      idPersona: responsable.idAdmin,
-                      idRolResponsable: responsable.idRolResponsable || null
-                    }, { emitEvent: false });
-                  }
-                }, 100);
+                // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
+                const adminFormGroup = this.crearPersonaFormGroup('administrativo');
+                adminFormGroup.patchValue({
+                  idPersona: responsable.idAdmin,
+                  idRolResponsable: responsable.idRolResponsable || null
+                }, { emitEvent: false });
+                this.administrativosArray.push(adminFormGroup);
                 console.log('✅ Administrativo agregado:', responsable.idAdmin, 'Rol:', responsable.idRolResponsable);
               } else if (responsable.idResponsableExterno) {
                 // Es un responsable externo - verificar que no esté duplicado
@@ -3006,10 +2994,16 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     console.log('🔄 Creando responsables para actividad:', idActividad);
     console.log('📋 FormResponsable value:', formValue);
 
-    // Agregar usuarios
+    // Agregar usuarios - solo los que tienen idUsuario válido
     this.usuariosArray.controls.forEach((control, index) => {
       const idUsuario = control.get('idUsuario')?.value;
       const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      // Validar que el control tenga idUsuario válido antes de procesar
+      if (!idUsuario || idUsuario === null || idUsuario === undefined || Number(idUsuario) <= 0) {
+        console.warn(`⚠️ [Usuario ${index}] Omitido porque no tiene idUsuario válido`);
+        return; // Continuar con el siguiente
+      }
       
       console.log(`🔍 [Usuario ${index}] Valores del formulario:`, {
         idUsuario,
@@ -3028,36 +3022,38 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         }
       }
       
-      if (idUsuario) {
-        const nombreRol = idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined;
-        
-        const responsableData = {
-          idActividad,
-          idUsuario,
-          idTipoResponsable: 1,
-          idRolResponsable,
-          rolResponsable: nombreRol,
-          fechaAsignacion: fechaAsignacion
-        };
-        
-        console.log(`✅ [Usuario ${index}] Agregado a responsables:`, {
-          idUsuario,
-          idRolResponsable,
-          rolResponsable: nombreRol,
-          responsableData: JSON.stringify(responsableData, null, 2)
-        });
-        
-        responsables.push(responsableData);
-      } else {
-        console.warn(`⚠️ [Usuario ${index}] No se agregó porque falta idUsuario`);
-      }
+      const nombreRol = idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined;
+      
+      const responsableData = {
+        idActividad,
+        idUsuario: Number(idUsuario),
+        idTipoResponsable: 1,
+        idRolResponsable,
+        rolResponsable: nombreRol,
+        fechaAsignacion: fechaAsignacion
+      };
+      
+      console.log(`✅ [Usuario ${index}] Agregado a responsables:`, {
+        idUsuario,
+        idRolResponsable,
+        rolResponsable: nombreRol,
+        responsableData: JSON.stringify(responsableData, null, 2)
+      });
+      
+      responsables.push(responsableData);
     });
 
-    // Agregar docentes
+    // Agregar docentes - solo los que tienen idPersona válido
     this.docentesArray.controls.forEach((control) => {
       const idDocente = control.get('idPersona')?.value;
       const idRolResponsableRaw = control.get('idRolResponsable')?.value;
       
+      // Validar que el control tenga idDocente válido antes de procesar
+      if (!idDocente || idDocente === null || idDocente === undefined || Number(idDocente) <= 0) {
+        console.warn('⚠️ Docente omitido porque no tiene idPersona válido');
+        return; // Continuar con el siguiente
+      }
+      
       // Convertir idRolResponsable a número
       let idRolResponsable: number | undefined = undefined;
       if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
@@ -3067,24 +3063,28 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         }
       }
       
-      if (idDocente) {
-        responsables.push({
-          idActividad,
-          idDocente,
-          idTipoResponsable: 2,
-          idRolResponsable,
-          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
-          fechaAsignacion: fechaAsignacion
-        });
-        console.log('✅ Docente agregado a responsables:', idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
-      }
+      responsables.push({
+        idActividad,
+        idDocente: Number(idDocente),
+        idTipoResponsable: 2,
+        idRolResponsable,
+        rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
+        fechaAsignacion: fechaAsignacion
+      });
+      console.log('✅ Docente agregado a responsables:', idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
     });
 
-    // Agregar estudiantes
+    // Agregar estudiantes - solo los que tienen idPersona e idRolResponsable válidos
     this.estudiantesArray.controls.forEach((control) => {
       const idDocente = control.get('idPersona')?.value;
       const idRolResponsableRaw = control.get('idRolResponsable')?.value;
       
+      // Validar que el control tenga idDocente válido antes de procesar
+      if (!idDocente || idDocente === null || idDocente === undefined || Number(idDocente) <= 0) {
+        console.warn('⚠️ Estudiante omitido porque no tiene idPersona válido');
+        return; // Continuar con el siguiente
+      }
+      
       // Convertir idRolResponsable a número
       let idRolResponsable: number | undefined = undefined;
       if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
@@ -3094,24 +3094,34 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         }
       }
       
-      if (idDocente && idRolResponsable) {
-        responsables.push({
-          idActividad,
-          idDocente,
-          idTipoResponsable: 3,
-          idRolResponsable,
-          rolResponsable: this.getNombreRolResponsable(idRolResponsable),
-          fechaAsignacion: fechaAsignacion
-        });
-        console.log('✅ Estudiante agregado a responsables:', idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', this.getNombreRolResponsable(idRolResponsable));
+      // Validar que tenga idRolResponsable válido (requerido para estudiantes)
+      if (!idRolResponsable || idRolResponsable <= 0) {
+        console.warn('⚠️ Estudiante omitido porque no tiene idRolResponsable válido');
+        return; // Continuar con el siguiente
       }
+      
+      responsables.push({
+        idActividad,
+        idDocente: Number(idDocente),
+        idTipoResponsable: 3,
+        idRolResponsable,
+        rolResponsable: this.getNombreRolResponsable(idRolResponsable),
+        fechaAsignacion: fechaAsignacion
+      });
+      console.log('✅ Estudiante agregado a responsables:', idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', this.getNombreRolResponsable(idRolResponsable));
     });
 
-    // Agregar administrativos
+    // Agregar administrativos - solo los que tienen idPersona válido
     this.administrativosArray.controls.forEach((control) => {
       const idAdmin = control.get('idPersona')?.value;
       const idRolResponsableRaw = control.get('idRolResponsable')?.value;
       
+      // Validar que el control tenga idAdmin válido antes de procesar
+      if (!idAdmin || idAdmin === null || idAdmin === undefined || Number(idAdmin) <= 0) {
+        console.warn('⚠️ Administrativo omitido porque no tiene idPersona válido');
+        return; // Continuar con el siguiente
+      }
+      
       // Convertir idRolResponsable a número
       let idRolResponsable: number | undefined = undefined;
       if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
@@ -3121,17 +3131,15 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         }
       }
       
-      if (idAdmin) {
-        responsables.push({
-          idActividad,
-          idAdmin,
-          idTipoResponsable: 4,
-          idRolResponsable,
-          rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
-          fechaAsignacion: fechaAsignacion
-        });
-        console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
-      }
+      responsables.push({
+        idActividad,
+        idAdmin: Number(idAdmin),
+        idTipoResponsable: 4,
+        idRolResponsable,
+        rolResponsable: idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : undefined,
+        fechaAsignacion: fechaAsignacion
+      });
+      console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
     });
 
     // Crear todos los responsables en paralelo

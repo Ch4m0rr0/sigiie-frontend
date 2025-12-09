@@ -104,16 +104,26 @@ export class CatalogosService {
         const items = response.data || response;
         const itemsArray = Array.isArray(items) ? items : [];
         console.log('✅ GET Generos - Respuesta recibida:', itemsArray);
-        const result = itemsArray.map((item: any) => ({
-          id: item.idGenero || item.IdGenero || item.id || 0,
-          codigo: item.codigo || item.Codigo || '',
-          descripcion: item.descripcion || item.Descripcion || ''
-        }));
+        const result = itemsArray.map((item: any) => {
+          // Mapear todos los posibles nombres de campos del backend
+          // El backend puede devolver: id_genero, codigo, descripcion (con guiones bajos)
+          // o IdGenero, Codigo, Descripcion (PascalCase)
+          // o idGenero, codigo, descripcion (camelCase)
+          const genero = {
+            id: item.id_genero || item.idGenero || item.IdGenero || item.id || 0,
+            codigo: (item.codigo || item.Codigo || item.codigo_genero || item.CodigoGenero || '').toString().trim().toUpperCase(),
+            descripcion: item.descripcion || item.Descripcion || item.descripcion_genero || item.DescripcionGenero || ''
+          };
+          console.log('📦 Género mapeado:', genero, 'Item original:', item);
+          return genero;
+        });
         console.log('✅ GET Generos - Datos mapeados:', result);
         return result;
       }),
       catchError(error => {
         console.error('❌ GET Generos - Error:', error);
+        console.error('❌ GET Generos - Error details:', error.error);
+        console.error('❌ GET Generos - Error status:', error.status);
         return of([]);
       })
     );

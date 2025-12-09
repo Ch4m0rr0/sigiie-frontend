@@ -210,6 +210,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   filtroActividadAnual = signal<number[]>([]);
   filtroActividadMensualInst = signal<number[]>([]);
   filtroProyecto = signal<number | null>(null);
+  ordenFecha = signal<'reciente' | 'antigua'>('reciente'); // 'reciente' = más recientes primero, 'antigua' = menos recientes primero
   terminoBusqueda = signal<string>('');
   terminoBusquedaAnual = signal<string>('');
   mostrarDropdownFiltroAnual = signal(false);
@@ -297,7 +298,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   itemsPorPagina = 10;
   mostrarTodas = signal<boolean>(false);
 
-  // Actividades filtradas por búsqueda
+  // Actividades filtradas por búsqueda y ordenadas por fecha
   actividadesFiltradas = computed(() => {
     const termino = this.terminoBusqueda().toLowerCase().trim();
     let filtradas = this.actividades();
@@ -309,6 +310,29 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         return nombre.includes(termino) || codigo.includes(termino);
       });
     }
+    
+    // Ordenar por fecha según el filtro seleccionado
+    // Usar fechaInicio si existe, sino fechaCreacion
+    const orden = this.ordenFecha();
+    filtradas = filtradas.sort((a, b) => {
+      const fechaA = a.fechaInicio || a.fechaCreacion || '';
+      const fechaB = b.fechaInicio || b.fechaCreacion || '';
+      
+      if (!fechaA && !fechaB) return 0;
+      if (!fechaA) return 1; // Sin fecha al final
+      if (!fechaB) return -1; // Sin fecha al final
+      
+      const tiempoA = new Date(fechaA).getTime();
+      const tiempoB = new Date(fechaB).getTime();
+      
+      // Si orden es 'reciente', más recientes primero (descendente)
+      // Si orden es 'antigua', menos recientes primero (ascendente)
+      if (orden === 'reciente') {
+        return tiempoB - tiempoA;
+      } else {
+        return tiempoA - tiempoB;
+      }
+    });
     
     return filtradas;
   });
@@ -1490,7 +1514,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.formResponsable.reset();
   }
   
-  crearResponsablesParaActividadNueva(idActividad: number, responsables: any[]): void {
+  crearResponsablesParaActividadNueva(idActividad: number, responsables: any[], onComplete?: () => void): void {
     // Crear responsables usando el endpoint /api/actividad-responsable
     // después de que la actividad ha sido creada exitosamente
     const fechaAsignacion = new Date().toISOString().split('T')[0];
@@ -1548,15 +1572,27 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
       forkJoin(requests).subscribe({
         next: (responsablesCreados) => {
           console.log(`✅ ${responsablesCreados.length} responsables creados exitosamente para actividad ${idActividad}`);
+          // Ejecutar callback si existe
+          if (onComplete) {
+            onComplete();
+          }
         },
         error: (err) => {
           console.error(`❌ Error creando responsables para actividad ${idActividad}:`, err);
           // No mostrar error al usuario ya que la actividad ya fue creada
           // Los responsables se pueden agregar manualmente después
+          // Ejecutar callback incluso si hay error para redirigir
+          if (onComplete) {
+            onComplete();
+          }
         }
       });
     } else {
       console.warn(`⚠️ No hay responsables válidos para crear para actividad ${idActividad}`);
+      // Ejecutar callback si no hay responsables
+      if (onComplete) {
+        onComplete();
+      }
     }
   }
 
@@ -2118,25 +2154,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
             // El backend no crea los responsables automáticamente, debemos crearlos usando el endpoint /api/actividad-responsable
             if (responsables.length > 0 && idActividadCreada) {
               console.log(`📋 Creando ${responsables.length} responsables para la actividad ${idActividadCreada}...`);
-              this.crearResponsablesParaActividadNueva(idActividadCreada, responsables);
+              this.crearResponsablesParaActividadNueva(idActividadCreada, responsables, () => {
+                // Callback: después de crear responsables, redirigir a la vista de detalle
+                this.loadingNuevaActividad.set(false);
+                this.cerrarFormNuevaActividad();
+                this.errorNuevaActividad.set(null);
+                // Redirigir a la vista de detalle de la actividad creada
+                this.router.navigate(['/actividades', idActividadCreada]);
+              });
+            } else {
+              // Si no hay responsables, redirigir inmediatamente
+              this.loadingNuevaActividad.set(false);
+              this.cerrarFormNuevaActividad();
+              this.errorNuevaActividad.set(null);
+              // Redirigir a la vista de detalle de la actividad creada
+              this.router.navigate(['/actividades', idActividadCreada]);
             }
-            
-            this.loadingNuevaActividad.set(false);
-            this.cerrarFormNuevaActividad();
-            this.loadActividades(); // Recargar la lista
-            this.errorNuevaActividad.set(null);
-            
-            // Mostrar mensaje de éxito con el ID de la actividad creada
-            this.successNuevaActividad.set({
-              id: idActividadCreada,
-              nombre: actividad.nombreActividad || actividad.nombre || 'Actividad',
-              esPlanificada: actividad.esPlanificada !== undefined ? actividad.esPlanificada : (tipo === 'planificada')
-            });
-            
-            // Auto-cerrar la notificación después de 8 segundos
-            setTimeout(() => {
-              this.successNuevaActividad.set(null);
-            }, 8000);
           },
           error: (err) => {
             this.loadingNuevaActividad.set(false);
@@ -2325,7 +2358,6 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.filtroEstadoActividad.set(null);
     this.filtroActividadAnual.set([]);
     this.filtroActividadMensualInst.set([]);
-    this.filtroProyecto.set(null);
     this.terminoBusqueda.set('');
     this.terminoBusquedaAnual.set('');
     this.terminoBusquedaMensual.set('');
@@ -2335,6 +2367,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     this.paginaActual.set(1);
     this.mostrarTodas.set(false);
     this.loadActividades();
+  }
+
+  onOrdenFechaChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value as 'reciente' | 'antigua';
+    this.ordenFecha.set(value);
+    // No necesitamos recargar, el computed se actualizará automáticamente
   }
 
   onPlanificadaFiltroChange(event: Event): void {

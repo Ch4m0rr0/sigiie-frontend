@@ -1854,6 +1854,26 @@
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-8 relative" style="z-index: 1;">
     <div class="flex flex-wrap gap-4 items-end">
       
+      <!-- Filtro Orden por Fecha -->
+      <div class="flex-shrink-0" style="min-width: 180px;">
+        <label class="block text-xs font-medium text-slate-500 mb-1.5">Orden por Fecha</label>
+        <div class="relative">
+          <select
+            [value]="ordenFecha()"
+            (change)="onOrdenFechaChange($event)"
+            class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none cursor-pointer appearance-none">
+            <option value="reciente">Más recientes primero</option>
+            <option value="antigua">Menos recientes primero</option>
+          </select>
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+            <app-icon icon="sort" size="xs"></app-icon>
+          </span>
+          <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+            <app-icon icon="expand_more" size="xs"></app-icon>
+          </span>
+        </div>
+      </div>
+
       <!-- Filtro Planificada/No Planificada -->
       <div class="flex-shrink-0" style="min-width: 200px;">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Tipo de Actividad</label>
@@ -1983,7 +2003,6 @@
         </div>
       </div>
 
-<<<<<<< HEAD
       <div class="md:col-span-3">
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Proyecto</label>
         <div class="relative" data-dropdown-filtro-proyecto>
@@ -2079,9 +2098,6 @@
       </div>
 
       <div class="md:col-span-3">
-=======
-      <div class="flex-shrink-0" style="min-width: 200px;">
->>>>>>> 8e0a8ebbfe2735742b50b8bf4c8a069433e3d852
         <label class="block text-xs font-medium text-slate-500 mb-1.5">Actividad Anual</label>
         <div class="relative" data-dropdown-filtro-anual>
           <button
@@ -2352,7 +2368,7 @@
           <span class="text-slate-400"> (de {{ actividades().length }} totales)</span>
         }
       </p>
-      @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+      @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda() || ordenFecha() !== 'reciente') {
         <button 
           (click)="clearFilters()"
           class="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -2807,7 +2823,7 @@
         </div>
         <h3 class="text-xl font-bold text-slate-900 mb-2">No se encontraron actividades</h3>
         <p class="text-slate-500 text-sm max-w-md text-center mb-8 leading-relaxed">
-            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda() || ordenFecha() !== 'reciente') {
                 @if (filtroActividadMensualInst().length > 0) {
                     No hay actividades asociadas a esta actividad mensual. Las actividades mensuales son contenedores que agrupan actividades. 
                     Para ver actividades aquí, necesitas crear actividades normales y asociarlas a esta actividad mensual.
@@ -2819,7 +2835,7 @@
             }
         </p>
         <div class="flex gap-3 flex-wrap justify-center">
-            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda()) {
+            @if (filtroPlanificada() !== null || filtroEstadoActividad() !== null || filtroActividadAnual().length > 0 || filtroActividadMensualInst().length > 0 || terminoBusqueda() || ordenFecha() !== 'reciente') {
                 <button 
                     (click)="clearFilters()" 
                     class="px-5 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 flex items-center gap-2">
