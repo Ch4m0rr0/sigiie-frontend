@@ -136,6 +136,12 @@ export class PermisosService {
     'EliminarParticipacion': 'participaciones.eliminar',
     'VerParticipacion': 'participaciones.ver',
     
+    // Participaciones Individuales (si el backend usa un permiso específico)
+    'CrearParticipacionIndividual': 'participaciones.crear',
+    'EditarParticipacionIndividual': 'participaciones.editar',
+    'EliminarParticipacionIndividual': 'participaciones.eliminar',
+    'VerParticipacionIndividual': 'participaciones.ver',
+    
     // Administrativos
     'CrearAdministrativo': 'personas.crear',
     'EditarAdministrativo': 'personas.editar',
@@ -571,6 +577,34 @@ export class PermisosService {
     const tienePermisosAdmin = permisosAdmin.every(permiso => permisos.includes(permiso));
     
     return tienePermisosAdmin;
+  }
+
+  /**
+   * Verifica si el usuario tiene todos los permisos (es admin o tiene muchos permisos)
+   * Útil para determinar si debe tener restricciones de departamento
+   */
+  tieneTodosLosPermisosDeAdmin(): boolean {
+    // Si es administrador explícito, tiene todos los permisos
+    if (this.esAdministrador()) {
+      return true;
+    }
+    
+    // Si tiene más de 50 permisos, probablemente tiene todos los permisos
+    const permisos = this.permisos();
+    if (permisos.length > 50) {
+      return true;
+    }
+    
+    // Verificar si tiene permisos clave de administración
+    const permisosClave = [
+      'usuarios.crear', 'usuarios.editar', 'usuarios.eliminar',
+      'catalogos.gestionar', 'catalogos.crear', 'catalogos.editar', 'catalogos.eliminar',
+      'proyectos.crear', 'proyectos.editar', 'proyectos.eliminar',
+      'actividades.crear', 'actividades.editar', 'actividades.eliminar'
+    ];
+    
+    const tienePermisosClave = permisosClave.every(permiso => permisos.includes(permiso));
+    return tienePermisosClave;
   }
 
   /**

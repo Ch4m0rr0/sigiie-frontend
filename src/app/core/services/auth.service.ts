@@ -16,6 +16,8 @@ interface BackendAuthResponse {
   correo: string;
   rol: string;
   permisos?: string[]; // Permisos que vienen directamente en la respuesta
+  departamentoId?: number; // Departamento del usuario (opcional)
+  id?: number; // ID del usuario (opcional)
 }
 
 interface LoginRequest {
@@ -97,14 +99,25 @@ export class AuthService {
       roles = [res.rol].filter(Boolean);
       console.log('✅ [AUTH] Roles extraídos:', roles);
 
+      // Intentar obtener el ID del usuario desde el token JWT si no viene en la respuesta
+      let userId = res.id || 0;
+      if (!userId) {
+        try {
+          const tokenPayload = JSON.parse(atob(res.token.split('.')[1]));
+          userId = tokenPayload.sub || tokenPayload.id || tokenPayload.userId || 0;
+        } catch (e) {
+          console.warn('⚠️ [AUTH] No se pudo extraer ID del usuario del token JWT:', e);
+        }
+      }
+
       const userData = {
-        id: 0,
+        id: userId,
         nombreCompleto: res.nombre,
         correo: res.correo,
         role: res.rol,
         roles: roles,
         permisos: permisos,
-        departamentoId: undefined
+        departamentoId: res.departamentoId || undefined
       };
       
       console.log('✅ [AUTH] Datos del usuario creados:', userData);

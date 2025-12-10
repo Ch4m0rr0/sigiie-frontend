@@ -31,6 +31,7 @@ import { es } from 'date-fns/locale';
 import { format, startOfWeek, addDays, differenceInDays, startOfDay, endOfDay } from 'date-fns';
 import { EvidenciaFormComponent } from '../evidencias/evidencia-form.component';
 import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
+import { PermisosService } from '../../core/services/permisos.service';
 
 // Formateador personalizado para usar locale español
 class CustomCalendarDateFormatter extends CalendarDateFormatter {
@@ -115,6 +116,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private elementRef = inject(ElementRef);
+  private permisosService = inject(PermisosService);
 
   actividades = signal<Actividad[]>([]);
   indicadores = signal<Indicador[]>([]);
@@ -1280,11 +1282,28 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     return indicador ? indicador.codigo : 'Seleccione un indicador...';
   }
 
+  // Métodos para verificar permisos
+  puedeCrearActividadAnual(): boolean {
+    return this.permisosService.tienePermiso('catalogos.crear') || 
+           this.permisosService.tienePermiso('catalogos.gestionar') ||
+           this.permisosService.tieneAlgunPermiso(['CrearActividadAnual', 'actividades-anuales.crear']);
+  }
+
+  puedeCrearActividadMensual(): boolean {
+    return this.permisosService.tienePermiso('catalogos.crear') || 
+           this.permisosService.tienePermiso('catalogos.gestionar') ||
+           this.permisosService.tieneAlgunPermiso(['CrearActividadMensualInstitucional', 'actividades-mensuales.crear']);
+  }
+
   seleccionarTipoActividad(tipo: 'anual' | 'mensual' | 'planificada' | 'no-planificada'): void {
     this.mostrarDropdownTipoActividad.set(false);
     
-    // Si es anual o mensual, navegar a la ruta correspondiente
+    // Si es anual o mensual, verificar permisos antes de navegar
     if (tipo === 'anual') {
+      if (!this.puedeCrearActividadAnual()) {
+        // Ya se muestra el candado en el UI, no hacer nada
+        return;
+      }
       const indicadorId = this.indicadorSeleccionado();
       if (indicadorId) {
         this.router.navigate(['/actividades-anuales/nueva'], {
@@ -1297,6 +1316,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     }
     
     if (tipo === 'mensual') {
+      if (!this.puedeCrearActividadMensual()) {
+        // Ya se muestra el candado en el UI, no hacer nada
+        return;
+      }
       const indicadorId = this.indicadorSeleccionado();
       if (indicadorId) {
         this.router.navigate(['/actividades-mensuales/nueva'], {

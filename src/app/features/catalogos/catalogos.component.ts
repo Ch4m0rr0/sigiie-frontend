@@ -28,6 +28,8 @@ import type { ActividadMensualInst } from '../../core/models/actividad-mensual-i
 // Spartan UI
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
+import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
+import { PermisosService } from '../../core/services/permisos.service';
 
 type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras' | 'actividades-anuales' | 'actividades-mensuales' | 'capacidadesinstaladas';
 
@@ -51,6 +53,7 @@ interface CatalogoItem {
     ReactiveFormsModule,
     ...BrnButtonImports,
     ...BrnLabelImports,
+    HasPermissionDirective,
   ],
   templateUrl: './catalogos.component.html',
   styleUrls: ['./catalogos.component.css'],
@@ -61,6 +64,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   private actividadAnualService = inject(ActividadAnualService);
   private actividadMensualInstService = inject(ActividadMensualInstService);
   private alertService = inject(AlertService);
+  private permisosService = inject(PermisosService);
   private elementRef = inject(ElementRef);
 
   @ViewChild('formContainer', { static: false }) formContainer!: ElementRef;
@@ -1256,6 +1260,20 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   }
 
   addNew() {
+    // Validar permisos antes de permitir crear
+    if (!this.puedeCrearCatalogo()) {
+      this.alertService.warning(
+        'Sin Permisos',
+        'No tiene permisos para crear elementos en este catálogo. Necesita el permiso "catalogos.crear" o "catalogos.gestionar".',
+        {
+          backdrop: true,
+          allowOutsideClick: false,
+          allowEscapeKey: true
+        }
+      );
+      return;
+    }
+    
     this.showForm = true;
     this.isEditing = false;
     this.editingId = null;
@@ -1266,6 +1284,20 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   }
 
   editItem(item: CatalogoItem) {
+    // Validar permisos antes de permitir editar
+    if (!this.puedeEditarCatalogo()) {
+      this.alertService.warning(
+        'Sin Permisos',
+        'No tiene permisos para editar elementos en este catálogo. Necesita el permiso "catalogos.editar" o "catalogos.gestionar".',
+        {
+          backdrop: true,
+          allowOutsideClick: false,
+          allowEscapeKey: true
+        }
+      );
+      return;
+    }
+    
     this.showForm = true;
     this.isEditing = true;
     this.shouldScrollToForm = true; // Activar scroll automático
@@ -1643,6 +1675,20 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   }
 
   deleteItem(id: number | undefined) {
+    // Validar permisos antes de permitir eliminar
+    if (!this.puedeEliminarCatalogo()) {
+      this.alertService.warning(
+        'Sin Permisos',
+        'No tiene permisos para eliminar elementos en este catálogo. Necesita el permiso "catalogos.eliminar" o "catalogos.gestionar".',
+        {
+          backdrop: true,
+          allowOutsideClick: false,
+          allowEscapeKey: true
+        }
+      );
+      return;
+    }
+    
     console.log('🔄 DELETE ITEM - Iniciando eliminación');
     console.log('🔄 DELETE ITEM - ID:', id);
     console.log('🔄 DELETE ITEM - Catálogo seleccionado:', this.selectedCatalogo);
@@ -1797,6 +1843,57 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       console.error('Error obteniendo nombre del elemento:', error);
     }
 
+    // Validar permisos antes de eliminar (solo para indicadores, actividades anuales y mensuales)
+    if (this.selectedCatalogo === 'indicadores') {
+      if (!this.permisosService.tienePermiso('catalogos.eliminar') && !this.permisosService.tienePermiso('catalogos.gestionar')) {
+        const tienePermisoEliminarIndicador = this.permisosService.tieneAlgunPermiso(['EliminarIndicador', 'indicadores.eliminar']);
+        if (!tienePermisoEliminarIndicador) {
+          this.alertService.warning(
+            'Sin Permisos',
+            'No tiene permisos para eliminar indicadores. Necesita el permiso "EliminarIndicador" o "catalogos.eliminar".',
+            {
+              backdrop: true,
+              allowOutsideClick: false,
+              allowEscapeKey: true
+            }
+          );
+          return;
+        }
+      }
+    } else if (this.selectedCatalogo === 'actividades-anuales') {
+      const tienePermisoEliminarActividadAnual = this.permisosService.tienePermiso('catalogos.eliminar') || 
+                                                  this.permisosService.tienePermiso('catalogos.gestionar') ||
+                                                  this.permisosService.tieneAlgunPermiso(['EliminarActividadAnual', 'actividades-anuales.eliminar']);
+      if (!tienePermisoEliminarActividadAnual) {
+        this.alertService.warning(
+          'Sin Permisos',
+          'No tiene permisos para eliminar actividades anuales. Necesita el permiso "EliminarActividadAnual" o "catalogos.eliminar".',
+          {
+            backdrop: true,
+            allowOutsideClick: false,
+            allowEscapeKey: true
+          }
+        );
+        return;
+      }
+    } else if (this.selectedCatalogo === 'actividades-mensuales') {
+      const tienePermisoEliminarActividadMensual = this.permisosService.tienePermiso('catalogos.eliminar') || 
+                                                    this.permisosService.tienePermiso('catalogos.gestionar') ||
+                                                    this.permisosService.tieneAlgunPermiso(['EliminarActividadMensualInstitucional', 'actividades-mensuales.eliminar']);
+      if (!tienePermisoEliminarActividadMensual) {
+        this.alertService.warning(
+          'Sin Permisos',
+          'No tiene permisos para eliminar actividades mensuales. Necesita el permiso "EliminarActividadMensualInstitucional" o "catalogos.eliminar".',
+          {
+            backdrop: true,
+            allowOutsideClick: false,
+            allowEscapeKey: true
+          }
+        );
+        return;
+      }
+    }
+    
     // Mostrar confirmación
     this.alertService.confirmDelete(
       nombreElemento !== 'el elemento' ? nombreElemento : undefined,
@@ -2242,6 +2339,25 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         break;
         
       case 'indicadores':
+        // Validar permisos antes de crear
+        if (!this.permisosService.tienePermiso('catalogos.crear') && !this.permisosService.tienePermiso('catalogos.gestionar')) {
+          // Verificar permiso específico de indicadores si existe
+          const tienePermisoIndicador = this.permisosService.tienePermiso('indicadores.crear') || 
+                                        this.permisosService.tieneAlgunPermiso(['CrearIndicador', 'indicadores.crear']);
+          if (!tienePermisoIndicador) {
+            this.alertService.warning(
+              'Sin Permisos',
+              'No tiene permisos para crear indicadores. Necesita el permiso "CrearIndicador" o "catalogos.crear".',
+              {
+                backdrop: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true
+              }
+            );
+            return;
+          }
+        }
+        
         if (!data.codigo || !data.nombre) {
           console.error('Invalid data for indicador:', data);
           return;
@@ -2272,6 +2388,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         } as any);
         break;
       case 'actividades-anuales':
+        // Validar permisos antes de crear
+        const tienePermisoActividadAnual = this.permisosService.tienePermiso('catalogos.crear') || 
+                                           this.permisosService.tienePermiso('catalogos.gestionar') ||
+                                           this.permisosService.tieneAlgunPermiso(['CrearActividadAnual', 'actividades-anuales.crear']);
+        if (!tienePermisoActividadAnual) {
+          this.alertService.warning(
+            'Sin Permisos',
+            'No tiene permisos para crear actividades anuales. Necesita el permiso "CrearActividadAnual" o "catalogos.crear".',
+            {
+              backdrop: true,
+              allowOutsideClick: false,
+              allowEscapeKey: true
+            }
+          );
+          return;
+        }
+        
         const idIndicador = (this.form.get('idIndicador')?.value as number) || null;
         if (!idIndicador || !data.nombre) {
           this.alertService.error('Error de validación', 'El indicador y el nombre son requeridos');
@@ -2286,6 +2419,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         });
         break;
       case 'actividades-mensuales':
+        // Validar permisos antes de crear
+        const tienePermisoActividadMensual = this.permisosService.tienePermiso('catalogos.crear') || 
+                                            this.permisosService.tienePermiso('catalogos.gestionar') ||
+                                            this.permisosService.tieneAlgunPermiso(['CrearActividadMensualInstitucional', 'actividades-mensuales.crear']);
+        if (!tienePermisoActividadMensual) {
+          this.alertService.warning(
+            'Sin Permisos',
+            'No tiene permisos para crear actividades mensuales. Necesita el permiso "CrearActividadMensualInstitucional" o "catalogos.crear".',
+            {
+              backdrop: true,
+              allowOutsideClick: false,
+              allowEscapeKey: true
+            }
+          );
+          return;
+        }
+        
         const idActividadAnual = (this.form.get('idActividadAnual')?.value as number) || null;
         if (!idActividadAnual || !data.nombre) {
           this.alertService.error('Error de validación', 'La actividad anual y el nombre son requeridos');
@@ -2658,6 +2808,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         break;
         
       case 'indicadores':
+        // Validar permisos antes de editar
+        if (!this.permisosService.tienePermiso('catalogos.editar') && !this.permisosService.tienePermiso('catalogos.gestionar')) {
+          const tienePermisoEditarIndicador = this.permisosService.tieneAlgunPermiso(['EditarIndicador', 'indicadores.editar']);
+          if (!tienePermisoEditarIndicador) {
+            this.alertService.warning(
+              'Sin Permisos',
+              'No tiene permisos para editar indicadores. Necesita el permiso "EditarIndicador" o "catalogos.editar".',
+              {
+                backdrop: true,
+                allowOutsideClick: false,
+                allowEscapeKey: true
+              }
+            );
+            return;
+          }
+        }
+        
         if (!data.codigo || !data.nombre) {
           console.error('Invalid data for indicador:', data);
           return;
@@ -2706,6 +2873,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         });
         break;
       case 'actividades-anuales':
+        // Validar permisos antes de editar
+        const tienePermisoEditarActividadAnual = this.permisosService.tienePermiso('catalogos.editar') || 
+                                                  this.permisosService.tienePermiso('catalogos.gestionar') ||
+                                                  this.permisosService.tieneAlgunPermiso(['EditarActividadAnual', 'actividades-anuales.editar']);
+        if (!tienePermisoEditarActividadAnual) {
+          this.alertService.warning(
+            'Sin Permisos',
+            'No tiene permisos para editar actividades anuales. Necesita el permiso "EditarActividadAnual" o "catalogos.editar".',
+            {
+              backdrop: true,
+              allowOutsideClick: false,
+              allowEscapeKey: true
+            }
+          );
+          return;
+        }
+        
         const idIndicadorUpdate = (this.form.get('idIndicador')?.value as number) || null;
         if (!idIndicadorUpdate || !data.nombre) {
           alert('El indicador y el nombre son requeridos');
@@ -2719,6 +2903,23 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         });
         break;
       case 'actividades-mensuales':
+        // Validar permisos antes de editar
+        const tienePermisoEditarActividadMensual = this.permisosService.tienePermiso('catalogos.editar') || 
+                                                   this.permisosService.tienePermiso('catalogos.gestionar') ||
+                                                   this.permisosService.tieneAlgunPermiso(['EditarActividadMensualInstitucional', 'actividades-mensuales.editar']);
+        if (!tienePermisoEditarActividadMensual) {
+          this.alertService.warning(
+            'Sin Permisos',
+            'No tiene permisos para editar actividades mensuales. Necesita el permiso "EditarActividadMensualInstitucional" o "catalogos.editar".',
+            {
+              backdrop: true,
+              allowOutsideClick: false,
+              allowEscapeKey: true
+            }
+          );
+          return;
+        }
+        
         const idActividadAnualUpdate = (this.form.get('idActividadAnual')?.value as number) || null;
         if (!idActividadAnualUpdate || !data.nombre) {
           this.alertService.error('Error de validación', 'La actividad anual y el nombre son requeridos');
@@ -3577,4 +3778,26 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  // Métodos helper para verificar permisos
+  puedeEditarCatalogo(): boolean {
+    return this.permisosService.tienePermiso('catalogos.editar') || 
+           this.permisosService.tienePermiso('catalogos.gestionar');
+  }
+
+  puedeEliminarCatalogo(): boolean {
+    return this.permisosService.tienePermiso('catalogos.eliminar') || 
+           this.permisosService.tienePermiso('catalogos.gestionar');
+  }
+
+  puedeCrearCatalogo(): boolean {
+    return this.permisosService.tienePermiso('catalogos.crear') || 
+           this.permisosService.tienePermiso('catalogos.gestionar');
+  }
+
+  soloPuedeVer(): boolean {
+    return this.permisosService.tienePermiso('catalogos.ver') && 
+           !this.puedeEditarCatalogo() && 
+           !this.puedeEliminarCatalogo() && 
+           !this.puedeCrearCatalogo();
+  }
 }

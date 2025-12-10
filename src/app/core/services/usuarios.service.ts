@@ -31,16 +31,42 @@ export class UsuariosService {
         return usuariosMapeados;
       }),
       catchError(error => {
-        console.error('❌ Error fetching usuarios:', error);
-        console.error('Detalles del error:', {
-          status: error.status,
-          statusText: error.statusText,
-          message: error.message,
-          error: error.error,
-          url: this.apiUrl
-        });
-        // Lanzar el error en lugar de devolver array vacío para que el componente pueda manejarlo
-        throw error;
+        if (error.status === 403) {
+          console.warn('⚠️ Sin permisos para ver usuarios (403). El usuario necesita el permiso "VerUsuario" para asignar responsables.');
+          // Devolver array vacío para que el formulario no falle, pero el usuario verá que no hay usuarios disponibles
+          return of([]);
+        } else if (error.status === 500) {
+          // El backend está devolviendo 500 en lugar de 403 cuando no hay permisos
+          // El error específico es: "No authentication handler is registered for the scheme 'No tiene permiso para ver usuarios.'"
+          // Necesitamos detectar este patrón específico
+          const errorMessage = error.error?.message || error.error?.title || error.message || '';
+          const errorDetails = error.error?.details || error.error?.stack || '';
+          const errorString = JSON.stringify(error.error || {}).toLowerCase();
+          const fullErrorText = (errorMessage + ' ' + errorDetails + ' ' + errorString).toLowerCase();
+          
+          // Detectar varios patrones de error de permisos
+          const isPermissionError = fullErrorText.includes('permiso') || 
+                                   fullErrorText.includes('no tiene permiso') ||
+                                   fullErrorText.includes('authentication handler') ||
+                                   fullErrorText.includes('forbid') ||
+                                   fullErrorText.includes('scheme') && fullErrorText.includes('ver usuarios');
+          
+          if (isPermissionError) {
+            // Error de permisos mal manejado por el backend (500 en lugar de 403)
+            // No loguear, solo devolver array vacío silenciosamente
+            // El formulario continuará funcionando sin usuarios disponibles
+            return of([]);
+          }
+          // Para otros errores 500, loguear pero devolver array vacío
+          console.error('❌ Error 500 del servidor al obtener usuarios:', error);
+          return of([]);
+        } else if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/usuarios no encontrado (404)');
+          return of([]);
+        } else {
+          console.error('❌ Error fetching usuarios:', error);
+          return of([]);
+        }
       })
     );
   }

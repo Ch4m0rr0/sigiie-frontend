@@ -12,24 +12,54 @@ export class IndicadorService {
 
   // Endpoint: /api/indicadores
   getAll(soloActivos: boolean = true): Observable<Indicador[]> {
+    console.log('📡 [INDICADOR SERVICE] getAll() - soloActivos:', soloActivos);
     let params = new HttpParams();
     if (!soloActivos) {
       params = params.set('soloActivos', 'false');
     }
+    console.log('📡 [INDICADOR SERVICE] Llamando a:', this.apiUrl, 'con params:', params.toString());
     return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(response => {
+        console.log('📥 [INDICADOR SERVICE] Respuesta recibida:', response);
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => this.mapIndicador(item)) : [];
+        const mapped = Array.isArray(items) ? items.map(item => this.mapIndicador(item)) : [];
+        console.log('✅ [INDICADOR SERVICE] Indicadores mapeados:', mapped.length);
+        return mapped;
       }),
       catchError(error => {
-        if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/indicadores no encontrado (404)');
+        // El backend ahora permite que todos los usuarios autenticados vean indicadores activos
+        // Solo manejar errores reales, no asumir errores de permisos
+        if (error.status === 403) {
+          // Si hay un 403, podría ser un error real de permisos o un problema de configuración
+          // Pero según el backend, todos los usuarios autenticados deberían poder ver indicadores
+          console.warn('⚠️ Error 403 al obtener indicadores. Verificar autenticación.');
+          return of([]);
         } else if (error.status === 500) {
+          // Solo tratar como error de permisos si el mensaje es muy específico
+          const errorMessage = error.error?.message || error.error?.title || error.message || '';
+          const errorDetails = error.error?.details || error.error?.stack || '';
+          const errorString = JSON.stringify(error.error || {}).toLowerCase();
+          const fullErrorText = (errorMessage + ' ' + errorDetails + ' ' + errorString).toLowerCase();
+          
+          // Detección más específica: solo si menciona explícitamente permisos e indicadores
+          const isPermissionError = (fullErrorText.includes('no tiene permiso') && fullErrorText.includes('indicador')) ||
+                                   (fullErrorText.includes('authentication handler') && fullErrorText.includes('indicador')) ||
+                                   (fullErrorText.includes('forbid') && fullErrorText.includes('indicador'));
+          
+          if (isPermissionError) {
+            // Error de permisos muy específico
+            return of([]);
+          }
+          // Para otros errores 500, loguear pero devolver array vacío
           console.error('❌ Error 500 del servidor al obtener indicadores:', error);
+          return of([]);
+        } else if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/indicadores no encontrado (404)');
+          return of([]);
         } else {
           console.error('❌ Error fetching indicadores:', error);
+          return of([]);
         }
-        return of([]);
       })
     );
   }

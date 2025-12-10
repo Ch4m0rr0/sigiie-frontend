@@ -146,14 +146,15 @@
                @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Personas</span> }
             </a>
 
-            <a *hasPermission="'usuarios.ver'" 
-               routerLink="/usuarios" 
-               routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-               class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
-               [class.justify-center]="isCollapsed()" title="Usuarios">
-               <app-icon icon="manage_accounts" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
-               @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Usuarios</span> }
-            </a>
+            @if (puedeVerUsuarios()) {
+              <a routerLink="/usuarios" 
+                 routerLinkActive="bg-blue-600 text-white shadow-lg shadow-blue-900/20"
+                 class="flex items-center gap-3 px-3 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-all duration-200 group relative"
+                 [class.justify-center]="isCollapsed()" title="Usuarios">
+                 <app-icon icon="manage_accounts" size="sm" className="group-hover:text-white transition-colors flex-shrink-0"></app-icon>
+                 @if (!isCollapsed()) { <span class="whitespace-nowrap animate-fade-in">Usuarios</span> }
+              </a>
+            }
             
             <a *hasPermission="'catalogos.ver'" 
                routerLink="/catalogos" 

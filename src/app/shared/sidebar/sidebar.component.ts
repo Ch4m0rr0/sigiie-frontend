@@ -84,4 +84,10 @@ export class SidebarComponent {
     this.router.navigate(['/']);
     console.log('🔴 Redirigiendo al login');
   }
+
+  // Verificar si el usuario puede ver el menú de usuarios (solo admin o usuarios con todos los permisos)
+  puedeVerUsuarios(): boolean {
+    // Solo mostrar si es admin o tiene todos los permisos
+    return this.permisosService.tieneTodosLosPermisosDeAdmin();
+  }
 }

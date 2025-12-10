@@ -11,6 +11,7 @@ export class ActividadMensualInstService {
   private apiUrl = `${environment.apiUrl}/actividades-mensuales-institucionales`;
 
   getAll(filters?: ActividadMensualInstFilterDto, soloActivos: boolean = true): Observable<ActividadMensualInst[]> {
+    console.log('📡 [ACTIVIDAD MENSUAL SERVICE] getAll() - soloActivos:', soloActivos, 'filters:', filters);
     let params = new HttpParams();
     
     // Agregar soloActivos por defecto (solo si no se especifica en filters)
@@ -38,16 +39,42 @@ export class ActividadMensualInstService {
       }
     }
 
+    console.log('📡 [ACTIVIDAD MENSUAL SERVICE] Llamando a:', this.apiUrl, 'con params:', params.toString());
     return this.http.get<any>(this.apiUrl, { params }).pipe(
       map(response => {
+        console.log('📥 [ACTIVIDAD MENSUAL SERVICE] Respuesta recibida:', response);
         const items = response.data || response;
-        return Array.isArray(items) ? items.map(item => this.mapActividadMensualInst(item)) : [];
+        const mapped = Array.isArray(items) ? items.map(item => this.mapActividadMensualInst(item)) : [];
+        console.log('✅ [ACTIVIDAD MENSUAL SERVICE] Actividades mensuales mapeadas:', mapped.length);
+        return mapped;
       }),
       catchError(error => {
-        if (error.status === 404) {
+        // El backend ahora permite que todos los usuarios autenticados vean actividades mensuales activas
+        // Solo manejar errores reales, no asumir errores de permisos
+        if (error.status === 403) {
+          // Si hay un 403, podría ser un error real de permisos o un problema de configuración
+          console.warn('⚠️ Error 403 al obtener actividades mensuales. Verificar autenticación.');
+          return of([]);
+        } else if (error.status === 404) {
           console.warn('⚠️ Endpoint /api/actividades-mensuales-institucionales no encontrado (404)');
           return of([]);
         } else if (error.status === 500) {
+          // Solo tratar como error de permisos si el mensaje es muy específico
+          const errorMessage = error.error?.message || error.error?.title || error.message || '';
+          const errorDetails = error.error?.details || error.error?.stack || '';
+          const errorString = JSON.stringify(error.error || {}).toLowerCase();
+          const fullErrorText = (errorMessage + ' ' + errorDetails + ' ' + errorString).toLowerCase();
+          
+          // Detección más específica: solo si menciona explícitamente permisos y actividades mensuales
+          const isPermissionError = (fullErrorText.includes('no tiene permiso') && (fullErrorText.includes('actividad mensual') || fullErrorText.includes('actividades mensuales'))) ||
+                                   (fullErrorText.includes('authentication handler') && (fullErrorText.includes('actividad mensual') || fullErrorText.includes('actividades mensuales'))) ||
+                                   (fullErrorText.includes('forbid') && (fullErrorText.includes('actividad mensual') || fullErrorText.includes('actividades mensuales')));
+          
+          if (isPermissionError) {
+            // Error de permisos muy específico
+            return of([]);
+          }
+          // Para otros errores 500, loguear pero devolver array vacío
           console.error('❌ Error 500 del servidor al obtener actividades mensuales institucionales:', error);
           return of([]);
         } else {

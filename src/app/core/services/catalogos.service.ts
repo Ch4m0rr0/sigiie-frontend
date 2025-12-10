@@ -60,14 +60,37 @@ export class CatalogosService {
         }) : [];
       }),
       catchError(error => {
-        if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/departamentos no encontrado (404)');
+        if (error.status === 403) {
+          console.warn('⚠️ Sin permisos para ver departamentos (403). El usuario necesita el permiso "VerDepartamento" para usar departamentos en actividades.');
+          return of([]);
         } else if (error.status === 500) {
+          // El backend puede devolver 500 en lugar de 403 cuando no hay permisos
+          const errorMessage = error.error?.message || error.error?.title || error.message || '';
+          const errorDetails = error.error?.details || error.error?.stack || '';
+          const errorString = JSON.stringify(error.error || {}).toLowerCase();
+          const fullErrorText = (errorMessage + ' ' + errorDetails + ' ' + errorString).toLowerCase();
+          
+          const isPermissionError = fullErrorText.includes('permiso') || 
+                                   fullErrorText.includes('no tiene permiso') ||
+                                   fullErrorText.includes('authentication handler') ||
+                                   fullErrorText.includes('forbid') ||
+                                   (fullErrorText.includes('scheme') && (fullErrorText.includes('departamento') || fullErrorText.includes('ver')));
+          
+          if (isPermissionError) {
+            // Error de permisos mal manejado por el backend (500 en lugar de 403)
+            // No loguear, solo devolver array vacío silenciosamente
+            return of([]);
+          }
+          // Para otros errores 500, loguear pero devolver array vacío
           console.error('❌ Error 500 del servidor al obtener departamentos:', error);
+          return of([]);
+        } else if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/departamentos no encontrado (404)');
+          return of([]);
         } else {
           console.error('❌ Error fetching departamentos:', error);
+          return of([]);
         }
-        return of([]);
       })
     );
   }
@@ -552,15 +575,33 @@ export class CatalogosService {
         return Array.isArray(items) ? items.map(item => this.mapCategoriaActividad(item)) : [];
       }),
       catchError(error => {
-        // Silenciar errores 404 si el endpoint no existe aún
-        if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/categorias-actividad no encontrado (404)');
+        if (error.status === 403) {
+          console.warn('⚠️ Sin permisos para ver categorías actividad (403).');
+          return of([]);
         } else if (error.status === 500) {
+          // Detectar errores de permisos en errores 500
+          const errorMessage = error.error?.message || error.error?.title || error.message || '';
+          const errorDetails = error.error?.details || error.error?.stack || '';
+          const errorString = JSON.stringify(error.error || {}).toLowerCase();
+          const fullErrorText = (errorMessage + ' ' + errorDetails + ' ' + errorString).toLowerCase();
+          
+          const isPermissionError = fullErrorText.includes('permiso') || 
+                                   fullErrorText.includes('no tiene permiso') ||
+                                   fullErrorText.includes('authentication handler') ||
+                                   fullErrorText.includes('forbid');
+          
+          if (isPermissionError) {
+            return of([]);
+          }
           console.error('❌ Error 500 del servidor al obtener categorías actividad:', error);
+          return of([]);
+        } else if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/categorias-actividad no encontrado (404)');
+          return of([]);
         } else {
           console.error('Error fetching categorias actividad:', error);
+          return of([]);
         }
-        return of([]);
       })
     );
   }

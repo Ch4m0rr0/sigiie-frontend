@@ -21,6 +21,8 @@ import type { Estudiante } from '../../core/models/estudiante';
 import type { Administrativo } from '../../core/models/administrativo';
 import type { Usuario } from '../../core/models/usuario';
 import { AlertService } from '../../core/services/alert.service';
+import { AuthService } from '../../core/services/auth.service';
+import { PermisosService } from '../../core/services/permisos.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
@@ -55,6 +57,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private alertService = inject(AlertService);
+  private authService = inject(AuthService);
+  private permisosService = inject(PermisosService);
 
   form!: FormGroup;
   departamentos = signal<Departamento[]>([]);
@@ -565,7 +569,30 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
 
   loadDepartamentos(): void {
     this.catalogosService.getDepartamentos().subscribe({
-      next: (data) => this.departamentos.set(data),
+      next: (data) => {
+        this.departamentos.set(data);
+        // Pre-seleccionar automáticamente el departamento del usuario al crear actividad
+        // (el campo es obligatorio, así que es más conveniente pre-seleccionarlo)
+        if (!this.isEditMode()) {
+          const user = this.authService.user();
+          if (user?.departamentoId) {
+            // Verificar que el departamento existe en la lista
+            // (getDepartamentos() por defecto solo devuelve activos, así que si está en la lista, está activo)
+            const departamentoExiste = data.some(d => d.id === user.departamentoId);
+            if (departamentoExiste) {
+              // Pre-seleccionar el departamento del usuario
+              this.form.patchValue({
+                departamentoResponsableId: [user.departamentoId]
+              }, { emitEvent: false });
+              console.log('✅ [ACTIVIDAD] Departamento del usuario pre-seleccionado automáticamente:', user.departamentoId);
+            } else {
+              console.warn('⚠️ [ACTIVIDAD] El departamento del usuario no está disponible o está inactivo:', user.departamentoId);
+            }
+          } else {
+            console.warn('⚠️ [ACTIVIDAD] El usuario no tiene un departamento asignado');
+          }
+        }
+      },
       error: (err) => console.error('Error loading departamentos:', err)
     });
   }
@@ -2162,7 +2189,11 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     this.usuariosService.getAll().subscribe({
       next: (data) => this.usuarios.set(data),
       error: (err) => {
-        console.error('Error loading usuarios:', err);
+        // El servicio ya maneja los errores 403/500 y devuelve array vacío
+        // Solo loguear si es un error inesperado
+        if (err.status !== 403 && err.status !== 500) {
+          console.error('Error loading usuarios:', err);
+        }
         this.usuarios.set([]);
       }
     });
@@ -3219,6 +3250,10 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     console.log('  - Responsables Externos:', this.responsablesExternosArray.length);
 
     // Agregar usuarios - solo los que tienen idUsuario válido
+    const currentUser = this.authService.user();
+    const isAdmin = this.permisosService.tieneTodosLosPermisosDeAdmin();
+    const currentUserId = currentUser?.id;
+    
     this.usuariosArray.controls.forEach((control, index) => {
       const idUsuario = control.get('idUsuario')?.value;
       const idRolResponsableRaw = control.get('idRolResponsable')?.value;
@@ -3227,6 +3262,23 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       if (!idUsuario || idUsuario === null || idUsuario === undefined || Number(idUsuario) <= 0) {
         console.warn(`⚠️ [Usuario ${index}] Omitido porque no tiene idUsuario válido`);
         return; // Continuar con el siguiente
+      }
+      
+      const idUsuarioNum = Number(idUsuario);
+      
+      // Validación: usuarios no-admin solo pueden asignarse a sí mismos
+      if (!isAdmin && currentUserId && idUsuarioNum !== currentUserId) {
+        console.warn(`⚠️ [Usuario ${index}] Usuario no-admin intentó asignar a otro usuario (${idUsuarioNum} vs ${currentUserId})`);
+        this.alertService.warning(
+          'Restricción de Permisos',
+          'Solo puedes asignarte a ti mismo como responsable de la actividad. Los usuarios no administradores no pueden asignar a otros usuarios.',
+          {
+            backdrop: true,
+            allowOutsideClick: false,
+            allowEscapeKey: true
+          }
+        );
+        return; // Omitir este usuario
       }
       
       console.log(`🔍 [Usuario ${index}] Valores del formulario:`, {
