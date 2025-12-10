@@ -130,11 +130,25 @@ export class PermisosService {
     'VerActividadMensualInst': 'actividades.ver',
     'VerEdicionActividad': 'actividades.ver',
     
-    // Participaciones (corrección de nombre)
+    // ============================================
+    // PARTICIPACIONES - OPERACIONES CRUD BÁSICAS
+    // ============================================
+    // Estos permisos controlan las operaciones básicas de creación, edición, eliminación y visualización
     'CrearParticipacion': 'participaciones.crear',
     'EditarParticipacion': 'participaciones.editar',
     'EliminarParticipacion': 'participaciones.eliminar',
     'VerParticipacion': 'participaciones.ver',
+    
+    // ============================================
+    // PARTICIPACIONES - IMPORTACIÓN DESDE EXCEL
+    // ============================================
+    // NOTA: Estos permisos son DIFERENTES de los permisos CRUD.
+    // El backend acepta tanto 'ImportarParticipacion' como 'CrearParticipacion' para estas operaciones.
+    // Los métodos helper (puedeImportarParticipantes*) verifican ambos permisos automáticamente.
+    'ImportarParticipacion': 'participaciones.importar',                    // Permiso general de importación
+    'ImportarParticipantes': 'participaciones.importar_participantes',         // Importar participantes (genérico)
+    'ImportarParticipantesActividad': 'participaciones.importar_actividad',   // Importar participantes de una actividad
+    'ImportarParticipantesSubactividad': 'participaciones.importar_subactividad', // Importar participantes de una subactividad
     
     // Participaciones Individuales (si el backend usa un permiso específico)
     'CrearParticipacionIndividual': 'participaciones.crear',
@@ -640,6 +654,48 @@ export class PermisosService {
         return of([]);
       })
     );
+  }
+
+  /**
+   * Verifica si el usuario puede importar participantes
+   * El backend acepta tanto 'ImportarParticipacion' como 'CrearParticipacion'
+   * @returns true si el usuario tiene alguno de estos permisos
+   */
+  puedeImportarParticipantes(): boolean {
+    // El backend acepta ImportarParticipacion O CrearParticipacion
+    return this.tieneAlgunPermiso([
+      'participaciones.importar',
+      'participaciones.importar_participantes',
+      'participaciones.crear'
+    ]);
+  }
+
+  /**
+   * Verifica si el usuario puede importar participantes para una actividad
+   * El backend acepta tanto 'ImportarParticipacion' como 'CrearParticipacion'
+   * @returns true si el usuario tiene alguno de estos permisos
+   */
+  puedeImportarParticipantesActividad(): boolean {
+    // El backend acepta ImportarParticipacion O CrearParticipacion
+    return this.tieneAlgunPermiso([
+      'participaciones.importar',
+      'participaciones.importar_actividad',
+      'participaciones.crear'
+    ]);
+  }
+
+  /**
+   * Verifica si el usuario puede importar participantes para una subactividad
+   * El backend acepta tanto 'ImportarParticipacion' como 'CrearParticipacion'
+   * @returns true si el usuario tiene alguno de estos permisos
+   */
+  puedeImportarParticipantesSubactividad(): boolean {
+    // El backend acepta ImportarParticipacion O CrearParticipacion
+    return this.tieneAlgunPermiso([
+      'participaciones.importar',
+      'participaciones.importar_subactividad',
+      'participaciones.crear'
+    ]);
   }
 
   /**

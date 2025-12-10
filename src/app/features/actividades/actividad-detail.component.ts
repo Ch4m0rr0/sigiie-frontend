@@ -19,6 +19,7 @@ import { EvidenciaService } from '../../core/services/evidencia.service';
 import { ImageStorageService } from '../../core/services/image-storage.service';
 import { ParticipacionService } from '../../core/services/participacion.service';
 import { ReportesService } from '../../core/services/reportes.service';
+import { AlertService } from '../../core/services/alert.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import type { Actividad } from '../../core/models/actividad';
 import type { ActividadResponsable } from '../../core/models/actividad-responsable';
@@ -55,6 +56,7 @@ export class ActividadDetailComponent implements OnInit {
   private imageStorageService = inject(ImageStorageService);
   private participacionService = inject(ParticipacionService);
   private reportesService = inject(ReportesService);
+  private alertService = inject(AlertService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
@@ -153,7 +155,19 @@ export class ActividadDetailComponent implements OnInit {
       const tabParam = this.route.snapshot.queryParams['tab'];
       if (tabParam && this.isValidTab(tabParam)) {
         this.setTab(tabParam as any);
+        // Si se está regresando a la pestaña de evidencias, recargar evidencias
+        if (tabParam === 'evidencias' && id) {
+          this.loadEvidencias(+id);
+        }
       }
+      
+      // Suscribirse a cambios en query params para recargar evidencias cuando se regresa
+      this.route.queryParams.subscribe(params => {
+        if (params['tab'] === 'evidencias' && id) {
+          // Recargar evidencias cuando se regresa a la pestaña de evidencias
+          this.loadEvidencias(+id);
+        }
+      });
       this.loadCategoriasActividad();
     this.loadTiposProtagonista();
     this.loadTiposResponsable();
@@ -1071,9 +1085,10 @@ export class ActividadDetailComponent implements OnInit {
     const tiposEvidencia = actividad.idTipoEvidencias || [];
     console.log('🚀 Navegando a crear evidencia. Actividad:', actividad.id, 'Tipos de evidencia:', tiposEvidencia);
     
-    // Construir query params
+    // Construir query params incluyendo returnUrl para regresar al detalle de actividad
     const queryParams: any = {
-      actividadId: actividad.id
+      actividadId: actividad.id,
+      returnUrl: `/actividades/${actividad.id}?tab=evidencias` // Regresar al detalle de actividad en la pestaña de evidencias
     };
     
     // Si hay tipos de evidencia, pasarlos como query param
@@ -1207,8 +1222,16 @@ export class ActividadDetailComponent implements OnInit {
   
   navigateToEditEvidencia(): void {
     const id = this.evidenciaDetalle()?.idEvidencia;
+    const actividad = this.actividad();
     if (id) {
-      this.router.navigate(['/evidencias', id, 'editar']);
+      if (actividad?.id) {
+        // Si viene del detalle de actividad, incluir returnUrl para regresar
+        this.router.navigate(['/evidencias', id, 'editar'], {
+          queryParams: { returnUrl: `/actividades/${actividad.id}?tab=evidencias` }
+        });
+      } else {
+        this.router.navigate(['/evidencias', id, 'editar']);
+      }
     }
   }
   
@@ -2958,7 +2981,18 @@ export class ActividadDetailComponent implements OnInit {
 
   importarParticipantesDesdeExcel(): void {
     if (!this.importFileParticipantes() || !this.actividad()?.id) {
-      alert('Por favor selecciona un archivo Excel');
+      this.alertService.warning('Archivo requerido', 'Por favor selecciona un archivo Excel');
+      return;
+    }
+
+    // Validar tipo de archivo antes de enviar
+    const file = this.importFileParticipantes()!;
+    const validExtensions = ['.xlsx', '.xls'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    
+    if (!validExtensions.includes(fileExtension)) {
+      this.alertService.error('Archivo inválido', 'Por favor selecciona un archivo Excel (.xlsx o .xls)');
+      this.importFileParticipantes.set(null);
       return;
     }
 
@@ -2969,26 +3003,134 @@ export class ActividadDetailComponent implements OnInit {
     
     this.reportesService.importarParticipantesPorActividad(
       this.actividad()!.id,
-      this.importFileParticipantes()!,
+      file,
       anio
     ).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         console.log('✅ Participantes importados:', response);
-        alert('Participantes importados exitosamente');
-        this.importFileParticipantes.set(null);
+        
+        // Construir mensaje con los datos de la respuesta
+        let mensaje = '';
+        const data = response.data || response;
+        
+        // Validar si realmente se procesaron datos
+        const totalProcesados = data.totalProcesados ?? 0;
+        const totalCreados = data.totalCreados ?? 0;
+        const totalActualizados = data.totalActualizados ?? 0;
+        const totalOmitidos = data.totalOmitidos ?? 0;
+        const totalErrores = data.totalErrores ?? 0;
+        
+        // Si no se procesó nada y no hay errores, el archivo probablemente no tenía datos válidos
+        if (totalProcesados === 0 && totalCreados === 0 && totalActualizados === 0 && totalErrores === 0) {
+          this.alertService.warning(
+            'Formato inválido', 
+            'El archivo Excel no contiene datos válidos de participantes o no se pudo procesar. Por favor verifica que el archivo tenga el formato correcto y contenga datos.'
+          );
+          this.loadingImportarParticipantes.set(false);
+          // No limpiar el archivo para permitir revisar y volver a intentar
+          return;
+        }
+        
+        // Si hay datos procesados, mostrar resumen
+        if (totalProcesados > 0 || totalCreados > 0 || totalActualizados > 0) {
+          mensaje = '<div style="text-align: left;">';
+          
+          // Mensaje principal más claro y bonito
+          if (totalCreados > 0 && totalActualizados === 0) {
+            mensaje += `<strong style="color: #10b981;">✓ Se importaron correctamente ${totalCreados} participante${totalCreados > 1 ? 's' : ''}</strong><br><br>`;
+          } else if (totalActualizados > 0 && totalCreados === 0) {
+            mensaje += `<strong style="color: #10b981;">✓ Se actualizaron correctamente ${totalActualizados} participante${totalActualizados > 1 ? 's' : ''}</strong><br><br>`;
+          } else if (totalCreados > 0 && totalActualizados > 0) {
+            mensaje += `<strong style="color: #10b981;">✓ Importación completada exitosamente</strong><br><br>`;
+          } else {
+            mensaje += `<strong style="color: #10b981;">✓ Procesamiento completado</strong><br><br>`;
+          }
+          
+          // Detalles del resumen
+          if (data.totalProcesados !== undefined && totalProcesados > 0) {
+            mensaje += `📊 Total procesados: <strong>${totalProcesados}</strong><br>`;
+          }
+          if (data.totalCreados !== undefined && totalCreados > 0) {
+            mensaje += `➕ Nuevos agregados: <strong style="color: #10b981;">${totalCreados}</strong><br>`;
+          }
+          if (data.totalActualizados !== undefined && totalActualizados > 0) {
+            mensaje += `🔄 Actualizados: <strong style="color: #3b82f6;">${totalActualizados}</strong><br>`;
+          }
+          if (totalOmitidos > 0) {
+            mensaje += `⏭️ Omitidos: <strong style="color: #f59e0b;">${totalOmitidos}</strong><br>`;
+          }
+          if (totalErrores > 0) {
+            mensaje += `❌ Errores: <strong style="color: #ef4444;">${totalErrores}</strong><br>`;
+          }
+          if (data.mensaje) {
+            mensaje += `<br><em>${data.mensaje}</em>`;
+          }
+          mensaje += '</div>';
+          
+          // Mostrar alerta de éxito
+          this.alertService.success('¡Importación exitosa!', mensaje, {
+            html: true
+          });
+          
+          // Limpiar el archivo después de importación exitosa
+          this.importFileParticipantes.set(null);
+        } else if (data.mensaje) {
+          // Si hay un mensaje pero no datos procesados, mostrar advertencia
+          this.alertService.warning('Sin resultados', data.mensaje);
+        } else {
+          // Caso por defecto
+          this.alertService.warning(
+            'Formato inválido', 
+            'No se procesaron participantes del archivo. Verifica que el archivo tenga el formato correcto.'
+          );
+        }
+        
         this.loadingImportarParticipantes.set(false);
-        this.loadEstadisticasParticipantes(); // Recargar estadísticas
+        
+        // Recargar estadísticas solo si se procesaron datos
+        if (totalProcesados > 0 || totalCreados > 0 || totalActualizados > 0) {
+          this.loadEstadisticasParticipantes();
+        }
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('❌ Error importando participantes:', err);
         let errorMessage = 'Error al importar participantes';
-        if (err.error?.message) {
-          errorMessage = err.error.message;
-        } else if (typeof err.error === 'string') {
-          errorMessage = err.error;
+        let isFormatError = false;
+        
+        // Detectar errores de formato
+        if (err.error) {
+          if (err.error.message) {
+            errorMessage = err.error.message;
+            // Detectar errores comunes de formato
+            const errorLower = errorMessage.toLowerCase();
+            isFormatError = errorLower.includes('formato') || 
+                           errorLower.includes('formato inválido') || 
+                           errorLower.includes('invalid format') ||
+                           errorLower.includes('no se pudo leer') ||
+                           errorLower.includes('no se puede procesar') ||
+                           errorLower.includes('columna') ||
+                           errorLower.includes('encabezado');
+          } else if (err.error.error) {
+            errorMessage = err.error.error;
+          } else if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
         }
-        alert(errorMessage);
+        
+        // Mostrar alerta apropiada según el tipo de error
+        if (isFormatError) {
+          this.alertService.error(
+            'Formato inválido', 
+            `${errorMessage}\n\nPor favor revisa el formato del archivo Excel y asegúrate de que tenga las columnas correctas.`
+          );
+        } else {
+          this.alertService.error('Error en la importación', errorMessage);
+        }
+        
         this.loadingImportarParticipantes.set(false);
+        // No limpiar el archivo en caso de error para permitir revisar y corregir
       }
     });
   }

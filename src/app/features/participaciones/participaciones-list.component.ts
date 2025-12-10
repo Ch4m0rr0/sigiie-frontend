@@ -830,10 +830,10 @@ export class ParticipacionesListComponent implements OnInit {
         // Si no se procesó nada y no hay errores, el archivo probablemente no tenía datos válidos
         if (totalProcesados === 0 && totalCreados === 0 && totalActualizados === 0 && totalErrores === 0) {
           this.alertService.warning(
-            'Archivo sin datos', 
+            'Formato inválido', 
             'El archivo Excel no contiene datos válidos de participantes o no se pudo procesar. Por favor verifica que el archivo tenga el formato correcto y contenga datos.'
           );
-          this.importFileParticipantes.set(null);
+          // No limpiar el archivo para permitir revisar y volver a intentar
           this.loadingImportarParticipantes.set(false);
           return;
         }
@@ -841,45 +841,57 @@ export class ParticipacionesListComponent implements OnInit {
         // Si hay datos procesados, mostrar resumen
         if (totalProcesados > 0 || totalCreados > 0 || totalActualizados > 0) {
           mensaje = '<div style="text-align: left;">';
-          mensaje += `<strong>Importación completada:</strong><br><br>`;
           
-          if (data.totalProcesados !== undefined) {
-            mensaje += `• Total procesados: <strong>${totalProcesados}</strong><br>`;
+          // Mensaje principal más claro y bonito
+          if (totalCreados > 0 && totalActualizados === 0) {
+            mensaje += `<strong style="color: #10b981;">✓ Se importaron correctamente ${totalCreados} participante${totalCreados > 1 ? 's' : ''}</strong><br><br>`;
+          } else if (totalActualizados > 0 && totalCreados === 0) {
+            mensaje += `<strong style="color: #10b981;">✓ Se actualizaron correctamente ${totalActualizados} participante${totalActualizados > 1 ? 's' : ''}</strong><br><br>`;
+          } else if (totalCreados > 0 && totalActualizados > 0) {
+            mensaje += `<strong style="color: #10b981;">✓ Importación completada exitosamente</strong><br><br>`;
+          } else {
+            mensaje += `<strong style="color: #10b981;">✓ Procesamiento completado</strong><br><br>`;
           }
-          if (data.totalCreados !== undefined) {
-            mensaje += `• Agregados: <strong>${totalCreados}</strong><br>`;
+          
+          // Detalles del resumen
+          if (data.totalProcesados !== undefined && totalProcesados > 0) {
+            mensaje += `📊 Total procesados: <strong>${totalProcesados}</strong><br>`;
           }
-          if (data.totalActualizados !== undefined) {
-            mensaje += `• Actualizados: <strong>${totalActualizados}</strong><br>`;
+          if (data.totalCreados !== undefined && totalCreados > 0) {
+            mensaje += `➕ Nuevos agregados: <strong style="color: #10b981;">${totalCreados}</strong><br>`;
+          }
+          if (data.totalActualizados !== undefined && totalActualizados > 0) {
+            mensaje += `🔄 Actualizados: <strong style="color: #3b82f6;">${totalActualizados}</strong><br>`;
           }
           if (totalOmitidos > 0) {
-            mensaje += `• Omitidos: <strong>${totalOmitidos}</strong><br>`;
+            mensaje += `⏭️ Omitidos: <strong style="color: #f59e0b;">${totalOmitidos}</strong><br>`;
           }
           if (totalErrores > 0) {
-            mensaje += `• Errores: <strong style="color: #ef4444;">${totalErrores}</strong><br>`;
+            mensaje += `❌ Errores: <strong style="color: #ef4444;">${totalErrores}</strong><br>`;
           }
           if (data.mensaje) {
-            mensaje += `<br>${data.mensaje}`;
+            mensaje += `<br><em>${data.mensaje}</em>`;
           }
           mensaje += '</div>';
           
           // Mostrar alerta de éxito
-          this.alertService.success('Importación completada', mensaje, {
+          this.alertService.success('¡Importación exitosa!', mensaje, {
             html: true
           });
+          
+          // Limpiar el archivo después de importación exitosa
+          this.importFileParticipantes.set(null);
         } else if (data.mensaje) {
           // Si hay un mensaje pero no datos procesados, mostrar advertencia
-          this.alertService.warning('Importación sin resultados', data.mensaje);
+          this.alertService.warning('Sin resultados', data.mensaje);
         } else {
           // Caso por defecto
           this.alertService.warning(
-            'Sin datos procesados', 
+            'Formato inválido', 
             'No se procesaron participantes del archivo. Verifica que el archivo tenga el formato correcto.'
           );
         }
         
-        // Limpiar archivo
-        this.importFileParticipantes.set(null);
         this.loadingImportarParticipantes.set(false);
         
         // Recargar participantes de la vista actual solo si se procesaron datos
@@ -893,16 +905,42 @@ export class ParticipacionesListComponent implements OnInit {
       error: (err: any) => {
         console.error('❌ Error importando participantes:', err);
         let errorMessage = 'Error al importar participantes';
-        if (err.error?.message) {
-          errorMessage = err.error.message;
-        } else if (err.error?.error) {
-          errorMessage = err.error.error;
-        } else if (typeof err.error === 'string') {
-          errorMessage = err.error;
+        let isFormatError = false;
+        
+        // Detectar errores de formato
+        if (err.error) {
+          if (err.error.message) {
+            errorMessage = err.error.message;
+            // Detectar errores comunes de formato
+            const errorLower = errorMessage.toLowerCase();
+            isFormatError = errorLower.includes('formato') || 
+                           errorLower.includes('formato inválido') || 
+                           errorLower.includes('invalid format') ||
+                           errorLower.includes('no se pudo leer') ||
+                           errorLower.includes('no se puede procesar') ||
+                           errorLower.includes('columna') ||
+                           errorLower.includes('encabezado');
+          } else if (err.error.error) {
+            errorMessage = err.error.error;
+          } else if (typeof err.error === 'string') {
+            errorMessage = err.error;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
         }
-        this.alertService.error('Error en la importación', errorMessage);
+        
+        // Mostrar alerta apropiada según el tipo de error
+        if (isFormatError) {
+          this.alertService.error(
+            'Formato inválido', 
+            `${errorMessage}\n\nPor favor revisa el formato del archivo Excel y asegúrate de que tenga las columnas correctas.`
+          );
+        } else {
+          this.alertService.error('Error en la importación', errorMessage);
+        }
+        
         this.loadingImportarParticipantes.set(false);
-        this.importFileParticipantes.set(null);
+        // No limpiar el archivo en caso de error para permitir revisar y corregir
       }
     });
   }

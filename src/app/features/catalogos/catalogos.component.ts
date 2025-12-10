@@ -28,7 +28,6 @@ import type { ActividadMensualInst } from '../../core/models/actividad-mensual-i
 // Spartan UI
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
-import { HasPermissionDirective } from '../../shared/directives/has-permission.directive';
 import { PermisosService } from '../../core/services/permisos.service';
 
 type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras' | 'actividades-anuales' | 'actividades-mensuales' | 'capacidadesinstaladas';
@@ -53,7 +52,6 @@ interface CatalogoItem {
     ReactiveFormsModule,
     ...BrnButtonImports,
     ...BrnLabelImports,
-    HasPermissionDirective,
   ],
   templateUrl: './catalogos.component.html',
   styleUrls: ['./catalogos.component.css'],
@@ -214,6 +212,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   // Función para detectar el tipo de acción de un permiso
   getTipoAccion(permisoNombre: string): string {
     const nombre = permisoNombre.toLowerCase();
+    // Detectar permisos de importación primero (antes de "Ver")
+    if (nombre.includes('importar') || nombre.includes('import') || nombre.includes('importacion')) {
+      return 'Importar';
+    }
     if (nombre.includes('crear') || nombre.includes('create') || nombre.includes('nuevo') || nombre.includes('agregar') || nombre.includes('add')) {
       return 'Crear';
     }
@@ -264,8 +266,9 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     });
     
     // Ordenar los módulos y los tipos de acción dentro de cada módulo
+    // Separar "Importar" de "Ver" para que tenga su propia sección
     const modulosOrdenados = Object.keys(agrupados).sort();
-    const ordenAcciones = ['Ver', 'Crear', 'Editar', 'Eliminar'];
+    const ordenAcciones = ['Ver', 'Importar', 'Crear', 'Editar', 'Eliminar'];
     const resultado: { modulo: string, acciones: { tipo: string, permisos: any[] }[] }[] = [];
     
     modulosOrdenados.forEach(modulo => {
@@ -1635,6 +1638,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     switch (tipoAccion) {
       case 'Ver':
         return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
+      case 'Importar':
+        return 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12';
       case 'Crear':
         return 'M12 4v16m8-8H4';
       case 'Editar':
@@ -1650,6 +1655,8 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     switch (tipoAccion) {
       case 'Ver':
         return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'Importar':
+        return 'text-purple-600 bg-purple-50 border-purple-200';
       case 'Crear':
         return 'text-green-600 bg-green-50 border-green-200';
       case 'Editar':

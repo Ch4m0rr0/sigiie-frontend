@@ -34,6 +34,7 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
   imageError = signal(false);
   officeFiles = signal<Array<{fileName: string, mimeType: string, fileSize: number, fileIndex: number}>>([]);
   nombreActividad = signal<string | null>(null);
+  idActividad = signal<number | null>(null);
   private objectUrls: string[] = [];
 
   ngOnInit(): void {
@@ -55,6 +56,11 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
     this.evidenciaService.getById(id).subscribe({
       next: async (data) => {
         this.evidencia.set(data);
+        
+        // Guardar idActividad para navegación
+        if (data.idActividad) {
+          this.idActividad.set(data.idActividad);
+        }
         
         // Cargar el nombre de la actividad si existe
         if (data.idActividad) {
@@ -118,16 +124,43 @@ export class EvidenciaDetailComponent implements OnInit, OnDestroy {
 
   navigateToEdit(): void {
     const id = this.evidencia()?.idEvidencia;
+    const actividadId = this.idActividad();
     if (id) {
-      this.router.navigate(['/evidencias', id, 'editar']);
+      if (actividadId) {
+        // Si viene de una actividad, incluir returnUrl
+        this.router.navigate(['/evidencias', id, 'editar'], {
+          queryParams: { returnUrl: `/actividades/${actividadId}?tab=evidencias` }
+        });
+      } else {
+        this.router.navigate(['/evidencias', id, 'editar']);
+      }
+    }
+  }
+
+  navigateToActividad(): void {
+    const actividadId = this.idActividad();
+    if (actividadId) {
+      this.router.navigate(['/actividades', actividadId], {
+        queryParams: { tab: 'evidencias' }
+      });
     }
   }
 
   onDelete(): void {
     const id = this.evidencia()?.idEvidencia;
+    const actividadId = this.idActividad();
     if (id && confirm('¿Está seguro de que desea eliminar esta evidencia?')) {
       this.evidenciaService.delete(id).subscribe({
-        next: () => this.router.navigate(['/evidencias']),
+        next: () => {
+          if (actividadId) {
+            // Si viene de una actividad, regresar al detalle de actividad
+            this.router.navigate(['/actividades', actividadId], {
+              queryParams: { tab: 'evidencias' }
+            });
+          } else {
+            this.router.navigate(['/evidencias']);
+          }
+        },
         error: (err) => {
           console.error('Error deleting evidencia:', err);
           this.error.set('Error al eliminar la evidencia');

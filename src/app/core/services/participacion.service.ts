@@ -472,11 +472,15 @@ export class ParticipacionService {
       });
     }
     
+    // Extraer idActividad si existe (puede venir del backend aunque no esté en el modelo inicial)
+    const idActividad = item.idActividad || item.IdActividad;
+    
     // Log del objeto final antes de retornarlo
     const participacionMapeada = {
       id: item.idParticipacion || item.IdParticipacion || item.id,
       idParticipacion: item.idParticipacion || item.IdParticipacion || item.id,
       edicionId: item.edicionId || item.EdicionId || item.idEdicion || item.IdEdicion,
+      idActividad: idActividad, // Agregar idActividad al modelo mapeado
       idSubactividad: idSubactividad,
       nombreSubactividad: nombreSubactividad,
       grupoNumero: item.grupoNumero || item.GrupoNumero,

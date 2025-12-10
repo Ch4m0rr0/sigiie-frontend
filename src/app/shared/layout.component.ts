@@ -164,7 +164,11 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   private updateBreadcrumbs(route: ActivatedRoute): void {
     const breadcrumbs: Array<{ label: string; path: string }> = [];
-    const url = this.router.url;
+    let url = this.router.url;
+    
+    // Remover query params de la URL para el breadcrumb (ej: ?tab=evidencias)
+    const urlWithoutQuery = url.split('?')[0];
+    url = urlWithoutQuery;
     
     // Si estamos en la raíz o login, mostrar dashboard
     if (url === '/' || url === '/login' || url === '') {
@@ -176,13 +180,66 @@ export class LayoutComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Dividir la URL en segmentos
+    // Dividir la URL en segmentos (sin query params)
     const segments = url.split('/').filter(segment => segment !== '');
+    
+    // Verificar si hay returnUrl en query params (cuando se viene del detalle de actividad)
+    const queryParams = route.snapshot.queryParams;
+    const returnUrl = queryParams['returnUrl'];
+    let skipEvidenciasSegment = false;
+    
+    // Si estamos editando una evidencia y hay returnUrl, agregar breadcrumb del detalle de actividad
+    if (url.includes('/evidencias/') && url.includes('/editar') && returnUrl) {
+      // Extraer el ID de actividad del returnUrl
+      const actividadMatch = returnUrl.match(/\/actividades\/(\d+)/);
+      if (actividadMatch) {
+        const actividadId = actividadMatch[1];
+        breadcrumbs.push({
+          label: 'Actividades',
+          path: '/actividades'
+        });
+        breadcrumbs.push({
+          label: 'Detalle de Actividad',
+          path: `/actividades/${actividadId}?tab=evidencias`
+        });
+        // Marcar que debemos saltar el segmento de evidencias ya que ya agregamos el contexto
+        skipEvidenciasSegment = true;
+      }
+    }
     
     // Construir breadcrumbs incrementalmente
     let currentPath = '';
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
+      
+      // Si ya agregamos el detalle de actividad desde returnUrl, solo agregar evidencias y editar
+      if (skipEvidenciasSegment) {
+        // Si es el segmento de evidencias, agregarlo
+        if (segment === 'evidencias') {
+          currentPath += '/' + segment;
+          breadcrumbs.push({
+            label: 'Evidencias',
+            path: currentPath
+          });
+          continue;
+        }
+        // Si es un ID numérico (de evidencia), agregarlo al path pero no crear breadcrumb separado
+        if (/^\d+$/.test(segment)) {
+          currentPath += '/' + segment;
+          continue;
+        }
+        // Para editar, usar el path completo
+        if (segment === 'editar') {
+          currentPath += '/' + segment;
+          breadcrumbs.push({
+            label: 'Editar Evidencia',
+            path: currentPath
+          });
+          break; // Ya terminamos
+        }
+        continue;
+      }
+      
       currentPath += '/' + segment;
       
       // Determinar el label para este segmento
@@ -273,6 +330,19 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   navigateToPath(path: string): void {
-    this.router.navigate([path]);
+    // Si el path incluye query params (como ?tab=evidencias), parsearlos correctamente
+    if (path.includes('?')) {
+      const [routePath, queryString] = path.split('?');
+      const queryParams: any = {};
+      queryString.split('&').forEach(param => {
+        const [key, value] = param.split('=');
+        if (key && value) {
+          queryParams[key] = decodeURIComponent(value);
+        }
+      });
+      this.router.navigate([routePath], { queryParams });
+    } else {
+      this.router.navigate([path]);
+    }
   }
 }

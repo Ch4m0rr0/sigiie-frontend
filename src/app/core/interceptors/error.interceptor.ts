@@ -41,7 +41,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           url.includes('/tipo-evidencia') ||
           url.includes('/categoria-actividad') ||
           url.includes('/estado-actividad') ||
-          url.includes('/usuarios')
+          url.includes('/usuarios') ||
+          url.includes('/evidencias')
         );
         
         if (isPermissionError && isDataLoadRequest) {
@@ -66,6 +67,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             '/api/actividades',
             '/api/indicadores',
             '/api/tipo-evidencia',
+            '/api/evidencias', // GET de evidencias para visualización
             '/api/usuarios', // GET de usuarios para usar en formularios
             '/api/notificaciones' // El servicio de notificaciones maneja sus propios errores
           ];
@@ -100,7 +102,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           url.includes('/tipo-evidencia') ||
           url.includes('/categoria-actividad') ||
           url.includes('/estado-actividad') ||
-          url.includes('/usuarios') // GET de usuarios para usar en formularios
+          url.includes('/usuarios') || // GET de usuarios para usar en formularios
+          url.includes('/evidencias') // GET de evidencias para visualización
         );
         
         // Solo mostrar alerta si NO es una petición GET para cargar datos de uso
@@ -166,6 +169,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             if (req.method === 'POST') permisoRequerido = 'CrearProyecto';
             else if (req.method === 'PUT') permisoRequerido = 'EditarProyecto';
             else if (req.method === 'DELETE') permisoRequerido = 'EliminarProyecto';
+          } else if (url.includes('/evidencias')) {
+            titulo = 'Sin Permisos - Evidencias';
+            if (req.method === 'POST') permisoRequerido = 'CrearEvidencia';
+            else if (req.method === 'PUT') permisoRequerido = 'EditarEvidencia';
+            else if (req.method === 'DELETE') permisoRequerido = 'EliminarEvidencia';
           }
           
           // Agregar información del permiso requerido al mensaje si está disponible

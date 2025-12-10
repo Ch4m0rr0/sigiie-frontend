@@ -52,8 +52,10 @@
       [totalSubactividades]="totalSubactividades()">
     </app-statistics-cards>
 
-    <!-- Sección de Cumplimiento de Indicadores -->
-    <app-indicator-compliance></app-indicator-compliance>
+    <!-- Sección de Cumplimiento de Indicadores (solo para admins) -->
+    @if (esAdmin()) {
+      <app-indicator-compliance></app-indicator-compliance>
+    }
 
     <!-- Sección de Actividades de este Mes -->
     <app-monthly-activities></app-monthly-activities>

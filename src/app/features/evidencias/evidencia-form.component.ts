@@ -49,6 +49,7 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
   private route = inject(ActivatedRoute);
   router = inject(Router);
   private sanitizer = inject(DomSanitizer);
+  private returnUrl: string | null = null; // URL para regresar después de crear evidencia
 
   form!: FormGroup;
   subactividades = signal<Subactividad[]>([]);
@@ -97,6 +98,12 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
     const id = this.route.snapshot.paramMap.get('id');
     const subactividadId = this.route.snapshot.queryParamMap.get('subactividadId');
     const actividadIdParam = this.route.snapshot.queryParamMap.get('actividadId');
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl'); // URL para regresar después de crear
+    
+    // Guardar returnUrl para usar después de crear
+    if (returnUrl) {
+      this.returnUrl = returnUrl;
+    }
     
     // Usar input si está disponible, sino usar query param
     const actividadId = this.actividadIdInput !== undefined ? this.actividadIdInput : (actividadIdParam ? +actividadIdParam : null);
@@ -140,6 +147,10 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
     if (id) {
       this.isEditMode.set(true);
       this.evidenciaId.set(+id);
+      // Si hay returnUrl en query params, guardarlo también para edición
+      if (returnUrl && !this.returnUrl) {
+        this.returnUrl = returnUrl;
+      }
       this.loadEvidencia(+id);
     } else {
       // Solo establecer valores si no estamos en modo edición
@@ -647,7 +658,12 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
             if (this.onSuccess) {
               this.onSuccess();
             } else {
-              this.router.navigate(['/evidencias']);
+              if (this.returnUrl) {
+                // Si hay returnUrl (viene del detalle de actividad), regresar ahí
+                this.router.navigateByUrl(this.returnUrl);
+              } else {
+                this.router.navigate(['/evidencias']);
+              }
             }
           },
           error: (err: any) => {
@@ -789,6 +805,9 @@ export class EvidenciaFormComponent implements OnInit, OnDestroy, OnChanges {
           this.loading.set(false);
           if (this.onSuccess) {
             this.onSuccess();
+          } else if (this.returnUrl) {
+            // Si hay returnUrl (viene del detalle de actividad), regresar ahí
+            this.router.navigateByUrl(this.returnUrl);
           } else {
             this.router.navigate(['/evidencias']);
           }

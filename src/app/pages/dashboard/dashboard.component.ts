@@ -13,6 +13,8 @@ import { ParticipacionService } from '../../core/services/participacion.service'
 import { EvidenciaService } from '../../core/services/evidencia.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
 import { DashboardService } from '../../core/services/dashboard.service';
+import { PermisosService } from '../../core/services/permisos.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   standalone: true,
@@ -26,6 +28,8 @@ export class DashboardComponent implements OnInit {
   private evidenciaService = inject(EvidenciaService);
   private subactividadService = inject(SubactividadService);
   private dashboardService = inject(DashboardService);
+  private permisosService = inject(PermisosService);
+  private authService = inject(AuthService);
 
   // Estadísticas básicas
   totalActividades = signal(0);
@@ -40,6 +44,9 @@ export class DashboardComponent implements OnInit {
   vistaEspecialRendimiento = signal<any>(null);
 
   loading = signal(true);
+  
+  // Verificar si el usuario es admin para mostrar sección de cumplimiento de indicadores
+  esAdmin = signal(false);
 
   // Datos para gráficos
   progressChartData: ChartData | null = null;
@@ -61,6 +68,8 @@ export class DashboardComponent implements OnInit {
   };
 
   ngOnInit() {
+    // Verificar si el usuario es admin
+    this.esAdmin.set(this.permisosService.tieneTodosLosPermisosDeAdmin());
     this.loadEstadisticas();
     this.loadDashboardData();
   }
@@ -68,57 +77,135 @@ export class DashboardComponent implements OnInit {
   loadEstadisticas(): void {
     this.loading.set(true);
     
+    // Obtener el departamento del usuario si no es admin
+    const usuario = this.authService.user();
+    const departamentoId = usuario?.departamentoId;
+    const esAdmin = this.esAdmin();
+    
+    // Si no es admin y tiene departamento, filtrar por departamento
+    const filtroDepartamento = !esAdmin && departamentoId ? { DepartamentoResponsableId: departamentoId } : undefined;
+    
     Promise.all([
-      firstValueFrom(this.actividadesService.list())
+      // Actividades: filtrar por departamento si no es admin
+      firstValueFrom(this.actividadesService.getAll(filtroDepartamento))
         .then(data => {
           const count = data?.length || 0;
-          console.log('✅ Actividades cargadas:', count);
-          return count;
+          console.log(`✅ Actividades cargadas${filtroDepartamento ? ` (filtradas por departamento ${departamentoId})` : ' (todas)'}:`, count);
+          return { count, data };
         })
         .catch(error => {
           console.warn('⚠️ Error cargando actividades:', error);
-          return 0;
+          return { count: 0, data: [] };
         }),
+      // Participaciones: cargar todas y filtrar por actividades/subactividades del departamento si no es admin
       firstValueFrom(this.participacionService.getAll())
         .then(data => {
-          const count = data?.length || 0;
-          console.log('✅ Participaciones cargadas:', count);
-          return count;
+          let participacionesFiltradas = data || [];
+          
+          // Si no es admin, necesitamos filtrar participaciones por actividades/subactividades del departamento
+          if (!esAdmin && departamentoId) {
+            // Primero obtener actividades del departamento
+            return firstValueFrom(this.actividadesService.getAll(filtroDepartamento))
+              .then(actividades => {
+                const actividadIds = actividades.map(a => a.id).filter(id => id !== undefined) as number[];
+                
+                // Obtener subactividades de esas actividades
+                return Promise.all(actividadIds.map(id => 
+                  firstValueFrom(this.subactividadService.buscar({ IdActividad: id }))
+                    .catch(() => [])
+                )).then(subactividadesArrays => {
+                  const subactividades = subactividadesArrays.flat();
+                  const subactividadIds = subactividades.map(s => s.idSubactividad).filter(id => id !== undefined) as number[];
+                  
+                  // Filtrar participaciones:
+                  // 1. Por subactividades del departamento (si tienen idSubactividad)
+                  // 2. Por actividades del departamento (si tienen idActividad)
+                  participacionesFiltradas = participacionesFiltradas.filter(p => {
+                    // Verificar si tiene idSubactividad y está en la lista de subactividades del departamento
+                    if (p.idSubactividad && subactividadIds.includes(p.idSubactividad)) {
+                      return true;
+                    }
+                    // Verificar si tiene idActividad y está en la lista de actividades del departamento
+                    if (p.idActividad && actividadIds.includes(p.idActividad)) {
+                      return true;
+                    }
+                    return false;
+                  });
+                  
+                  const count = participacionesFiltradas.length;
+                  console.log(`✅ Participaciones cargadas (filtradas por departamento ${departamentoId}):`, count, {
+                    totalActividades: actividadIds.length,
+                    totalSubactividades: subactividadIds.length,
+                    participacionesFiltradas: count
+                  });
+                  return { count, data: participacionesFiltradas };
+                });
+              })
+              .catch(() => ({ count: 0, data: [] }));
+          } else {
+            const count = participacionesFiltradas.length;
+            console.log('✅ Participaciones cargadas (todas):', count);
+            return { count, data: participacionesFiltradas };
+          }
         })
         .catch(error => {
           console.warn('⚠️ Error cargando participaciones:', error);
-          return 0;
+          return { count: 0, data: [] };
         }),
+      // Evidencias: cargar todas y filtrar por actividades del departamento si no es admin
       firstValueFrom(this.evidenciaService.getAll())
         .then(data => {
-          const count = data?.length || 0;
-          console.log('✅ Evidencias cargadas:', count);
-          return count;
+          let evidenciasFiltradas = data || [];
+          
+          // Si no es admin, necesitamos filtrar evidencias por actividades del departamento
+          if (!esAdmin && departamentoId) {
+            return firstValueFrom(this.actividadesService.getAll(filtroDepartamento))
+              .then(actividades => {
+                const actividadIds = actividades.map(a => a.id).filter(id => id !== undefined) as number[];
+                // Filtrar evidencias que pertenezcan a actividades del departamento
+                evidenciasFiltradas = evidenciasFiltradas.filter(e => 
+                  e.idActividad && actividadIds.includes(e.idActividad)
+                );
+                const count = evidenciasFiltradas.length;
+                console.log(`✅ Evidencias cargadas (filtradas por departamento ${departamentoId}):`, count);
+                return { count, data: evidenciasFiltradas };
+              })
+              .catch(() => ({ count: 0, data: [] }));
+          } else {
+            const count = evidenciasFiltradas.length;
+            console.log('✅ Evidencias cargadas (todas):', count);
+            return { count, data: evidenciasFiltradas };
+          }
         })
         .catch(error => {
           console.warn('⚠️ Error cargando evidencias:', error);
-          return 0;
+          return { count: 0, data: [] };
         }),
-      firstValueFrom(this.subactividadService.getAll())
+      // Subactividades: filtrar por departamento si no es admin
+      (filtroDepartamento 
+        ? firstValueFrom(this.subactividadService.buscar({ DepartamentoResponsableId: departamentoId }))
+        : firstValueFrom(this.subactividadService.getAll()))
         .then(data => {
           const count = data?.length || 0;
-          console.log('✅ Subactividades cargadas:', count);
-          return count;
+          console.log(`✅ Subactividades cargadas${filtroDepartamento ? ` (filtradas por departamento ${departamentoId})` : ' (todas)'}:`, count);
+          return { count, data };
         })
         .catch(error => {
           console.warn('⚠️ Error cargando subactividades:', error);
-          return 0;
+          return { count: 0, data: [] };
         }),
     ]).then(([actividades, participaciones, evidencias, subactividades]) => {
-      this.totalActividades.set(actividades);
-      this.totalParticipaciones.set(participaciones);
-      this.totalEvidencias.set(evidencias);
-      this.totalSubactividades.set(subactividades);
+      this.totalActividades.set(actividades.count);
+      this.totalParticipaciones.set(participaciones.count);
+      this.totalEvidencias.set(evidencias.count);
+      this.totalSubactividades.set(subactividades.count);
       console.log('📊 Estadísticas del dashboard:', {
-        actividades,
-        participaciones,
-        evidencias,
-        subactividades
+        esAdmin,
+        departamentoId: departamentoId || 'N/A',
+        actividades: actividades.count,
+        participaciones: participaciones.count,
+        evidencias: evidencias.count,
+        subactividades: subactividades.count
       });
       this.loading.set(false);
     }).catch(error => {
