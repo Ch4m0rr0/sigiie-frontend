@@ -9,7 +9,16 @@ export interface ActividadResponsableCreate {
   idActividad: number;
   idUsuario?: number;
   idDocente?: number;
+  idEstudiante?: number;
   idAdmin?: number;
+  idResponsableExterno?: number; // Para responsables externos existentes
+  responsableExterno?: {
+    nombre: string;
+    institucion: string;
+    cargo?: string;
+    telefono?: string;
+    correo?: string;
+  };
   idTipoResponsable: number;
   idRolResponsable?: number; // ID del rol responsable (Coordinador, Evaluador, etc.)
   departamentoId?: number;
@@ -109,30 +118,46 @@ export class ActividadResponsableService {
       IdTipoResponsable: Number(data.idTipoResponsable)
     };
 
-    // El backend actual solo maneja IdUsuario, no IdDocente ni IdAdmin
-    // Aunque los DTOs tienen estos campos, el servicio del backend no los procesa
-    // Si se envía idDocente o idAdmin, los convertimos a idUsuario
-    // IMPORTANTE: No enviar IdUsuario si es 0 o null, ya que el backend rechazará con "El usuario especificado no existe"
+    // El backend espera campos específicos según el tipo de responsable
+    // IMPORTANTE: No enviar IDs si son 0 o null, ya que el backend rechazará
     if (data.idUsuario !== undefined && data.idUsuario !== null) {
       const idUsuarioNum = Number(data.idUsuario);
       if (idUsuarioNum > 0) {
         payload.IdUsuario = idUsuarioNum;
       }
-      // Si es 0 o menor, no enviar IdUsuario
-    } else if (data.idDocente !== undefined && data.idDocente !== null) {
-      // Si se envía idDocente, usar idUsuario (el backend no distingue)
+    }
+    if (data.idDocente !== undefined && data.idDocente !== null) {
       const idDocenteNum = Number(data.idDocente);
       if (idDocenteNum > 0) {
-        payload.IdUsuario = idDocenteNum;
+        payload.IdDocente = idDocenteNum;
       }
-      // Si es 0 o menor, no enviar IdUsuario
-    } else if (data.idAdmin !== undefined && data.idAdmin !== null) {
-      // Si se envía idAdmin, usar idUsuario (el backend no distingue)
+    }
+    if (data.idEstudiante !== undefined && data.idEstudiante !== null) {
+      const idEstudianteNum = Number(data.idEstudiante);
+      if (idEstudianteNum > 0) {
+        payload.IdEstudiante = idEstudianteNum;
+      }
+    }
+    if (data.idAdmin !== undefined && data.idAdmin !== null) {
       const idAdminNum = Number(data.idAdmin);
       if (idAdminNum > 0) {
-        payload.IdUsuario = idAdminNum;
+        payload.IdAdmin = idAdminNum;
       }
-      // Si es 0 o menor, no enviar IdUsuario
+    }
+    if (data.idResponsableExterno !== undefined && data.idResponsableExterno !== null) {
+      const idResponsableExternoNum = Number(data.idResponsableExterno);
+      if (idResponsableExternoNum > 0) {
+        payload.IdResponsableExterno = idResponsableExternoNum;
+      }
+    }
+    if (data.responsableExterno) {
+      payload.ResponsableExterno = {
+        Nombre: data.responsableExterno.nombre,
+        Institucion: data.responsableExterno.institucion,
+        Cargo: data.responsableExterno.cargo,
+        Telefono: data.responsableExterno.telefono,
+        Correo: data.responsableExterno.correo
+      };
     }
     
     if (data.departamentoId !== undefined && data.departamentoId !== null) {

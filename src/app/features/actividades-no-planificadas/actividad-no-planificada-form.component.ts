@@ -402,7 +402,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       cantidadParticipantesEstudiantesProyectados: [null],
       cantidadTotalParticipantesProtagonistas: [null, Validators.required],
       idTipoEvidencias: [[]],
-      anio: ['', Validators.required], // Requerido para actividades planificadas y no planificadas
+      anio: [''], // Campo oculto - se establece automáticamente desde la fecha de inicio o año actual
       horaInicioPrevista: [''],
       idTipoProtagonista: [[], Validators.required],
       responsableActividad: [''],
@@ -993,7 +993,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
           ? formValue.idActividadAnual 
           : undefined,
         objetivo: formValue.objetivo || undefined,
-        anio: formValue.anio ? String(formValue.anio) : undefined,
+        // Si no se proporciona año, usar el año de la fecha de inicio o el año actual
+        anio: formValue.anio ? String(formValue.anio) : (formValue.fechaInicio ? String(new Date(formValue.fechaInicio).getFullYear()) : String(this.getAnioVigente())),
         horaRealizacion: horaRealizacion,
         cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados || undefined,
         cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados || undefined,
@@ -1203,6 +1204,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             if (actividadCreada.id) {
               console.log('🔄 Actividad creada, ahora creando responsables...', actividadCreada.id);
               this.loading.set(false); // Detener el loading
+              // Guardar el ID de la actividad creada para usarlo en mostrarAlertaExito
+              (this as any).actividadIdCreada = actividadCreada.id;
               this.crearResponsablesParaActividad(actividadCreada.id);
               // No mostrar alerta aquí, se mostrará en crearResponsablesParaActividad
               
@@ -1222,13 +1225,18 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             
             // Si no hay ID de actividad, mostrar alerta y redirigir
             this.loading.set(false);
+            const idActividadCreada = actividadCreada.id || actividadCreada.idActividad || (actividadCreada as any).Id || (actividadCreada as any).IdActividad;
             this.alertService.success(
               '¡Actividad creada exitosamente!',
               `La actividad "${nombreActividad}" ha sido creada correctamente.`
             ).then(() => {
-              // Redirigir a la vista de actividades después de cerrar la alerta
+              // Redirigir a la vista de detalles de la actividad creada
               this.clearFormState();
-              this.router.navigate(['/actividades']);
+              if (idActividadCreada) {
+                this.router.navigate(['/actividades', idActividadCreada]);
+              } else {
+                this.router.navigate(['/actividades']);
+              }
             });
           },
           error: (err: any) => {
@@ -1874,12 +1882,18 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Mensaje para actividad creada
+      // Mensaje para actividad creada - necesitamos obtener el ID de la actividad creada
+      // Buscar el ID desde el formulario o desde una variable de instancia
+      const actividadId = (this as any).actividadIdCreada || null;
       this.alertService.success(
         '¡Actividad creada exitosamente!',
         `La actividad "${nombreActividad}" ha sido creada correctamente.`
       ).then(() => {
-        this.router.navigate(['/actividades']);
+        if (actividadId) {
+          this.router.navigate(['/actividades', actividadId]);
+        } else {
+          this.router.navigate(['/actividades']);
+        }
       });
     }
   }
@@ -2993,6 +3007,12 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
 
     console.log('🔄 Creando responsables para actividad:', idActividad);
     console.log('📋 FormResponsable value:', formValue);
+    console.log('📊 Arrays de responsables en formulario:');
+    console.log('  - Usuarios:', this.usuariosArray.length);
+    console.log('  - Docentes:', this.docentesArray.length);
+    console.log('  - Estudiantes:', this.estudiantesArray.length);
+    console.log('  - Administrativos:', this.administrativosArray.length);
+    console.log('  - Responsables Externos:', this.responsablesExternosArray.length);
 
     // Agregar usuarios - solo los que tienen idUsuario válido
     this.usuariosArray.controls.forEach((control, index) => {
@@ -3102,7 +3122,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       
       responsables.push({
         idActividad,
-        idDocente: Number(idDocente),
+        idEstudiante: Number(idDocente), // El backend espera idEstudiante para estudiantes
         idTipoResponsable: 3,
         idRolResponsable,
         rolResponsable: this.getNombreRolResponsable(idRolResponsable),
