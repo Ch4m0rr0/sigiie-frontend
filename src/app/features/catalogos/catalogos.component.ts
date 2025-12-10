@@ -204,32 +204,86 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     'Otros': 'Otros'
   };
   
-  // Permisos agrupados por módulo/sección
-  permisosAgrupados = computed(() => {
+  // Término de búsqueda para permisos
+  terminoBusquedaPermisos = signal<string>('');
+
+  // Función para detectar el tipo de acción de un permiso
+  getTipoAccion(permisoNombre: string): string {
+    const nombre = permisoNombre.toLowerCase();
+    if (nombre.includes('crear') || nombre.includes('create') || nombre.includes('nuevo') || nombre.includes('agregar') || nombre.includes('add')) {
+      return 'Crear';
+    }
+    if (nombre.includes('editar') || nombre.includes('edit') || nombre.includes('modificar') || nombre.includes('update')) {
+      return 'Editar';
+    }
+    if (nombre.includes('eliminar') || nombre.includes('delete') || nombre.includes('remover') || nombre.includes('remove')) {
+      return 'Eliminar';
+    }
+    // Por defecto, si no coincide con ninguna acción, es "Ver"
+    return 'Ver';
+  }
+
+  // Permisos filtrados por búsqueda
+  permisosFiltrados = computed(() => {
     const permisosList = this.permisos();
-    const agrupados: { [key: string]: any[] } = {};
+    const termino = this.terminoBusquedaPermisos().toLowerCase().trim();
+    
+    if (!termino) {
+      return permisosList;
+    }
+    
+    return permisosList.filter(permiso => {
+      const nombre = (permiso.nombre || '').toLowerCase();
+      const descripcion = (permiso.descripcion || '').toLowerCase();
+      const modulo = (permiso.modulo || '').toLowerCase();
+      return nombre.includes(termino) || descripcion.includes(termino) || modulo.includes(termino);
+    });
+  });
+
+  // Permisos agrupados por módulo y tipo de acción
+  permisosAgrupados = computed(() => {
+    const permisosList = this.permisosFiltrados();
+    const agrupados: { [key: string]: { [tipoAccion: string]: any[] } } = {};
     
     permisosList.forEach(permiso => {
       const modulo = permiso.modulo || 'Otros';
       const moduloAmigable = this.nombresModulos[modulo] || modulo;
+      const tipoAccion = this.getTipoAccion(permiso.nombre || '');
       
       if (!agrupados[moduloAmigable]) {
-        agrupados[moduloAmigable] = [];
+        agrupados[moduloAmigable] = {};
       }
-      agrupados[moduloAmigable].push(permiso);
+      if (!agrupados[moduloAmigable][tipoAccion]) {
+        agrupados[moduloAmigable][tipoAccion] = [];
+      }
+      agrupados[moduloAmigable][tipoAccion].push(permiso);
     });
     
-    // Ordenar los módulos y los permisos dentro de cada módulo
+    // Ordenar los módulos y los tipos de acción dentro de cada módulo
     const modulosOrdenados = Object.keys(agrupados).sort();
-    const resultado: { modulo: string, permisos: any[] }[] = [];
+    const ordenAcciones = ['Ver', 'Crear', 'Editar', 'Eliminar'];
+    const resultado: { modulo: string, acciones: { tipo: string, permisos: any[] }[] }[] = [];
     
     modulosOrdenados.forEach(modulo => {
-      resultado.push({
-        modulo,
-        permisos: agrupados[modulo].sort((a, b) => 
-          (a.nombre || '').localeCompare(b.nombre || '')
-        )
+      const acciones: { tipo: string, permisos: any[] }[] = [];
+      
+      ordenAcciones.forEach(tipoAccion => {
+        if (agrupados[modulo][tipoAccion] && agrupados[modulo][tipoAccion].length > 0) {
+          acciones.push({
+            tipo: tipoAccion,
+            permisos: agrupados[modulo][tipoAccion].sort((a, b) => 
+              (a.nombre || '').localeCompare(b.nombre || '')
+            )
+          });
+        }
       });
+      
+      if (acciones.length > 0) {
+        resultado.push({
+          modulo,
+          acciones
+        });
+      }
     });
     
     return resultado;
@@ -1461,15 +1515,39 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const permisosIds = this.form.get('permisosIds')?.value || [];
     let nuevosPermisosIds: number[];
     
+    // Obtener todos los permisos del módulo (de todas las acciones)
+    const todosPermisosModulo = grupo.acciones.flatMap(accion => accion.permisos);
+    const idsSeccion = todosPermisosModulo.map(p => p.id);
+    
     if (seleccionar) {
       // Agregar todos los permisos de la sección que no estén ya seleccionados
-      const idsSeccion = grupo.permisos.map(p => p.id);
       const idsNuevos = idsSeccion.filter(id => !permisosIds.includes(id));
       nuevosPermisosIds = [...permisosIds, ...idsNuevos];
     } else {
       // Remover todos los permisos de la sección
-      const idsSeccion = grupo.permisos.map(p => p.id);
       nuevosPermisosIds = permisosIds.filter((id: number) => !idsSeccion.includes(id));
+    }
+    
+    this.form.patchValue({ permisosIds: nuevosPermisosIds });
+  }
+
+  toggleTodosPermisosAccion(modulo: string, tipoAccion: string, seleccionar: boolean): void {
+    const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
+    if (!grupo) return;
+    
+    const accion = grupo.acciones.find(a => a.tipo === tipoAccion);
+    if (!accion) return;
+    
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    let nuevosPermisosIds: number[];
+    
+    const idsAccion = accion.permisos.map(p => p.id);
+    
+    if (seleccionar) {
+      const idsNuevos = idsAccion.filter(id => !permisosIds.includes(id));
+      nuevosPermisosIds = [...permisosIds, ...idsNuevos];
+    } else {
+      nuevosPermisosIds = permisosIds.filter((id: number) => !idsAccion.includes(id));
     }
     
     this.form.patchValue({ permisosIds: nuevosPermisosIds });
@@ -1477,19 +1555,82 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
 
   todosPermisosSeccionSeleccionados(modulo: string): boolean {
     const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
-    if (!grupo || grupo.permisos.length === 0) return false;
+    if (!grupo) return false;
+    
+    const todosPermisosModulo = grupo.acciones.flatMap(accion => accion.permisos);
+    if (todosPermisosModulo.length === 0) return false;
     
     const permisosIds = this.form.get('permisosIds')?.value || [];
-    return grupo.permisos.every(p => permisosIds.includes(p.id));
+    return todosPermisosModulo.every(p => permisosIds.includes(p.id));
   }
 
   algunosPermisosSeccionSeleccionados(modulo: string): boolean {
     const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
-    if (!grupo || grupo.permisos.length === 0) return false;
+    if (!grupo) return false;
+    
+    const todosPermisosModulo = grupo.acciones.flatMap(accion => accion.permisos);
+    if (todosPermisosModulo.length === 0) return false;
     
     const permisosIds = this.form.get('permisosIds')?.value || [];
-    const seleccionados = grupo.permisos.filter(p => permisosIds.includes(p.id));
-    return seleccionados.length > 0 && seleccionados.length < grupo.permisos.length;
+    const seleccionados = todosPermisosModulo.filter(p => permisosIds.includes(p.id));
+    return seleccionados.length > 0 && seleccionados.length < todosPermisosModulo.length;
+  }
+
+  todosPermisosAccionSeleccionados(modulo: string, tipoAccion: string): boolean {
+    const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
+    if (!grupo) return false;
+    
+    const accion = grupo.acciones.find(a => a.tipo === tipoAccion);
+    if (!accion || accion.permisos.length === 0) return false;
+    
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    return accion.permisos.every(p => permisosIds.includes(p.id));
+  }
+
+  algunosPermisosAccionSeleccionados(modulo: string, tipoAccion: string): boolean {
+    const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
+    if (!grupo) return false;
+    
+    const accion = grupo.acciones.find(a => a.tipo === tipoAccion);
+    if (!accion || accion.permisos.length === 0) return false;
+    
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    const seleccionados = accion.permisos.filter(p => permisosIds.includes(p.id));
+    return seleccionados.length > 0 && seleccionados.length < accion.permisos.length;
+  }
+
+  getIconoTipoAccion(tipoAccion: string): string {
+    switch (tipoAccion) {
+      case 'Ver':
+        return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
+      case 'Crear':
+        return 'M12 4v16m8-8H4';
+      case 'Editar':
+        return 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z';
+      case 'Eliminar':
+        return 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16';
+      default:
+        return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
+    }
+  }
+
+  getColorTipoAccion(tipoAccion: string): string {
+    switch (tipoAccion) {
+      case 'Ver':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'Crear':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'Editar':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'Eliminar':
+        return 'text-red-600 bg-red-50 border-red-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  }
+
+  getTotalPermisosGrupo(grupo: { modulo: string, acciones: { tipo: string, permisos: any[] }[] }): number {
+    return grupo.acciones.reduce((total, accion) => total + accion.permisos.length, 0);
   }
 
   ngAfterViewChecked() {
