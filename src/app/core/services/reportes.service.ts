@@ -1,16 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, of, throwError, from } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface ReporteConfig {
   tipoReporte: string;
   planificacionId?: number;
-  actividadId?: number;
+  actividadId?: number; // Mantener para compatibilidad (single activity)
+  idActividades?: number[]; // Array de IDs de actividades para selección múltiple
   subactividadId?: number;
-  fechaInicio?: string; // Formato: "YYYY-MM-DD"
-  fechaFin?: string; // Formato: "YYYY-MM-DD"
+  fechaInicio?: string; // Formato: "YYYY-MM-DD" - Período del reporte (filtra actividades dentro de este rango)
+  fechaFin?: string; // Formato: "YYYY-MM-DD" - Período del reporte (filtra actividades dentro de este rango)
   formato?: 'pdf' | 'excel' | 'html';
   incluirEvidencias?: boolean;
   incluirParticipaciones?: boolean;
@@ -84,6 +85,19 @@ export interface ReportePorDepartamento {
   [key: string]: any;
 }
 
+export interface CampoExtraccion {
+  nombre: string;
+  etiqueta: string;
+}
+
+export interface CamposExtraccionDisponibles {
+  estudiantes: CampoExtraccion[];
+  docentes: CampoExtraccion[];
+  administrativos: CampoExtraccion[];
+  actividad: CampoExtraccion[];
+  participacion: CampoExtraccion[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportesService {
   private http = inject(HttpClient);
@@ -115,6 +129,49 @@ export class ReportesService {
           return of([]);
         }
         return throwError(() => new Error(backendMessage));
+      })
+    );
+  }
+
+  /**
+   * GET /api/reportes/campos-extraccion
+   * Obtener todos los campos disponibles para extracción de datos, agrupados por categoría
+   */
+  obtenerCamposExtraccionDisponibles(): Observable<CamposExtraccionDisponibles> {
+    console.log('🔄 GET Campos Extracción - URL:', `${this.apiUrl}/campos-extraccion`);
+    return this.http.get<CamposExtraccionDisponibles>(`${this.apiUrl}/campos-extraccion`).pipe(
+      tap(data => {
+        console.log('✅ GET Campos Extracción - Respuesta recibida:', data);
+        console.log(`📊 Total campos: Estudiantes: ${data.estudiantes?.length || 0}, Docentes: ${data.docentes?.length || 0}, Administrativos: ${data.administrativos?.length || 0}, Actividad: ${data.actividad?.length || 0}, Participación: ${data.participacion?.length || 0}`);
+      }),
+      catchError(error => {
+        console.error('❌ GET Campos Extracción - Error:', error);
+        // Si el endpoint no existe, devolver campos por defecto
+        console.warn('⚠️ Endpoint de campos no disponible, usando campos por defecto');
+        return of({
+          estudiantes: [
+            { nombre: 'NombreEstudiante', etiqueta: 'Nombre Estudiante' }
+          ],
+          docentes: [
+            { nombre: 'NombreDocente', etiqueta: 'Nombre Docente' }
+          ],
+          administrativos: [
+            { nombre: 'NombreAdministrativo', etiqueta: 'Nombre Administrativo' }
+          ],
+          actividad: [
+            { nombre: 'NombreActividad', etiqueta: 'Actividad' },
+            { nombre: 'LugarDesarrollo', etiqueta: 'Lugar de la Actividad' },
+            { nombre: 'FechaActividad', etiqueta: 'Fecha de Realización' },
+            { nombre: 'FechaFinalizacion', etiqueta: 'Fecha de Finalización' },
+            { nombre: 'idModalidad', etiqueta: 'Modalidad' },
+            { nombre: 'idIndicador', etiqueta: 'Indicador' }
+          ],
+          participacion: [
+            { nombre: 'TipoParticipante', etiqueta: 'Tipo de Participante' },
+            { nombre: 'Sexo', etiqueta: 'Sexo' },
+            { nombre: 'idCarrera', etiqueta: 'Carrera' }
+          ]
+        } as CamposExtraccionDisponibles);
       })
     );
   }
@@ -521,6 +578,11 @@ export class ReportesService {
           parametrosJson.ActividadId = actividadIdNum;
         }
       }
+      // Agregar idActividades (array) si existe
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        parametrosJson.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al ParametrosJson:', config.idActividades);
+      }
       if (config.subactividadId) {
         const subactividadIdNum = typeof config.subactividadId === 'string' ? parseInt(config.subactividadId, 10) : Number(config.subactividadId);
         if (!isNaN(subactividadIdNum) && subactividadIdNum > 0) {
@@ -570,6 +632,11 @@ export class ReportesService {
           dto.ActividadId = actividadIdNum;
         }
       }
+      // Enviar idActividades al DTO si existe
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        dto.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al DTO:', config.idActividades);
+      }
       if (config.subactividadId) {
         const subactividadIdNum = typeof config.subactividadId === 'string' ? parseInt(config.subactividadId, 10) : Number(config.subactividadId);
         if (!isNaN(subactividadIdNum) && subactividadIdNum > 0) {
@@ -590,6 +657,12 @@ export class ReportesService {
         console.log('✅ DescripcionImpacto en DTO - length:', config.descripcionImpacto?.length || 0);
       } else {
         console.warn('⚠️ DescripcionImpacto no está presente en config para DTO (undefined o null)');
+      }
+      
+      // Agregar idActividades al ParametrosJson también para reportes institucionales
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        parametrosJson.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al ParametrosJson (reporte institucional):', config.idActividades);
       }
       
       console.log('🔍 DTO para reporte institucional:', dto);
@@ -623,6 +696,10 @@ export class ReportesService {
       
       // También enviar campos directamente por si el backend los necesita
       if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        dto.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al DTO (extracción de datos):', config.idActividades);
+      }
       if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
       if (config.fechaFin) dto.FechaFin = config.fechaFin;
       if (config.idDepartamento) dto.IdDepartamento = config.idDepartamento;
@@ -631,6 +708,10 @@ export class ReportesService {
     } else {
       // Formato tradicional: enviar campos directamente
       if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        dto.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al DTO (formato tradicional):', config.idActividades);
+      }
       if (config.subactividadId) dto.SubactividadId = config.subactividadId;
       if (config.planificacionId) dto.PlanificacionId = config.planificacionId;
       if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
@@ -652,6 +733,10 @@ export class ReportesService {
           const parametrosCombinados = { ...parametrosExistentes, ...parametrosAdicionales };
           // Asegurar que los nuevos campos estén incluidos (tienen prioridad)
           if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosCombinados.IdDepartamentos = config.idDepartamentos;
+          if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+            parametrosCombinados.IdActividades = config.idActividades;
+            console.log('✅ IdActividades agregado al ParametrosJson (formato tradicional):', config.idActividades);
+          }
           // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía)
           if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
             parametrosCombinados.DescripcionImpacto = config.descripcionImpacto;
@@ -672,6 +757,10 @@ export class ReportesService {
         // Si no hay parametrosJson, crear uno con los nuevos campos
         const parametrosJson: any = {};
         if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
+        if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+          parametrosJson.IdActividades = config.idActividades;
+          console.log('✅ IdActividades agregado al ParametrosJson (sin parametrosJson previo):', config.idActividades);
+        }
         // DescripcionImpacto: enviar siempre que exista
         if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
           parametrosJson.DescripcionImpacto = config.descripcionImpacto;

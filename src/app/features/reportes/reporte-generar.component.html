@@ -45,23 +45,62 @@
             </div>
             <div>
               <h3 class="text-lg font-semibold text-slate-900 mb-4">Seleccione los campos para la extracción de datos</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                @for (campo of camposExtraccion(); track campo.value) {
-                  <div class="flex items-center p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
-                    <input 
-                      type="checkbox" 
-                      [id]="'campo-' + campo.value"
-                      [checked]="campo.checked"
-                      (change)="toggleCampoExtraccion(campo.value)"
-                      class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-                    <label [for]="'campo-' + campo.value" class="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
-                      {{ campo.label }}
-                    </label>
+              
+              @if (loadingCampos()) {
+                <div class="text-center py-8">
+                  <p class="text-slate-600">Cargando campos disponibles...</p>
+                </div>
+              } @else {
+                <!-- Campos agrupados por categoría -->
+                @for (categoria of ['estudiantes', 'docentes', 'administrativos', 'actividad', 'participacion']; track categoria) {
+                  @if (getCamposPorCategoria(categoria).length > 0) {
+                    <div class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                      <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-base font-semibold text-slate-800">
+                          {{ getNombreCategoria(categoria) }}
+                        </h4>
+                        <button
+                          type="button"
+                          (click)="seleccionarTodosCategoria(categoria)"
+                          class="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          @if (todosCamposSeleccionados(categoria)) {
+                            Deseleccionar todos
+                          } @else {
+                            Seleccionar todos
+                          }
+                        </button>
+                      </div>
+                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @for (campo of getCamposPorCategoria(categoria); track campo.value) {
+                          <div class="flex items-center p-2 border border-slate-200 rounded-lg hover:bg-white transition bg-white">
+                            <input 
+                              type="checkbox" 
+                              [id]="'campo-' + campo.value"
+                              [checked]="campo.checked"
+                              (change)="toggleCampoExtraccion(campo.value)"
+                              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                            <label [for]="'campo-' + campo.value" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer flex-1">
+                              {{ campo.label }}
+                            </label>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                }
+                
+                @if (form.get('camposSeleccionados')?.value?.length === 0 && form.get('camposSeleccionados')?.touched) {
+                  <p class="mt-2 text-sm text-red-600">Debe seleccionar al menos un campo</p>
+                }
+                
+                @if (form.get('camposSeleccionados')?.value?.length > 0) {
+                  <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-sm text-blue-800">
+                      <strong>{{ form.get('camposSeleccionados')?.value?.length }}</strong> campo(s) seleccionado(s)
+                    </p>
                   </div>
                 }
-              </div>
-              @if (form.get('camposSeleccionados')?.value?.length === 0 && form.get('camposSeleccionados')?.touched) {
-                <p class="mt-2 text-sm text-red-600">Debe seleccionar al menos un campo</p>
               }
             </div>
 
@@ -73,13 +112,36 @@
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Actividad
                 </label>
+                
+                <!-- Buscador de actividades -->
+                <div class="mb-2">
+                  <input
+                    type="text"
+                    [value]="filtroActividad()"
+                    (input)="filtroActividad.set($any($event.target).value)"
+                    placeholder="Buscar actividad por nombre o código..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  @if (filtroActividad()) {
+                    <p class="mt-1 text-xs text-slate-500">
+                      Mostrando {{ actividadesFiltradas().length }} de {{ actividades().length }} actividades
+                    </p>
+                  }
+                </div>
+                
                 <select 
                   formControlName="actividadId"
                   (change)="actualizarNombreArchivoExtraccion()"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Todas las actividades</option>
-                  @for (actividad of actividades(); track actividad.id) {
-                    <option [value]="actividad.id">{{ actividad.nombre }}</option>
+                  @for (actividad of actividadesFiltradas(); track actividad.id) {
+                    <option [value]="actividad.id">
+                      @if (actividad.codigoActividad) {
+                        {{ actividad.codigoActividad }} - {{ actividad.nombre }}
+                      } @else {
+                        {{ actividad.nombre }}
+                      }
+                    </option>
                   }
                 </select>
                 <p class="mt-1 text-xs text-slate-500">
@@ -205,24 +267,228 @@
                 <span class="text-xs text-gray-500">(Opcional)</span>
               }
             </label>
-            <select 
-              formControlName="actividadId"
-              (change)="onActividadChange($any($event.target).value)"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              [class.border-red-500]="actividadId?.invalid && actividadId?.touched">
-              <option value="">
-                @if (tipoReporte?.value === 'participaciones' || form.get('dividirPorGenero')?.value) { 
-                  Todas las actividades 
-                } @else { 
-                  Seleccione... 
-                }
-              </option>
-              @for (actividad of actividades(); track actividad.id) {
-                <option [value]="actividad.id">{{ actividad.nombre }}</option>
+            
+            <!-- Buscador de actividades -->
+            <div class="mb-3">
+              <input
+                type="text"
+                [value]="filtroActividad()"
+                (input)="filtroActividad.set($any($event.target).value)"
+                placeholder="Buscar actividad por nombre o código..."
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              @if (filtroActividad()) {
+                <p class="mt-1 text-xs text-slate-500">
+                  Mostrando {{ actividadesFiltradas().length }} de {{ actividades().length }} actividades
+                </p>
               }
-            </select>
-            @if (actividadId?.invalid && actividadId?.touched) {
-              <p class="mt-1 text-sm text-red-600">La actividad es requerida</p>
+            </div>
+
+            <!-- Información del período si está seleccionado -->
+            @if (fechaInicio?.value || fechaFin?.value) {
+              <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div class="flex items-center gap-2 mb-1">
+                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <p class="text-sm font-semibold text-blue-900">Período del Reporte</p>
+                </div>
+                <p class="text-xs text-blue-700">
+                  @if (fechaInicio?.value && fechaFin?.value) {
+                    {{ fechaInicio?.value | date:'dd/MM/yyyy' }} - {{ fechaFin?.value | date:'dd/MM/yyyy' }}
+                  } @else if (fechaInicio?.value) {
+                    Desde {{ fechaInicio?.value | date:'dd/MM/yyyy' }}
+                  } @else if (fechaFin?.value) {
+                    Hasta {{ fechaFin?.value | date:'dd/MM/yyyy' }}
+                  }
+                </p>
+                <p class="text-xs text-blue-600 mt-1">
+                  {{ actividadesEnPeriodo().length }} actividad(es) encontrada(s) en este período
+                </p>
+              </div>
+            }
+
+            <!-- Lista de actividades con checkboxes -->
+            <div class="border border-gray-300 rounded-md bg-white max-h-96 overflow-y-auto"
+                 [class.border-red-500]="form.get('idActividades')?.invalid && form.get('idActividades')?.touched">
+              
+              <!-- Actividades dentro del período (si hay período seleccionado) -->
+              @if (fechaInicio?.value || fechaFin?.value) {
+                @if (actividadesEnPeriodo().length > 0) {
+                  <div class="p-2 bg-blue-50 border-b border-blue-200 sticky top-0 z-10">
+                    <p class="text-xs font-semibold text-blue-900">
+                      📅 Actividades dentro del período ({{ actividadesEnPeriodo().length }})
+                    </p>
+                  </div>
+                  @for (actividad of actividadesEnPeriodo(); track actividad.id) {
+                    <div class="flex items-start p-3 border-b border-gray-200 hover:bg-blue-50/50 transition-colors"
+                         [class.bg-blue-50]="estaActividadSeleccionada(actividad.id)">
+                      <input 
+                        type="checkbox" 
+                        [id]="'actividad-' + actividad.id"
+                        [checked]="estaActividadSeleccionada(actividad.id)"
+                        (change)="toggleActividad(actividad.id)"
+                        class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                      <label [for]="'actividad-' + actividad.id" class="ml-3 flex-1 cursor-pointer">
+                        <div class="flex items-start justify-between">
+                          <div class="flex-1">
+                            @if (actividad.codigoActividad) {
+                              <span class="text-sm font-semibold text-gray-900">{{ actividad.codigoActividad }}</span>
+                              <span class="text-sm text-gray-700"> - {{ actividad.nombre }}</span>
+                            } @else {
+                              <span class="text-sm font-medium text-gray-900">{{ actividad.nombre }}</span>
+                            }
+                            @if (actividad.fechaInicio || actividad.fechaEvento) {
+                              <div class="mt-1 flex items-center gap-1">
+                                <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="text-xs text-blue-600 font-medium">
+                                  {{ (actividad.fechaInicio || actividad.fechaEvento) | date:'dd/MM/yyyy' }}
+                                </span>
+                              </div>
+                            }
+                          </div>
+                          @if (estaActividadSeleccionada(actividad.id)) {
+                            <svg class="w-5 h-5 text-green-600 ml-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                          }
+                        </div>
+                      </label>
+                    </div>
+                  }
+                }
+              }
+
+              <!-- Actividades fuera del período o todas si no hay período -->
+              @if (!fechaInicio?.value && !fechaFin?.value) {
+                <!-- Todas las actividades cuando no hay período -->
+                @if (actividadesFiltradas().length > 0) {
+                  @for (actividad of actividadesFiltradas(); track actividad.id) {
+                    <div class="flex items-start p-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                         [class.bg-green-50]="estaActividadSeleccionada(actividad.id)">
+                      <input 
+                        type="checkbox" 
+                        [id]="'actividad-' + actividad.id"
+                        [checked]="estaActividadSeleccionada(actividad.id)"
+                        (change)="toggleActividad(actividad.id)"
+                        class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                      <label [for]="'actividad-' + actividad.id" class="ml-3 flex-1 cursor-pointer">
+                        <div class="flex items-start justify-between">
+                          <div class="flex-1">
+                            @if (actividad.codigoActividad) {
+                              <span class="text-sm font-semibold text-gray-900">{{ actividad.codigoActividad }}</span>
+                              <span class="text-sm text-gray-700"> - {{ actividad.nombre }}</span>
+                            } @else {
+                              <span class="text-sm font-medium text-gray-900">{{ actividad.nombre }}</span>
+                            }
+                            @if (actividad.fechaInicio || actividad.fechaEvento) {
+                              <div class="mt-1 flex items-center gap-1">
+                                <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="text-xs text-gray-600">
+                                  {{ (actividad.fechaInicio || actividad.fechaEvento) | date:'dd/MM/yyyy' }}
+                                </span>
+                              </div>
+                            }
+                          </div>
+                          @if (estaActividadSeleccionada(actividad.id)) {
+                            <svg class="w-5 h-5 text-green-600 ml-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                          }
+                        </div>
+                      </label>
+                    </div>
+                  }
+                } @else {
+                  <div class="p-4 text-center text-sm text-gray-500">
+                    No se encontraron actividades
+                  </div>
+                }
+              } @else {
+                <!-- Actividades fuera del período (si hay período seleccionado) -->
+                @if (actividadesFueraPeriodo().length > 0) {
+                  <div class="p-2 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                    <p class="text-xs font-semibold text-gray-700">
+                      📋 Otras actividades ({{ actividadesFueraPeriodo().length }})
+                    </p>
+                  </div>
+                  @for (actividad of actividadesFueraPeriodo(); track actividad.id) {
+                    <div class="flex items-start p-3 border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                         [class.bg-green-50]="estaActividadSeleccionada(actividad.id)">
+                      <input 
+                        type="checkbox" 
+                        [id]="'actividad-' + actividad.id"
+                        [checked]="estaActividadSeleccionada(actividad.id)"
+                        (change)="toggleActividad(actividad.id)"
+                        class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                      <label [for]="'actividad-' + actividad.id" class="ml-3 flex-1 cursor-pointer">
+                        <div class="flex items-start justify-between">
+                          <div class="flex-1">
+                            @if (actividad.codigoActividad) {
+                              <span class="text-sm font-semibold text-gray-900">{{ actividad.codigoActividad }}</span>
+                              <span class="text-sm text-gray-700"> - {{ actividad.nombre }}</span>
+                            } @else {
+                              <span class="text-sm font-medium text-gray-900">{{ actividad.nombre }}</span>
+                            }
+                            @if (actividad.fechaInicio || actividad.fechaEvento) {
+                              <div class="mt-1 flex items-center gap-1">
+                                <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                                <span class="text-xs text-gray-600">
+                                  {{ (actividad.fechaInicio || actividad.fechaEvento) | date:'dd/MM/yyyy' }}
+                                </span>
+                              </div>
+                            }
+                          </div>
+                          @if (estaActividadSeleccionada(actividad.id)) {
+                            <svg class="w-5 h-5 text-green-600 ml-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                          }
+                        </div>
+                      </label>
+                    </div>
+                  }
+                }
+              }
+            </div>
+            
+            <!-- Información sobre selección -->
+            <div class="mt-3 space-y-2">
+              @if (form.get('idActividades')?.value?.length > 0) {
+                <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div class="flex items-center gap-2 mb-1">
+                    <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-green-900">
+                      {{ form.get('idActividades')?.value?.length }} actividad(es) seleccionada(s)
+                    </p>
+                  </div>
+                  @if (fechaInicio?.value || fechaFin?.value) {
+                    <p class="text-xs text-green-700">
+                      Las actividades dentro del período fueron seleccionadas automáticamente. Puede deseleccionarlas o agregar otras actividades.
+                    </p>
+                  }
+                </div>
+              } @else {
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <p class="text-xs text-slate-600">
+                    Seleccione una o más actividades usando los checkboxes. 
+                    @if (!fechaInicio?.value && !fechaFin?.value) {
+                      Puede seleccionar actividades sin un período específico, o definir un período para filtrar automáticamente.
+                    }
+                  </p>
+                </div>
+              }
+            </div>
+            @if (tipoReporte?.value === 'actividad' && form.get('idActividades')?.invalid && form.get('idActividades')?.touched) {
+              <p class="mt-1 text-sm text-red-600">Debe seleccionar al menos una actividad</p>
             }
             @if (tipoReporte?.value === 'participaciones' && !form.get('dividirPorGenero')?.value) {
               <p class="mt-1 text-xs text-slate-500">
@@ -267,7 +533,9 @@
             <h3 class="text-sm font-semibold text-blue-900">Filtro por Período / Reporte Institucional</h3>
           </div>
           <p class="text-xs text-blue-700 mb-3">
-            <strong>Filtrar por período:</strong> Seleccione un rango de fechas para filtrar actividades o participaciones de un período específico.<br>
+            <strong>Período del Reporte:</strong> Seleccione el rango de fechas del período en el que se realiza el reporte. 
+            Este período es diferente a la fecha de la actividad; puede generar un reporte de actividades que ocurrieron en diferentes fechas 
+            pero que se reportan en este período específico.<br>
             <strong>Reporte Institucional:</strong> Si selecciona un rango de fechas, el sistema generará automáticamente un reporte institucional 
             con 15 columnas incluyendo estadísticas de participantes, tipos de protagonistas, evidencias y más.
           </p>
@@ -275,7 +543,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Inicio
+                Fecha de Inicio del Período
               </label>
               <input
                 type="date"
@@ -286,11 +554,14 @@
               @if (fechaInicio?.invalid && fechaInicio?.touched) {
                 <p class="mt-1 text-sm text-red-600">Fecha de inicio inválida</p>
               }
+              <p class="mt-1 text-xs text-slate-500">
+                Fecha de inicio del período en el que se realiza el reporte
+              </p>
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Fin
+                Fecha de Fin del Período
               </label>
               <input
                 type="date"
@@ -301,6 +572,9 @@
               @if (fechaFin?.invalid && fechaFin?.touched) {
                 <p class="mt-1 text-sm text-red-600">Fecha de fin inválida</p>
               }
+              <p class="mt-1 text-xs text-slate-500">
+                Fecha de fin del período en el que se realiza el reporte
+              </p>
               @if (form.hasError('fechaInicioMayorQueFin')) {
                 <p class="mt-1 text-sm text-red-600">La fecha de inicio debe ser anterior o igual a la fecha de fin</p>
               }
