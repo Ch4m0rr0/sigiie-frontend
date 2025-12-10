@@ -50,6 +50,8 @@ export class ReporteGenerarComponent implements OnInit {
   // Los valores deben coincidir con los nombres de campos que el backend espera
   camposExtraccion = signal([
     { value: 'NombreEstudiante', label: 'Nombre de estudiantes', checked: false },
+    { value: 'NombreDocente', label: 'Nombre de docentes', checked: false },
+    { value: 'NombreAdministrativo', label: 'Nombre de administrativos', checked: false },
     { value: 'Sexo', label: 'Sexo', checked: false },
     { value: 'NombreActividad', label: 'Actividades', checked: false },
     { value: 'LugarDesarrollo', label: 'Lugar de la actividad', checked: false },
@@ -455,30 +457,22 @@ export class ReporteGenerarComponent implements OnInit {
         if (esInstitucional) {
           console.log('📊 Generando reporte institucional con fechas:', fechaInicio, 'a', fechaFin);
           
-          // Obtener el nombre de la actividad si se seleccionó una
-          let nombreActividad = '';
-          if (formValue.actividadId) {
-            const actividad = this.actividades().find(a => a.id === formValue.actividadId);
-            nombreActividad = actividad?.nombre || '';
-          }
-          
-        // Construir el nombre del reporte con el nombre de la actividad
-        // Formato: "Reporte de * nombre de actividad"
-        let nombreReporte = formValue.nombre?.trim();
-        if (!nombreReporte) {
-          if (nombreActividad) {
-            nombreReporte = `Reporte de ${nombreActividad}`;
-          } else {
-            nombreReporte = `Reporte Institucional ${this.formatearFecha(fechaInicio)} - ${this.formatearFecha(fechaFin)}`;
-          }
-        } else if (nombreActividad && !nombreReporte.includes(nombreActividad)) {
-          // Si el usuario ingresó un nombre pero hay actividad, usar el formato con actividad
-          nombreReporte = `Reporte de ${nombreActividad}`;
-        } else if (!nombreActividad) {
-          // Si no hay actividad pero el usuario ingresó un nombre, mantenerlo
-          nombreReporte = formValue.nombre?.trim();
-        }
+          // Generar nombre del reporte con el nuevo formato
+          // Formato: "Reporte de [Código de actividad O Nombre de subActividad O Indicador O participaciones O evidencias] [fecha del reporte]"
+          const nombreReporte = this.generarNombreReporte(formValue);
 
+          // Verificar que descripcionImpacto se está capturando
+          // Capturar el valor tal cual está (sin trim para no perder espacios intencionales)
+          // Solo enviar si tiene contenido (no cadena vacía después de trim)
+          const descripcionImpactoRaw = formValue.descripcionImpacto || '';
+          const descripcionImpacto = descripcionImpactoRaw.trim() || undefined;
+          
+          console.log('🔍 DescripcionImpacto del formulario (raw):', descripcionImpactoRaw);
+          console.log('🔍 DescripcionImpacto del formulario (trimmed):', descripcionImpacto);
+          console.log('🔍 DescripcionImpacto length (raw):', descripcionImpactoRaw.length);
+          console.log('🔍 DescripcionImpacto length (trimmed):', descripcionImpacto?.length || 0);
+          console.log('🔍 DescripcionImpacto será enviado?', descripcionImpacto !== undefined);
+          
           const config: ReporteConfig = {
             tipoReporte: formValue.tipoReporte || 'actividad', // Importante: debe contener "actividad"
             actividadId: formValue.actividadId || undefined,
@@ -487,7 +481,7 @@ export class ReporteGenerarComponent implements OnInit {
             fechaFin: fechaFin,
             idDepartamento: formValue.idDepartamento || undefined,
             idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
-            descripcionImpacto: formValue.descripcionImpacto || undefined,
+            descripcionImpacto: descripcionImpacto,
             formato: formValue.formato,
             incluirEvidencias: formValue.incluirEvidencias ?? true,
             incluirParticipaciones: formValue.incluirParticipaciones ?? true,
@@ -538,8 +532,9 @@ export class ReporteGenerarComponent implements OnInit {
                 const a = document.createElement('a');
                 a.href = url;
                 // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
-                const nombreArchivo = nombreReporte.replace(/[<>:"/\\|?*]/g, '_');
-                a.download = `${nombreArchivo}.xlsx`;
+                // Usar el nombre generado con la misma lógica del backend
+                const nombreArchivoLimpio = nombreReporte.replace(/[<>:"/\\|?*]/g, '_');
+                a.download = `${nombreArchivoLimpio}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 
@@ -596,29 +591,18 @@ export class ReporteGenerarComponent implements OnInit {
         // Si no es institucional, usar el método tradicional
         // Para nuevo reporte, siempre incluir dividirPorGenero para el consolidado
         
-        // Obtener el nombre de la actividad si se seleccionó una
-        let nombreActividad = '';
-        if (formValue.actividadId) {
-          const actividad = this.actividades().find(a => a.id === formValue.actividadId);
-          nombreActividad = actividad?.nombre || '';
-        }
+        // Generar nombre del reporte con el nuevo formato
+        // Formato: "Reporte de [Código de actividad O Nombre de subActividad O Indicador O participaciones O evidencias] [fecha del reporte]"
+        const nombreReporte = this.generarNombreReporte(formValue);
         
-        // Construir el nombre del reporte con el nombre de la actividad
-        // Formato: "Reporte de * nombre de actividad"
-        let nombreReporte = formValue.nombre?.trim();
-        if (!nombreReporte) {
-          if (nombreActividad) {
-            nombreReporte = `Reporte de ${nombreActividad}`;
-          } else {
-            nombreReporte = this.generarNombreDefault(formValue.tipoReporte || 'general');
-          }
-        } else if (nombreActividad && !nombreReporte.includes(nombreActividad)) {
-          // Si el usuario ingresó un nombre pero hay actividad, usar el formato con actividad
-          nombreReporte = `Reporte de ${nombreActividad}`;
-        } else if (!nombreActividad) {
-          // Si no hay actividad pero el usuario ingresó un nombre, mantenerlo
-          nombreReporte = formValue.nombre?.trim();
-        }
+        // Verificar que descripcionImpacto se está capturando (para formato no institucional)
+        const descripcionImpactoRaw = formValue.descripcionImpacto || '';
+        const descripcionImpacto = descripcionImpactoRaw.trim() || undefined;
+        
+        console.log('🔍 [Formato no institucional] DescripcionImpacto del formulario (raw):', descripcionImpactoRaw);
+        console.log('🔍 [Formato no institucional] DescripcionImpacto del formulario (trimmed):', descripcionImpacto);
+        console.log('🔍 [Formato no institucional] DescripcionImpacto length (raw):', descripcionImpactoRaw.length);
+        console.log('🔍 [Formato no institucional] DescripcionImpacto será enviado?', descripcionImpacto !== undefined);
         
         const config: ReporteConfig = {
           tipoReporte: formValue.tipoReporte,
@@ -627,6 +611,8 @@ export class ReporteGenerarComponent implements OnInit {
           fechaInicio: fechaInicio || undefined, // Para filtrar actividades por período
           fechaFin: fechaFin || undefined, // Para filtrar actividades por período
           idDepartamento: formValue.idDepartamento || undefined,
+          idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
+          descripcionImpacto: descripcionImpacto, // Descripción del impacto
           formato: formValue.formato,
           incluirEvidencias: formValue.incluirEvidencias,
           incluirParticipaciones: formValue.incluirParticipaciones,
@@ -678,11 +664,11 @@ export class ReporteGenerarComponent implements OnInit {
             const url = window.URL.createObjectURL(excelBlob);
             const a = document.createElement('a');
             a.href = url;
-            const fecha = new Date().toISOString().split('T')[0];
             // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+            // Usar el nombre del config que ya fue generado con la misma lógica del backend
             const nombreArchivoLimpio = config.nombre 
               ? config.nombre.replace(/[<>:"/\\|?*]/g, '_')
-              : `reporte-${config.tipoReporte || 'exportacion'}-${fecha}`;
+              : this.generarNombreReporte(formValue).replace(/[<>:"/\\|?*]/g, '_');
             a.download = `${nombreArchivoLimpio}.xlsx`;
             document.body.appendChild(a);
             a.click();
@@ -799,6 +785,109 @@ export class ReporteGenerarComponent implements OnInit {
   /**
    * Formatear fecha de YYYY-MM-DD a DD/MM/YYYY
    */
+  /**
+   * Genera el nombre del reporte con el formato: 
+   * "Reporte de {identificador} {fecha}"
+   * Sigue la misma lógica y prioridad que el backend
+   */
+  private generarNombreReporte(formValue: any): string {
+    // Fecha en formato yyyy-MM-dd (igual que el backend)
+    const fechaActual = new Date();
+    const fechaFormateada = fechaActual.toISOString().split('T')[0]; // Formato: yyyy-MM-dd
+    
+    let identificador = '';
+    
+    // Prioridad 1: Código de la actividad (si hay ActividadId, busca CodigoActividad)
+    if (formValue.actividadId) {
+      const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+      if (actividad?.codigoActividad) {
+        identificador = actividad.codigoActividad;
+      }
+    }
+    
+    // Prioridad 2: Indicador de la actividad (si no hay código pero hay indicador)
+    // Usa el nombre o código del indicador
+    if (!identificador && formValue.actividadId) {
+      const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+      if (actividad) {
+        // Primero intentar código del indicador
+        if (actividad.codigoIndicador) {
+          identificador = actividad.codigoIndicador;
+        } else if (actividad.codigoIndicadorAsociado) {
+          identificador = actividad.codigoIndicadorAsociado;
+        }
+        // Si no hay código, usar nombre del indicador
+        else if (actividad.nombreIndicador) {
+          identificador = actividad.nombreIndicador;
+        } else if (actividad.nombreIndicadorAsociado) {
+          identificador = actividad.nombreIndicadorAsociado;
+        }
+      }
+    }
+    
+    // Prioridad 3: Nombre de subactividad (si hay SubactividadId)
+    if (!identificador && formValue.subactividadId) {
+      const subactividad = this.subactividades().find(s => s.idSubactividad === formValue.subactividadId);
+      if (subactividad) {
+        // Primero intentar código de subactividad
+        if (subactividad.codigoSubactividad) {
+          identificador = subactividad.codigoSubactividad;
+        }
+        // Si no hay código, usar nombre
+        else if (subactividad.nombre) {
+          identificador = subactividad.nombre;
+        } else if (subactividad.nombreSubactividad) {
+          identificador = subactividad.nombreSubactividad;
+        }
+      }
+    }
+    
+    // Prioridad 4: Tipo de reporte (si el tipo contiene "participacion" o "evidencia")
+    if (!identificador) {
+      const tipoReporte = (formValue.tipoReporte || '').toLowerCase();
+      if (tipoReporte.includes('participacion')) {
+        identificador = 'participaciones';
+      } else if (tipoReporte.includes('evidencia')) {
+        identificador = 'evidencias';
+      }
+    }
+    
+    // Prioridad 5: Indicador genérico (si el tipo es "indicador" y hay actividad)
+    if (!identificador && formValue.actividadId) {
+      const tipoReporte = (formValue.tipoReporte || '').toLowerCase();
+      if (tipoReporte.includes('indicador')) {
+        const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+        if (actividad) {
+          if (actividad.codigoIndicador) {
+            identificador = actividad.codigoIndicador;
+          } else if (actividad.nombreIndicador) {
+            identificador = actividad.nombreIndicador;
+          }
+        }
+      }
+    }
+    
+    // Prioridad 6: Valor por defecto (usa el tipo de reporte o "Actividad" si no hay nada específico)
+    if (!identificador) {
+      const tipoReporte = formValue.tipoReporte || '';
+      if (tipoReporte) {
+        // Capitalizar primera letra del tipo de reporte
+        identificador = tipoReporte.charAt(0).toUpperCase() + tipoReporte.slice(1);
+      } else {
+        identificador = 'Actividad';
+      }
+    }
+    
+    // Construir el nombre final: "Reporte de {identificador} {fecha}"
+    const nombreFinal = `Reporte de ${identificador} ${fechaFormateada}`;
+    
+    console.log('🔍 Nombre del reporte generado:', nombreFinal);
+    console.log('🔍 Identificador usado:', identificador);
+    console.log('🔍 Fecha formateada:', fechaFormateada);
+    
+    return nombreFinal;
+  }
+
   private formatearFecha(fecha: string): string {
     const [year, month, day] = fecha.split('-');
     return `${day}/${month}/${year}`;
@@ -820,28 +909,16 @@ export class ReporteGenerarComponent implements OnInit {
     }
     
     try {
-      // Obtener el nombre de la actividad si se seleccionó una
-      let nombreActividad = '';
-      if (formValue.actividadId) {
-        const actividad = this.actividades().find(a => a.id === formValue.actividadId);
-        nombreActividad = actividad?.nombre || '';
-      }
-      
-      // Construir el nombre del reporte con el nombre de la actividad
-      // Formato: "Extracción de datos de + nombre de actividad"
+      // Generar nombre del reporte usando la misma lógica del backend
+      // Si el usuario no ha modificado el nombre manualmente, generarlo automáticamente
       let nombreReporte = formValue.nombre?.trim();
-      if (!nombreReporte) {
-        if (nombreActividad) {
-          nombreReporte = `Extracción de datos de ${nombreActividad}`;
-        } else {
-          nombreReporte = `Extracción de Datos ${new Date().toISOString().split('T')[0]}`;
-        }
-      } else if (nombreActividad && !nombreReporte.includes(nombreActividad)) {
-        // Si el usuario ingresó un nombre pero hay actividad, usar el formato con actividad
-        nombreReporte = `Extracción de datos de ${nombreActividad}`;
-      } else if (!nombreActividad) {
-        // Si no hay actividad pero el usuario ingresó un nombre, mantenerlo
-        nombreReporte = formValue.nombre?.trim();
+      const nombreControl = this.form.get('nombre');
+      
+      if (!nombreReporte || (nombreControl && !nombreControl.dirty)) {
+        // Usar la misma lógica de generación de nombre que el backend
+        // Para extracción de datos, el tipo será "extraccion-datos"
+        const formValueConTipo = { ...formValue, tipoReporte: 'extraccion-datos' };
+        nombreReporte = this.generarNombreReporte(formValueConTipo);
       }
       
       // Configurar para extracción de datos
@@ -960,11 +1037,14 @@ export class ReporteGenerarComponent implements OnInit {
    */
   actualizarNombreArchivoExtraccion(): void {
     const actividadId = this.form.get('actividadId')?.value;
-    if (actividadId) {
+    const nombreControl = this.form.get('nombre');
+    
+    // Solo actualizar si el usuario no ha modificado manualmente el nombre
+    if (actividadId && nombreControl && !nombreControl.dirty) {
       const actividad = this.actividades().find(a => a.id === actividadId);
       if (actividad) {
         const nombreReporte = `Extracción de datos de ${actividad.nombre}`;
-        this.form.get('nombre')?.setValue(nombreReporte, { emitEvent: false });
+        nombreControl.setValue(nombreReporte, { emitEvent: false });
       }
     }
   }
@@ -973,16 +1053,18 @@ export class ReporteGenerarComponent implements OnInit {
    * Actualiza el nombre del archivo para nuevo reporte cuando se selecciona una actividad
    */
   actualizarNombreArchivoReporte(): void {
-    const actividadId = this.form.get('actividadId')?.value;
     const tipoOperacion = this.form.get('tipoOperacion')?.value;
+    const nombreControl = this.form.get('nombre');
     
-    // Solo actualizar si es nuevo reporte
-    if (tipoOperacion === 'nuevo-reporte' && actividadId) {
-      const actividad = this.actividades().find(a => a.id === actividadId);
-      if (actividad) {
-        const nombreReporte = `Reporte de ${actividad.nombre}`;
-        this.form.get('nombre')?.setValue(nombreReporte, { emitEvent: false });
+    // Solo actualizar si es nuevo reporte y el usuario no ha modificado manualmente el nombre
+    if (tipoOperacion === 'nuevo-reporte' && nombreControl) {
+      // Si el campo no ha sido modificado por el usuario (no está dirty), actualizar automáticamente
+      if (!nombreControl.dirty) {
+        const formValue = this.form.value;
+        const nombreReporte = this.generarNombreReporte(formValue);
+        nombreControl.setValue(nombreReporte, { emitEvent: false });
       }
+      // Si el usuario ya modificó el nombre manualmente, no sobrescribirlo
     }
   }
 

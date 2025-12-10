@@ -534,11 +534,29 @@ export class ReportesService {
       if (config.dividirPorGenero !== undefined) parametrosJson.DividirPorGenero = config.dividirPorGenero;
       if (config.idDepartamento) parametrosJson.IdDepartamento = config.idDepartamento;
       if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
-      if (config.descripcionImpacto) parametrosJson.DescripcionImpacto = config.descripcionImpacto;
+      // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía, el backend decidirá)
+      if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
+        parametrosJson.DescripcionImpacto = config.descripcionImpacto;
+        console.log('✅ DescripcionImpacto agregado al ParametrosJson:', config.descripcionImpacto);
+        console.log('✅ DescripcionImpacto tipo:', typeof config.descripcionImpacto);
+        console.log('✅ DescripcionImpacto length:', config.descripcionImpacto?.length || 0);
+      } else {
+        console.warn('⚠️ DescripcionImpacto no está presente en config (undefined o null)');
+      }
       
       dto.ParametrosJson = JSON.stringify(parametrosJson);
       
       console.log('🔍 ParametrosJson construido para reporte institucional:', dto.ParametrosJson);
+      console.log('🔍 ParametrosJson parseado (para verificar estructura):', JSON.parse(dto.ParametrosJson));
+      
+      // Verificar específicamente DescripcionImpacto
+      const parametrosParsed = JSON.parse(dto.ParametrosJson);
+      if (parametrosParsed.DescripcionImpacto !== undefined) {
+        console.log('✅ DescripcionImpacto está en ParametrosJson:', parametrosParsed.DescripcionImpacto);
+        console.log('✅ DescripcionImpacto tipo en JSON:', typeof parametrosParsed.DescripcionImpacto);
+      } else {
+        console.error('❌ DescripcionImpacto NO está en ParametrosJson');
+      }
       
       // Asegurar que TipoArchivo contenga "actividad" para que el backend detecte el formato institucional
       if (!dto.TipoArchivo.includes('actividad')) {
@@ -564,8 +582,14 @@ export class ReportesService {
       if (config.idDepartamentos && config.idDepartamentos.length > 0) {
         dto.IdDepartamentos = config.idDepartamentos;
       }
-      if (config.descripcionImpacto) {
+      // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía)
+      if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
         dto.DescripcionImpacto = config.descripcionImpacto;
+        console.log('✅ DescripcionImpacto agregado al DTO:', config.descripcionImpacto);
+        console.log('✅ DescripcionImpacto en DTO - tipo:', typeof config.descripcionImpacto);
+        console.log('✅ DescripcionImpacto en DTO - length:', config.descripcionImpacto?.length || 0);
+      } else {
+        console.warn('⚠️ DescripcionImpacto no está presente en config para DTO (undefined o null)');
       }
       
       console.log('🔍 DTO para reporte institucional:', dto);
@@ -626,22 +650,43 @@ export class ReportesService {
           const parametrosExistentes = dto.ParametrosJson ? JSON.parse(dto.ParametrosJson) : {};
           const parametrosAdicionales = JSON.parse(config.parametrosJson);
           const parametrosCombinados = { ...parametrosExistentes, ...parametrosAdicionales };
-          // Asegurar que los nuevos campos estén incluidos
+          // Asegurar que los nuevos campos estén incluidos (tienen prioridad)
           if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosCombinados.IdDepartamentos = config.idDepartamentos;
-          if (config.descripcionImpacto) parametrosCombinados.DescripcionImpacto = config.descripcionImpacto;
+          // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía)
+          if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
+            parametrosCombinados.DescripcionImpacto = config.descripcionImpacto;
+            console.log('✅ DescripcionImpacto agregado al ParametrosJson (formato tradicional):', config.descripcionImpacto);
+          }
           dto.ParametrosJson = JSON.stringify(parametrosCombinados);
+          console.log('🔍 ParametrosJson final (formato tradicional):', dto.ParametrosJson);
         } catch (e) {
           console.warn('No se pudo parsear parametrosJson, usando directamente:', e);
-          dto.ParametrosJson = config.parametrosJson;
+          // Si falla el parse, crear uno nuevo con los campos necesarios
+          const parametrosJson: any = JSON.parse(config.parametrosJson);
+          if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
+            parametrosJson.DescripcionImpacto = config.descripcionImpacto;
+          }
+          dto.ParametrosJson = JSON.stringify(parametrosJson);
         }
       } else {
         // Si no hay parametrosJson, crear uno con los nuevos campos
         const parametrosJson: any = {};
         if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
-        if (config.descripcionImpacto) parametrosJson.DescripcionImpacto = config.descripcionImpacto;
+        // DescripcionImpacto: enviar siempre que exista
+        if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
+          parametrosJson.DescripcionImpacto = config.descripcionImpacto;
+          console.log('✅ DescripcionImpacto agregado al ParametrosJson nuevo (formato tradicional):', config.descripcionImpacto);
+        }
         if (Object.keys(parametrosJson).length > 0) {
           dto.ParametrosJson = JSON.stringify(parametrosJson);
+          console.log('🔍 ParametrosJson creado (formato tradicional):', dto.ParametrosJson);
         }
+      }
+      
+      // También asegurar que DescripcionImpacto esté en el DTO directamente
+      if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
+        dto.DescripcionImpacto = config.descripcionImpacto;
+        console.log('✅ DescripcionImpacto agregado al DTO (formato tradicional):', config.descripcionImpacto);
       }
     }
     
