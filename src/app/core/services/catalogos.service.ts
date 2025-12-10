@@ -2280,7 +2280,8 @@ export class CatalogosService {
         return Array.isArray(items) ? items.map(item => ({
           id: item.idPermiso || item.IdPermiso || item.id || item.Id || 0,
           nombre: item.nombre || item.Nombre || '',
-          descripcion: item.descripcion || item.Descripcion || ''
+          descripcion: item.descripcion || item.Descripcion || '',
+          modulo: item.modulo || item.Modulo || item.categoria || item.Categoria || 'Otros'
         })) : [];
       }),
       catchError(error => {
@@ -2345,11 +2346,38 @@ export class CatalogosService {
           } else if (item.Activo !== undefined) {
             activoValue = item.Activo === 1 || item.Activo === true;
           }
+          
+          // Mapear permisos del rol - según documentación, el backend devuelve permisosIds directamente
+          let permisosIds: number[] = [];
+          
+          // Prioridad 1: permisosIds directo (según documentación del backend)
+          if (item.permisosIds && Array.isArray(item.permisosIds)) {
+            permisosIds = item.permisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          }
+          // Prioridad 2: PermisosIds (PascalCase)
+          else if (item.PermisosIds && Array.isArray(item.PermisosIds)) {
+            permisosIds = item.PermisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          }
+          // Prioridad 3: Extraer de array de objetos permisos
+          else if (item.permisos && Array.isArray(item.permisos)) {
+            permisosIds = item.permisos
+              .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+              .filter((id: number) => id > 0);
+          }
+          // Prioridad 4: Permisos (PascalCase)
+          else if (item.Permisos && Array.isArray(item.Permisos)) {
+            permisosIds = item.Permisos
+              .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+              .filter((id: number) => id > 0);
+          }
+          
           return {
             id: item.idRol || item.IdRol || item.id || item.Id || 0,
             nombre: item.nombre || item.Nombre || '',
             descripcion: item.descripcion || item.Descripcion || '',
-            activo: activoValue
+            activo: activoValue,
+            permisosIds: permisosIds,
+            permisos: item.permisos || item.Permisos || [] // Mantener los objetos completos si están disponibles
           };
         }) : [];
       }),
@@ -2364,22 +2392,117 @@ export class CatalogosService {
     );
   }
 
-  createRole(rol: { nombre: string, descripcion?: string }): Observable<any> {
-    const data = { Nombre: rol.nombre, Descripcion: rol.descripcion || '' };
+  createRole(rol: { nombre: string, descripcion?: string, activo?: boolean, permisosIds?: number[] }): Observable<any> {
+    // Asegurar que Activo sea siempre un boolean, no string ni número
+    let activoValue: boolean = true;
+    if (rol.activo !== undefined && rol.activo !== null) {
+      // Convertir cualquier valor a boolean explícitamente
+      const activoRaw: any = rol.activo;
+      if (typeof activoRaw === 'boolean') {
+        activoValue = activoRaw;
+      } else if (typeof activoRaw === 'string') {
+        activoValue = activoRaw.toLowerCase() === 'true' || activoRaw === '1';
+      } else if (typeof activoRaw === 'number') {
+        activoValue = activoRaw === 1;
+      } else {
+        activoValue = Boolean(activoRaw);
+      }
+    }
+    
+    const data: any = { 
+      Nombre: rol.nombre, 
+      Descripcion: rol.descripcion || '',
+      Activo: activoValue // Siempre boolean
+    };
+    // Incluir permisosIds si se proporciona
+    if (rol.permisosIds && Array.isArray(rol.permisosIds) && rol.permisosIds.length > 0) {
+      data.PermisosIds = rol.permisosIds;
+    }
+    console.log('📤 [CREATE ROLE] Enviando datos:', JSON.stringify(data, null, 2));
+    console.log('📤 [CREATE ROLE] Tipo de Activo:', typeof data.Activo, 'Valor:', data.Activo);
+    console.log('📤 [CREATE ROLE] PermisosIds enviados:', data.PermisosIds);
     return this.http.post<any>(`${this.apiUrl}/roles`, data).pipe(
-      map(item => ({
-        id: item.idRol || item.IdRol || item.id || item.Id || 0,
-        nombre: item.nombre || item.Nombre || rol.nombre,
-        descripcion: item.descripcion || item.Descripcion || rol.descripcion || ''
-      }))
+      tap(response => {
+        console.log('📥 [CREATE ROLE] Respuesta RAW del backend:', response);
+      }),
+      map(item => {
+        const response = item.data || item;
+        
+        // Mapear permisos de la respuesta - según documentación, el backend devuelve permisosIds directamente
+        let permisosIds: number[] = [];
+        
+        // Prioridad 1: permisosIds directo (según documentación del backend)
+        if (response.permisosIds && Array.isArray(response.permisosIds)) {
+          permisosIds = response.permisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          console.log('✅ [CREATE ROLE] PermisosIds encontrados directamente:', permisosIds);
+        }
+        // Prioridad 2: PermisosIds (PascalCase)
+        else if (response.PermisosIds && Array.isArray(response.PermisosIds)) {
+          permisosIds = response.PermisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          console.log('✅ [CREATE ROLE] PermisosIds encontrados (PascalCase):', permisosIds);
+        }
+        // Prioridad 3: Extraer de array de objetos permisos
+        else if (response.permisos && Array.isArray(response.permisos)) {
+          permisosIds = response.permisos
+            .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+            .filter((id: number) => id > 0);
+          console.log('✅ [CREATE ROLE] PermisosIds extraídos de array permisos:', permisosIds);
+        }
+        // Si no hay permisos en la respuesta, usar los que se enviaron
+        else if (rol.permisosIds && Array.isArray(rol.permisosIds)) {
+          permisosIds = rol.permisosIds;
+          console.log('✅ [CREATE ROLE] Usando permisosIds enviados:', permisosIds);
+        }
+        
+        const rolCreado = {
+          id: response.idRol || response.IdRol || response.id || response.Id || 0,
+          nombre: response.nombre || response.Nombre || rol.nombre,
+          descripcion: response.descripcion || response.Descripcion || rol.descripcion || '',
+          activo: response.activo !== undefined ? (response.activo === 1 || response.activo === true) : (rol.activo !== undefined ? rol.activo : true),
+          permisosIds: permisosIds,
+          permisos: response.permisos || response.Permisos || []
+        };
+        
+        console.log('✅ [CREATE ROLE] Rol creado mapeado:', JSON.stringify(rolCreado, null, 2));
+        return rolCreado;
+      })
     );
   }
 
-  updateRole(id: number, rol: { nombre: string, descripcion?: string, activo?: boolean }): Observable<any> {
-    const data: any = { Nombre: rol.nombre, Descripcion: rol.descripcion || '' };
-    if (rol.activo !== undefined) {
-      data.Activo = rol.activo;
+  updateRole(id: number, rol: { nombre: string, descripcion?: string, activo?: boolean, permisosIds?: number[] }): Observable<any> {
+    // Asegurar que Activo sea siempre un boolean
+    let activoValue: boolean = true;
+    if (rol.activo !== undefined && rol.activo !== null) {
+      const activoRaw: any = rol.activo;
+      if (typeof activoRaw === 'boolean') {
+        activoValue = activoRaw;
+      } else if (typeof activoRaw === 'string') {
+        activoValue = activoRaw.toLowerCase() === 'true' || activoRaw === '1';
+      } else if (typeof activoRaw === 'number') {
+        activoValue = activoRaw === 1;
+      } else {
+        activoValue = Boolean(activoRaw);
+      }
     }
+    
+    const data: any = { 
+      Nombre: rol.nombre, 
+      Descripcion: rol.descripcion || '',
+      Activo: activoValue // Siempre boolean
+    };
+    
+    // Incluir permisosIds si se proporciona
+    if (rol.permisosIds !== undefined) {
+      if (Array.isArray(rol.permisosIds) && rol.permisosIds.length > 0) {
+        data.PermisosIds = rol.permisosIds;
+      } else {
+        // Si es un array vacío, enviar array vacío para limpiar permisos
+        data.PermisosIds = [];
+      }
+    }
+    console.log('📤 [UPDATE ROLE] Enviando datos:', JSON.stringify(data, null, 2));
+    console.log('📤 [UPDATE ROLE] Tipo de Activo:', typeof data.Activo, 'Valor:', data.Activo);
+    console.log('📤 [UPDATE ROLE] PermisosIds:', data.PermisosIds);
     return this.http.put<any>(`${this.apiUrl}/roles/${id}`, data).pipe(
       map(response => {
         if (!response) {
@@ -2409,12 +2532,114 @@ export class CatalogosService {
         } else {
           activoValue = true;
         }
+        
+        // Mapear permisos de la respuesta - según documentación, el backend devuelve permisosIds directamente
+        let permisosIds: number[] = [];
+        
+        // Prioridad 1: permisosIds directo (según documentación del backend)
+        if (item.permisosIds && Array.isArray(item.permisosIds)) {
+          permisosIds = item.permisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          console.log('✅ [UPDATE ROLE] PermisosIds encontrados directamente:', permisosIds);
+        }
+        // Prioridad 2: PermisosIds (PascalCase)
+        else if (item.PermisosIds && Array.isArray(item.PermisosIds)) {
+          permisosIds = item.PermisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          console.log('✅ [UPDATE ROLE] PermisosIds encontrados (PascalCase):', permisosIds);
+        }
+        // Prioridad 3: Extraer de array de objetos permisos
+        else if (item.permisos && Array.isArray(item.permisos)) {
+          permisosIds = item.permisos
+            .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+            .filter((id: number) => id > 0);
+          console.log('✅ [UPDATE ROLE] PermisosIds extraídos de array permisos:', permisosIds);
+        }
+        // Si no hay permisos en la respuesta, usar los que se enviaron
+        else if (rol.permisosIds && Array.isArray(rol.permisosIds)) {
+          permisosIds = rol.permisosIds;
+          console.log('✅ [UPDATE ROLE] Usando permisosIds enviados:', permisosIds);
+        }
+        
         return {
           id: item.idRol || item.IdRol || item.Id || item.id || id,
           nombre: item.nombre || item.Nombre || rol.nombre,
           descripcion: item.descripcion || item.Descripcion || rol.descripcion || '',
-          activo: activoValue
+          activo: activoValue,
+          permisosIds: permisosIds,
+          permisos: item.permisos || item.Permisos || []
         };
+      })
+    );
+  }
+
+  getRoleById(id: number): Observable<any> {
+    console.log(`📡 [GET ROLE BY ID] Obteniendo rol ${id} desde ${this.apiUrl}/roles/${id}`);
+    return this.http.get<any>(`${this.apiUrl}/roles/${id}`).pipe(
+      tap(response => {
+        console.log('📥 [GET ROLE BY ID] Respuesta RAW del backend:', JSON.stringify(response, null, 2));
+      }),
+      map(response => {
+        // El backend devuelve directamente el objeto, no dentro de 'data'
+        const item = response.data || response;
+        console.log('📦 [GET ROLE BY ID] Item extraído:', JSON.stringify(item, null, 2));
+        
+        let activoValue: boolean = true;
+        if (item.activo !== undefined) {
+          activoValue = item.activo === 1 || item.activo === true;
+        } else if (item.Activo !== undefined) {
+          activoValue = item.Activo === 1 || item.Activo === true;
+        }
+        
+        // Según la documentación, el backend devuelve permisosIds directamente como array de números
+        let permisosIds: number[] = [];
+        
+        // Prioridad 1: permisosIds directo (según documentación)
+        if (item.permisosIds && Array.isArray(item.permisosIds)) {
+          permisosIds = item.permisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          console.log('✅ [GET ROLE BY ID] PermisosIds encontrados directamente:', permisosIds);
+        } 
+        // Prioridad 2: PermisosIds (PascalCase)
+        else if (item.PermisosIds && Array.isArray(item.PermisosIds)) {
+          permisosIds = item.PermisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+          console.log('✅ [GET ROLE BY ID] PermisosIds encontrados (PascalCase):', permisosIds);
+        }
+        // Prioridad 3: Extraer de array de objetos permisos
+        else if (item.permisos && Array.isArray(item.permisos)) {
+          permisosIds = item.permisos
+            .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+            .filter((id: number) => id > 0);
+          console.log('✅ [GET ROLE BY ID] PermisosIds extraídos de array permisos:', permisosIds);
+        }
+        // Prioridad 4: Permisos (PascalCase)
+        else if (item.Permisos && Array.isArray(item.Permisos)) {
+          permisosIds = item.Permisos
+            .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+            .filter((id: number) => id > 0);
+          console.log('✅ [GET ROLE BY ID] PermisosIds extraídos de array Permisos:', permisosIds);
+        } else {
+          console.warn('⚠️ [GET ROLE BY ID] No se encontraron permisosIds en ningún formato');
+        }
+        
+        const rolMapeado = {
+          id: item.idRol || item.IdRol || item.id || item.Id || 0,
+          nombre: item.nombre || item.Nombre || '',
+          descripcion: item.descripcion || item.Descripcion || '',
+          activo: activoValue,
+          permisosIds: permisosIds,
+          permisos: item.permisos || item.Permisos || []
+        };
+        
+        console.log('✅ [GET ROLE BY ID] Rol mapeado final:', JSON.stringify(rolMapeado, null, 2));
+        return rolMapeado;
+      }),
+      catchError(error => {
+        console.error('❌ [GET ROLE BY ID] Error fetching role by id:', error);
+        console.error('❌ [GET ROLE BY ID] Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          message: error.message,
+          error: error.error
+        });
+        throw error;
       })
     );
   }

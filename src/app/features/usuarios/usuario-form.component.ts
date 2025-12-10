@@ -78,22 +78,38 @@ export class UsuarioFormComponent implements OnInit {
   }
 
   loadCatalogos(): void {
-    // Cargar roles
-    this.usuariosService.listRoles().subscribe({
+    // Cargar roles - solo activos para asignar usando el servicio de catalogos
+    this.catalogosService.getRoles(true).subscribe({
       next: (data) => {
+        console.log(`✅ Roles activos cargados: ${data.length}`);
         this.roles.set(data);
         // Si estamos en modo edición y los roles ya están cargados, cargar el usuario
         if (this.isEditMode() && this.usuarioId() && this.usuarioId()! > 0) {
           this.loadUsuario(this.usuarioId()!);
         }
       },
-      error: (err) => console.error('Error loading roles:', err)
+      error: (err) => {
+        console.error('Error loading roles:', err);
+        this.error.set('Error al cargar los roles. Por favor, recarga la página.');
+      }
     });
 
-    // Cargar departamentos
-    this.catalogosService.getDepartamentos().subscribe({
-      next: (data) => this.departamentos.set(data),
-      error: (err) => console.error('Error loading departamentos:', err)
+    // Cargar departamentos - solo activos para asignar
+    this.catalogosService.getDepartamentos(true).subscribe({
+      next: (data) => {
+        // Filtrar solo departamentos activos
+        const departamentosActivos = data.filter((dept: any) => {
+          const activo = dept.activo !== undefined ? dept.activo : 
+                        (dept.Activo !== undefined ? dept.Activo : true);
+          return activo === true || activo === 1;
+        });
+        console.log(`✅ Departamentos activos cargados: ${departamentosActivos.length} de ${data.length}`);
+        this.departamentos.set(departamentosActivos);
+      },
+      error: (err) => {
+        console.error('Error loading departamentos:', err);
+        this.error.set('Error al cargar los departamentos. Por favor, recarga la página.');
+      }
     });
 
     // Cargar permisos
@@ -121,9 +137,24 @@ export class UsuarioFormComponent implements OnInit {
           return;
         }
         
-        // Buscar el rol por nombre (búsqueda más robusta)
+        // Buscar el rol - primero por ID, luego por nombre
         let idRol: number | null = null;
-        if (usuario.rolNombre && this.roles().length > 0) {
+        
+        // Si el usuario tiene idRol directamente, usarlo
+        if ((usuario as any).idRol !== undefined && (usuario as any).idRol !== null) {
+          idRol = +(usuario as any).idRol;
+          // Verificar que el rol existe y está activo
+          const rolEncontrado = this.roles().find(r => r.id === idRol);
+          if (!rolEncontrado) {
+            console.warn(`⚠️ El rol con ID ${idRol} no está disponible o no está activo. Buscando por nombre...`);
+            idRol = null; // Resetear para buscar por nombre
+          } else {
+            console.log(`✅ Rol encontrado por ID: "${rolEncontrado.nombre}" (ID: ${idRol})`);
+          }
+        }
+        
+        // Si no se encontró por ID, buscar por nombre
+        if (!idRol && usuario.rolNombre && this.roles().length > 0) {
           // Primero intentar búsqueda exacta
           let rol = this.roles().find(r => r.nombre === usuario.rolNombre);
           
@@ -144,13 +175,13 @@ export class UsuarioFormComponent implements OnInit {
           
           if (rol) {
             idRol = rol.id;
-            console.log(`✅ Rol encontrado: "${rol.nombre}" (ID: ${rol.id}) para usuario "${usuario.rolNombre}"`);
+            console.log(`✅ Rol encontrado por nombre: "${rol.nombre}" (ID: ${rol.id}) para usuario "${usuario.rolNombre}"`);
           } else {
-            console.warn(`⚠️ No se encontró el rol "${usuario.rolNombre}" en la lista de roles disponibles.`);
-            console.warn(`📋 Roles disponibles:`, this.roles().map(r => `"${r.nombre}" (ID: ${r.id})`));
-            this.error.set(`⚠️ Advertencia: No se pudo encontrar el rol "${usuario.rolNombre}" en la lista. Por favor, selecciona un rol manualmente.`);
+            console.warn(`⚠️ No se encontró el rol "${usuario.rolNombre}" en la lista de roles activos disponibles.`);
+            console.warn(`📋 Roles activos disponibles:`, this.roles().map(r => `"${r.nombre}" (ID: ${r.id})`));
+            this.error.set(`⚠️ Advertencia: No se pudo encontrar el rol "${usuario.rolNombre}" en la lista de roles activos. Por favor, selecciona un rol manualmente.`);
           }
-        } else if (!usuario.rolNombre) {
+        } else if (!idRol && !usuario.rolNombre) {
           console.warn('⚠️ El usuario no tiene un rol asignado.');
           this.error.set('⚠️ El usuario no tiene un rol asignado. Por favor, selecciona un rol.');
         }
@@ -205,6 +236,26 @@ export class UsuarioFormComponent implements OnInit {
     this.error.set(null);
 
     const formValue = this.form.value;
+
+    // Validar que el rol existe y está activo
+    const idRol = +formValue.idRol;
+    const rolSeleccionado = this.roles().find(r => r.id === idRol);
+    if (!rolSeleccionado) {
+      this.error.set('El rol seleccionado no existe o no está activo. Por favor, selecciona otro rol.');
+      this.saving.set(false);
+      return;
+    }
+
+    // Validar que el departamento existe y está activo (si se seleccionó uno)
+    if (formValue.departamentoId) {
+      const idDepartamento = +formValue.departamentoId;
+      const departamentoSeleccionado = this.departamentos().find(d => d.id === idDepartamento);
+      if (!departamentoSeleccionado) {
+        this.error.set('El departamento seleccionado no existe o no está activo. Por favor, selecciona otro departamento.');
+        this.saving.set(false);
+        return;
+      }
+    }
 
     if (this.isEditMode() && this.usuarioId()) {
       // Convertir IDs de permisos a objetos completos de Permiso

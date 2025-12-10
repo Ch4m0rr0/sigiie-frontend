@@ -138,6 +138,7 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     idActividadAnual: new FormControl<number | null>(null), // Para actividades mensuales
     mes: new FormControl<number | null>(null), // Para actividades mensuales
     tipoUnidadId: new FormControl<number | null>(null), // Para capacidades instaladas
+    permisosIds: new FormControl<number[]>([]), // Para roles - array de IDs de permisos
   });
 
   // Signals for reactive data
@@ -163,6 +164,77 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
   rolesequipo = signal<RolEquipo[]>([]);
   rolesresponsable = signal<any[]>([]);
   roles = signal<any[]>([]);
+  permisos = signal<any[]>([]); // Permisos disponibles para asignar a roles
+  
+  // Mapeo de nombres de módulos técnicos a nombres amigables
+  private nombresModulos: { [key: string]: string } = {
+    'Usuarios': 'Usuarios',
+    'Usuario': 'Usuarios',
+    'Roles': 'Roles y Permisos',
+    'Rol': 'Roles y Permisos',
+    'Permisos': 'Roles y Permisos',
+    'Permiso': 'Roles y Permisos',
+    'Proyectos': 'Proyectos',
+    'Proyecto': 'Proyectos',
+    'Actividades': 'Actividades',
+    'Actividad': 'Actividades',
+    'Subactividades': 'Subactividades',
+    'Subactividad': 'Subactividades',
+    'Participaciones': 'Participaciones',
+    'Participacion': 'Participaciones',
+    'Catalogos': 'Catálogos',
+    'Catalogo': 'Catálogos',
+    'Indicadores': 'Indicadores',
+    'Indicador': 'Indicadores',
+    'Reportes': 'Reportes',
+    'Reporte': 'Reportes',
+    'Dashboard': 'Dashboard',
+    'Documentos': 'Documentos',
+    'Documento': 'Documentos',
+    'Evidencias': 'Evidencias',
+    'Evidencia': 'Evidencias',
+    'Personas': 'Personas',
+    'Persona': 'Personas',
+    'Docentes': 'Docentes',
+    'Docente': 'Docentes',
+    'Estudiantes': 'Estudiantes',
+    'Estudiante': 'Estudiantes',
+    'Departamentos': 'Departamentos',
+    'Departamento': 'Departamentos',
+    'Otros': 'Otros'
+  };
+  
+  // Permisos agrupados por módulo/sección
+  permisosAgrupados = computed(() => {
+    const permisosList = this.permisos();
+    const agrupados: { [key: string]: any[] } = {};
+    
+    permisosList.forEach(permiso => {
+      const modulo = permiso.modulo || 'Otros';
+      const moduloAmigable = this.nombresModulos[modulo] || modulo;
+      
+      if (!agrupados[moduloAmigable]) {
+        agrupados[moduloAmigable] = [];
+      }
+      agrupados[moduloAmigable].push(permiso);
+    });
+    
+    // Ordenar los módulos y los permisos dentro de cada módulo
+    const modulosOrdenados = Object.keys(agrupados).sort();
+    const resultado: { modulo: string, permisos: any[] }[] = [];
+    
+    modulosOrdenados.forEach(modulo => {
+      resultado.push({
+        modulo,
+        permisos: agrupados[modulo].sort((a, b) => 
+          (a.nombre || '').localeCompare(b.nombre || '')
+        )
+      });
+    });
+    
+    return resultado;
+  });
+  
   indicadores = signal<Indicador[]>([]);
   carreras = signal<any[]>([]);
   actividadesAnuales = signal<ActividadAnual[]>([]);
@@ -213,6 +285,20 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     this.editingId = null;
     this.form.reset();
     this.updateFormValidation();
+    
+    // Si se selecciona el catálogo de roles, asegurar que los permisos estén cargados
+    if (this.selectedCatalogo === 'roles' && this.permisos().length === 0) {
+      this.catalogosService.getPermisos().subscribe({
+        next: data => {
+          console.log('✅ Permisos cargados para roles:', data);
+          this.permisos.set(data);
+        },
+        error: error => {
+          console.error('❌ Error cargando permisos:', error);
+          this.permisos.set([]);
+        }
+      });
+    }
     // Resetear filtros y paginación cuando se cambia de catálogo
     this.filtroAnioIndicadores.set(null);
     this.busquedaIndicadores.set('');
@@ -1045,6 +1131,18 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       }
     });
 
+    // Cargar permisos disponibles (necesarios para crear/editar roles)
+    this.catalogosService.getPermisos().subscribe({
+      next: data => {
+        console.log('✅ Permisos cargados:', data);
+        this.permisos.set(data);
+      },
+      error: error => {
+        console.error('❌ Error cargando permisos:', error);
+        this.permisos.set([]);
+      }
+    });
+
     // Cargar indicadores - todos para poder editarlos
     this.indicadorService.getAll(false).subscribe({
       next: data => {
@@ -1156,6 +1254,91 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       this.editingId = item.id || (item as any).idTipoEvidencia;
     } else if (this.selectedCatalogo === 'rolesequipo') {
       this.editingId = item.id || (item as any).idRolEquipo;
+    } else if (this.selectedCatalogo === 'roles') {
+      this.editingId = item.id || (item as any).idRol;
+      // Obtener el rol completo desde el backend para asegurar que tenemos los permisos actualizados
+      if (!this.editingId) {
+        console.error('❌ [EDIT ROLE] ID inválido para editar rol');
+        return;
+      }
+      
+      // Mostrar indicador de carga
+      this.isLoading.set(true);
+      
+      console.log('📋 [EDIT ROLE] Obteniendo rol completo desde el backend, ID:', this.editingId);
+      this.catalogosService.getRoleById(this.editingId).subscribe({
+        next: (rolCompleto) => {
+          console.log('📋 [EDIT ROLE] Rol obtenido del backend (completo):', JSON.stringify(rolCompleto, null, 2));
+          
+          const activoValue = rolCompleto.activo !== undefined ? rolCompleto.activo : true;
+          // Obtener permisosIds del rol - según documentación, viene directamente como array
+          let permisosIds: number[] = [];
+          
+          // Prioridad 1: permisosIds directo (según documentación)
+          if (rolCompleto.permisosIds && Array.isArray(rolCompleto.permisosIds)) {
+            permisosIds = rolCompleto.permisosIds.filter((id: any) => typeof id === 'number' && id > 0);
+            console.log('✅ [EDIT ROLE] PermisosIds encontrados directamente:', permisosIds);
+          }
+          // Prioridad 2: Extraer de array de objetos permisos
+          else if (rolCompleto.permisos && Array.isArray(rolCompleto.permisos)) {
+            permisosIds = rolCompleto.permisos
+              .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+              .filter((id: number) => id > 0);
+            console.log('✅ [EDIT ROLE] PermisosIds extraídos de array permisos:', permisosIds);
+          }
+          
+          console.log('📋 [EDIT ROLE] PermisosIds finales para el formulario:', permisosIds);
+          console.log('📋 [EDIT ROLE] Valor actual de permisosIds en el form:', this.form.get('permisosIds')?.value);
+          
+          this.form.patchValue({
+            nombre: rolCompleto.nombre || '',
+            descripcion: rolCompleto.descripcion || '',
+            activo: activoValue === true || activoValue === 1,
+            permisosIds: permisosIds
+          });
+          
+          // Forzar detección de cambios para actualizar los checkboxes
+          setTimeout(() => {
+            console.log('📋 [EDIT ROLE] Valor después de patchValue:', this.form.get('permisosIds')?.value);
+            this.updateFormValidation();
+            this.isLoading.set(false);
+          }, 100);
+        },
+        error: (err) => {
+          console.error('❌ [EDIT ROLE] Error obteniendo rol del backend:', err);
+          console.error('❌ [EDIT ROLE] Error details:', {
+            status: err.status,
+            statusText: err.statusText,
+            message: err.message,
+            error: err.error
+          });
+          this.isLoading.set(false);
+          
+          // Fallback: usar el rol de la lista local
+          const rolCompleto = this.roles().find(r => r.id === this.editingId);
+          if (rolCompleto) {
+            console.warn('⚠️ [EDIT ROLE] Usando rol de la lista local como fallback');
+            const activoValue = (rolCompleto as any).activo !== undefined ? (rolCompleto as any).activo : true;
+            let permisosIds: number[] = [];
+            if ((rolCompleto as any).permisosIds && Array.isArray((rolCompleto as any).permisosIds)) {
+              permisosIds = (rolCompleto as any).permisosIds.filter((id: number) => id > 0);
+            } else if ((rolCompleto as any).permisos && Array.isArray((rolCompleto as any).permisos)) {
+              permisosIds = (rolCompleto as any).permisos
+                .map((p: any) => p.idPermiso || p.IdPermiso || p.id || p.Id || 0)
+                .filter((id: number) => id > 0);
+            }
+            
+            this.form.patchValue({
+              nombre: rolCompleto.nombre || '',
+              descripcion: rolCompleto.descripcion || '',
+              activo: activoValue === true || activoValue === 1,
+              permisosIds: permisosIds
+            });
+            this.updateFormValidation();
+          }
+        }
+      });
+      return;
     } else if (this.selectedCatalogo === 'carreras') {
       this.editingId = item.id || (item as any).idCarrera;
       // Obtener la carrera completa desde la lista para tener acceso a todos los campos
@@ -1253,6 +1436,60 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     }
     
     this.form.patchValue(patchValue);
+  }
+
+  togglePermiso(permisoId: number, event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    let nuevosPermisosIds: number[];
+    
+    if (checkbox.checked) {
+      // Agregar el permiso si no está ya en la lista
+      nuevosPermisosIds = [...permisosIds, permisoId];
+    } else {
+      // Remover el permiso de la lista
+      nuevosPermisosIds = permisosIds.filter((id: number) => id !== permisoId);
+    }
+    
+    this.form.patchValue({ permisosIds: nuevosPermisosIds });
+  }
+
+  toggleTodosPermisosSeccion(modulo: string, seleccionar: boolean): void {
+    const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
+    if (!grupo) return;
+    
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    let nuevosPermisosIds: number[];
+    
+    if (seleccionar) {
+      // Agregar todos los permisos de la sección que no estén ya seleccionados
+      const idsSeccion = grupo.permisos.map(p => p.id);
+      const idsNuevos = idsSeccion.filter(id => !permisosIds.includes(id));
+      nuevosPermisosIds = [...permisosIds, ...idsNuevos];
+    } else {
+      // Remover todos los permisos de la sección
+      const idsSeccion = grupo.permisos.map(p => p.id);
+      nuevosPermisosIds = permisosIds.filter((id: number) => !idsSeccion.includes(id));
+    }
+    
+    this.form.patchValue({ permisosIds: nuevosPermisosIds });
+  }
+
+  todosPermisosSeccionSeleccionados(modulo: string): boolean {
+    const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
+    if (!grupo || grupo.permisos.length === 0) return false;
+    
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    return grupo.permisos.every(p => permisosIds.includes(p.id));
+  }
+
+  algunosPermisosSeccionSeleccionados(modulo: string): boolean {
+    const grupo = this.permisosAgrupados().find(g => g.modulo === modulo);
+    if (!grupo || grupo.permisos.length === 0) return false;
+    
+    const permisosIds = this.form.get('permisosIds')?.value || [];
+    const seleccionados = grupo.permisos.filter(p => permisosIds.includes(p.id));
+    return seleccionados.length > 0 && seleccionados.length < grupo.permisos.length;
   }
 
   ngAfterViewChecked() {
@@ -1578,6 +1815,10 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
       // Para carreras, incluir código y departamentoId
       const departamentoId = (this.form.get('departamentoId')?.value as number) || null;
       data = { nombre, codigo, descripcion, departamentoId, activo };
+    } else if (this.selectedCatalogo === 'roles') {
+      // Para roles, incluir permisosIds
+      const permisosIds = (this.form.get('permisosIds')?.value as number[]) || [];
+      data = { nombre, descripcion, activo, permisosIds };
     } else if (this.hasEstadoData()) {
       // Para catálogos con campo activo, incluir el valor
       data = { nombre, descripcion, activo };
@@ -1836,10 +2077,26 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for role:', data);
           return;
         }
+        const permisosIds = Array.isArray((data as any).permisosIds) ? (data as any).permisosIds : [];
+        // Asegurar que activo sea siempre un boolean
+        let activoValue: boolean = true;
+        if ((data as any).activo !== undefined && (data as any).activo !== null) {
+          const activoRaw = (data as any).activo;
+          if (typeof activoRaw === 'boolean') {
+            activoValue = activoRaw;
+          } else if (typeof activoRaw === 'string') {
+            activoValue = activoRaw.toLowerCase() === 'true' || activoRaw === '1';
+          } else if (typeof activoRaw === 'number') {
+            activoValue = activoRaw === 1;
+          } else {
+            activoValue = Boolean(activoRaw);
+          }
+        }
         obs = this.catalogosService.createRole({ 
           nombre: data.nombre, 
           descripcion: data.descripcion || '',
-          activo: true
+          activo: activoValue, // Siempre boolean
+          permisosIds: permisosIds.length > 0 ? permisosIds : undefined
         } as any); 
         break;
         
@@ -1923,9 +2180,35 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
     const nombreElemento = data.nombre || data.codigo || 'el elemento';
     
     obs.subscribe({
-      next: () => {
+      next: (createdItem) => {
         // Recargar todos los catálogos
         this.loadAllCatalogos();
+        
+        // Si es un rol, recargar específicamente ese rol para obtener los permisos
+        if (this.selectedCatalogo === 'roles' && createdItem && createdItem.id) {
+          setTimeout(() => {
+            this.catalogosService.getRoleById(createdItem.id).subscribe({
+              next: (rolCreado) => {
+                // Actualizar el rol en la lista local
+                const rolesActuales = this.roles();
+                const index = rolesActuales.findIndex(r => r.id === rolCreado.id);
+                if (index >= 0) {
+                  rolesActuales[index] = rolCreado;
+                  this.roles.set([...rolesActuales]);
+                  console.log('✅ Rol creado actualizado en la lista local con permisos:', rolCreado);
+                } else {
+                  // Si no está en la lista, agregarlo
+                  this.roles.set([...rolesActuales, rolCreado]);
+                  console.log('✅ Rol creado agregado a la lista local con permisos:', rolCreado);
+                }
+              },
+              error: (err) => {
+                console.warn('⚠️ No se pudo recargar el rol creado, pero se recargaron todos los catálogos:', err);
+              }
+            });
+          }, 500); // Esperar un poco para que el backend procese
+        }
+        
         this.cancelEdit();
         // Mostrar alerta de éxito
         this.alertService.success(
@@ -2223,10 +2506,13 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
           console.error('Invalid data for role:', data);
           return;
         }
+        const permisosIdsUpdate = Array.isArray((data as any).permisosIds) ? (data as any).permisosIds : [];
+        console.log('📤 [UPDATE ROLE] Enviando actualización con permisosIds:', permisosIdsUpdate);
         obs = this.catalogosService.updateRole(id, { 
           nombre: data.nombre, 
           descripcion: data.descripcion || '',
-          activo: data.activo !== undefined ? data.activo : true
+          activo: (data as any).activo !== undefined ? (data as any).activo : true,
+          permisosIds: permisosIdsUpdate
         } as any); 
         break;
         
@@ -2358,6 +2644,32 @@ export class ListCatalogosComponent implements OnInit, AfterViewChecked {
         
         // Recargar todos los catálogos para asegurar consistencia
         this.loadAllCatalogos();
+        
+        // Si es un rol, recargar específicamente ese rol para obtener los permisos actualizados
+        if (this.selectedCatalogo === 'roles' && id) {
+          console.log('🔄 [UPDATE ROLE] Recargando rol actualizado, ID:', id);
+          setTimeout(() => {
+            this.catalogosService.getRoleById(id).subscribe({
+              next: (rolActualizado) => {
+                console.log('✅ [UPDATE ROLE] Rol recargado con permisos:', JSON.stringify(rolActualizado, null, 2));
+                // Actualizar el rol en la lista local
+                const rolesActuales = this.roles();
+                const index = rolesActuales.findIndex(r => r.id === id);
+                if (index >= 0) {
+                  rolesActuales[index] = rolActualizado;
+                  this.roles.set([...rolesActuales]);
+                  console.log('✅ [UPDATE ROLE] Rol actualizado en la lista local con permisos');
+                } else {
+                  console.warn('⚠️ [UPDATE ROLE] Rol no encontrado en la lista local para actualizar');
+                }
+              },
+              error: (err) => {
+                console.warn('⚠️ No se pudo recargar el rol individual, pero se recargaron todos los catálogos:', err);
+              }
+            });
+          }, 500); // Esperar un poco para que el backend procese la actualización
+        }
+        
         this.cancelEdit();
         // Mostrar alerta de éxito
         this.alertService.success(
