@@ -1262,7 +1262,8 @@ export class ActividadDetailComponent implements OnInit {
         }
         
         // Indicadores - crear array desde los datos del indicador asociado
-        if (data.idIndicador) {
+        // Solo crear si idIndicador existe y no es null
+        if (data.idIndicador !== null && data.idIndicador !== undefined && Number(data.idIndicador) > 0) {
           const indicadorData: ActividadIndicador = {
             idActividadIndicador: 0, // No tenemos este ID, usar 0 como placeholder
             idActividad: data.id,
@@ -1278,6 +1279,19 @@ export class ActividadDetailComponent implements OnInit {
             evidenciaResumen: undefined
           };
           this.indicadores.set([indicadorData]);
+          
+          // Expandir automáticamente la sección de planificación si hay un indicador
+          // Esto aplica tanto para actividades planificadas como no planificadas
+          this.seccionPlanificacionExpandida.set(true);
+          console.log('✅ Sección de planificación expandida automáticamente porque hay indicador:', data.idIndicador);
+        } else {
+          // Si no hay indicador o es null, limpiar los indicadores
+          console.log('📊 No hay indicador o es null, limpiando indicadores...');
+          this.indicadores.set([]);
+          // No expandir la sección si no hay indicador (a menos que sea planificada)
+          if (!data.esPlanificada) {
+            this.seccionPlanificacionExpandida.set(false);
+          }
         }
         
         // Usar las actividades anuales y mensuales que vienen directamente en la respuesta del GET

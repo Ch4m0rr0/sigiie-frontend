@@ -1036,12 +1036,36 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const usuarioFormGroup = this.crearUsuarioFormGroup();
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                // Verificar múltiples campos posibles del backend
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  // Si solo tenemos el nombre, intentar encontrar el ID en la lista de roles
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
+                console.log('🔍 [Usuario] Mapeo de rol:', {
+                  idRolResponsableOriginal: responsable.idRolResponsable,
+                  nombreRolResponsable: responsable.nombreRolResponsable,
+                  rolResponsable: responsable.rolResponsable,
+                  idRolResponsableFinal: idRolResponsable
+                });
+                
                 usuarioFormGroup.patchValue({
                   idUsuario: responsable.idUsuario,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.usuariosArray.push(usuarioFormGroup);
-                console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idDocente) {
                 // Es un docente - verificar que no esté duplicado
                 if (docentesUnicos.has(responsable.idDocente)) {
@@ -1056,12 +1080,27 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const docenteFormGroup = this.crearPersonaFormGroup('docente');
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
                 docenteFormGroup.patchValue({
                   idPersona: responsable.idDocente,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.docentesArray.push(docenteFormGroup);
-                console.log('✅ Docente agregado:', responsable.idDocente, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Docente agregado:', responsable.idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idEstudiante) {
                 // Es un estudiante - verificar que no esté duplicado
                 if (estudiantesUnicos.has(responsable.idEstudiante)) {
@@ -1076,12 +1115,27 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const estudianteFormGroup = this.crearPersonaFormGroup('estudiante');
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
                 estudianteFormGroup.patchValue({
                   idPersona: responsable.idEstudiante,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.estudiantesArray.push(estudianteFormGroup);
-                console.log('✅ Estudiante agregado:', responsable.idEstudiante, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Estudiante agregado:', responsable.idEstudiante, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idAdmin) {
                 // Es un administrativo - verificar que no esté duplicado
                 if (administrativosUnicos.has(responsable.idAdmin)) {
@@ -1096,12 +1150,27 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const adminFormGroup = this.crearPersonaFormGroup('administrativo');
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
                 adminFormGroup.patchValue({
                   idPersona: responsable.idAdmin,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.administrativosArray.push(adminFormGroup);
-                console.log('✅ Administrativo agregado:', responsable.idAdmin, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Administrativo agregado:', responsable.idAdmin, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idResponsableExterno) {
                 // Es un responsable externo - verificar que no esté duplicado
                 if (externosUnicos.has(responsable.idResponsableExterno)) {
@@ -3195,10 +3264,11 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     }
   }
 
-  private mostrarAlertaExito(): void {
+  private mostrarAlertaExito(actividadId?: number): void {
     const nombreActividad = this.form.get('nombreActividad')?.value || 'la actividad';
-    // Limpiar el estado guardado del formulario al guardar exitosamente
-    this.clearFormState();
+    
+    // Detener el loading antes de mostrar la alerta
+    this.loading.set(false);
     
     if (this.isEditMode()) {
       // Mensaje para actividad actualizada - navegar a vista de detalle
@@ -3207,6 +3277,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         '¡Actividad actualizada!',
         `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
       ).then(() => {
+        this.clearFormState();
         if (actividadId) {
           this.router.navigate(['/actividades', actividadId]);
         } else {
@@ -3221,6 +3292,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
         '¡Actividad creada exitosamente!',
         `La actividad "${nombreActividad}" ha sido creada correctamente.`
       ).then(() => {
+        this.clearFormState();
         if (actividadId) {
           this.router.navigate(['/actividades', actividadId]);
         } else {

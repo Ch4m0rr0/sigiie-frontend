@@ -62,20 +62,20 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionPlanificacionExpandida()" [class.text-slate-400]="!seccionPlanificacionExpandida()">
-                            {{ seccionPlanificacionExpandida() ? 'Abierta' : 'Cerrada' }}
+                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionPlanificacionExpandidaComputed()" [class.text-slate-400]="!seccionPlanificacionExpandidaComputed()">
+                            {{ seccionPlanificacionExpandidaComputed() ? 'Abierta' : 'Cerrada' }}
                         </span>
                     <app-icon 
-                            [icon]="seccionPlanificacionExpandida() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
+                            [icon]="seccionPlanificacionExpandidaComputed() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
                         size="md" 
                             class="transition-all duration-200"
-                            [class.text-emerald-600]="seccionPlanificacionExpandida()"
-                            [class.text-slate-400]="!seccionPlanificacionExpandida()"></app-icon>
+                            [class.text-emerald-600]="seccionPlanificacionExpandidaComputed()"
+                            [class.text-slate-400]="!seccionPlanificacionExpandidaComputed()"></app-icon>
                     </div>
                 </button>
                 
                 <!-- Contenido del acordeón -->
-                @if (seccionPlanificacionExpandida()) {
+                @if (seccionPlanificacionExpandidaComputed()) {
                     <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
