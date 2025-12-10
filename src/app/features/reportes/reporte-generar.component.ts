@@ -42,6 +42,24 @@ export class ReporteGenerarComponent implements OnInit {
   
   // Computed para detectar si es reporte institucional
   esReporteInstitucional = signal(false);
+  
+  // Tipo de operación: 'nuevo-reporte' o 'extraccion-datos'
+  tipoOperacion = signal<'nuevo-reporte' | 'extraccion-datos'>('nuevo-reporte');
+  
+  // Campos disponibles para extracción de datos
+  // Los valores deben coincidir con los nombres de campos que el backend espera
+  camposExtraccion = signal([
+    { value: 'NombreEstudiante', label: 'Nombre de estudiantes', checked: false },
+    { value: 'Sexo', label: 'Sexo', checked: false },
+    { value: 'NombreActividad', label: 'Actividades', checked: false },
+    { value: 'LugarDesarrollo', label: 'Lugar de la actividad', checked: false },
+    { value: 'FechaActividad', label: 'Fecha de realización', checked: false },
+    { value: 'FechaFinalizacion', label: 'Fecha de finalización', checked: false },
+    { value: 'idModalidad', label: 'Modalidad', checked: false },
+    { value: 'TipoParticipante', label: 'Tipo de participante', checked: false },
+    { value: 'idCarrera', label: 'Carrera', checked: false },
+    { value: 'idIndicador', label: 'Indicador asignado a esa actividad', checked: false }
+  ]);
 
   tiposReporte = [
     { value: 'actividad', label: 'Reporte de Actividad' },
@@ -100,22 +118,55 @@ export class ReporteGenerarComponent implements OnInit {
 
   initializeForm(): void {
     this.form = this.fb.group({
+      tipoOperacion: ['nuevo-reporte', Validators.required], // Nuevo campo para tipo de operación
       tipoReporte: ['', Validators.required],
       actividadId: [null],
       subactividadId: [null],
       fechaInicio: [null], // Para reporte institucional o filtrar por período
       fechaFin: [null], // Para reporte institucional o filtrar por período
-      idDepartamento: [null], // Para filtrar por departamento (opcional)
+      idDepartamento: [null], // Para filtrar por departamento (opcional) - Legacy, mantener para compatibilidad
+      idDepartamentos: [[]], // Array de IDs de departamentos (permite múltiples selecciones)
+      descripcionImpacto: [''], // Descripción del impacto de la actividad desarrollada
       formato: ['excel', Validators.required],
       incluirEvidencias: [true],
       incluirParticipaciones: [true],
       incluirIndicadores: [true],
-      dividirPorGenero: [false], // Nueva opción para incluir cantidad de hombres y mujeres
+      dividirPorGenero: [true], // Por defecto true para nuevo reporte (consolidado)
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       rutaArchivo: ['', Validators.required],
-      tipoArchivo: ['excel', Validators.required]
+      tipoArchivo: ['excel', Validators.required],
+      // Campos para extracción de datos
+      camposSeleccionados: [[]] // Array de campos seleccionados para extracción
     }, {
       validators: [this.validarFechas.bind(this)]
+    });
+    
+    // Observar cambios en tipoOperacion
+    this.form.get('tipoOperacion')?.valueChanges.subscribe(tipo => {
+      this.tipoOperacion.set(tipo);
+      // Actualizar validaciones según el tipo de operación
+      if (tipo === 'extraccion-datos') {
+        // Para extracción de datos, los campos de reporte tradicional no son requeridos
+        this.form.get('tipoReporte')?.clearValidators();
+        this.form.get('tipoReporte')?.updateValueAndValidity();
+        // Los campos de nombre y ruta siguen siendo requeridos
+      } else {
+        // Para nuevo reporte, tipoReporte es requerido
+        this.form.get('tipoReporte')?.setValidators(Validators.required);
+        this.form.get('tipoReporte')?.updateValueAndValidity();
+        // Asegurar que dividirPorGenero esté en true para consolidado
+        this.form.get('dividirPorGenero')?.setValue(true);
+      }
+    });
+
+    // Observar cambios en actividadId para cargar departamentos automáticamente
+    this.form.get('actividadId')?.valueChanges.subscribe(actividadId => {
+      if (actividadId) {
+        this.cargarDepartamentosDeActividad(actividadId);
+      } else {
+        // Si se deselecciona la actividad, limpiar departamentos
+        this.form.get('idDepartamentos')?.setValue([]);
+      }
     });
   }
 
@@ -226,12 +277,172 @@ export class ReporteGenerarComponent implements OnInit {
     });
   }
 
+  /**
+   * Carga los departamentos asociados a una actividad y los selecciona automáticamente
+   * Extrae los departamentos directamente del objeto Actividad que ya está cargado
+   */
+  cargarDepartamentosDeActividad(actividadId: number | string): void {
+    // Convertir a número si es string
+    const id = typeof actividadId === 'string' ? parseInt(actividadId, 10) : actividadId;
+    
+    if (isNaN(id) || id <= 0) {
+      console.warn('⚠️ ID de actividad inválido:', actividadId);
+      return;
+    }
+    
+    // Buscar la actividad en la lista cargada (puede tener id o idActividad)
+    const actividad = this.actividades().find(a => {
+      const aId = Number(a.id || a.idActividad);
+      return aId === id;
+    });
+    
+    if (actividad) {
+      const idsDepartamentos: number[] = [];
+      const idsDepartamentosSet = new Set<number>();
+      
+      // Agregar departamento principal si existe
+      if (actividad.departamentoId) {
+        const deptId = Number(actividad.departamentoId);
+        if (deptId > 0 && !idsDepartamentosSet.has(deptId)) {
+          idsDepartamentosSet.add(deptId);
+          idsDepartamentos.push(deptId);
+        }
+      }
+      
+      // Agregar departamentos responsables (puede venir en diferentes formatos)
+      const actividadData = actividad as any;
+      
+      // Formato 1: idDepartamentosResponsables (array)
+      if (actividadData.idDepartamentosResponsables && Array.isArray(actividadData.idDepartamentosResponsables)) {
+        actividadData.idDepartamentosResponsables.forEach((id: any) => {
+          const numId = Number(id);
+          if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+            idsDepartamentosSet.add(numId);
+            idsDepartamentos.push(numId);
+          }
+        });
+      }
+      
+      // Formato 2: IdDepartamentosResponsables (array, PascalCase)
+      if (actividadData.IdDepartamentosResponsables && Array.isArray(actividadData.IdDepartamentosResponsables)) {
+        actividadData.IdDepartamentosResponsables.forEach((id: any) => {
+          const numId = Number(id);
+          if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+            idsDepartamentosSet.add(numId);
+            idsDepartamentos.push(numId);
+          }
+        });
+      }
+      
+      // Formato 3: departamentoResponsableId (puede ser single o array)
+      if (actividadData.departamentoResponsableId) {
+        if (Array.isArray(actividadData.departamentoResponsableId)) {
+          actividadData.departamentoResponsableId.forEach((id: any) => {
+            const numId = Number(id);
+            if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+              idsDepartamentosSet.add(numId);
+              idsDepartamentos.push(numId);
+            }
+          });
+        } else {
+          const numId = Number(actividadData.departamentoResponsableId);
+          if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+            idsDepartamentosSet.add(numId);
+            idsDepartamentos.push(numId);
+          }
+        }
+      }
+      
+      // Seleccionar automáticamente los departamentos encontrados
+      if (idsDepartamentos.length > 0) {
+        this.form.get('idDepartamentos')?.setValue(idsDepartamentos);
+        console.log('✅ Departamentos seleccionados automáticamente desde la actividad:', idsDepartamentos);
+      } else {
+        console.log('ℹ️ La actividad no tiene departamentos asociados en sus datos');
+      }
+    } else {
+      // Si la actividad no está en la lista, puede ser que la lista aún no se haya cargado
+      // o que la actividad no esté disponible. Intentar obtenerla del backend como fallback
+      // pero solo si realmente no está en la lista (evitar advertencias innecesarias)
+      const actividadEnLista = this.actividades().length > 0;
+      
+      if (actividadEnLista) {
+        // La lista está cargada pero la actividad no está - puede ser un problema de sincronización
+        // o la actividad fue eliminada. No hacer nada, el usuario puede seleccionar manualmente.
+        console.log('ℹ️ La actividad no se encontró en la lista cargada. El usuario puede seleccionar los departamentos manualmente.');
+        return;
+      }
+      
+      // Si la lista está vacía, intentar obtener la actividad del backend
+      this.actividadesService.getById(id).subscribe({
+        next: (actividadCompleta) => {
+          if (actividadCompleta) {
+            // Recursivamente llamar a este método con la actividad completa
+            // Pero mejor extraer los departamentos directamente aquí
+            const idsDepartamentos: number[] = [];
+            const idsDepartamentosSet = new Set<number>();
+            
+            if (actividadCompleta.departamentoId) {
+              const deptId = Number(actividadCompleta.departamentoId);
+              if (deptId > 0) {
+                idsDepartamentosSet.add(deptId);
+                idsDepartamentos.push(deptId);
+              }
+            }
+            
+            const actividadData = actividadCompleta as any;
+            if (actividadData.idDepartamentosResponsables && Array.isArray(actividadData.idDepartamentosResponsables)) {
+              actividadData.idDepartamentosResponsables.forEach((id: any) => {
+                const numId = Number(id);
+                if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+                  idsDepartamentosSet.add(numId);
+                  idsDepartamentos.push(numId);
+                }
+              });
+            }
+            
+            if (idsDepartamentos.length > 0) {
+              this.form.get('idDepartamentos')?.setValue(idsDepartamentos);
+              console.log('✅ Departamentos seleccionados automáticamente desde backend:', idsDepartamentos);
+            }
+          }
+        },
+        error: (err) => {
+          // Error silencioso - el usuario puede seleccionar los departamentos manualmente
+          // No mostrar advertencia en consola para no generar ruido
+        }
+      });
+    }
+  }
+
   async onSubmit(): Promise<void> {
+    // Validación personalizada según el tipo de operación
+    const tipoOperacion = this.form.get('tipoOperacion')?.value || 'nuevo-reporte';
+    
+    if (tipoOperacion === 'extraccion-datos') {
+      // Para extracción de datos, validar que haya campos seleccionados
+      const camposSeleccionados = this.form.get('camposSeleccionados')?.value || [];
+      if (camposSeleccionados.length === 0) {
+        this.form.get('camposSeleccionados')?.setErrors({ required: true });
+        this.form.get('camposSeleccionados')?.markAsTouched();
+        this.form.markAllAsTouched();
+        return;
+      }
+    }
+    
     if (this.form.valid) {
       this.generando.set(true);
       this.error.set(null);
 
       const formValue = this.form.value;
+      
+      // Si es extracción de datos, manejar de forma diferente
+      if (tipoOperacion === 'extraccion-datos') {
+        await this.generarExtraccionDatos(formValue);
+        return;
+      }
+      
+      // Si es nuevo reporte, continuar con la lógica existente
       const fechaInicio = formValue.fechaInicio;
       const fechaFin = formValue.fechaFin;
       const esInstitucional = fechaInicio && fechaFin;
@@ -244,8 +455,29 @@ export class ReporteGenerarComponent implements OnInit {
         if (esInstitucional) {
           console.log('📊 Generando reporte institucional con fechas:', fechaInicio, 'a', fechaFin);
           
-          const nombreReporte = formValue.nombre?.trim() || 
-            `Reporte Institucional ${this.formatearFecha(fechaInicio)} - ${this.formatearFecha(fechaFin)}`;
+          // Obtener el nombre de la actividad si se seleccionó una
+          let nombreActividad = '';
+          if (formValue.actividadId) {
+            const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+            nombreActividad = actividad?.nombre || '';
+          }
+          
+        // Construir el nombre del reporte con el nombre de la actividad
+        // Formato: "Reporte de * nombre de actividad"
+        let nombreReporte = formValue.nombre?.trim();
+        if (!nombreReporte) {
+          if (nombreActividad) {
+            nombreReporte = `Reporte de ${nombreActividad}`;
+          } else {
+            nombreReporte = `Reporte Institucional ${this.formatearFecha(fechaInicio)} - ${this.formatearFecha(fechaFin)}`;
+          }
+        } else if (nombreActividad && !nombreReporte.includes(nombreActividad)) {
+          // Si el usuario ingresó un nombre pero hay actividad, usar el formato con actividad
+          nombreReporte = `Reporte de ${nombreActividad}`;
+        } else if (!nombreActividad) {
+          // Si no hay actividad pero el usuario ingresó un nombre, mantenerlo
+          nombreReporte = formValue.nombre?.trim();
+        }
 
           const config: ReporteConfig = {
             tipoReporte: formValue.tipoReporte || 'actividad', // Importante: debe contener "actividad"
@@ -254,6 +486,8 @@ export class ReporteGenerarComponent implements OnInit {
             fechaInicio: fechaInicio,
             fechaFin: fechaFin,
             idDepartamento: formValue.idDepartamento || undefined,
+            idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
+            descripcionImpacto: formValue.descripcionImpacto || undefined,
             formato: formValue.formato,
             incluirEvidencias: formValue.incluirEvidencias ?? true,
             incluirParticipaciones: formValue.incluirParticipaciones ?? true,
@@ -261,7 +495,10 @@ export class ReporteGenerarComponent implements OnInit {
             dividirPorGenero: formValue.dividirPorGenero ?? false, // Incluir cantidad de hombres y mujeres
             nombre: nombreReporte,
             rutaArchivo: formValue.rutaArchivo?.trim() || `reportes/institucional-${Date.now()}.xlsx`,
-            tipoArchivo: 'actividad' // Importante: debe contener "actividad" para que el backend detecte el formato institucional
+            tipoArchivo: 'actividad', // Importante: debe contener "actividad" para que el backend detecte el formato institucional
+            parametrosJson: JSON.stringify({
+              SinInstrucciones: true // Eliminar instrucciones del Excel
+            })
           };
 
           // Usar generarExcel que detecta automáticamente el formato institucional
@@ -300,7 +537,9 @@ export class ReporteGenerarComponent implements OnInit {
                 const url = window.URL.createObjectURL(excelBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${nombreReporte}.xlsx`;
+                // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+                const nombreArchivo = nombreReporte.replace(/[<>:"/\\|?*]/g, '_');
+                a.download = `${nombreArchivo}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 
@@ -355,6 +594,32 @@ export class ReporteGenerarComponent implements OnInit {
         }
 
         // Si no es institucional, usar el método tradicional
+        // Para nuevo reporte, siempre incluir dividirPorGenero para el consolidado
+        
+        // Obtener el nombre de la actividad si se seleccionó una
+        let nombreActividad = '';
+        if (formValue.actividadId) {
+          const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+          nombreActividad = actividad?.nombre || '';
+        }
+        
+        // Construir el nombre del reporte con el nombre de la actividad
+        // Formato: "Reporte de * nombre de actividad"
+        let nombreReporte = formValue.nombre?.trim();
+        if (!nombreReporte) {
+          if (nombreActividad) {
+            nombreReporte = `Reporte de ${nombreActividad}`;
+          } else {
+            nombreReporte = this.generarNombreDefault(formValue.tipoReporte || 'general');
+          }
+        } else if (nombreActividad && !nombreReporte.includes(nombreActividad)) {
+          // Si el usuario ingresó un nombre pero hay actividad, usar el formato con actividad
+          nombreReporte = `Reporte de ${nombreActividad}`;
+        } else if (!nombreActividad) {
+          // Si no hay actividad pero el usuario ingresó un nombre, mantenerlo
+          nombreReporte = formValue.nombre?.trim();
+        }
+        
         const config: ReporteConfig = {
           tipoReporte: formValue.tipoReporte,
           actividadId: formValue.actividadId || undefined,
@@ -366,10 +631,13 @@ export class ReporteGenerarComponent implements OnInit {
           incluirEvidencias: formValue.incluirEvidencias,
           incluirParticipaciones: formValue.incluirParticipaciones,
           incluirIndicadores: formValue.incluirIndicadores,
-          dividirPorGenero: formValue.dividirPorGenero ?? false, // Incluir cantidad de hombres y mujeres
-          nombre: formValue.nombre?.trim(),
+          dividirPorGenero: formValue.dividirPorGenero ?? true, // Por defecto true para consolidado (M y F)
+          nombre: nombreReporte,
           rutaArchivo: formValue.rutaArchivo?.trim(),
-          tipoArchivo: formValue.tipoArchivo || 'excel'
+          tipoArchivo: formValue.tipoArchivo || 'excel',
+          parametrosJson: JSON.stringify({
+            SinInstrucciones: true // Eliminar instrucciones del Excel
+          })
         };
 
         // Usar el endpoint POST /api/Reportes/generar/excel que genera el Excel Y lo guarda en la BD
@@ -411,10 +679,11 @@ export class ReporteGenerarComponent implements OnInit {
             const a = document.createElement('a');
             a.href = url;
             const fecha = new Date().toISOString().split('T')[0];
-            const nombreArchivo = config.nombre 
-              ? `${config.nombre}.xlsx` 
-              : `reporte-${config.tipoReporte || 'exportacion'}-${fecha}.xlsx`;
-            a.download = nombreArchivo;
+            // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+            const nombreArchivoLimpio = config.nombre 
+              ? config.nombre.replace(/[<>:"/\\|?*]/g, '_')
+              : `reporte-${config.tipoReporte || 'exportacion'}-${fecha}`;
+            a.download = `${nombreArchivoLimpio}.xlsx`;
             document.body.appendChild(a);
             a.click();
             
@@ -535,6 +804,217 @@ export class ReporteGenerarComponent implements OnInit {
     return `${day}/${month}/${year}`;
   }
 
+  /**
+   * Maneja la generación de extracción de datos
+   * El backend genera columnas dinámicamente según los campos seleccionados por el usuario.
+   * Si no hay campos seleccionados, el backend usa campos por defecto:
+   * NombreEstudiante, TipoParticipante, NombreActividad, FechaRegistro
+   */
+  async generarExtraccionDatos(formValue: any): Promise<void> {
+    const camposSeleccionados = formValue.camposSeleccionados || [];
+    
+    if (camposSeleccionados.length === 0) {
+      this.error.set('Debe seleccionar al menos un campo para la extracción de datos.');
+      this.generando.set(false);
+      return;
+    }
+    
+    try {
+      // Obtener el nombre de la actividad si se seleccionó una
+      let nombreActividad = '';
+      if (formValue.actividadId) {
+        const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+        nombreActividad = actividad?.nombre || '';
+      }
+      
+      // Construir el nombre del reporte con el nombre de la actividad
+      // Formato: "Extracción de datos de + nombre de actividad"
+      let nombreReporte = formValue.nombre?.trim();
+      if (!nombreReporte) {
+        if (nombreActividad) {
+          nombreReporte = `Extracción de datos de ${nombreActividad}`;
+        } else {
+          nombreReporte = `Extracción de Datos ${new Date().toISOString().split('T')[0]}`;
+        }
+      } else if (nombreActividad && !nombreReporte.includes(nombreActividad)) {
+        // Si el usuario ingresó un nombre pero hay actividad, usar el formato con actividad
+        nombreReporte = `Extracción de datos de ${nombreActividad}`;
+      } else if (!nombreActividad) {
+        // Si no hay actividad pero el usuario ingresó un nombre, mantenerlo
+        nombreReporte = formValue.nombre?.trim();
+      }
+      
+      // Configurar para extracción de datos
+      // El backend usará CamposSeleccionados para generar las columnas dinámicamente
+      const config: ReporteConfig = {
+        tipoReporte: 'extraccion-datos',
+        actividadId: formValue.actividadId || undefined,
+        fechaInicio: formValue.fechaInicio || undefined,
+        fechaFin: formValue.fechaFin || undefined,
+        idDepartamento: formValue.idDepartamento || undefined,
+        formato: 'excel',
+        nombre: nombreReporte,
+        rutaArchivo: formValue.rutaArchivo?.trim() || `reportes/extraccion-datos-${Date.now()}.xlsx`,
+        tipoArchivo: 'excel',
+        parametrosJson: JSON.stringify({
+          CamposSeleccionados: camposSeleccionados, // Campos seleccionados por el usuario - el backend generará columnas dinámicamente
+          TipoOperacion: 'extraccion-datos',
+          SinInstrucciones: true, // Eliminar instrucciones del Excel
+          OmitirInstrucciones: true // Algunos backends usan este nombre
+        })
+      };
+      
+      console.log('🔍 Configuración de extracción de datos:', config);
+      console.log('🔍 Campos seleccionados:', camposSeleccionados);
+      console.log('🔍 ParametrosJson:', config.parametrosJson);
+      
+      this.reportesService.generarExcel(config).subscribe({
+        next: (blob) => {
+          console.log('✅ Extracción de datos generada exitosamente, tamaño:', blob.size);
+          
+          if (!blob || blob.size === 0) {
+            this.error.set('El archivo generado está vacío o es inválido.');
+            this.generando.set(false);
+            return;
+          }
+          
+          blob.slice(0, 4).arrayBuffer().then((buffer: ArrayBuffer) => {
+            const bytes = new Uint8Array(buffer);
+            const isValidExcel = bytes[0] === 0x50 && bytes[1] === 0x4B;
+            
+            if (!isValidExcel) {
+              this.error.set('El archivo generado no es un Excel válido.');
+              this.generando.set(false);
+              return;
+            }
+            
+            const excelBlob = blob.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+              ? blob 
+              : new Blob([blob], {
+                  type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                });
+            
+            const url = window.URL.createObjectURL(excelBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+            const nombreArchivo = nombreReporte.replace(/[<>:"/\\|?*]/g, '_');
+            a.download = `${nombreArchivo}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            }, 100);
+            
+            this.generando.set(false);
+            this.router.navigate(['/reportes']);
+          }).catch((error) => {
+            console.error('❌ Error al validar el archivo:', error);
+            this.error.set('Error al validar el archivo generado.');
+            this.generando.set(false);
+          });
+        },
+        error: (err: any) => {
+          console.error('❌ Error generando extracción de datos:', err);
+          this.generando.set(false);
+          
+          let errorMessage = 'Error al generar la extracción de datos';
+          if (err.backendMessage) {
+            errorMessage = err.backendMessage;
+          } else if (err.message) {
+            errorMessage = err.message;
+          } else if (err.error?.message) {
+            errorMessage = err.error.message;
+          }
+          
+          this.error.set(errorMessage);
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ Error en generarExtraccionDatos:', error);
+      this.generando.set(false);
+      this.error.set(error.message || 'Error al generar la extracción de datos');
+    }
+  }
+  
+  /**
+   * Toggle para seleccionar/deseleccionar campos de extracción
+   */
+  toggleCampoExtraccion(campoValue: string): void {
+    const campos = this.camposExtraccion();
+    const campo = campos.find(c => c.value === campoValue);
+    if (campo) {
+      campo.checked = !campo.checked;
+      this.camposExtraccion.set([...campos]);
+      
+      // Actualizar el formulario
+      const camposSeleccionados = campos.filter(c => c.checked).map(c => c.value);
+      this.form.get('camposSeleccionados')?.setValue(camposSeleccionados);
+    }
+  }
+
+  /**
+   * Actualiza el nombre del archivo para extracción de datos cuando se selecciona una actividad
+   */
+  actualizarNombreArchivoExtraccion(): void {
+    const actividadId = this.form.get('actividadId')?.value;
+    if (actividadId) {
+      const actividad = this.actividades().find(a => a.id === actividadId);
+      if (actividad) {
+        const nombreReporte = `Extracción de datos de ${actividad.nombre}`;
+        this.form.get('nombre')?.setValue(nombreReporte, { emitEvent: false });
+      }
+    }
+  }
+
+  /**
+   * Actualiza el nombre del archivo para nuevo reporte cuando se selecciona una actividad
+   */
+  actualizarNombreArchivoReporte(): void {
+    const actividadId = this.form.get('actividadId')?.value;
+    const tipoOperacion = this.form.get('tipoOperacion')?.value;
+    
+    // Solo actualizar si es nuevo reporte
+    if (tipoOperacion === 'nuevo-reporte' && actividadId) {
+      const actividad = this.actividades().find(a => a.id === actividadId);
+      if (actividad) {
+        const nombreReporte = `Reporte de ${actividad.nombre}`;
+        this.form.get('nombre')?.setValue(nombreReporte, { emitEvent: false });
+      }
+    }
+  }
+
+  /**
+   * Maneja el cambio de actividad
+   */
+  onActividadChange(actividadId: number | string): void {
+    const id = typeof actividadId === 'string' ? parseInt(actividadId) : actividadId;
+    if (id && !isNaN(id)) {
+      this.actualizarNombreArchivoReporte();
+      this.cargarDepartamentosDeActividad(id);
+    } else {
+      this.form.get('idDepartamentos')?.setValue([]);
+    }
+  }
+
+  /**
+   * Obtiene un departamento por su ID
+   */
+  obtenerDepartamentoPorId(id: number): any | null {
+    return this.departamentos().find(d => d.id === id) || null;
+  }
+
+  /**
+   * Remueve un departamento de la selección
+   */
+  removerDepartamento(departamentoId: number): void {
+    const departamentosActuales = this.form.get('idDepartamentos')?.value || [];
+    const nuevosDepartamentos = departamentosActuales.filter((id: number) => id !== departamentoId);
+    this.form.get('idDepartamentos')?.setValue(nuevosDepartamentos);
+  }
+
   get tipoReporte() { return this.form.get('tipoReporte'); }
   get actividadId() { return this.form.get('actividadId'); }
   get subactividadId() { return this.form.get('subactividadId'); }
@@ -542,5 +1022,6 @@ export class ReporteGenerarComponent implements OnInit {
   get fechaInicio() { return this.form.get('fechaInicio'); }
   get fechaFin() { return this.form.get('fechaFin'); }
   get idDepartamento() { return this.form.get('idDepartamento'); }
+  get tipoOperacionControl() { return this.form.get('tipoOperacion'); }
 }
 

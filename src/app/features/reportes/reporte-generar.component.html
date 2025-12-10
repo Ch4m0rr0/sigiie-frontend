@@ -16,24 +16,183 @@
     <!-- Form -->
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
       <div class="space-y-6">
-        <!-- Tipo de Reporte -->
+        <!-- Tipo de Operación -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Tipo de Reporte <span class="text-red-500">*</span>
+            Tipo de Operación <span class="text-red-500">*</span>
           </label>
           <select 
-            formControlName="tipoReporte"
+            formControlName="tipoOperacion"
             class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            [class.border-red-500]="tipoReporte?.invalid && tipoReporte?.touched">
-            <option value="">Seleccione...</option>
-            @for (tipo of tiposReporte; track tipo.value) {
-              <option [value]="tipo.value">{{ tipo.label }}</option>
-            }
+            [class.border-red-500]="tipoOperacionControl?.invalid && tipoOperacionControl?.touched">
+            <option value="nuevo-reporte">Nuevo Reporte</option>
+            <option value="extraccion-datos">Extracción de datos</option>
           </select>
-          @if (tipoReporte?.invalid && tipoReporte?.touched) {
-            <p class="mt-1 text-sm text-red-600">El tipo de reporte es requerido</p>
+          @if (tipoOperacionControl?.invalid && tipoOperacionControl?.touched) {
+            <p class="mt-1 text-sm text-red-600">El tipo de operación es requerido</p>
           }
         </div>
+
+        <!-- Vista de Extracción de Datos -->
+        @if (tipoOperacion() === 'extraccion-datos') {
+          <div class="space-y-6 border-t border-slate-200 pt-6">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p class="text-sm text-blue-800">
+                <strong>Extracción de Datos:</strong> Seleccione los campos que desea incluir en el Excel. 
+                El sistema generará columnas dinámicamente según su selección. Si no selecciona ningún campo, 
+                se usarán los campos por defecto: Nombre Estudiante, Tipo Participante, Nombre Actividad y Fecha Registro.
+              </p>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-slate-900 mb-4">Seleccione los campos para la extracción de datos</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @for (campo of camposExtraccion(); track campo.value) {
+                  <div class="flex items-center p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
+                    <input 
+                      type="checkbox" 
+                      [id]="'campo-' + campo.value"
+                      [checked]="campo.checked"
+                      (change)="toggleCampoExtraccion(campo.value)"
+                      class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                    <label [for]="'campo-' + campo.value" class="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
+                      {{ campo.label }}
+                    </label>
+                  </div>
+                }
+              </div>
+              @if (form.get('camposSeleccionados')?.value?.length === 0 && form.get('camposSeleccionados')?.touched) {
+                <p class="mt-2 text-sm text-red-600">Debe seleccionar al menos un campo</p>
+              }
+            </div>
+
+            <!-- Filtros opcionales para extracción -->
+            <div class="space-y-4 border border-blue-200 rounded-lg p-4 bg-blue-50">
+              <h4 class="text-sm font-semibold text-blue-900">Filtros (Opcionales)</h4>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Actividad
+                </label>
+                <select 
+                  formControlName="actividadId"
+                  (change)="actualizarNombreArchivoExtraccion()"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Todas las actividades</option>
+                  @for (actividad of actividades(); track actividad.id) {
+                    <option [value]="actividad.id">{{ actividad.nombre }}</option>
+                  }
+                </select>
+                <p class="mt-1 text-xs text-slate-500">
+                  El nombre del archivo se actualizará automáticamente con el nombre de la actividad seleccionada.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha de Inicio
+                  </label>
+                  <input
+                    type="date"
+                    formControlName="fechaInicio"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Fecha de Fin
+                  </label>
+                  <input
+                    type="date"
+                    formControlName="fechaFin"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Departamento
+                </label>
+                <select 
+                  formControlName="idDepartamento"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Todos los departamentos</option>
+                  @for (departamento of departamentos(); track departamento.id) {
+                    <option [value]="departamento.id">{{ departamento.nombre }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <!-- Datos del archivo para extracción -->
+            <div class="space-y-4 border border-slate-200 rounded-lg p-4 bg-slate-50">
+              <h3 class="text-sm font-semibold text-slate-800">Datos del archivo generado</h3>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre del reporte <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  formControlName="nombre"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ej: Extracción de Datos 2025"
+                  [class.border-red-500]="form.get('nombre')?.invalid && form.get('nombre')?.touched"
+                />
+                @if (form.get('nombre')?.invalid && form.get('nombre')?.touched) {
+                  <p class="mt-1 text-sm text-red-600">
+                    El nombre es obligatorio (mínimo 3 caracteres).
+                  </p>
+                }
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Ruta de almacenamiento <span class="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  formControlName="rutaArchivo"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ej: reportes/extraccion-datos-2025.xlsx"
+                  [class.border-red-500]="form.get('rutaArchivo')?.invalid && form.get('rutaArchivo')?.touched"
+                />
+                @if (form.get('rutaArchivo')?.invalid && form.get('rutaArchivo')?.touched) {
+                  <p class="mt-1 text-sm text-red-600">La ruta es obligatoria.</p>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Vista de Nuevo Reporte (Consolidado) -->
+        @if (tipoOperacion() === 'nuevo-reporte') {
+          <div class="space-y-6 border-t border-slate-200 pt-6">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p class="text-sm text-blue-800">
+                <strong>Generar Reportes:</strong> Esta opción genera un consolidado de las actividades con la cantidad total de participantes, 
+                cantidad de participantes masculinos (M) y cantidad de participantes femeninos (F).
+              </p>
+            </div>
+
+            <!-- Tipo de Reporte -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Tipo de Reporte <span class="text-red-500">*</span>
+              </label>
+              <select 
+                formControlName="tipoReporte"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                [class.border-red-500]="tipoReporte?.invalid && tipoReporte?.touched">
+                <option value="">Seleccione...</option>
+                @for (tipo of tiposReporte; track tipo.value) {
+                  <option [value]="tipo.value">{{ tipo.label }}</option>
+                }
+              </select>
+              @if (tipoReporte?.invalid && tipoReporte?.touched) {
+                <p class="mt-1 text-sm text-red-600">El tipo de reporte es requerido</p>
+              }
+            </div>
 
         <!-- Actividad (si aplica) -->
         @if (tipoReporte?.value === 'actividad' || tipoReporte?.value === 'participaciones' || form.get('dividirPorGenero')?.value) {
@@ -48,6 +207,7 @@
             </label>
             <select 
               formControlName="actividadId"
+              (change)="onActividadChange($any($event.target).value)"
               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
               [class.border-red-500]="actividadId?.invalid && actividadId?.touched">
               <option value="">
@@ -156,22 +316,58 @@
           }
         </div>
 
-        <!-- Departamento (Opcional) -->
+        <!-- Descripción del Impacto -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Departamento (Opcional)
+            Descripción del impacto de la actividad desarrollada
+          </label>
+          <textarea
+            formControlName="descripcionImpacto"
+            rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ingrese un resumen de la actividad y su impacto redactado por los usuarios..."
+          ></textarea>
+          <p class="mt-1 text-xs text-slate-500">
+            Campo opcional para agregar un resumen de la actividad y su impacto. Este texto aparecerá en la columna E del Excel generado.
+          </p>
+        </div>
+
+        <!-- Departamentos (Multi-select) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Departamentos
+            <span class="text-xs text-gray-500">(Se seleccionan automáticamente al elegir una actividad)</span>
           </label>
           <select 
-            formControlName="idDepartamento"
+            formControlName="idDepartamentos"
+            multiple
+            size="5"
             class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Todos los departamentos</option>
             @for (departamento of departamentos(); track departamento.id) {
               <option [value]="departamento.id">{{ departamento.nombre }}</option>
             }
           </select>
           <p class="mt-1 text-xs text-slate-500">
-            Filtrar actividades por departamento. Dejar vacío para incluir todos.
+            Los departamentos se seleccionan automáticamente cuando se elige una actividad. Puede seleccionar múltiples departamentos manteniendo presionada la tecla Ctrl (Windows) o Cmd (Mac). Si no selecciona ningún departamento, se incluirán todos.
           </p>
+          @if (form.get('idDepartamentos')?.value?.length > 0) {
+            <div class="mt-2 flex flex-wrap gap-2">
+              @for (deptId of form.get('idDepartamentos')?.value; track deptId) {
+                @if (obtenerDepartamentoPorId(deptId)) {
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {{ obtenerDepartamentoPorId(deptId)?.nombre }}
+                    <button
+                      type="button"
+                      (click)="removerDepartamento(deptId)"
+                      class="ml-1 text-blue-600 hover:text-blue-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                }
+              }
+            </div>
+          }
         </div>
 
         <!-- Formato -->
@@ -246,57 +442,59 @@
           </div>
         </div>
 
-        <!-- Opciones Adicionales -->
-        <div class="space-y-3">
-          <h3 class="text-md font-semibold text-slate-900">Opciones Adicionales</h3>
-          
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              formControlName="incluirEvidencias"
-              id="incluirEvidencias"
-              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <label for="incluirEvidencias" class="ml-2 text-sm font-medium text-gray-700">
-              Incluir Evidencias
-            </label>
-          </div>
+            <!-- Opciones Adicionales para Nuevo Reporte -->
+            <div class="space-y-3">
+              <h3 class="text-md font-semibold text-slate-900">Opciones Adicionales</h3>
+              
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  formControlName="incluirEvidencias"
+                  id="incluirEvidencias"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="incluirEvidencias" class="ml-2 text-sm font-medium text-gray-700">
+                  Incluir Evidencias
+                </label>
+              </div>
 
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              formControlName="incluirParticipaciones"
-              id="incluirParticipaciones"
-              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <label for="incluirParticipaciones" class="ml-2 text-sm font-medium text-gray-700">
-              Incluir Participaciones
-            </label>
-          </div>
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  formControlName="incluirParticipaciones"
+                  id="incluirParticipaciones"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="incluirParticipaciones" class="ml-2 text-sm font-medium text-gray-700">
+                  Incluir Participaciones
+                </label>
+              </div>
 
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              formControlName="incluirIndicadores"
-              id="incluirIndicadores"
-              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <label for="incluirIndicadores" class="ml-2 text-sm font-medium text-gray-700">
-              Incluir Indicadores
-            </label>
-          </div>
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  formControlName="incluirIndicadores"
+                  id="incluirIndicadores"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="incluirIndicadores" class="ml-2 text-sm font-medium text-gray-700">
+                  Incluir Indicadores
+                </label>
+              </div>
 
-          <div class="flex items-center">
-            <input 
-              type="checkbox" 
-              formControlName="dividirPorGenero"
-              id="dividirPorGenero"
-              class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
-            <label for="dividirPorGenero" class="ml-2 text-sm font-medium text-gray-700">
-              Incluir Cantidad de Hombres y Mujeres
-            </label>
+              <div class="flex items-center">
+                <input 
+                  type="checkbox" 
+                  formControlName="dividirPorGenero"
+                  id="dividirPorGenero"
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="dividirPorGenero" class="ml-2 text-sm font-medium text-gray-700">
+                  Incluir Cantidad de Hombres y Mujeres (M y F)
+                </label>
+              </div>
+              <p class="ml-6 text-xs text-slate-500">
+                El reporte consolidado incluirá: Cantidad total de participantes, Cantidad M (Masculino) y Cantidad F (Femenino).
+              </p>
+            </div>
           </div>
-          <p class="ml-6 text-xs text-slate-500">
-            Incluye estadísticas desglosadas por género (masculino y femenino) en el reporte.
-          </p>
-        </div>
+        }
       </div>
 
       <!-- Actions -->
@@ -314,10 +512,18 @@
           @if (generando()) {
             <span class="flex items-center gap-2">
               <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-              Generando...
+              @if (tipoOperacion() === 'extraccion-datos') {
+                Generando extracción...
+              } @else {
+                Generando reporte...
+              }
             </span>
           } @else {
-            Generar Reporte
+            @if (tipoOperacion() === 'extraccion-datos') {
+              Generar Extracción de Datos
+            } @else {
+              Generar Reporte
+            }
           }
         </button>
       </div>
