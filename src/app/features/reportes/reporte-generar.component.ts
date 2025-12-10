@@ -1,11 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Observable } from 'rxjs';
-import { ReportesService, ReporteConfig } from '../../core/services/reportes.service';
+import { Observable, firstValueFrom } from 'rxjs';
+import { ReportesService, ReporteConfig, ReporteInstitucionalConfig } from '../../core/services/reportes.service';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { SubactividadService } from '../../core/services/subactividad.service';
+import { CatalogosService } from '../../core/services/catalogos.service';
 import type { Actividad } from '../../core/models/actividad';
 import type { Subactividad } from '../../core/models/subactividad';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
@@ -28,14 +29,19 @@ export class ReporteGenerarComponent implements OnInit {
   private reportesService = inject(ReportesService);
   private actividadesService = inject(ActividadesService);
   private subactividadService = inject(SubactividadService);
+  private catalogosService = inject(CatalogosService);
   private router = inject(Router);
 
   form!: FormGroup;
   actividades = signal<Actividad[]>([]);
   subactividades = signal<Subactividad[]>([]);
+  departamentos = signal<any[]>([]);
   loading = signal(false);
   error = signal<string | null>(null);
   generando = signal(false);
+  
+  // Computed para detectar si es reporte institucional
+  esReporteInstitucional = signal(false);
 
   tiposReporte = [
     { value: 'actividad', label: 'Reporte de Actividad' },
@@ -54,6 +60,7 @@ export class ReporteGenerarComponent implements OnInit {
     this.initializeForm();
     this.loadActividades();
     this.loadSubactividades();
+    this.loadDepartamentos();
 
     // Observar cambios en tipoReporte para mostrar/ocultar campos
     this.form.get('tipoReporte')?.valueChanges.subscribe(tipo => {
@@ -61,9 +68,34 @@ export class ReporteGenerarComponent implements OnInit {
       this.setDefaultMetadata(tipo);
     });
 
+    // Observar cambios en dividirPorGenero - NO requiere actividad
+    // Permite generar reporte general con estadísticas de género (F y M)
+    this.form.get('dividirPorGenero')?.valueChanges.subscribe(dividirPorGenero => {
+      const actividadControl = this.form.get('actividadId');
+      const tipoReporte = this.form.get('tipoReporte')?.value;
+      
+      // dividirPorGenero NO hace que la actividad sea requerida
+      // Solo actualizar validación si el tipo de reporte lo requiere
+      if (tipoReporte === 'actividad') {
+        actividadControl?.setValidators(Validators.required);
+      } else {
+        actividadControl?.clearValidators();
+      }
+      actividadControl?.updateValueAndValidity();
+    });
+
+    // Observar cambios en fechas para detectar reporte institucional
+    this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
+      this.actualizarEsReporteInstitucional();
+    });
+    this.form.get('fechaFin')?.valueChanges.subscribe(() => {
+      this.actualizarEsReporteInstitucional();
+    });
+
     // Inicializar valores por defecto
     const initialType = this.form.get('tipoReporte')?.value || 'general';
     this.setDefaultMetadata(initialType);
+    this.actualizarEsReporteInstitucional();
   }
 
   initializeForm(): void {
@@ -71,14 +103,49 @@ export class ReporteGenerarComponent implements OnInit {
       tipoReporte: ['', Validators.required],
       actividadId: [null],
       subactividadId: [null],
+      fechaInicio: [null], // Para reporte institucional o filtrar por período
+      fechaFin: [null], // Para reporte institucional o filtrar por período
+      idDepartamento: [null], // Para filtrar por departamento (opcional)
       formato: ['excel', Validators.required],
       incluirEvidencias: [true],
       incluirParticipaciones: [true],
       incluirIndicadores: [true],
+      dividirPorGenero: [false], // Nueva opción para incluir cantidad de hombres y mujeres
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       rutaArchivo: ['', Validators.required],
       tipoArchivo: ['excel', Validators.required]
+    }, {
+      validators: [this.validarFechas.bind(this)]
     });
+  }
+
+  /**
+   * Validador personalizado para fechas
+   * Si ambas fechas están presentes, fechaInicio debe ser <= fechaFin
+   */
+  validarFechas(control: AbstractControl): ValidationErrors | null {
+    const fechaInicio = control.get('fechaInicio')?.value;
+    const fechaFin = control.get('fechaFin')?.value;
+
+    if (fechaInicio && fechaFin) {
+      const inicio = new Date(fechaInicio);
+      const fin = new Date(fechaFin);
+      
+      if (inicio > fin) {
+        return { fechaInicioMayorQueFin: true };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Actualiza el estado de esReporteInstitucional basado en las fechas
+   */
+  actualizarEsReporteInstitucional(): void {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    const fechaFin = this.form.get('fechaFin')?.value;
+    this.esReporteInstitucional.set(!!(fechaInicio && fechaFin));
   }
 
   updateFormFields(tipoReporte: string): void {
@@ -97,7 +164,14 @@ export class ReporteGenerarComponent implements OnInit {
       case 'subactividad':
         subactividadControl?.setValidators(Validators.required);
         break;
+      case 'participaciones':
+        // Para reportes de participaciones, la actividad es opcional pero útil para filtrar
+        // No es requerida, pero si se selecciona, filtra solo esa actividad
+        break;
     }
+
+    // NOTA: dividirPorGenero NO requiere actividad - permite reporte general con estadísticas de género
+    // El backend debe poder procesar dividirPorGenero sin actividadId
 
     actividadControl?.updateValueAndValidity();
     subactividadControl?.updateValueAndValidity();
@@ -145,27 +219,162 @@ export class ReporteGenerarComponent implements OnInit {
     });
   }
 
-  onSubmit(): void {
+  loadDepartamentos(): void {
+    this.catalogosService.getDepartamentos().subscribe({
+      next: (data) => this.departamentos.set(data),
+      error: (err) => console.error('Error loading departamentos:', err)
+    });
+  }
+
+  async onSubmit(): Promise<void> {
     if (this.form.valid) {
       this.generando.set(true);
       this.error.set(null);
 
-      const config: ReporteConfig = {
-        tipoReporte: this.form.value.tipoReporte,
-        actividadId: this.form.value.actividadId || undefined,
-        subactividadId: this.form.value.subactividadId || undefined,
-        formato: this.form.value.formato,
-        incluirEvidencias: this.form.value.incluirEvidencias,
-        incluirParticipaciones: this.form.value.incluirParticipaciones,
-        incluirIndicadores: this.form.value.incluirIndicadores,
-        nombre: this.form.value.nombre?.trim(),
-        rutaArchivo: this.form.value.rutaArchivo?.trim(),
-        tipoArchivo: this.form.value.tipoArchivo || 'excel'
-      };
+      const formValue = this.form.value;
+      const fechaInicio = formValue.fechaInicio;
+      const fechaFin = formValue.fechaFin;
+      const esInstitucional = fechaInicio && fechaFin;
 
-      // Usar el endpoint POST /api/Reportes/generar/excel que genera el Excel Y lo guarda en la BD
-      this.reportesService.generarExcel(config).subscribe({
-        next: (blob) => {
+      try {
+        let reporteId: number | null = null;
+
+        // Si es reporte institucional, usar generarExcel que detecta automáticamente el formato
+        // El método generarExcel ya maneja ParametrosJson cuando hay fechas
+        if (esInstitucional) {
+          console.log('📊 Generando reporte institucional con fechas:', fechaInicio, 'a', fechaFin);
+          
+          const nombreReporte = formValue.nombre?.trim() || 
+            `Reporte Institucional ${this.formatearFecha(fechaInicio)} - ${this.formatearFecha(fechaFin)}`;
+
+          const config: ReporteConfig = {
+            tipoReporte: formValue.tipoReporte || 'actividad', // Importante: debe contener "actividad"
+            actividadId: formValue.actividadId || undefined,
+            subactividadId: formValue.subactividadId || undefined,
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            idDepartamento: formValue.idDepartamento || undefined,
+            formato: formValue.formato,
+            incluirEvidencias: formValue.incluirEvidencias ?? true,
+            incluirParticipaciones: formValue.incluirParticipaciones ?? true,
+            incluirIndicadores: formValue.incluirIndicadores ?? true,
+            dividirPorGenero: formValue.dividirPorGenero ?? false, // Incluir cantidad de hombres y mujeres
+            nombre: nombreReporte,
+            rutaArchivo: formValue.rutaArchivo?.trim() || `reportes/institucional-${Date.now()}.xlsx`,
+            tipoArchivo: 'actividad' // Importante: debe contener "actividad" para que el backend detecte el formato institucional
+          };
+
+          // Usar generarExcel que detecta automáticamente el formato institucional
+          this.reportesService.generarExcel(config).subscribe({
+            next: (blob) => {
+              console.log('✅ ReporteGenerarComponent - Reporte institucional generado exitosamente, tamaño:', blob.size);
+              
+              // Verificar que el blob sea válido
+              if (!blob || blob.size === 0) {
+                this.error.set('El archivo generado está vacío o es inválido.');
+                this.generando.set(false);
+                return;
+              }
+              
+              // Validar que el blob sea un archivo Excel válido
+              blob.slice(0, 4).arrayBuffer().then((buffer: ArrayBuffer) => {
+                const bytes = new Uint8Array(buffer);
+                const isValidExcel = bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK" (ZIP signature)
+                
+                if (!isValidExcel) {
+                  console.error('❌ ReporteGenerarComponent - El archivo no es un Excel válido.');
+                  this.error.set('El archivo generado no es un Excel válido. Por favor, intenta nuevamente.');
+                  this.generando.set(false);
+                  return;
+                }
+                
+                // Descargar el archivo Excel generado
+                const excelBlob = blob.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+                  ? blob 
+                  : new Blob([blob], {
+                      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    });
+                
+                console.log('✅ ReporteGenerarComponent - Archivo Excel válido, descargando...');
+                
+                const url = window.URL.createObjectURL(excelBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${nombreReporte}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                
+                setTimeout(() => {
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                }, 100);
+                
+                this.generando.set(false);
+                this.router.navigate(['/reportes']);
+              }).catch((error) => {
+                console.error('❌ ReporteGenerarComponent - Error al validar el archivo:', error);
+                this.error.set('Error al validar el archivo generado. Por favor, intenta nuevamente.');
+                this.generando.set(false);
+              });
+            },
+            error: (err: any) => {
+              console.error('❌ ReporteGenerarComponent - Error generando reporte institucional:', err);
+              this.generando.set(false);
+              
+              let errorMessage = 'Error al generar el reporte institucional';
+              
+              if (err.backendMessage) {
+                errorMessage = err.backendMessage;
+              } else if (err.message) {
+                errorMessage = err.message;
+              } else if (err.error?.message) {
+                errorMessage = err.error.message;
+              }
+
+              if (err.status === 404) {
+                errorMessage = 'El endpoint de generación de reportes no está disponible. Por favor, verifica que el backend tenga implementado el endpoint POST /api/reportes/generar/excel';
+              } else if (err.status === 400) {
+                const validationErrors = err.validationErrors || err.error?.errors;
+                if (validationErrors && typeof validationErrors === 'object') {
+                  const flattened = Object.entries(validationErrors)
+                    .map(([field, messages]) => {
+                      const msgArray = Array.isArray(messages) ? messages : [messages];
+                      return `${field}: ${msgArray.join(', ')}`;
+                    })
+                    .join('\n');
+                  errorMessage = `Errores de validación:\n${flattened}`;
+                }
+              } else if (err.status === 500) {
+                errorMessage = 'Error interno del servidor al generar el reporte. Por favor, intenta nuevamente más tarde.';
+              }
+              
+              this.error.set(errorMessage);
+            }
+          });
+          return;
+        }
+
+        // Si no es institucional, usar el método tradicional
+        const config: ReporteConfig = {
+          tipoReporte: formValue.tipoReporte,
+          actividadId: formValue.actividadId || undefined,
+          subactividadId: formValue.subactividadId || undefined,
+          fechaInicio: fechaInicio || undefined, // Para filtrar actividades por período
+          fechaFin: fechaFin || undefined, // Para filtrar actividades por período
+          idDepartamento: formValue.idDepartamento || undefined,
+          formato: formValue.formato,
+          incluirEvidencias: formValue.incluirEvidencias,
+          incluirParticipaciones: formValue.incluirParticipaciones,
+          incluirIndicadores: formValue.incluirIndicadores,
+          dividirPorGenero: formValue.dividirPorGenero ?? false, // Incluir cantidad de hombres y mujeres
+          nombre: formValue.nombre?.trim(),
+          rutaArchivo: formValue.rutaArchivo?.trim(),
+          tipoArchivo: formValue.tipoArchivo || 'excel'
+        };
+
+        // Usar el endpoint POST /api/Reportes/generar/excel que genera el Excel Y lo guarda en la BD
+        this.reportesService.generarExcel(config).subscribe({
+          next: (blob) => {
           console.log('✅ ReporteGenerarComponent - Reporte generado y guardado exitosamente, tamaño:', blob.size);
           
           // Verificar que el blob sea válido
@@ -273,14 +482,65 @@ export class ReporteGenerarComponent implements OnInit {
           this.error.set(errorMessage);
         }
       });
+      } catch (error: any) {
+        console.error('❌ ReporteGenerarComponent - Error en onSubmit:', error);
+        this.generando.set(false);
+        this.error.set(error.message || 'Error al generar el reporte');
+      }
     } else {
       this.form.markAllAsTouched();
     }
+  }
+
+  /**
+   * Descarga un reporte por ID
+   */
+  private async descargarReportePorId(idReporte: number, nombreArchivo?: string): Promise<void> {
+    try {
+      const blob = await firstValueFrom(this.reportesService.descargar(idReporte));
+      
+      // Validar que sea un Excel válido
+      if (blob.size < 4) {
+        throw new Error('El archivo recibido es demasiado pequeño para ser un Excel válido');
+      }
+
+      const arrayBuffer = await blob.slice(0, 2).arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      if (uint8Array[0] !== 0x50 || uint8Array[1] !== 0x4B) {
+        throw new Error('El archivo recibido no es un Excel válido (firma ZIP incorrecta)');
+      }
+
+      // Descargar el archivo
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo ? `${nombreArchivo}.xlsx` : `reporte-${idReporte}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      console.log('✅ Reporte descargado exitosamente');
+    } catch (error: any) {
+      console.error('❌ Error al descargar reporte:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Formatear fecha de YYYY-MM-DD a DD/MM/YYYY
+   */
+  private formatearFecha(fecha: string): string {
+    const [year, month, day] = fecha.split('-');
+    return `${day}/${month}/${year}`;
   }
 
   get tipoReporte() { return this.form.get('tipoReporte'); }
   get actividadId() { return this.form.get('actividadId'); }
   get subactividadId() { return this.form.get('subactividadId'); }
   get formato() { return this.form.get('formato'); }
+  get fechaInicio() { return this.form.get('fechaInicio'); }
+  get fechaFin() { return this.form.get('fechaFin'); }
+  get idDepartamento() { return this.form.get('idDepartamento'); }
 }
 

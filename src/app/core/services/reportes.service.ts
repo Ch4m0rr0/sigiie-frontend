@@ -9,15 +9,37 @@ export interface ReporteConfig {
   planificacionId?: number;
   actividadId?: number;
   subactividadId?: number;
-  fechaInicio?: string;
-  fechaFin?: string;
+  fechaInicio?: string; // Formato: "YYYY-MM-DD"
+  fechaFin?: string; // Formato: "YYYY-MM-DD"
   formato?: 'pdf' | 'excel' | 'html';
   incluirEvidencias?: boolean;
   incluirParticipaciones?: boolean;
   incluirIndicadores?: boolean;
+  incluirDetalleParticipantes?: boolean;
+  dividirPorGenero?: boolean;
   nombre?: string;
   rutaArchivo?: string;
   tipoArchivo?: string;
+  idDepartamento?: number; // Para filtrar por departamento
+  parametrosJson?: string; // JSON stringificado con configuración adicional
+}
+
+/**
+ * Configuración para reporte institucional
+ * Cuando se incluyen FechaInicio y FechaFin, el backend genera automáticamente
+ * un Excel con estructura institucional de 15 columnas
+ */
+export interface ReporteInstitucionalConfig {
+  FechaInicio: string; // Formato: "YYYY-MM-DD" - REQUERIDO
+  FechaFin: string; // Formato: "YYYY-MM-DD" - REQUERIDO
+  ActividadId?: number;
+  SubactividadId?: number;
+  IncluirEvidencias?: boolean;
+  IncluirIndicadores?: boolean;
+  IncluirParticipaciones?: boolean;
+  IncluirDetalleParticipantes?: boolean;
+  DividirPorGenero?: boolean;
+  IdDepartamento?: number; // Para filtrar por departamento
 }
 
 export interface ReporteGenerado {
@@ -117,6 +139,14 @@ export class ReportesService {
         ? reporte.fechaGeneracion 
         : (reporte.fechaGeneracion as Date).toISOString();
     }
+    // Soporte para ParametrosJson si viene en el reporte
+    if (reporte['parametrosJson']) {
+      dto.ParametrosJson = reporte['parametrosJson'];
+    }
+    // Soporte para IdDepartamento
+    if (reporte['idDepartamento']) {
+      dto.IdDepartamento = reporte['idDepartamento'];
+    }
     
     return this.http.post<any>(this.apiUrl, dto).pipe(
       map(response => {
@@ -135,6 +165,49 @@ export class ReportesService {
         return of(null);
       })
     );
+  }
+
+  /**
+   * @deprecated Este método intenta usar POST /api/reportes que no existe (405).
+   * Usar generarExcel() directamente con fechaInicio y fechaFin en ReporteConfig.
+   * El método generarExcel() detecta automáticamente el formato institucional.
+   * 
+   * Crear un reporte institucional
+   * Cuando se incluyen FechaInicio y FechaFin, el backend genera automáticamente
+   * un Excel con estructura institucional de 15 columnas
+   */
+  crearReporteInstitucional(config: ReporteInstitucionalConfig, nombre?: string): Observable<ReporteGenerado | null> {
+    console.warn('⚠️ crearReporteInstitucional() está deprecated. Usar generarExcel() directamente con fechaInicio y fechaFin.');
+    
+    // Convertir a ReporteConfig y usar generarExcel
+    const reporteConfig: ReporteConfig = {
+      tipoReporte: 'actividad',
+      fechaInicio: config.FechaInicio,
+      fechaFin: config.FechaFin,
+      actividadId: config.ActividadId,
+      subactividadId: config.SubactividadId,
+      idDepartamento: config.IdDepartamento,
+      incluirEvidencias: config.IncluirEvidencias,
+      incluirIndicadores: config.IncluirIndicadores,
+      incluirParticipaciones: config.IncluirParticipaciones,
+      incluirDetalleParticipantes: config.IncluirDetalleParticipantes,
+      dividirPorGenero: config.DividirPorGenero,
+      nombre: nombre,
+      tipoArchivo: 'actividad'
+    };
+    
+    // Usar generarExcel que detecta automáticamente el formato institucional
+    // Nota: generarExcel devuelve Blob, no ReporteGenerado
+    // Este método está deprecated, pero mantenemos compatibilidad
+    return throwError(() => new Error('crearReporteInstitucional() está deprecated. Usar generarExcel() directamente con fechaInicio y fechaFin en ReporteConfig.'));
+  }
+
+  /**
+   * Formatear fecha de YYYY-MM-DD a DD/MM/YYYY
+   */
+  private formatearFecha(fecha: string): string {
+    const [year, month, day] = fecha.split('-');
+    return `${day}/${month}/${year}`;
   }
 
   /**
@@ -404,6 +477,9 @@ export class ReportesService {
     console.log('🔄 POST Generar Excel - URL:', `${this.apiUrl}/generar/excel`);
     console.log('🔄 POST Generar Excel - Config:', config);
     
+    // Si hay fechaInicio y fechaFin, usar formato institucional con ParametrosJson
+    const esReporteInstitucional = config.fechaInicio && config.fechaFin;
+    
     // Construir el DTO en PascalCase para el backend
     const dto: any = {
       TipoReporte: config.tipoReporte || '',
@@ -413,15 +489,51 @@ export class ReportesService {
       TipoArchivo: config.tipoArchivo || 'excel'
     };
     
-    // Agregar campos opcionales
-    if (config.actividadId) dto.ActividadId = config.actividadId;
-    if (config.subactividadId) dto.SubactividadId = config.subactividadId;
-    if (config.planificacionId) dto.PlanificacionId = config.planificacionId;
-    if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
-    if (config.fechaFin) dto.FechaFin = config.fechaFin;
-    if (config.incluirEvidencias !== undefined) dto.IncluirEvidencias = config.incluirEvidencias;
-    if (config.incluirParticipaciones !== undefined) dto.IncluirParticipaciones = config.incluirParticipaciones;
-    if (config.incluirIndicadores !== undefined) dto.IncluirIndicadores = config.incluirIndicadores;
+    // Si es reporte institucional, enviar parámetros en ParametrosJson
+    if (esReporteInstitucional) {
+      const parametrosJson: any = {
+        FechaInicio: config.fechaInicio,
+        FechaFin: config.fechaFin,
+      };
+      
+      if (config.actividadId) parametrosJson.ActividadId = config.actividadId;
+      if (config.subactividadId) parametrosJson.SubactividadId = config.subactividadId;
+      if (config.incluirEvidencias !== undefined) parametrosJson.IncluirEvidencias = config.incluirEvidencias;
+      if (config.incluirParticipaciones !== undefined) parametrosJson.IncluirParticipaciones = config.incluirParticipaciones;
+      if (config.incluirIndicadores !== undefined) parametrosJson.IncluirIndicadores = config.incluirIndicadores;
+      if (config.incluirDetalleParticipantes !== undefined) parametrosJson.IncluirDetalleParticipantes = config.incluirDetalleParticipantes;
+      if (config.dividirPorGenero !== undefined) parametrosJson.DividirPorGenero = config.dividirPorGenero;
+      if (config.idDepartamento) parametrosJson.IdDepartamento = config.idDepartamento;
+      
+      dto.ParametrosJson = JSON.stringify(parametrosJson);
+      
+      // Asegurar que TipoArchivo contenga "actividad" para que el backend detecte el formato institucional
+      if (!dto.TipoArchivo.includes('actividad')) {
+        dto.TipoArchivo = 'actividad';
+      }
+      
+      if (config.idDepartamento) {
+        dto.IdDepartamento = config.idDepartamento;
+      }
+    } else {
+      // Formato tradicional: enviar campos directamente
+      if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.subactividadId) dto.SubactividadId = config.subactividadId;
+      if (config.planificacionId) dto.PlanificacionId = config.planificacionId;
+      if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
+      if (config.fechaFin) dto.FechaFin = config.fechaFin;
+      if (config.incluirEvidencias !== undefined) dto.IncluirEvidencias = config.incluirEvidencias;
+      if (config.incluirParticipaciones !== undefined) dto.IncluirParticipaciones = config.incluirParticipaciones;
+      if (config.incluirIndicadores !== undefined) dto.IncluirIndicadores = config.incluirIndicadores;
+      if (config.incluirDetalleParticipantes !== undefined) dto.IncluirDetalleParticipantes = config.incluirDetalleParticipantes;
+      if (config.dividirPorGenero !== undefined) dto.DividirPorGenero = config.dividirPorGenero;
+      if (config.idDepartamento) dto.IdDepartamento = config.idDepartamento;
+    }
+    
+    // Si viene parametrosJson directamente, usarlo (tiene prioridad)
+    if (config.parametrosJson) {
+      dto.ParametrosJson = config.parametrosJson;
+    }
     
     return this.http.post<Blob>(`${this.apiUrl}/generar/excel`, dto, {
       responseType: 'blob' as 'json',
