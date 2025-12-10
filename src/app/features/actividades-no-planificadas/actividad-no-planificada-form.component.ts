@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, computed, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, effect, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -24,7 +24,8 @@ import { AlertService } from '../../core/services/alert.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -117,6 +118,32 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   seccionInformacionExpandida = signal(false);
   seccionEstadoExpandida = signal(false);
   seccionResponsablesExpandida = signal(false);
+  
+  // Computed para verificar si hay un indicador
+  tieneIndicador = computed(() => {
+    return !!(this.form.get('idIndicador')?.value || this.indicadorSeleccionado());
+  });
+  
+  // Computed para expandir automáticamente la sección de planificación si hay un indicador
+  seccionPlanificacionExpandidaComputed = computed(() => {
+    const tieneIndicador = this.tieneIndicador();
+    const expandida = this.seccionPlanificacionExpandida();
+    // Si hay indicador, siempre mostrar la sección expandida
+    return tieneIndicador || expandida;
+  });
+  
+  // Efecto para expandir automáticamente la sección cuando hay un indicador
+  private expandirSeccionConIndicador = effect(() => {
+    const tieneIndicador = this.tieneIndicador();
+    if (tieneIndicador && !this.seccionPlanificacionExpandida()) {
+      // Usar setTimeout para evitar cambios durante la detección de cambios
+      setTimeout(() => {
+        this.seccionPlanificacionExpandida.set(true);
+        // No cerrar las otras secciones - permitir que todas estén abiertas simultáneamente
+        this.cdr.detectChanges();
+      }, 0);
+    }
+  });
 
   // Signal para local seleccionado
   localSeleccionado = signal<any>(null);
@@ -402,7 +429,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       cantidadParticipantesEstudiantesProyectados: [null],
       cantidadTotalParticipantesProtagonistas: [null, Validators.required],
       idTipoEvidencias: [[]],
-      anio: ['', Validators.required], // Requerido para actividades planificadas y no planificadas
+      anio: [''], // Campo oculto - se establece automáticamente desde la fecha de inicio o año actual
       horaInicioPrevista: [''],
       idTipoProtagonista: [[], Validators.required],
       responsableActividad: [''],
@@ -789,9 +816,23 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             const indicador = this.indicadores().find(ind => ind.idIndicador === data.idIndicador);
             if (indicador) {
               this.indicadorSeleccionado.set(indicador);
+              console.log('✅ Indicador seleccionado actualizado:', indicador);
+            }
+            // Asegurar que la sección de planificación esté expandida si hay indicador
+            if (!this.seccionPlanificacionExpandida()) {
+              console.log('🔄 Forzando expansión de sección de planificación...');
+              this.seccionPlanificacionExpandida.set(true);
+              // No cerrar las otras secciones - permitir que todas estén abiertas simultáneamente
+              this.cdr.detectChanges();
             }
           } else {
+            // Si no hay indicador, limpiar y colapsar la sección
+            console.log('📊 No hay indicador, limpiando y colapsando sección de planificación...');
             this.indicadorSeleccionado.set(null);
+            this.seccionPlanificacionExpandida.set(false);
+            this.actividadesAnualesFiltradas.set([]);
+            this.actividadesMensualesFiltradas.set([]);
+            console.log('✅ Indicador limpiado y sección colapsada');
           }
         }, 100);
 
@@ -809,12 +850,40 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         // }
 
         if (data.idIndicador) {
+          console.log('📊 Actividad tiene indicador:', data.idIndicador);
+          // Expandir inmediatamente la sección de planificación si hay un indicador asignado
+          this.seccionPlanificacionExpandida.set(true);
+          console.log('✅ Sección de planificación expandida:', this.seccionPlanificacionExpandida());
+          // No cerrar las otras secciones - permitir que todas estén abiertas simultáneamente
+          
+          // Cargar actividades anuales y mensuales para este indicador
           this.cargarActividadesPorIndicador(data.idIndicador, true);
+          
+          // Forzar detección de cambios después de un breve delay para asegurar que la UI se actualice
+          setTimeout(() => {
+            this.seccionPlanificacionExpandida.set(true); // Asegurar que esté expandida
+            this.cdr.detectChanges();
+            console.log('✅ Detección de cambios forzada, sección expandida:', this.seccionPlanificacionExpandida());
+          }, 200);
+          
+          // Asegurar que la sección siga expandida después de cargar las actividades
+          setTimeout(() => {
+            if (!this.seccionPlanificacionExpandida()) {
+              console.log('⚠️ Sección se cerró, reabriendo...');
+              this.seccionPlanificacionExpandida.set(true);
+              this.cdr.detectChanges();
+            }
+          }, 1000);
         } else {
+          // No hay indicador - limpiar todo y colapsar la sección de planificación
+          console.log('📊 Actividad NO tiene indicador, limpiando planificación...');
+          this.indicadorSeleccionado.set(null);
           this.actividadesAnualesFiltradas.set([]);
           this.actividadesMensualesFiltradas.set([]);
+          this.seccionPlanificacionExpandida.set(false);
           this.cargandoRelaciones = false;
           this.loading.set(false);
+          console.log('✅ Planificación limpiada, sección colapsada');
         }
 
         // Cargar responsables si estamos en modo edición
@@ -964,6 +1033,17 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       const tieneIndicador = formValue.idIndicador !== null && formValue.idIndicador !== undefined && Number(formValue.idIndicador) > 0;
       const tieneActividadesAnuales = Array.isArray(formValue.idActividadAnual) && formValue.idActividadAnual.length > 0;
       const tieneActividadesMensuales = Array.isArray(formValue.idActividadMensualInst) && formValue.idActividadMensualInst.length > 0;
+      
+      // En modo edición, si idIndicador es null explícitamente, debemos enviarlo como null para eliminarlo
+      // En modo creación, si no hay indicador, se envía undefined
+      const idIndicadorValue = this.isEditMode() 
+        ? (formValue.idIndicador === null ? null : (tieneIndicador ? formValue.idIndicador : null))
+        : (tieneIndicador ? formValue.idIndicador : undefined);
+      
+      console.log('🔍 [onSubmit] idIndicador en formulario:', formValue.idIndicador);
+      console.log('🔍 [onSubmit] tieneIndicador:', tieneIndicador);
+      console.log('🔍 [onSubmit] idIndicadorValue a enviar:', idIndicadorValue);
+      console.log('🔍 [onSubmit] Modo edición:', this.isEditMode());
 
       const data: ActividadCreate = {
         nombreActividad: formValue.nombreActividad || formValue.nombre,
@@ -981,19 +1061,25 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         semanaMes: formValue.semanaMes || undefined,
         codigoActividad: formValue.codigoActividad || undefined,
         // El backend espera List<int>? (array) - usar idActividadesMensualesInst (plural) - OPCIONAL
-        // Solo se incluye si tiene valor válido (para actividades no planificadas)
-        idActividadesMensualesInst: tieneActividadesMensuales 
-          ? formValue.idActividadMensualInst 
-          : undefined,
+        // En modo edición: enviar array vacío [] si se eliminó el indicador, para limpiar las actividades mensuales
+        // En modo creación: enviar undefined si no hay actividades mensuales
+        idActividadesMensualesInst: this.isEditMode()
+          ? (tieneIndicador && tieneActividadesMensuales ? formValue.idActividadMensualInst : (formValue.idIndicador === null ? [] : undefined))
+          : (tieneActividadesMensuales ? formValue.idActividadMensualInst : undefined),
         esPlanificada: false, // Siempre false para actividades no planificadas
-        // Campos de planificación opcionales - solo se incluyen si tienen valor válido
-        idIndicador: tieneIndicador ? formValue.idIndicador : undefined,
+        // Campos de planificación opcionales
+        // En modo edición: enviar null explícitamente si se eliminó el indicador
+        // En modo creación: enviar undefined si no hay indicador
+        idIndicador: idIndicadorValue,
         // El backend espera List<int>? (array) - usar idActividadesAnuales (plural) - OPCIONAL
-        idActividadesAnuales: tieneActividadesAnuales 
-          ? formValue.idActividadAnual 
-          : undefined,
+        // En modo edición: enviar array vacío [] si se eliminó el indicador, para limpiar las actividades anuales
+        // En modo creación: enviar undefined si no hay actividades anuales
+        idActividadesAnuales: this.isEditMode()
+          ? (tieneIndicador && tieneActividadesAnuales ? formValue.idActividadAnual : (formValue.idIndicador === null ? [] : undefined))
+          : (tieneActividadesAnuales ? formValue.idActividadAnual : undefined),
         objetivo: formValue.objetivo || undefined,
-        anio: formValue.anio ? String(formValue.anio) : undefined,
+        // Si no se proporciona año, usar el año de la fecha de inicio o el año actual
+        anio: formValue.anio ? String(formValue.anio) : (formValue.fechaInicio ? String(new Date(formValue.fechaInicio).getFullYear()) : String(this.getAnioVigente())),
         horaRealizacion: horaRealizacion,
         cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados || undefined,
         cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados || undefined,
@@ -1007,8 +1093,9 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         areaConocimientoId: formValue.idArea || formValue.areaConocimientoId || undefined,
         ubicacion: formValue.ubicacion || undefined,
         activo: formValue.activo !== undefined ? formValue.activo : true,
-        // Incluir responsables en el payload
-        responsables: responsables.length > 0 ? responsables : undefined
+        // Incluir responsables en el payload SOLO en modo creación
+        // En modo edición, los responsables se eliminan y recrean después
+        responsables: this.isEditMode() ? undefined : (responsables.length > 0 ? responsables : undefined)
       };
 
       if (this.isEditMode()) {
@@ -1025,46 +1112,49 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 this.responsableService.delete(resp.idActividadResponsable)
               );
               
-              forkJoin(deleteRequests).subscribe({
-                next: () => {
-                  console.log('✅ Responsables existentes eliminados');
-                  // Actualizar la actividad
+              // Usar forkJoin con manejo de errores individuales para asegurar que todos se eliminen
+              forkJoin(
+                deleteRequests.map(req => req.pipe(
+                  catchError(err => {
+                    console.warn('⚠️ Error eliminando un responsable (continuando):', err);
+                    return of(null); // Continuar aunque haya error
+                  })
+                ))
+              ).subscribe({
+                next: (results) => {
+                  const exitosos = results.filter(r => r !== null).length;
+                  const fallidos = results.filter(r => r === null).length;
+                  console.log(`✅ Responsables eliminados: ${exitosos} exitosos, ${fallidos} fallidos`);
+                  
+                  // Actualizar la actividad inmediatamente (sin delay innecesario)
                   this.actividadesService.update(actividadId, data).subscribe({
-                    next: () => {
-                      // Crear los nuevos responsables y mostrar alerta después
-                      this.crearResponsablesParaActividad(actividadId, () => {
-                        // Resetear el flag de carga para permitir recargar responsables
-                        this.cargandoResponsables = false;
-                        this.ultimaActividadCargada = null;
-                        // Recargar la actividad desde el backend para asegurar que los datos estén actualizados
-                        this.loadActividad(actividadId);
-                        const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
-                        this.alertService.success(
-                          '¡Actividad actualizada!',
-                          `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
-                        ).then(() => {
-                          this.clearFormState();
-                          this.router.navigate(['/actividades', actividadId]);
+                      next: () => {
+                        console.log('✅ Actividad actualizada, ahora creando nuevos responsables...');
+                        // Crear los nuevos responsables y mostrar alerta después
+                        this.crearResponsablesParaActividad(actividadId, () => {
+                          // Resetear el flag de carga
+                          this.cargandoResponsables = false;
+                          this.ultimaActividadCargada = null;
+                          this.loading.set(false);
+                          const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
+                          // Mostrar alerta con backdrop que bloquea la vista
+                          this.alertService.success(
+                            '¡Actividad actualizada!',
+                            `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
+                          ).then(() => {
+                            this.clearFormState();
+                            this.router.navigate(['/actividades', actividadId]);
+                          });
                         });
-                      });
-                    },
-                    error: (err: any) => {
-                      console.error('❌ Error updating actividad:', err);
-                      this.loading.set(false);
-                      
-                      let errorMsg = 'Error al actualizar la actividad';
-                      if (err.error) {
-                        if (typeof err.error === 'string') {
-                          errorMsg = err.error;
-                        } else if (err.error.message) {
-                          errorMsg = err.error.message;
-                        }
+                      },
+                      error: (err: any) => {
+                        console.error('❌ Error actualizando actividad:', err);
+                        const errorMsg = err.error?.message || err.error?.details || err.message || 'Error desconocido al actualizar la actividad';
+                        this.alertService.error('Error al actualizar la actividad', errorMsg);
+                        this.error.set('Error al guardar la actividad');
+                        this.loading.set(false);
                       }
-                      
-                      this.alertService.error('Error al actualizar la actividad', errorMsg);
-                      this.error.set(errorMsg);
-                    }
-                  });
+                    });
                 },
                 error: (err) => {
                   console.error('Error eliminando responsables existentes:', err);
@@ -1072,12 +1162,12 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.actividadesService.update(actividadId, data).subscribe({
                     next: () => {
                       this.crearResponsablesParaActividad(actividadId, () => {
-                        // Resetear el flag de carga para permitir recargar responsables
+                        // Resetear el flag de carga
                         this.cargandoResponsables = false;
                         this.ultimaActividadCargada = null;
-                        // Recargar la actividad desde el backend para asegurar que los datos estén actualizados
-                        this.loadActividad(actividadId);
+                        this.loading.set(false);
                         const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
+                        // Mostrar alerta con backdrop que bloquea la vista
                         this.alertService.success(
                           '¡Actividad actualizada!',
                           `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
@@ -1111,13 +1201,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
               this.actividadesService.update(actividadId, data).subscribe({
                 next: () => {
                   this.crearResponsablesParaActividad(actividadId, () => {
+                    this.loading.set(false);
                     const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
                     this.alertService.success(
                       '¡Actividad actualizada!',
                       `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
                     ).then(() => {
                       this.clearFormState();
-                      this.router.navigate(['/actividades']);
+                      this.router.navigate(['/actividades', actividadId]);
                     });
                   });
                 },
@@ -1146,13 +1237,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             this.actividadesService.update(actividadId, data).subscribe({
               next: () => {
                 this.crearResponsablesParaActividad(actividadId, () => {
+                  this.loading.set(false);
                   const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
                   this.alertService.success(
                     '¡Actividad actualizada!',
                     `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
                   ).then(() => {
                     this.clearFormState();
-                    this.router.navigate(['/actividades']);
+                    this.router.navigate(['/actividades', actividadId]);
                   });
                 });
               },
@@ -1203,6 +1295,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             if (actividadCreada.id) {
               console.log('🔄 Actividad creada, ahora creando responsables...', actividadCreada.id);
               this.loading.set(false); // Detener el loading
+              // Guardar el ID de la actividad creada para usarlo en mostrarAlertaExito
+              (this as any).actividadIdCreada = actividadCreada.id;
               this.crearResponsablesParaActividad(actividadCreada.id);
               // No mostrar alerta aquí, se mostrará en crearResponsablesParaActividad
               
@@ -1222,13 +1316,18 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             
             // Si no hay ID de actividad, mostrar alerta y redirigir
             this.loading.set(false);
+            const idActividadCreada = actividadCreada.id || actividadCreada.idActividad || (actividadCreada as any).Id || (actividadCreada as any).IdActividad;
             this.alertService.success(
               '¡Actividad creada exitosamente!',
               `La actividad "${nombreActividad}" ha sido creada correctamente.`
             ).then(() => {
-              // Redirigir a la vista de actividades después de cerrar la alerta
+              // Redirigir a la vista de detalles de la actividad creada
               this.clearFormState();
-              this.router.navigate(['/actividades']);
+              if (idActividadCreada) {
+                this.router.navigate(['/actividades', idActividadCreada]);
+              } else {
+                this.router.navigate(['/actividades']);
+              }
             });
           },
           error: (err: any) => {
@@ -1860,6 +1959,9 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   private mostrarAlertaExito(): void {
     const nombreActividad = this.form.get('nombreActividad')?.value || 'la actividad';
     
+    // Detener el loading antes de mostrar la alerta
+    this.loading.set(false);
+    
     if (this.isEditMode()) {
       // Mensaje para actividad actualizada - navegar a vista de detalle
       const actividadId = this.actividadId();
@@ -1867,6 +1969,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         '¡Actividad actualizada!',
         `La actividad "${nombreActividad}" ha sido actualizada correctamente.`
       ).then(() => {
+        this.clearFormState();
         if (actividadId) {
           this.router.navigate(['/actividades', actividadId]);
         } else {
@@ -1874,12 +1977,19 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Mensaje para actividad creada
+      // Mensaje para actividad creada - necesitamos obtener el ID de la actividad creada
+      // Buscar el ID desde el formulario o desde una variable de instancia
+      const actividadId = (this as any).actividadIdCreada || null;
       this.alertService.success(
         '¡Actividad creada exitosamente!',
         `La actividad "${nombreActividad}" ha sido creada correctamente.`
       ).then(() => {
-        this.router.navigate(['/actividades']);
+        this.clearFormState();
+        if (actividadId) {
+          this.router.navigate(['/actividades', actividadId]);
+        } else {
+          this.router.navigate(['/actividades']);
+        }
       });
     }
   }
@@ -2228,9 +2338,23 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   eliminarIndicador(): void {
-    this.form.patchValue({ idIndicador: null });
+    console.log('🗑️ Eliminando indicador y limpiando actividades relacionadas...');
+    // Limpiar el indicador del formulario
+    this.form.patchValue({ 
+      idIndicador: null,
+      idActividadAnual: [],
+      idActividadMensualInst: []
+    });
+    // Limpiar el indicador seleccionado
     this.indicadorSeleccionado.set(null);
+    // Limpiar los arrays de actividades filtradas
+    this.actividadesAnualesFiltradas.set([]);
+    this.actividadesMensualesFiltradas.set([]);
+    // Limpiar la búsqueda
     this.terminoBusquedaIndicador.set('');
+    // Colapsar la sección de planificación si no hay indicador
+    this.seccionPlanificacionExpandida.set(false);
+    console.log('✅ Indicador eliminado y actividades relacionadas limpiadas');
   }
 
   actualizarBusquedaIndicador(valor: string): void {
@@ -2261,12 +2385,28 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       this.indicadorSeleccionado.set(indicador || null);
       this.mostrarDropdownIndicador.set(false);
       
+      console.log('📊 Indicador seleccionado:', idIndicador);
+      // Expandir automáticamente la sección de planificación cuando se selecciona un indicador
+      this.seccionPlanificacionExpandida.set(true);
+      console.log('✅ Sección de planificación expandida:', this.seccionPlanificacionExpandida());
+      // No cerrar las otras secciones - permitir que todas estén abiertas simultáneamente
+      
+      // Forzar detección de cambios para asegurar que la UI se actualice
+      this.cdr.detectChanges();
+      
       // Cargar actividades anuales para este indicador y abrir el dropdown automáticamente
       this.cargarActividadesPorIndicador(idIndicador, false);
       // Abrir el dropdown de actividades anuales automáticamente cuando se carguen los datos
       setTimeout(() => {
         this.mostrarDropdownActividadAnual.set(true);
-      }, 300);
+        // Asegurar que la sección siga expandida
+        if (!this.seccionPlanificacionExpandida()) {
+          console.log('⚠️ Sección se cerró después de cargar, reabriendo...');
+          this.seccionPlanificacionExpandida.set(true);
+        }
+        // Forzar detección de cambios nuevamente después de cargar
+        this.cdr.detectChanges();
+      }, 500);
     }
   }
 
@@ -2855,6 +2995,15 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
 
             responsables.forEach((responsable) => {
               console.log('👤 Procesando responsable:', responsable);
+              console.log('🔍 Campos del responsable:', {
+                idUsuario: responsable.idUsuario,
+                idDocente: responsable.idDocente,
+                idEstudiante: responsable.idEstudiante,
+                idAdmin: responsable.idAdmin,
+                idRolResponsable: responsable.idRolResponsable,
+                nombreRolResponsable: responsable.nombreRolResponsable,
+                rolResponsable: responsable.rolResponsable
+              });
               
               if (responsable.idUsuario) {
                 // Es un usuario - verificar que no esté duplicado
@@ -2870,12 +3019,36 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const usuarioFormGroup = this.crearUsuarioFormGroup();
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                // Verificar múltiples campos posibles del backend
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  // Si solo tenemos el nombre, intentar encontrar el ID en la lista de roles
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
+                console.log('🔍 [Usuario] Mapeo de rol:', {
+                  idRolResponsableOriginal: responsable.idRolResponsable,
+                  nombreRolResponsable: responsable.nombreRolResponsable,
+                  rolResponsable: responsable.rolResponsable,
+                  idRolResponsableFinal: idRolResponsable
+                });
+                
                 usuarioFormGroup.patchValue({
                   idUsuario: responsable.idUsuario,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.usuariosArray.push(usuarioFormGroup);
-                console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idDocente) {
                 // Es un docente - verificar que no esté duplicado
                 if (docentesUnicos.has(responsable.idDocente)) {
@@ -2890,12 +3063,27 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const docenteFormGroup = this.crearPersonaFormGroup('docente');
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
                 docenteFormGroup.patchValue({
                   idPersona: responsable.idDocente,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.docentesArray.push(docenteFormGroup);
-                console.log('✅ Docente agregado:', responsable.idDocente, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Docente agregado:', responsable.idDocente, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idEstudiante) {
                 // Es un estudiante - verificar que no esté duplicado
                 if (estudiantesUnicos.has(responsable.idEstudiante)) {
@@ -2910,12 +3098,27 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const estudianteFormGroup = this.crearPersonaFormGroup('estudiante');
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
                 estudianteFormGroup.patchValue({
                   idPersona: responsable.idEstudiante,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.estudiantesArray.push(estudianteFormGroup);
-                console.log('✅ Estudiante agregado:', responsable.idEstudiante, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Estudiante agregado:', responsable.idEstudiante, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idAdmin) {
                 // Es un administrativo - verificar que no esté duplicado
                 if (administrativosUnicos.has(responsable.idAdmin)) {
@@ -2930,12 +3133,27 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const adminFormGroup = this.crearPersonaFormGroup('administrativo');
+                
+                // Asegurar que idRolResponsable se mapee correctamente
+                let idRolResponsable: number | null = null;
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  idRolResponsable = Number(responsable.idRolResponsable);
+                } else if (responsable.nombreRolResponsable) {
+                  const rolEncontrado = this.rolesResponsable().find(r => 
+                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
+                    r.nombre === responsable.nombreRolResponsable
+                  );
+                  if (rolEncontrado) {
+                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
+                  }
+                }
+                
                 adminFormGroup.patchValue({
                   idPersona: responsable.idAdmin,
-                  idRolResponsable: responsable.idRolResponsable || null
+                  idRolResponsable: idRolResponsable
                 }, { emitEvent: false });
                 this.administrativosArray.push(adminFormGroup);
-                console.log('✅ Administrativo agregado:', responsable.idAdmin, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Administrativo agregado:', responsable.idAdmin, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
               } else if (responsable.idResponsableExterno) {
                 // Es un responsable externo - verificar que no esté duplicado
                 if (externosUnicos.has(responsable.idResponsableExterno)) {
@@ -2993,6 +3211,12 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
 
     console.log('🔄 Creando responsables para actividad:', idActividad);
     console.log('📋 FormResponsable value:', formValue);
+    console.log('📊 Arrays de responsables en formulario:');
+    console.log('  - Usuarios:', this.usuariosArray.length);
+    console.log('  - Docentes:', this.docentesArray.length);
+    console.log('  - Estudiantes:', this.estudiantesArray.length);
+    console.log('  - Administrativos:', this.administrativosArray.length);
+    console.log('  - Responsables Externos:', this.responsablesExternosArray.length);
 
     // Agregar usuarios - solo los que tienen idUsuario válido
     this.usuariosArray.controls.forEach((control, index) => {
@@ -3102,7 +3326,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       
       responsables.push({
         idActividad,
-        idDocente: Number(idDocente),
+        idEstudiante: Number(idDocente), // El backend espera idEstudiante para estudiantes
         idTipoResponsable: 3,
         idRolResponsable,
         rolResponsable: this.getNombreRolResponsable(idRolResponsable),
@@ -3142,17 +3366,108 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       console.log('✅ Administrativo agregado a responsables:', idAdmin, 'Rol ID:', idRolResponsable, 'Rol Nombre:', idRolResponsable ? this.getNombreRolResponsable(idRolResponsable) : 'Sin rol');
     });
 
+    // Agregar responsables externos
+    this.responsablesExternosArray.controls.forEach((control, index) => {
+      const esNuevo = control.get('esNuevo')?.value;
+      const idResponsableExterno = control.get('idResponsableExterno')?.value;
+      const idRolResponsableRaw = control.get('idRolResponsable')?.value;
+      
+      // Convertir idRolResponsable a número
+      let idRolResponsable: number | undefined = undefined;
+      if (idRolResponsableRaw !== null && idRolResponsableRaw !== undefined && idRolResponsableRaw !== '') {
+        const numValue = Number(idRolResponsableRaw);
+        if (!isNaN(numValue) && numValue > 0) {
+          idRolResponsable = numValue;
+        }
+      }
+      
+      if (esNuevo) {
+        // Responsable externo nuevo - debe tener nombre, institucion y rol
+        const nombre = control.get('nombre')?.value;
+        const institucion = control.get('institucion')?.value;
+        const cargo = control.get('cargo')?.value;
+        const telefono = control.get('telefono')?.value;
+        const correo = control.get('correo')?.value;
+        
+        // Validar que tenga todos los campos requeridos
+        if (nombre && institucion && idRolResponsable) {
+          responsables.push({
+            idActividad,
+            idTipoResponsable: 5, // Tipo responsable externo
+            idRolResponsable: idRolResponsable,
+            responsableExterno: {
+              nombre: String(nombre),
+              institucion: String(institucion),
+              cargo: cargo ? String(cargo) : undefined,
+              telefono: telefono ? String(telefono) : undefined,
+              correo: correo ? String(correo) : undefined
+            },
+            fechaAsignacion: fechaAsignacion
+          } as any);
+          console.log(`✅ [Responsable Externo ${index}] Agregado (nuevo):`, nombre, 'Rol:', idRolResponsable);
+        } else {
+          console.warn(`⚠️ [Responsable Externo ${index}] Omitido porque le faltan campos requeridos (nombre, institucion o idRolResponsable)`);
+        }
+      } else if (idResponsableExterno && idRolResponsable) {
+        // Responsable externo existente - debe tener ambos IDs
+        responsables.push({
+          idActividad,
+          idTipoResponsable: 5, // Tipo responsable externo
+          idResponsableExterno: Number(idResponsableExterno),
+          idRolResponsable: idRolResponsable,
+          fechaAsignacion: fechaAsignacion
+        } as any);
+        console.log(`✅ [Responsable Externo ${index}] Agregado (existente):`, idResponsableExterno, 'Rol:', idRolResponsable);
+      } else {
+        console.warn(`⚠️ [Responsable Externo ${index}] Omitido porque le falta idResponsableExterno o idRolResponsable`);
+      }
+    });
+
     // Crear todos los responsables en paralelo
     console.log('📊 Total de responsables a crear:', responsables.length);
     console.log('📋 Responsables a crear:', JSON.stringify(responsables, null, 2));
     
     if (responsables.length > 0) {
+      // Validar que todos los responsables tengan al menos un ID de persona
+      const responsablesInvalidos = responsables.filter(r => {
+        const tieneId = r.idUsuario || r.idDocente || r.idEstudiante || r.idAdmin || (r as any).idResponsableExterno || (r as any).responsableExterno;
+        if (!tieneId) {
+          console.error('❌ Responsable inválido encontrado (sin ID de persona):', r);
+        }
+        return !tieneId;
+      });
+      
+      if (responsablesInvalidos.length > 0) {
+        console.error('❌ Se encontraron responsables inválidos. No se crearán responsables.');
+        this.alertService.error(
+          'Error al crear responsables',
+          'Algunos responsables no tienen información válida. Por favor, verifica que todos los responsables tengan una persona asignada.'
+        );
+        this.loading.set(false);
+        if (onComplete) {
+          onComplete();
+        }
+        return;
+      }
+      
+      // Crear responsables con manejo de errores individuales
       forkJoin(
-        responsables.map(responsable => this.responsableService.create(responsable))
+        responsables.map(responsable => 
+          this.responsableService.create(responsable).pipe(
+            catchError(err => {
+              console.error('❌ Error creando un responsable individual:', err);
+              console.error('❌ Responsable que falló:', responsable);
+              // Continuar con los demás aunque uno falle
+              return of(null);
+            })
+          )
+        )
       ).subscribe({
         next: (responsablesCreados) => {
-          console.log('✅ Responsables creados exitosamente:', responsablesCreados);
-          console.log('📊 Total de responsables creados:', responsablesCreados.length);
+          const exitosos = responsablesCreados.filter(r => r !== null).length;
+          const fallidos = responsablesCreados.filter(r => r === null).length;
+          console.log(`✅ Responsables creados: ${exitosos} exitosos, ${fallidos} fallidos`);
+          console.log('📊 Total de responsables creados:', exitosos);
           this.loading.set(false);
           // Ejecutar callback si se proporciona, sino mostrar alerta
           if (onComplete) {
@@ -3162,9 +3477,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
           }
         },
         error: (err) => {
-          console.error('❌ Error creando responsables:', err);
-          console.error('❌ Error details:', err.error);
-          console.error('❌ Error status:', err.status);
+          console.error('❌ Error crítico creando responsables:', err);
           this.loading.set(false);
           // Ejecutar callback incluso si hay error
           if (onComplete) {
@@ -3321,31 +3634,19 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   toggleSeccionPlanificacion(): void {
     const nuevoEstado = !this.seccionPlanificacionExpandida();
     this.seccionPlanificacionExpandida.set(nuevoEstado);
-    // Si se expande la sección de planificación, ocultar las otras
-    if (nuevoEstado) {
-      this.seccionInformacionExpandida.set(false);
-      this.seccionResponsablesExpandida.set(false);
-    }
+    // Permitir que todas las secciones estén abiertas simultáneamente
   }
 
   toggleSeccionInformacion(): void {
     const nuevoEstado = !this.seccionInformacionExpandida();
     this.seccionInformacionExpandida.set(nuevoEstado);
-    // Si se expande la sección de información, ocultar las otras
-    if (nuevoEstado) {
-      this.seccionPlanificacionExpandida.set(false);
-      this.seccionResponsablesExpandida.set(false);
-    }
+    // Permitir que todas las secciones estén abiertas simultáneamente
   }
 
   toggleSeccionResponsables(): void {
     const nuevoEstado = !this.seccionResponsablesExpandida();
     this.seccionResponsablesExpandida.set(nuevoEstado);
-    // Si se expande la sección de responsables, ocultar las otras
-    if (nuevoEstado) {
-      this.seccionPlanificacionExpandida.set(false);
-      this.seccionInformacionExpandida.set(false);
-    }
+    // Permitir que todas las secciones estén abiertas simultáneamente
   }
 
   // Métodos para el dropdown de indicador

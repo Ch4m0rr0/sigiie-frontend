@@ -62,20 +62,20 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionPlanificacionExpandida()" [class.text-slate-400]="!seccionPlanificacionExpandida()">
-                            {{ seccionPlanificacionExpandida() ? 'Abierta' : 'Cerrada' }}
+                        <span class="text-xs font-medium" [class.text-emerald-600]="seccionPlanificacionExpandidaComputed()" [class.text-slate-400]="!seccionPlanificacionExpandidaComputed()">
+                            {{ seccionPlanificacionExpandidaComputed() ? 'Abierta' : 'Cerrada' }}
                         </span>
                     <app-icon 
-                            [icon]="seccionPlanificacionExpandida() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
+                            [icon]="seccionPlanificacionExpandidaComputed() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" 
                         size="md" 
                             class="transition-all duration-200"
-                            [class.text-emerald-600]="seccionPlanificacionExpandida()"
-                            [class.text-slate-400]="!seccionPlanificacionExpandida()"></app-icon>
+                            [class.text-emerald-600]="seccionPlanificacionExpandidaComputed()"
+                            [class.text-slate-400]="!seccionPlanificacionExpandidaComputed()"></app-icon>
                     </div>
                 </button>
                 
                 <!-- Contenido del acordeón -->
-                @if (seccionPlanificacionExpandida()) {
+                @if (seccionPlanificacionExpandidaComputed()) {
                     <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -1093,27 +1093,6 @@
                                     <p class="text-xs text-red-800">Este campo es requerido</p>
                                 </div>
                             }
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                                <app-icon icon="edit" size="xs" class="text-emerald-600"></app-icon>
-                                Edición
-                            </label>
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center gap-1.5 pointer-events-none">
-                                    <span class="text-slate-300 text-xs whitespace-nowrap">Edición a la que pertenece esta actividad</span>
-                                </div>
-                                <input 
-                                    type="text"
-                                    formControlName="anio"
-                                    class="w-full px-4 py-2.5 pl-72 pr-10 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <app-icon icon="edit" size="xs" class="text-slate-300"></app-icon>
-                                </div>
-                            </div>
                         </div>
                     </div>
 

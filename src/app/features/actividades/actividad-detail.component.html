@@ -359,8 +359,8 @@
           <!-- Tab: Información -->
           @if (activeTab() === 'info') {
             <div class="space-y-6 max-w-6xl mx-auto">
-              <!-- Sección 1: Planificación (solo si es planificada) -->
-              @if (actividad()!.esPlanificada) {
+              <!-- Sección 1: Planificación (si es planificada O si tiene indicador asociado válido) -->
+              @if (actividad()!.esPlanificada || (actividad()!.idIndicador && actividad()!.idIndicador !== null)) {
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                   <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
                     <div class="flex items-center justify-between">
@@ -387,8 +387,8 @@
                   <div class="p-4">
                     <!-- Diagrama Visual de Planificación -->
                     <div class="space-y-4">
-                      <!-- Indicador (si existe) -->
-                    @if (actividad()!.idIndicador) {
+                      <!-- Indicador (si existe y no es null) -->
+                    @if (actividad()!.idIndicador && actividad()!.idIndicador !== null) {
                         <div class="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-lg p-4 shadow-sm border border-emerald-200">
                           <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-lg bg-white/80 backdrop-blur-sm flex items-center justify-center flex-shrink-0">

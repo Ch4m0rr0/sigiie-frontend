@@ -2180,9 +2180,18 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
 
         this.actividadesService.create(actividadData).subscribe({
           next: (actividad) => {
-            const idActividadCreada = actividad.id || actividad.idActividad;
+            const idActividadCreada = actividad.id || actividad.idActividad || (actividad as any).Id || (actividad as any).IdActividad;
             console.log(`✅ Actividad creada con ID: ${idActividadCreada}`);
+            console.log(`📋 Actividad completa recibida:`, actividad);
             console.log(`📋 Tipos de evidencia en actividad creada:`, actividad.idTipoEvidencias);
+            
+            // Validar que tenemos un ID válido antes de continuar
+            if (!idActividadCreada || idActividadCreada === null || idActividadCreada === undefined) {
+              console.error('❌ Error: No se pudo obtener el ID de la actividad creada');
+              this.loadingNuevaActividad.set(false);
+              this.errorNuevaActividad.set('No se pudo obtener el ID de la actividad creada. Por favor, intente nuevamente.');
+              return;
+            }
             
             // Crear responsables manualmente después de crear la actividad
             // El backend no crea los responsables automáticamente, debemos crearlos usando el endpoint /api/actividad-responsable
@@ -2194,7 +2203,12 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
                 this.cerrarFormNuevaActividad();
                 this.errorNuevaActividad.set(null);
                 // Redirigir a la vista de detalle de la actividad creada
-                this.router.navigate(['/actividades', idActividadCreada]);
+                console.log(`🚀 Navegando a vista de detalles: /actividades/${idActividadCreada}`);
+                this.router.navigate(['/actividades', idActividadCreada]).then(success => {
+                  if (!success) {
+                    console.error('❌ Error al navegar a la vista de detalles');
+                  }
+                });
               });
             } else {
               // Si no hay responsables, redirigir inmediatamente
@@ -2202,7 +2216,12 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
               this.cerrarFormNuevaActividad();
               this.errorNuevaActividad.set(null);
               // Redirigir a la vista de detalle de la actividad creada
-              this.router.navigate(['/actividades', idActividadCreada]);
+              console.log(`🚀 Navegando a vista de detalles: /actividades/${idActividadCreada}`);
+              this.router.navigate(['/actividades', idActividadCreada]).then(success => {
+                if (!success) {
+                  console.error('❌ Error al navegar a la vista de detalles');
+                }
+              });
             }
           },
           error: (err) => {
