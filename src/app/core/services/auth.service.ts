@@ -61,37 +61,57 @@ export class AuthService {
     }
   }).pipe(
     map(res => {
+      console.log('📥 [AUTH] Respuesta del backend en login:', res);
+      
       // Priorizar permisos de la respuesta directa, luego del JWT
       let permisos: string[] = [];
       let roles: string[] = [];
       
       // Si vienen permisos directamente en la respuesta, usarlos
       if (res.permisos && res.permisos.length > 0) {
-        permisos = res.permisos;
+        // Los permisos pueden venir como strings o como objetos con 'nombre'
+        permisos = res.permisos.map((p: any) => {
+          if (typeof p === 'string') {
+            return p;
+          } else if (p && typeof p === 'object' && p.nombre) {
+            return p.nombre;
+          }
+          return String(p);
+        }).filter(Boolean);
+        console.log('✅ [AUTH] Permisos extraídos de la respuesta:', permisos);
       } else {
         // Si no, intentar decodificar el token JWT
         try {
           const tokenPayload = JSON.parse(atob(res.token.split('.')[1]));
+          console.log('🔍 [AUTH] Payload del token JWT:', tokenPayload);
           permisos = tokenPayload.permisos || tokenPayload.permissions || [];
+          if (permisos.length > 0) {
+            console.log('✅ [AUTH] Permisos extraídos del token JWT:', permisos);
+          }
         } catch (e) {
-          console.warn('⚠️ No se pudieron extraer permisos del token JWT');
+          console.warn('⚠️ [AUTH] No se pudieron extraer permisos del token JWT:', e);
         }
       }
 
       // Mapear el rol
       roles = [res.rol].filter(Boolean);
+      console.log('✅ [AUTH] Roles extraídos:', roles);
+
+      const userData = {
+        id: 0,
+        nombreCompleto: res.nombre,
+        correo: res.correo,
+        role: res.rol,
+        roles: roles,
+        permisos: permisos,
+        departamentoId: undefined
+      };
+      
+      console.log('✅ [AUTH] Datos del usuario creados:', userData);
 
       return {
         token: res.token,
-        user: {
-          id: 0,
-          nombreCompleto: res.nombre,
-          correo: res.correo,
-          role: res.rol,
-          roles: roles,
-          permisos: permisos,
-          departamentoId: undefined
-        }
+        user: userData
       };
     }),
     tap(authRes => {

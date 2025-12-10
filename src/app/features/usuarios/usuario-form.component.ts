@@ -4,10 +4,10 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import { CatalogosService } from '../../core/services/catalogos.service';
+import { AlertService } from '../../core/services/alert.service';
 import type { Usuario, UsuarioCreate, UsuarioUpdate } from '../../core/models/usuario';
 import type { Rol } from '../../core/models/rol';
 import type { Departamento } from '../../core/models/departamento';
-import type { Permiso } from '../../core/models/permiso';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
@@ -30,6 +30,7 @@ export class UsuarioFormComponent implements OnInit {
   private fb = inject(FormBuilder);
   private usuariosService = inject(UsuariosService);
   private catalogosService = inject(CatalogosService);
+  private alertService = inject(AlertService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -39,11 +40,11 @@ export class UsuarioFormComponent implements OnInit {
   loading = signal(false);
   saving = signal(false);
   error = signal<string | null>(null);
+  hasUnsavedChanges = signal(false);
 
   // Catálogos
   roles = signal<Rol[]>([]);
   departamentos = signal<Departamento[]>([]);
-  permisos = signal<Permiso[]>([]);
 
   ngOnInit(): void {
     // Verificar si es modo edición
@@ -71,9 +72,15 @@ export class UsuarioFormComponent implements OnInit {
       correo: ['', [Validators.required, Validators.email]],
       contraseña: ['', this.isEditMode() ? [] : [Validators.required, Validators.minLength(6)]],
       idRol: [null, Validators.required],
-      departamentoId: [null],
-      permisos: [[]], // Array de IDs de permisos
+      departamentoId: [null, Validators.required],
       activo: [true]
+    });
+
+    // Detectar cambios en el formulario
+    this.form.valueChanges.subscribe(() => {
+      if (this.form.dirty) {
+        this.hasUnsavedChanges.set(true);
+      }
     });
   }
 
@@ -112,11 +119,6 @@ export class UsuarioFormComponent implements OnInit {
       }
     });
 
-    // Cargar permisos
-    this.usuariosService.listPermisos().subscribe({
-      next: (data) => this.permisos.set(data),
-      error: (err) => console.error('Error loading permisos:', err)
-    });
   }
 
   loadUsuario(id: number): void {
@@ -186,32 +188,12 @@ export class UsuarioFormComponent implements OnInit {
           this.error.set('⚠️ El usuario no tiene un rol asignado. Por favor, selecciona un rol.');
         }
         
-        // Mapear permisos de nombres a IDs
-        // El backend devuelve permisos del rol en 'permisos' (strings) y permisos personalizados en 'permisosPersonalizados' (objetos)
-        let permisosIds: number[] = [];
-        
-        // Obtener nombres de permisos del rol
-        const nombresPermisosRol = usuario.permisos || [];
-        
-        // Obtener nombres de permisos personalizados
-        const nombresPermisosPersonalizados = usuario.permisosPersonalizados?.map(p => p.nombre) || [];
-        
-        // Combinar todos los nombres de permisos
-        const todosLosNombresPermisos = [...nombresPermisosRol, ...nombresPermisosPersonalizados];
-        
-        if (todosLosNombresPermisos.length > 0 && this.permisos().length > 0) {
-          permisosIds = this.permisos()
-            .filter(p => todosLosNombresPermisos.includes(p.nombre))
-            .map(p => p.id);
-        }
-        
         this.form.patchValue({
-          nombreCompleto: usuario.nombreCompleto,
-          correo: usuario.correo,
+          nombreCompleto: usuario.nombreCompleto || '',
+          correo: usuario.correo || '',
           idRol: idRol,
-          departamentoId: usuario.departamentoId,
-          permisos: permisosIds,
-          activo: usuario.activo
+          departamentoId: usuario.departamentoId || null,
+          activo: usuario.activo !== undefined ? usuario.activo : true
         });
         
         this.loading.set(false);
@@ -258,91 +240,28 @@ export class UsuarioFormComponent implements OnInit {
     }
 
     if (this.isEditMode() && this.usuarioId()) {
-      // Convertir IDs de permisos a objetos completos de Permiso
-      let permisosCompletos: any[] = [];
-      if (formValue.permisos && Array.isArray(formValue.permisos) && formValue.permisos.length > 0) {
-        permisosCompletos = formValue.permisos
-          .map((permisoId: any) => {
-            const permisoIdNum = +permisoId;
-            if (isNaN(permisoIdNum)) return null;
-            
-            // Buscar el permiso completo en la lista cargada
-            const permisoCompleto = this.permisos().find(p => p.id === permisoIdNum);
-            if (permisoCompleto) {
-              return {
-                idPermiso: permisoCompleto.id,
-                nombre: permisoCompleto.nombre,
-                descripcion: permisoCompleto.descripcion || null,
-                modulo: null, // El backend puede completar esto
-                activo: true
-              };
-            }
-            // Si no se encuentra, crear un objeto mínimo con el ID
-            return {
-              idPermiso: permisoIdNum,
-              nombre: null,
-              descripcion: null,
-              modulo: null,
-              activo: true
-            };
-          })
-          .filter((p: any) => p !== null);
-      }
-
-      // Actualizar usuario
+      // Actualizar usuario - los permisos vienen del rol asignado
       const updateData: UsuarioUpdate = {
         nombreCompleto: formValue.nombreCompleto,
         correo: formValue.correo,
         idRol: +formValue.idRol,
         activo: formValue.activo ?? true,
-        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
-        permisos: permisosCompletos // Enviar objetos completos, no solo IDs
+        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined
       };
 
       console.log('📤 Enviando actualización de usuario:', updateData);
       
       this.usuariosService.update(this.usuarioId()!, updateData).subscribe({
-        next: async (success) => {
+        next: (success) => {
           if (success) {
             console.log('✅ Usuario actualizado exitosamente');
-            
-            // Verificar que los permisos se guardaron correctamente
-            if (permisosCompletos.length > 0) {
-              console.log('🔍 Verificando que los permisos se guardaron...');
-              await new Promise(resolve => setTimeout(resolve, 500)); // Esperar a que el backend procese
-              
-              try {
-                const usuarioVerificado = await firstValueFrom(this.usuariosService.getById(this.usuarioId()!));
-                if (usuarioVerificado) {
-                  // El backend devuelve permisos personalizados en 'permisosPersonalizados'
-                  const permisosPersonalizadosGuardados = usuarioVerificado.permisosPersonalizados || [];
-                  const nombresPermisosEnviados = permisosCompletos.map(p => p.nombre).filter(n => n);
-                  
-                  console.log(`📊 Permisos enviados: ${permisosCompletos.length}`, nombresPermisosEnviados);
-                  console.log(`📊 Permisos personalizados guardados: ${permisosPersonalizadosGuardados.length}`, permisosPersonalizadosGuardados);
-                  
-                  // Verificar que los permisos personalizados se guardaron
-                  const nombresPermisosPersonalizadosGuardados = permisosPersonalizadosGuardados.map(p => p.nombre);
-                  const permisosGuardadosCorrectamente = nombresPermisosEnviados.every(nombre => 
-                    nombresPermisosPersonalizadosGuardados.includes(nombre)
-                  );
-                  
-                  if (permisosPersonalizadosGuardados.length === 0) {
-                    console.warn('⚠️ ADVERTENCIA: Los permisos personalizados no se guardaron. El backend puede no estar procesando el campo Permisos.');
-                    alert(`⚠️ Usuario actualizado, pero los permisos personalizados pueden no haberse guardado.\n\nPermisos enviados: ${permisosCompletos.length}\nPermisos personalizados encontrados: ${permisosPersonalizadosGuardados.length}\n\nNota: Los permisos del rol se asignan automáticamente. Los permisos personalizados adicionales deben guardarse en 'permisosPersonalizados'.\n\nPor favor, verifica en el backend si el endpoint procesa el campo Permisos.`);
-                  } else if (!permisosGuardadosCorrectamente) {
-                    console.warn(`⚠️ Algunos permisos no coinciden. Enviados: ${nombresPermisosEnviados.join(', ')}, Guardados: ${nombresPermisosPersonalizadosGuardados.join(', ')}`);
-                    alert(`⚠️ Usuario actualizado, pero algunos permisos pueden no haberse guardado correctamente.\n\nPermisos enviados: ${permisosCompletos.length}\nPermisos personalizados guardados: ${permisosPersonalizadosGuardados.length}`);
-                  } else {
-                    console.log('✅ Permisos personalizados verificados correctamente');
-                  }
-                }
-              } catch (verifyError) {
-                console.warn('⚠️ No se pudo verificar los permisos:', verifyError);
-              }
-            }
-            
-            this.router.navigate(['/usuarios']);
+            this.hasUnsavedChanges.set(false);
+            this.alertService.success(
+              '¡Usuario actualizado exitosamente!',
+              `El usuario "${formValue.nombreCompleto}" ha sido actualizado correctamente.`
+            ).then(() => {
+              this.router.navigate(['/usuarios']);
+            });
           } else {
             this.error.set('Error al actualizar el usuario. El servidor no confirmó la actualización.');
             this.saving.set(false);
@@ -374,81 +293,64 @@ export class UsuarioFormComponent implements OnInit {
             errorMessage = err.error.message;
           }
           
-          this.error.set(errorMessage);
+          this.alertService.error('Error al actualizar', errorMessage);
           this.saving.set(false);
         }
       });
     } else {
-      // Convertir IDs de permisos a objetos completos de Permiso para crear usuario
-      let permisosCompletos: any[] = [];
-      if (formValue.permisos && Array.isArray(formValue.permisos) && formValue.permisos.length > 0) {
-        permisosCompletos = formValue.permisos
-          .map((permisoId: any) => {
-            const permisoIdNum = +permisoId;
-            if (isNaN(permisoIdNum)) return null;
-            
-            // Buscar el permiso completo en la lista cargada
-            const permisoCompleto = this.permisos().find(p => p.id === permisoIdNum);
-            if (permisoCompleto) {
-              return {
-                idPermiso: permisoCompleto.id,
-                nombre: permisoCompleto.nombre,
-                descripcion: permisoCompleto.descripcion || null,
-                modulo: null,
-                activo: true
-              };
-            }
-            // Si no se encuentra, crear un objeto mínimo con el ID
-            return {
-              idPermiso: permisoIdNum,
-              nombre: null,
-              descripcion: null,
-              modulo: null,
-              activo: true
-            };
-          })
-          .filter((p: any) => p !== null);
-      }
-
-      // Crear nuevo usuario
+      // Crear nuevo usuario - los permisos vienen del rol asignado
       const createData: UsuarioCreate = {
         nombreCompleto: formValue.nombreCompleto,
         correo: formValue.correo,
         contraseña: formValue.contraseña,
         idRol: +formValue.idRol,
-        departamentoId: formValue.departamentoId ? +formValue.departamentoId : undefined,
-        permisos: permisosCompletos // Enviar objetos completos, no solo IDs
+        departamentoId: +formValue.departamentoId
       };
 
       this.usuariosService.create(createData).subscribe({
         next: (usuario) => {
-          this.router.navigate(['/usuarios']);
+          console.log('✅ Usuario creado exitosamente');
+          this.hasUnsavedChanges.set(false);
+          this.alertService.success(
+            '¡Usuario creado exitosamente!',
+            `El usuario "${formValue.nombreCompleto}" ha sido creado correctamente.`
+          ).then(() => {
+            this.router.navigate(['/usuarios']);
+          });
         },
-        error: (err) => {
+        error: (err: any) => {
           console.error('Error creating usuario:', err);
-          this.error.set('Error al crear el usuario. Por favor, intenta de nuevo.');
+          
+          let errorMessage = 'Error al crear el usuario. Por favor, intenta de nuevo.';
+          
+          if (err.status === 400) {
+            errorMessage = err.error?.message || 'Datos inválidos. Por favor, verifica la información ingresada.';
+          } else if (err.status === 409) {
+            errorMessage = 'Ya existe un usuario con este correo electrónico.';
+          } else if (err.error?.message) {
+            errorMessage = err.error.message;
+          }
+          
+          this.alertService.error('Error al crear', errorMessage);
           this.saving.set(false);
         }
       });
     }
   }
 
-  togglePermiso(permisoId: number, event: Event): void {
-    const checkbox = event.target as HTMLInputElement;
-    const currentPermisos = this.form.get('permisos')?.value || [];
-    let newPermisos: number[];
-    
-    if (checkbox.checked) {
-      newPermisos = [...currentPermisos, permisoId];
-    } else {
-      newPermisos = currentPermisos.filter((id: number) => id !== permisoId);
-    }
-    
-    this.form.patchValue({ permisos: newPermisos });
-  }
-
   onCancel(): void {
-    this.router.navigate(['/usuarios']);
+    if (this.hasUnsavedChanges()) {
+      this.alertService.warning(
+        '¿Deseas salir?',
+        'Tienes cambios sin guardar. ¿Estás seguro de que deseas salir sin guardar?'
+      ).then((result) => {
+        if (result.isConfirmed) {
+          this.router.navigate(['/usuarios']);
+        }
+      });
+    } else {
+      this.router.navigate(['/usuarios']);
+    }
   }
 }
 
