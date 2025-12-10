@@ -18,6 +18,7 @@ import type { Administrativo } from '../../core/models/administrativo';
 import type { CategoriaParticipacion } from '../../core/models/categoria-participacion';
 import type { EstadoParticipacion } from '../../core/models/estado-participacion';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonFormComponent } from '../../shared/skeleton/skeleton-form.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 
@@ -29,6 +30,7 @@ import { BrnLabelImports } from '@spartan-ng/brain/label';
     ReactiveFormsModule,
     RouterModule,
     IconComponent,
+    SkeletonFormComponent,
     ...BrnButtonImports,
     ...BrnLabelImports
   ],
@@ -72,8 +74,6 @@ export class ParticipacionFormComponent implements OnInit {
 
     const id = this.route.snapshot.paramMap.get('id');
     const subactividadId = this.route.snapshot.queryParamMap.get('subactividadId');
-    const edicionId = this.route.snapshot.queryParamMap.get('edicionId');
-    
     if (id) {
       this.isEditMode.set(true);
       this.participacionId.set(+id);
@@ -81,15 +81,11 @@ export class ParticipacionFormComponent implements OnInit {
     } else if (subactividadId) {
       // Pre-seleccionar subactividad si viene de una subactividad específica
       this.form.patchValue({ idSubactividad: +subactividadId });
-    } else if (edicionId) {
-      // Pre-seleccionar edición si viene de una edición específica
-      this.form.patchValue({ edicionId: +edicionId });
     }
   }
 
   initializeForm(): void {
     this.form = this.fb.group({
-      edicionId: [null, Validators.required],
       idSubactividad: [null],
       grupoNumero: [null],
       idRolEquipo: [null],
@@ -239,7 +235,6 @@ export class ParticipacionFormComponent implements OnInit {
         }
 
         this.form.patchValue({
-          edicionId: data.edicionId,
           idSubactividad: data.idSubactividad || null,
           grupoNumero: data.grupoNumero || null,
           idRolEquipo: data.idRolEquipo || null,
@@ -287,7 +282,6 @@ export class ParticipacionFormComponent implements OnInit {
       };
       
       const baseData = {
-        edicionId: this.form.value.edicionId,
         idSubactividad: toNumberOrUndefined(this.form.value.idSubactividad),
         grupoNumero: toNumberOrUndefined(this.form.value.grupoNumero),
         idRolEquipo: toNumberOrUndefined(this.form.value.idRolEquipo),
@@ -398,7 +392,6 @@ export class ParticipacionFormComponent implements OnInit {
     }
   }
 
-  get edicionId() { return this.form.get('edicionId'); }
   get categoriaParticipacionId() { return this.form.get('categoriaParticipacionId'); }
   get estadoParticipacionId() { return this.form.get('estadoParticipacionId'); }
 }

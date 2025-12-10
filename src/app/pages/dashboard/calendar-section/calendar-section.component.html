@@ -1,4 +1,4 @@
-<div class="mb-8">
+<div class="mb-8" style="min-height: 700px; contain: layout style;">
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <!-- Header del Calendario -->
     <div class="px-6 py-5 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
@@ -116,14 +116,15 @@
       </div>
 
       <!-- Calendario -->
-      <div class="calendar-container relative" (mouseleave)="onEventMouseLeave()">
+      <div class="calendar-container relative min-h-[700px]" (mouseleave)="onEventMouseLeave()" style="contain: layout style; min-height: 700px;">
         <mwl-calendar-month-view
           [viewDate]="viewDate"
           [events]="eventosCalendarioFiltrados()"
           [locale]="locale"
           (eventClicked)="eventoClicked($event)"
           [activeDayIsOpen]="false"
-          class="calendar-month-view">
+          class="calendar-month-view"
+          style="min-height: 700px; contain: layout style; height: auto;">
         </mwl-calendar-month-view>
         
         <!-- Tooltip para eventos -->

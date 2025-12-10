@@ -2,12 +2,13 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParticipacionService } from '../../core/services/participacion.service';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
 @Component({
   standalone: true,
   selector: 'app-equipo-detail',
-  imports: [CommonModule, RouterModule, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, SkeletonCardComponent, ...BrnButtonImports],
   templateUrl: './equipo-detail.component.html',
 })
 export class EquipoDetailComponent implements OnInit {

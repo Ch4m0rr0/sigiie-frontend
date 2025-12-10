@@ -22,23 +22,13 @@
 
     <!-- Loading State -->
     @if (loading()) {
-      <div [class]="isModalMode ? 'flex justify-center items-center py-8' : 'bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-8 animate-pulse'">
-        @if (!isModalMode) {
-          <div class="space-y-4">
-            <div class="h-4 w-1/4 bg-slate-200 rounded"></div>
-            <div class="h-10 bg-slate-100 rounded-lg"></div>
-            <div class="h-24 bg-slate-100 rounded-lg"></div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="h-10 bg-slate-100 rounded-lg"></div>
-            <div class="h-10 bg-slate-100 rounded-lg"></div>
-            <div class="h-10 bg-slate-100 rounded-lg"></div>
-            <div class="h-10 bg-slate-100 rounded-lg"></div>
-          </div>
-        } @else {
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        }
-      </div>
+      @if (!isModalMode) {
+        <app-skeleton-form [sections]="2" [showSectionTitle]="true" [showTextArea]="true" [showActions]="true"></app-skeleton-form>
+      } @else {
+        <div class="flex justify-center items-center py-8">
+          <app-skeleton width="3rem" height="3rem" variant="circular"></app-skeleton>
+        </div>
+      }
     }
 
     <!-- Error State -->
@@ -272,6 +262,9 @@
                       <img 
                         [src]="getCurrentPreviewUrl()!" 
                         alt="Preview" 
+                        loading="lazy"
+                        width="800"
+                        height="600"
                         class="w-full h-auto rounded-lg border border-slate-300 max-h-96 object-contain mx-auto"
                         (error)="previewUrls.set([])">
                     </div>

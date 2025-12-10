@@ -4,8 +4,9 @@
     <div class="max-w-4xl mx-auto">
       <!-- Loading State -->
       @if (evidenciaDetalleLoading()) {
-        <div class="flex justify-center items-center h-64">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div class="max-w-4xl mx-auto space-y-6">
+          <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+          <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
         </div>
       }
 
@@ -121,6 +122,9 @@
                     [src]="getEvidenciaDetalleCurrentImageUrl()!" 
                     alt="Preview" 
                     class="w-full h-auto rounded-lg border border-gray-300 max-h-96 object-contain mx-auto"
+                    loading="lazy"
+                    width="800"
+                    height="600"
                     (error)="onEvidenciaDetalleImageError($event)"
                     (load)="evidenciaDetalleImageError.set(false)">
                 } @else if (evidenciaDetalleImageError()) {
@@ -175,8 +179,9 @@
   } @else {
     <!-- Loading State -->
     @if (loading()) {
-      <div class="flex justify-center items-center h-64">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div class="max-w-6xl mx-auto space-y-6">
+        <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+        <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
       </div>
     }
 
@@ -2010,9 +2015,7 @@
                 <h4 class="text-lg font-semibold text-slate-900 mb-4">Estadísticas Generales</h4>
                 
                 @if (loadingParticipantes()) {
-                  <div class="flex justify-center items-center h-64">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                  </div>
+                  <app-skeleton-table [rows]="5" [columns]="4" [showHeader]="true"></app-skeleton-table>
                 } @else if (errorParticipantes()) {
                   <div class="bg-red-50 border border-red-200 rounded-lg p-4">
                     <p class="text-red-800">{{ errorParticipantes() }}</p>

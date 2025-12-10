@@ -16,12 +16,19 @@ import { IconComponent } from '../icon/icon.component';
         title="Notificaciones">
         <app-icon icon="notifications" size="sm"></app-icon>
         
-        <!-- Badge con número de notificaciones no leídas (solo cuando el dropdown está cerrado y no se ha abierto antes, o si se clickeó alguna) -->
-        @if (mostrarContador() > 0 && !isOpen()) {
-          <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white">
+        <!-- Badge con número de notificaciones no leídas - Reservar espacio siempre para evitar CLS -->
+        <span 
+          class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 flex items-center justify-center text-white text-[10px] font-bold rounded-full border-2 border-white transition-opacity duration-200"
+          [style.background-color]="(mostrarContador() > 0 && !isOpen()) ? '#ef4444' : 'transparent'"
+          [style.opacity]="(mostrarContador() > 0 && !isOpen()) ? '1' : '0'"
+          [style.pointer-events]="(mostrarContador() > 0 && !isOpen()) ? 'auto' : 'none'"
+          [style.visibility]="(mostrarContador() > 0 && !isOpen()) ? 'visible' : 'hidden'"
+          aria-hidden="true"
+          style="will-change: opacity, background-color; transform: translateZ(0);">
+          <span [style.visibility]="(mostrarContador() > 0 && !isOpen()) ? 'visible' : 'hidden'">
             {{ mostrarContador() > 99 ? '99+' : mostrarContador() }}
           </span>
-        }
+        </span>
         
         <!-- Puntito rojo: aparece si se ha abierto el dropdown pero no se ha clickeado ninguna notificación -->
         @if (dropdownAbiertoAlgunaVez() && !notificacionClickeada() && noLeidasCount() > 0 && !isOpen() && mostrarContador() === 0) {
@@ -208,60 +215,67 @@ export class NotificacionesComponent implements OnInit, OnDestroy {
   }
 
   toggleDropdown(): void {
+    // Optimización INP: Diferir trabajo pesado para no bloquear el hilo principal
     const nuevoEstado = !this.isOpen();
     this.isOpen.set(nuevoEstado);
     
-    if (nuevoEstado) {
-      // Cuando se abre el dropdown
-      this.dropdownAbiertoAlgunaVez.set(true);
-      // No resetear notificacionClickeada aquí, solo cuando se cierra sin clickear
-      // Ocultar el contador cuando se abre (no mostrar el número)
-      this.mostrarContador.set(0);
-      this.notificacionesService.loadNotificaciones();
-    } else {
-      // Cuando se cierra el dropdown
-      // Si no se clickeó ninguna notificación, mantener el contador en 0 (no mostrar)
-      // El puntito rojo se mostrará en su lugar
-      if (!this.notificacionClickeada()) {
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      if (nuevoEstado) {
+        // Cuando se abre el dropdown
+        this.dropdownAbiertoAlgunaVez.set(true);
+        // No resetear notificacionClickeada aquí, solo cuando se cierra sin clickear
+        // Ocultar el contador cuando se abre (no mostrar el número)
         this.mostrarContador.set(0);
+        this.notificacionesService.loadNotificaciones();
       } else {
-        // Si se clickeó alguna, mostrar el contador actualizado
-        this.mostrarContador.set(this.noLeidasCount());
-        // Resetear el flag para la próxima vez que se abra
-        this.notificacionClickeada.set(false);
+        // Cuando se cierra el dropdown
+        // Si no se clickeó ninguna notificación, mantener el contador en 0 (no mostrar)
+        // El puntito rojo se mostrará en su lugar
+        if (!this.notificacionClickeada()) {
+          this.mostrarContador.set(0);
+        } else {
+          // Si se clickeó alguna, mostrar el contador actualizado
+          this.mostrarContador.set(this.noLeidasCount());
+          // Resetear el flag para la próxima vez que se abra
+          this.notificacionClickeada.set(false);
+        }
       }
-    }
+    });
   }
 
   handleNotificacionClick(notificacion: Notificacion): void {
-    // Marcar que se ha clickeado una notificación
+    // Optimización INP: Actualizar estado inmediatamente, diferir trabajo pesado
     this.notificacionClickeada.set(true);
     
-    if (!notificacion.leida) {
-      this.marcarComoLeida(notificacion.id);
-    }
-    
-    if (notificacion.url) {
-      // Si la URL tiene query params, usar navigate con queryParams
-      const urlParts = notificacion.url.split('?');
-      const path = urlParts[0];
-      const queryString = urlParts[1];
-      
-      if (queryString) {
-        // Parsear query params
-        const queryParams: any = {};
-        queryString.split('&').forEach(param => {
-          const [key, value] = param.split('=');
-          if (key && value) {
-            queryParams[key] = decodeURIComponent(value);
-          }
-        });
-        this.router.navigate([path], { queryParams });
-      } else {
-        this.router.navigateByUrl(notificacion.url);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      if (!notificacion.leida) {
+        this.marcarComoLeida(notificacion.id);
       }
-      this.isOpen.set(false);
-    }
+      
+      if (notificacion.url) {
+        // Si la URL tiene query params, usar navigate con queryParams
+        const urlParts = notificacion.url.split('?');
+        const path = urlParts[0];
+        const queryString = urlParts[1];
+        
+        if (queryString) {
+          // Parsear query params
+          const queryParams: any = {};
+          queryString.split('&').forEach(param => {
+            const [key, value] = param.split('=');
+            if (key && value) {
+              queryParams[key] = decodeURIComponent(value);
+            }
+          });
+          this.router.navigate([path], { queryParams });
+        } else {
+          this.router.navigateByUrl(notificacion.url);
+        }
+        this.isOpen.set(false);
+      }
+    });
   }
 
   marcarComoLeida(id: number): void {

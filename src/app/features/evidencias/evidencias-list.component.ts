@@ -11,13 +11,14 @@ import type { Evidencia } from '../../core/models/evidencia';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown/multi-select-dropdown.component';
 
 @Component({
   standalone: true,
   selector: 'app-evidencias-list',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports, MultiSelectDropdownComponent],
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonCardComponent, ...BrnButtonImports, MultiSelectDropdownComponent],
   templateUrl: './evidencias-list.component.html',
 })
 export class EvidenciasListComponent implements OnInit {

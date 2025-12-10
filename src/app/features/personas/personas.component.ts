@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -10,6 +10,7 @@ import type { Administrativo } from '../../core/models/administrativo';
 import type { ResponsableExterno } from '../../core/models/responsable-externo';
 import type { Genero } from '../../core/models/genero';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonTableComponent } from '../../shared/skeleton/skeleton-table.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -17,8 +18,9 @@ import { catchError, finalize } from 'rxjs/operators';
 @Component({
   standalone: true,
   selector: 'app-list-personas',
-  imports: [CommonModule, FormsModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, FormsModule, RouterModule, IconComponent, SkeletonTableComponent, ...BrnButtonImports],
   templateUrl: './personas.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ListPersonasComponent implements OnInit {
   private personasService = inject(PersonasService);
@@ -65,39 +67,51 @@ export class ListPersonasComponent implements OnInit {
   
   itemsPorPagina = 10;
 
-  // Computed para filtrar, ordenar y paginar estudiantes
+  // Computed optimizado para filtrar, ordenar y paginar estudiantes
   estudiantesFiltrados = computed(() => {
     const estudiantes = this.estudiantes();
     const busqueda = this.busquedaDebounced().toLowerCase().trim();
     
-    // Filtrar por búsqueda
-    let filtrados = estudiantes;
-    if (busqueda) {
-      filtrados = estudiantes.filter(e => 
-        e.nombreCompleto?.toLowerCase().includes(busqueda) ||
-        e.numeroCarnet?.toLowerCase().includes(busqueda) ||
-        e.correo?.toLowerCase().includes(busqueda) ||
-        e.cedula?.toLowerCase().includes(busqueda) ||
-        e.numeroTelefono?.toLowerCase().includes(busqueda) ||
-        e.genero?.toLowerCase().includes(busqueda) ||
-        e.carrera?.toLowerCase().includes(busqueda) ||
-        e.departamento?.toLowerCase().includes(busqueda) ||
-        e.estadoEstudiante?.toLowerCase().includes(busqueda) ||
-        e.nivelFormacion?.toLowerCase().includes(busqueda) ||
-        e.categoriaParticipacion?.toLowerCase().includes(busqueda) ||
-        e.numeroOrcid?.toLowerCase().includes(busqueda)
-      );
+    // Si no hay búsqueda y no hay paginación, retornar directamente
+    if (!busqueda && this.mostrarTodosEstudiantes()) {
+      return estudiantes;
     }
     
-    // Ordenar alfabéticamente por nombre completo
-    filtrados = [...filtrados].sort((a, b) => {
-      const nombreA = (a.nombreCompleto || '').toLowerCase();
-      const nombreB = (b.nombreCompleto || '').toLowerCase();
-      return nombreA.localeCompare(nombreB);
-    });
+    // Filtrar por búsqueda solo si hay búsqueda
+    let filtrados = estudiantes;
+    if (busqueda) {
+      // Optimización: crear un string de búsqueda combinado una sola vez
+      filtrados = estudiantes.filter(e => {
+        const searchableText = [
+          e.nombreCompleto,
+          e.numeroCarnet,
+          e.correo,
+          e.cedula,
+          e.numeroTelefono,
+          e.genero,
+          e.carrera,
+          e.departamento,
+          e.estadoEstudiante,
+          e.nivelFormacion,
+          e.categoriaParticipacion,
+          e.numeroOrcid
+        ].filter(Boolean).join(' ').toLowerCase();
+        return searchableText.includes(busqueda);
+      });
+    }
+    
+    // Ordenar solo si hay elementos que ordenar
+    if (filtrados.length > 0) {
+      // Usar sort estable con comparación optimizada
+      filtrados = [...filtrados].sort((a, b) => {
+        const nombreA = (a.nombreCompleto || '').toLowerCase();
+        const nombreB = (b.nombreCompleto || '').toLowerCase();
+        return nombreA < nombreB ? -1 : nombreA > nombreB ? 1 : 0;
+      });
+    }
     
     // Aplicar paginación si no está en modo "mostrar todos"
-    if (!this.mostrarTodosEstudiantes()) {
+    if (!this.mostrarTodosEstudiantes() && filtrados.length > this.itemsPorPagina) {
       const inicio = (this.paginaActualEstudiantes() - 1) * this.itemsPorPagina;
       const fin = inicio + this.itemsPorPagina;
       return filtrados.slice(inicio, fin);
@@ -106,26 +120,31 @@ export class ListPersonasComponent implements OnInit {
     return filtrados;
   });
 
-  // Computed para obtener el total de estudiantes filtrados (sin paginación)
+  // Computed optimizado para obtener el total de estudiantes filtrados (sin paginación)
   estudiantesFiltradosTotal = computed(() => {
     const estudiantes = this.estudiantes();
     const busqueda = this.busquedaDebounced().toLowerCase().trim();
     
     if (!busqueda) return estudiantes.length;
-    return estudiantes.filter(e => 
-      e.nombreCompleto?.toLowerCase().includes(busqueda) ||
-      e.numeroCarnet?.toLowerCase().includes(busqueda) ||
-      e.correo?.toLowerCase().includes(busqueda) ||
-      e.cedula?.toLowerCase().includes(busqueda) ||
-      e.numeroTelefono?.toLowerCase().includes(busqueda) ||
-      e.genero?.toLowerCase().includes(busqueda) ||
-      e.carrera?.toLowerCase().includes(busqueda) ||
-      e.departamento?.toLowerCase().includes(busqueda) ||
-      e.estadoEstudiante?.toLowerCase().includes(busqueda) ||
-      e.nivelFormacion?.toLowerCase().includes(busqueda) ||
-      e.categoriaParticipacion?.toLowerCase().includes(busqueda) ||
-      e.numeroOrcid?.toLowerCase().includes(busqueda)
-    ).length;
+    
+    // Optimización: usar el mismo método de búsqueda que estudiantesFiltrados
+    return estudiantes.filter(e => {
+      const searchableText = [
+        e.nombreCompleto,
+        e.numeroCarnet,
+        e.correo,
+        e.cedula,
+        e.numeroTelefono,
+        e.genero,
+        e.carrera,
+        e.departamento,
+        e.estadoEstudiante,
+        e.nivelFormacion,
+        e.categoriaParticipacion,
+        e.numeroOrcid
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchableText.includes(busqueda);
+    }).length;
   });
 
   // Computed para el total de páginas

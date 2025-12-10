@@ -634,10 +634,7 @@
             </div>
             
             <!-- Loading indicator -->
-            <div *ngIf="isLoading()" class="flex justify-center items-center py-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span class="ml-2 text-gray-600">Cargando datos...</span>
-            </div>
+            <app-skeleton-table *ngIf="isLoading()" [rows]="5" [columns]="5" [showHeader]="true"></app-skeleton-table>
             <!-- Table or empty state -->
             <div *ngIf="!isLoading()">
               <div *ngIf="currentItems().length === 0" class="text-center py-8">

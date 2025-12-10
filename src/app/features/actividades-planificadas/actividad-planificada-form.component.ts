@@ -483,14 +483,14 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             const localEncontrado = this.capacidadesInstaladas().find(c => Number(c.id) === Number(id));
             if (localEncontrado) {
               this.localSeleccionado.set(localEncontrado);
-              this.cdr.detectChanges();
+              this.cdr.markForCheck();
             }
           }, 100);
         }
       } else {
         this.localSeleccionado.set(null);
       }
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     });
 
     this.form.get('idIndicador')?.valueChanges.subscribe(idIndicador => {
@@ -931,7 +931,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                 const localEncontrado = this.capacidadesInstaladas().find(c => Number(c.id) === Number(data.idCapacidadInstalada));
                 if (localEncontrado) {
                   this.localSeleccionado.set(localEncontrado);
-                  this.cdr.detectChanges();
+                  this.cdr.markForCheck();
                 }
               }, 200);
             }
@@ -1136,7 +1136,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             console.log('✅ Total de responsables cargados:', responsables.length);
             this.cargandoResponsables = false;
             setTimeout(() => {
-              this.cdr.detectChanges(); // Forzar detección de cambios después de un delay
+              this.cdr.markForCheck(); // Forzar detección de cambios después de un delay
             }, 300);
           }, 300); // Esperar 300ms para que las listas de personas estén cargadas
         } else {
@@ -3589,7 +3589,7 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
           const localEncontrado = this.capacidadesInstaladas().find(c => Number(c.id) === idNumero);
           if (localEncontrado) {
             this.localSeleccionado.set(localEncontrado);
-            this.cdr.detectChanges();
+            this.cdr.markForCheck();
           }
         }, 100);
       }

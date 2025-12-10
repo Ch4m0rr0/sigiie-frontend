@@ -1774,13 +1774,27 @@ export class ActividadesService {
       // Actividades anuales y mensuales (el backend devuelve arrays completos con nombres)
       // El backend devuelve en camelCase: actividadesAnuales y actividadesMensualesInst
       actividadesAnuales: (() => {
-        // Buscar primero en camelCase (formato del backend)
-        const anuales = item.actividadesAnuales || item.ActividadesAnuales || [];
+        // Buscar en múltiples formatos posibles
+        const anuales = item.actividadesAnuales 
+          || item.ActividadesAnuales 
+          || item.actividadesAnualesInst
+          || item.ActividadesAnualesInst
+          || [];
+        
+        // Si hay ID pero no array, intentar construir desde el ID
+        if (!Array.isArray(anuales) && (item.idActividadAnual || item.IdActividadAnual)) {
+          const idAnual = item.idActividadAnual || item.IdActividadAnual;
+          console.log(`ℹ️ [ActividadesService] Se encontró idActividadAnual: ${idAnual}, pero no array de actividades anuales. Esto es normal si el backend no carga las relaciones.`);
+        }
+        
         if (Array.isArray(anuales) && anuales.length > 0) {
           console.log(`📥 [ActividadesService] Mapeando ${anuales.length} actividades anuales del backend`);
           console.log(`📋 [ActividadesService] Primera actividad anual RAW:`, anuales[0]);
         } else {
-          console.log(`⚠️ [ActividadesService] No se encontraron actividades anuales en la respuesta del backend`);
+          // Solo log si realmente se esperaba tener actividades anuales
+          if (item.idActividadAnual || item.IdActividadAnual) {
+            console.log(`ℹ️ [ActividadesService] La actividad tiene idActividadAnual pero el backend no devolvió el array completo. Esto es normal - las relaciones se cargan por separado.`);
+          }
         }
         const mapeadas = mapActividadesAnuales(anuales);
         if (mapeadas.length > 0) {
@@ -1789,13 +1803,27 @@ export class ActividadesService {
         return mapeadas;
       })(),
       actividadesMensualesInst: (() => {
-        // Buscar primero en camelCase (formato del backend)
-        const mensuales = item.actividadesMensualesInst || item.ActividadesMensualesInst || [];
+        // Buscar en múltiples formatos posibles
+        const mensuales = item.actividadesMensualesInst 
+          || item.ActividadesMensualesInst
+          || item.actividadesMensuales
+          || item.ActividadesMensuales
+          || [];
+        
+        // Si hay ID pero no array, intentar construir desde el ID
+        if (!Array.isArray(mensuales) && (item.idActividadMensualInst || item.IdActividadMensualInst)) {
+          const idMensual = item.idActividadMensualInst || item.IdActividadMensualInst;
+          console.log(`ℹ️ [ActividadesService] Se encontró idActividadMensualInst: ${idMensual}, pero no array de actividades mensuales. Esto es normal si el backend no carga las relaciones.`);
+        }
+        
         if (Array.isArray(mensuales) && mensuales.length > 0) {
           console.log(`📥 [ActividadesService] Mapeando ${mensuales.length} actividades mensuales del backend`);
           console.log(`📋 [ActividadesService] Primera actividad mensual RAW:`, mensuales[0]);
         } else {
-          console.log(`⚠️ [ActividadesService] No se encontraron actividades mensuales en la respuesta del backend`);
+          // Solo log si realmente se esperaba tener actividades mensuales
+          if (item.idActividadMensualInst || item.IdActividadMensualInst) {
+            console.log(`ℹ️ [ActividadesService] La actividad tiene idActividadMensualInst pero el backend no devolvió el array completo. Esto es normal - las relaciones se cargan por separado.`);
+          }
         }
         const mapeadas = mapActividadesMensualesInst(mensuales);
         if (mapeadas.length > 0) {

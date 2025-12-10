@@ -33,12 +33,13 @@ import type { Estudiante } from '../../core/models/estudiante';
 import type { Administrativo } from '../../core/models/administrativo';
 import type { Participacion } from '../../core/models/participacion';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent, SkeletonTableComponent } from '../../shared/skeleton';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
 @Component({
   standalone: true,
   selector: 'app-actividad-detail',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, IconComponent, SkeletonCardComponent, SkeletonTableComponent, ...BrnButtonImports],
   templateUrl: './actividad-detail.component.html',
 })
 export class ActividadDetailComponent implements OnInit {
@@ -381,7 +382,7 @@ export class ActividadDetailComponent implements OnInit {
             })) {
               this.capacidadesInstaladas.set([...capacidadesActuales, capacidadData]);
             }
-            this.cdr.detectChanges();
+            this.cdr.markForCheck();
           }, 0);
         }
       },

@@ -19,6 +19,7 @@ import type { Docente } from '../../core/models/docente';
 import type { Administrativo } from '../../core/models/administrativo';
 import type { Edicion } from '../../core/models/edicion';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent, SkeletonTableComponent } from '../../shared/skeleton';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { forkJoin, of, Observable } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
@@ -26,7 +27,7 @@ import { map, catchError } from 'rxjs/operators';
 @Component({
   standalone: true,
   selector: 'app-participaciones-list',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule, IconComponent, SkeletonCardComponent, SkeletonTableComponent, ...BrnButtonImports],
   templateUrl: './participaciones-list.component.html',
 })
 export class ParticipacionesListComponent implements OnInit {

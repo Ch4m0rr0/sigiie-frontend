@@ -73,31 +73,55 @@
                 
                 <!-- Dropdown de Actividad -->
                 @if (mostrarDropdownActividad()) {
-                    <div class="bg-white border-2 border-emerald-200 rounded-lg p-3 max-h-48 overflow-y-auto shadow-lg animate-fade-in">
-                        @if (actividades().length > 0) {
-                            <div class="space-y-1">
-              @for (actividad of actividades(); track actividad.id) {
-                                    <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
-                                        <input 
-                                            type="radio"
-                                            name="idActividad"
-                                            [value]="actividad.id"
-                                            (change)="toggleActividad(actividad.id, $event)"
-                                            [checked]="isActividadSelected(actividad.id)"
-                                            class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
-                                        <app-icon icon="event" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
-                                        <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ actividad.nombre }}</span>
-                                    </label>
-                                }
+                    <div class="bg-white border-2 border-emerald-200 rounded-lg shadow-lg animate-fade-in">
+                        <!-- Buscador de Actividades -->
+                        <div class="p-3 border-b border-slate-200">
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    [value]="busquedaActividad()"
+                                    (input)="busquedaActividad.set($any($event.target).value)"
+                                    placeholder="Buscar actividad..."
+                                    class="w-full px-3 py-2 pl-9 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all">
+                                <app-icon icon="search" size="xs" class="absolute left-3 top-2.5 text-slate-400"></app-icon>
                             </div>
-                        } @else {
-                            <div class="flex flex-col items-center justify-center py-8 text-center">
-                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                                    <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                        </div>
+                        
+                        <!-- Lista de Actividades -->
+                        <div class="max-h-48 overflow-y-auto p-3">
+                            @if (actividadesFiltradas().length > 0) {
+                                <div class="space-y-1">
+                                    @for (actividad of actividadesFiltradas(); track actividad.id) {
+                                        <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                            <input 
+                                                type="radio"
+                                                name="idActividad"
+                                                [value]="actividad.id"
+                                                (change)="toggleActividad(actividad.id, $event)"
+                                                [checked]="isActividadSelected(actividad.id)"
+                                                class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                            <app-icon icon="event" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                            <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">{{ actividad.nombre }}</span>
+                                        </label>
+                                    }
                                 </div>
-                                <p class="text-sm font-medium text-slate-600">No hay actividades disponibles</p>
-                            </div>
-                        }
+                            } @else if (actividades().length > 0) {
+                                <div class="flex flex-col items-center justify-center py-8 text-center">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                        <app-icon icon="search_off" size="sm" class="text-slate-400"></app-icon>
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-600">No se encontraron actividades</p>
+                                    <p class="text-xs text-slate-500 mt-1">Intenta con otro término de búsqueda</p>
+                                </div>
+                            } @else {
+                                <div class="flex flex-col items-center justify-center py-8 text-center">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                        <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-600">No hay actividades disponibles</p>
+                                </div>
+                            }
+                        </div>
                     </div>
                 } @else if (tieneActividadSeleccionada()) {
                     <button
@@ -194,21 +218,97 @@
                                 <span class="text-red-500">*</span>
                             }
                         </label>
-                        <div class="relative">
-                            <select 
-                                formControlName="idIndicador"
-                                id="idIndicador"
-                                class="w-full pl-3 pr-10 py-2.5 border rounded-lg text-sm outline-none transition-all appearance-none bg-white border-slate-300 text-slate-900 cursor-pointer focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
-                                <option [value]="null">Seleccione indicador...</option>
-                                @for (indicador of indicadores(); track indicador.idIndicador) {
-                                    <option [value]="indicador.idIndicador">{{ indicador.codigo }} - {{ indicador.nombre }}</option>
-              }
-            </select>
-                            <app-icon 
-                                icon="expand_more" 
-                                size="sm" 
-                                class="absolute right-3 top-2.5 pointer-events-none text-slate-400"></app-icon>
-                        </div>
+                        
+                        <!-- Indicador Seleccionado (Chip) -->
+                        @if (tieneIndicadorSeleccionado()) {
+                            <div class="flex flex-wrap gap-2 mb-3 animate-fade-in">
+                                @if (getIndicadorSeleccionado(); as indicadorSeleccionado) {
+                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-sm font-medium border border-emerald-200 shadow-sm">
+                                        <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
+                                        <span class="max-w-xs truncate">{{ indicadorSeleccionado.codigo }} - {{ indicadorSeleccionado.nombre }}</span>
+                                        <button
+                                            type="button"
+                                            (click)="eliminarIndicador()"
+                                            class="ml-1 text-emerald-600 hover:text-emerald-800 transition-colors"
+                                            title="Eliminar indicador">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        
+                        <!-- Dropdown de Indicador -->
+                        @if (mostrarDropdownIndicador()) {
+                            <div class="bg-white border-2 border-emerald-200 rounded-lg shadow-lg animate-fade-in">
+                                <!-- Buscador de Indicadores -->
+                                <div class="p-3 border-b border-slate-200">
+                                    <div class="relative">
+                                        <input
+                                            type="text"
+                                            [value]="busquedaIndicador()"
+                                            (input)="busquedaIndicador.set($any($event.target).value)"
+                                            placeholder="Buscar indicador por código o nombre..."
+                                            class="w-full px-3 py-2 pl-9 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all">
+                                        <app-icon icon="search" size="xs" class="absolute left-3 top-2.5 text-slate-400"></app-icon>
+                                    </div>
+                                </div>
+                                
+                                <!-- Lista de Indicadores -->
+                                <div class="max-h-48 overflow-y-auto p-3">
+                                    @if (indicadoresFiltrados().length > 0) {
+                                        <div class="space-y-1">
+                                            @for (indicador of indicadoresFiltrados(); track indicador.idIndicador) {
+                                                <label class="flex items-center gap-3 py-2.5 px-3 cursor-pointer hover:bg-emerald-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-emerald-200">
+                                                    <input 
+                                                        type="radio"
+                                                        name="idIndicador"
+                                                        [value]="indicador.idIndicador"
+                                                        (change)="toggleIndicador(indicador.idIndicador, $event)"
+                                                        [checked]="isIndicadorSelected(indicador.idIndicador)"
+                                                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 transition-all">
+                                                    <app-icon icon="assessment" size="xs" class="text-slate-400 group-hover:text-emerald-600 transition-colors"></app-icon>
+                                                    <span class="text-sm text-slate-700 flex-1 group-hover:text-emerald-900 transition-colors">
+                                                        {{ indicador.codigo }} - {{ indicador.nombre }}
+                                                    </span>
+                                                </label>
+                                            }
+                                        </div>
+                                    } @else if (indicadores().length > 0) {
+                                        <div class="flex flex-col items-center justify-center py-8 text-center">
+                                            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                                <app-icon icon="search_off" size="sm" class="text-slate-400"></app-icon>
+                                            </div>
+                                            <p class="text-sm font-medium text-slate-600">No se encontraron indicadores</p>
+                                            <p class="text-xs text-slate-500 mt-1">Intenta con otro término de búsqueda</p>
+                                        </div>
+                                    } @else {
+                                        <div class="flex flex-col items-center justify-center py-8 text-center">
+                                            <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                                <app-icon icon="inbox" size="sm" class="text-slate-400"></app-icon>
+                                            </div>
+                                            <p class="text-sm font-medium text-slate-600">No hay indicadores disponibles</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        } @else if (tieneIndicadorSeleccionado()) {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownIndicadorFunc()"
+                                class="w-full px-3 py-2.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-2 border-emerald-200 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md active:scale-95">
+                                <app-icon icon="edit" size="xs"></app-icon>
+                                Cambiar Indicador
+                            </button>
+                        } @else {
+                            <button
+                                type="button"
+                                (click)="mostrarDropdownIndicadorFunc()"
+                                class="w-full px-4 py-2.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 hover:border-emerald-300 hover:bg-emerald-50/50">
+                                <app-icon icon="add_circle_outline" size="xs"></app-icon>
+                                Seleccionar Indicador
+                            </button>
+                        }
                     </div>
 
                     <div>
@@ -905,7 +1005,7 @@
                         </div>
 
                         <!-- Participantes -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                                     <app-icon icon="people" size="xs" class="text-emerald-600"></app-icon>
@@ -915,6 +1015,25 @@
                                     <input 
                                         type="number"
                                         formControlName="cantidadParticipantesProyectados"
+                                        min="0"
+                                        placeholder="0"
+                                        class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        style="appearance: textfield; -moz-appearance: textfield;">
+                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                        <app-icon icon="numbers" size="xs"></app-icon>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                    <app-icon icon="school" size="xs" class="text-emerald-600"></app-icon>
+                                    Participantes estudiantes proyectados
+                                </label>
+                                <div class="relative">
+                                    <input 
+                                        type="number"
+                                        formControlName="cantidadParticipantesEstudiantesProyectados"
                                         min="0"
                                         placeholder="0"
                                         class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -945,24 +1064,7 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                                    <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                                    Edición
-                                </label>
-                                <div class="relative">
-                                    <input 
-                                        type="text"
-                                        formControlName="anio"
-                                        placeholder="Ej: 2024"
-                                        class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
-                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                                        <app-icon icon="calendar_today" size="xs"></app-icon>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Campo Edición oculto -->
 
                         <!-- Tipos de Evidencia -->
                         <div>

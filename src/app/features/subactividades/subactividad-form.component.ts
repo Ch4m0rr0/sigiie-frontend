@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -79,8 +79,42 @@ export class SubactividadFormComponent implements OnInit {
   private cargandoRelaciones = false;
   private actividadesAnualesAnteriores: number[] = [];
   
+  // Búsqueda de actividades
+  busquedaActividad = signal<string>('');
+  
+  // Actividades filtradas por búsqueda
+  actividadesFiltradas = computed(() => {
+    const termino = this.busquedaActividad().toLowerCase().trim();
+    const todasActividades = this.actividades();
+    if (!termino) {
+      return todasActividades;
+    }
+    return todasActividades.filter(actividad => {
+      const nombre = (actividad.nombre || '').toLowerCase();
+      return nombre.includes(termino);
+    });
+  });
+  
+  // Búsqueda de indicadores
+  busquedaIndicador = signal<string>('');
+  
+  // Indicadores filtrados por búsqueda
+  indicadoresFiltrados = computed(() => {
+    const termino = this.busquedaIndicador().toLowerCase().trim();
+    const todosIndicadores = this.indicadores();
+    if (!termino) {
+      return todosIndicadores;
+    }
+    return todosIndicadores.filter(indicador => {
+      const codigo = (indicador.codigo || '').toLowerCase();
+      const nombre = (indicador.nombre || '').toLowerCase();
+      return codigo.includes(termino) || nombre.includes(termino);
+    });
+  });
+  
   // Señales para controlar visibilidad de dropdowns
   mostrarDropdownActividad = signal(false);
+  mostrarDropdownIndicador = signal(false);
   mostrarDropdownActividadAnual = signal(false);
   mostrarDropdownActividadMensual = signal(false);
   mostrarDropdownTipoEvidencia = signal(false);
@@ -175,7 +209,6 @@ export class SubactividadFormComponent implements OnInit {
       idTipoProtagonista: [[]],
       categoriaActividadId: [null],
       areaConocimientoId: [null],
-      ubicacion: [''],
       activo: [true]
     }, { validators: [this.validarFechasConActividadPadre.bind(this), this.validarPlanificacion.bind(this)] });
 
@@ -216,7 +249,7 @@ export class SubactividadFormComponent implements OnInit {
             const localEncontrado = this.capacidadesInstaladas().find(c => Number(c.id) === Number(id));
             if (localEncontrado) {
               this.localSeleccionado.set(localEncontrado);
-              this.cdr.detectChanges();
+              this.cdr.markForCheck();
             }
           }, 100);
         }
@@ -752,7 +785,6 @@ export class SubactividadFormComponent implements OnInit {
           idTipoEvidencias: idTipoEvidenciasArray,
           categoriaActividadId: data.categoriaActividadId || null,
           areaConocimientoId: data.areaConocimientoId || null,
-          ubicacion: data.ubicacion || '',
           activo: data.activo ?? true,
           esPlanificada: data.esPlanificada ?? false
         }, { emitEvent: false });
@@ -829,33 +861,127 @@ export class SubactividadFormComponent implements OnInit {
           this.loading.set(false);
         }
 
-        // Cargar responsables
+        // Cargar responsables - LIMPIAR PRIMERO para evitar duplicados
+        // Limpiar todos los arrays de responsables antes de cargar
+        while (this.docentesArray.length > 0) {
+          this.docentesArray.removeAt(0);
+        }
+        while (this.administrativosArray.length > 0) {
+          this.administrativosArray.removeAt(0);
+        }
+        while (this.usuariosArray.length > 0) {
+          this.usuariosArray.removeAt(0);
+        }
+        while (this.estudiantesArray.length > 0) {
+          this.estudiantesArray.removeAt(0);
+        }
+        this.tiposResponsableSeleccionados.set([]);
+        
         this.subactividadResponsableService.getBySubactividad(id).subscribe({
           next: (responsables) => {
             console.log('👥 Responsables recibidos del backend:', responsables);
             if (responsables && responsables.length > 0) {
-              responsables.forEach(responsable => {
+              // Usar Sets para evitar duplicados
+              const usuariosUnicos = new Set<number>();
+              const docentesUnicos = new Set<number>();
+              const estudiantesUnicos = new Set<number>();
+              const administrativosUnicos = new Set<number>();
+              const responsablesExternosUnicos = new Set<number>();
+
+              responsables.forEach((responsable) => {
                 console.log('👤 Procesando responsable:', responsable);
-              if (responsable.idDocente) {
-                  this.agregarPersona('docente');
-                  const docenteIndex = this.docentesArray.length - 1;
-                  this.docentesArray.at(docenteIndex).patchValue({
-                    idPersona: responsable.idDocente
-                  });
+                
+                if (responsable.idUsuario) {
+                  // Es un usuario - verificar que no esté duplicado
+                  if (usuariosUnicos.has(responsable.idUsuario)) {
+                    console.warn('⚠️ Usuario duplicado detectado, omitiendo:', responsable.idUsuario);
+                    return;
+                  }
+                  usuariosUnicos.add(responsable.idUsuario);
+                  
+                  if (!this.tiposResponsableSeleccionados().includes('usuario')) {
+                    this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'usuario']);
+                  }
+                  const usuarioFormGroup = this.crearUsuarioFormGroup();
+                  usuarioFormGroup.patchValue({
+                    idUsuario: responsable.idUsuario
+                  }, { emitEvent: false });
+                  this.usuariosArray.push(usuarioFormGroup);
+                  console.log('✅ Usuario agregado:', responsable.idUsuario);
+                } else if (responsable.idDocente) {
+                  // Es un docente - verificar que no esté duplicado
+                  if (docentesUnicos.has(responsable.idDocente)) {
+                    console.warn('⚠️ Docente duplicado detectado, omitiendo:', responsable.idDocente);
+                    return;
+                  }
+                  docentesUnicos.add(responsable.idDocente);
+                  
                   if (!this.tiposResponsableSeleccionados().includes('docente')) {
                     this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'docente']);
                   }
+                  const docenteFormGroup = this.crearPersonaFormGroup('docente');
+                  docenteFormGroup.patchValue({
+                    idPersona: responsable.idDocente,
+                    idRolResponsable: responsable.idRolResponsable || null
+                  }, { emitEvent: false });
+                  this.docentesArray.push(docenteFormGroup);
                   console.log('✅ Docente agregado:', responsable.idDocente);
-              } else if (responsable.idAdministrativo) {
-                  this.agregarPersona('administrativo');
-                  const adminIndex = this.administrativosArray.length - 1;
-                  this.administrativosArray.at(adminIndex).patchValue({
-                    idPersona: responsable.idAdministrativo
-                  });
+                } else if (responsable.idEstudiante) {
+                  // Es un estudiante - verificar que no esté duplicado
+                  if (estudiantesUnicos.has(responsable.idEstudiante)) {
+                    console.warn('⚠️ Estudiante duplicado detectado, omitiendo:', responsable.idEstudiante);
+                    return;
+                  }
+                  estudiantesUnicos.add(responsable.idEstudiante);
+                  
+                  if (!this.tiposResponsableSeleccionados().includes('estudiante')) {
+                    this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'estudiante']);
+                  }
+                  const estudianteFormGroup = this.crearPersonaFormGroup('estudiante');
+                  estudianteFormGroup.patchValue({
+                    idPersona: responsable.idEstudiante,
+                    idRolResponsable: responsable.idRolResponsable || null
+                  }, { emitEvent: false });
+                  this.estudiantesArray.push(estudianteFormGroup);
+                  console.log('✅ Estudiante agregado:', responsable.idEstudiante);
+                } else if (responsable.idAdmin || responsable.idAdministrativo) {
+                  // Es un administrativo - verificar que no esté duplicado
+                  const idAdmin = responsable.idAdmin || responsable.idAdministrativo;
+                  if (administrativosUnicos.has(idAdmin!)) {
+                    console.warn('⚠️ Administrativo duplicado detectado, omitiendo:', idAdmin);
+                    return;
+                  }
+                  administrativosUnicos.add(idAdmin!);
+                  
                   if (!this.tiposResponsableSeleccionados().includes('administrativo')) {
                     this.tiposResponsableSeleccionados.set([...this.tiposResponsableSeleccionados(), 'administrativo']);
                   }
-                  console.log('✅ Administrativo agregado:', responsable.idAdministrativo);
+                  const adminFormGroup = this.crearPersonaFormGroup('administrativo');
+                  adminFormGroup.patchValue({
+                    idPersona: idAdmin,
+                    idRolResponsable: responsable.idRolResponsable || null
+                  }, { emitEvent: false });
+                  this.administrativosArray.push(adminFormGroup);
+                  console.log('✅ Administrativo agregado:', idAdmin);
+                } else if (responsable.idResponsableExterno) {
+                  // Es un responsable externo - verificar que no esté duplicado
+                  if (responsablesExternosUnicos.has(responsable.idResponsableExterno)) {
+                    console.warn('⚠️ Responsable externo duplicado detectado, omitiendo:', responsable.idResponsableExterno);
+                    return;
+                  }
+                  responsablesExternosUnicos.add(responsable.idResponsableExterno);
+                  
+                  const responsableExternoFormGroup = this.crearResponsableExternoFormGroup();
+                  responsableExternoFormGroup.patchValue({
+                    nombre: responsable.nombreResponsableExterno || responsable.nombreResponsable || '',
+                    institucion: responsable.institucionResponsableExterno || '',
+                    cargo: responsable.cargoResponsableExterno || responsable.cargo || '',
+                    telefono: responsable.telefonoResponsableExterno || '',
+                    correo: responsable.correoResponsableExterno || '',
+                    idRolResponsable: responsable.idRolResponsable || null
+                  }, { emitEvent: false });
+                  this.responsablesExternosArray.push(responsableExternoFormGroup);
+                  console.log('✅ Responsable externo agregado:', responsable.idResponsableExterno);
                 }
               });
               console.log('✅ Total responsables cargados:', responsables.length);
@@ -983,35 +1109,100 @@ export class SubactividadFormComponent implements OnInit {
         ? formValue.idTipoEvidencias.filter((id: number) => id !== null && id !== undefined)
         : (formValue.idTipoEvidencias ? [formValue.idTipoEvidencias] : []);
 
-      const data: SubactividadCreate = {
-        idActividad: formValue.idActividad,
-        nombre: formValue.nombreSubactividad || formValue.nombreActividad || formValue.nombre,
-        nombreSubactividad: formValue.nombreSubactividad || formValue.nombreActividad || formValue.nombre,
-        descripcion: formValue.descripcion || undefined,
-        fechaInicio: fechaInicio,
-        fechaFin: fechaFin,
-        departamentoResponsableId: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId[0] : undefined,
-        ubicacion: formValue.ubicacion || undefined,
-        modalidad: formValue.modalidad || undefined,
-        activo: formValue.activo !== undefined ? formValue.activo : true,
-        idCapacidadInstalada: (formValue.idCapacidadInstalada !== null && formValue.idCapacidadInstalada !== undefined && formValue.idCapacidadInstalada > 0) ? formValue.idCapacidadInstalada : undefined,
-        // Agregar campos de planificación
-        esPlanificada: formValue.esPlanificada !== undefined ? formValue.esPlanificada : false,
-        idIndicador: formValue.idIndicador || undefined,
-        idActividadAnual: idActividadAnualValue,
-        idActividadMensualInst: idActividadMensualInstValue,
-        // Agregar campos adicionales
-        objetivo: formValue.objetivo !== undefined && formValue.objetivo !== null ? formValue.objetivo : undefined,
-        horaRealizacion: horaRealizacion || undefined,
-        idEstadoActividad: formValue.idEstadoActividad !== undefined && formValue.idEstadoActividad !== null ? formValue.idEstadoActividad : undefined,
-        idTipoProtagonista: idTipoProtagonistaArray.length > 0 ? idTipoProtagonistaArray : undefined,
-        cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas !== undefined && formValue.cantidadTotalParticipantesProtagonistas !== null ? formValue.cantidadTotalParticipantesProtagonistas : undefined,
-        idTipoEvidencias: idTipoEvidenciasArray.length > 0 ? idTipoEvidenciasArray : undefined
-      };
+      // Generar código automático para subactividades (igual que actividades)
+      let codigoSubactividad: string | undefined = undefined;
+      if (!this.isEditMode()) {
+        // Solo generar código automático al crear, no al editar
+        // Generar código basado en la actividad padre (si está cargada)
+        codigoSubactividad = this.generarCodigoSubactividad(formValue.idActividad, formValue.anio);
+        
+        // Si no se pudo generar porque la actividad padre no está cargada, cargarla primero
+        if (!codigoSubactividad && formValue.idActividad && !this.actividadPadre()) {
+          // Cargar actividad padre de forma síncrona para obtener el código
+          this.actividadesService.get(formValue.idActividad).subscribe({
+            next: (actividad) => {
+              this.actividadPadre.set(actividad);
+              // Regenerar código con la actividad padre cargada
+              const codigoGenerado = this.generarCodigoSubactividad(formValue.idActividad, formValue.anio);
+              // Continuar con la creación usando el código generado
+              this.crearSubactividadConCodigo(formValue, fechaInicio, fechaFin, horaRealizacion, idActividadAnualValue, idActividadMensualInstValue, idTipoProtagonistaArray, idTipoEvidenciasArray, codigoGenerado);
+            },
+            error: (err) => {
+              console.warn('No se pudo cargar la actividad padre para generar código:', err);
+              // Continuar sin código, el backend lo generará
+              this.crearSubactividadConCodigo(formValue, fechaInicio, fechaFin, horaRealizacion, idActividadAnualValue, idActividadMensualInstValue, idTipoProtagonistaArray, idTipoEvidenciasArray, undefined);
+            }
+          });
+          // Salir temprano, la creación se hará en el callback
+          return;
+        }
+      }
 
-      console.log('📤 Datos a enviar al backend (SubactividadCreate):', JSON.stringify(data, null, 2));
+      // Continuar con la creación normal
+      this.crearSubactividadConCodigo(formValue, fechaInicio, fechaFin, horaRealizacion, idActividadAnualValue, idActividadMensualInstValue, idTipoProtagonistaArray, idTipoEvidenciasArray, codigoSubactividad);
+    } else {
+      this.form.markAllAsTouched();
+    }
+  }
 
-      if (this.isEditMode()) {
+  private crearSubactividadConCodigo(
+    formValue: any,
+    fechaInicio: string | undefined,
+    fechaFin: string | undefined,
+    horaRealizacion: string | undefined,
+    idActividadAnualValue: number | undefined,
+    idActividadMensualInstValue: number | undefined,
+    idTipoProtagonistaArray: number[],
+    idTipoEvidenciasArray: number[],
+    codigoSubactividad: string | undefined
+  ): void {
+    const data: SubactividadCreate = {
+      idActividad: formValue.idActividad,
+      nombre: formValue.nombreSubactividad || formValue.nombreActividad || formValue.nombre,
+      nombreSubactividad: formValue.nombreSubactividad || formValue.nombreActividad || formValue.nombre,
+      descripcion: formValue.descripcion || undefined,
+      fechaInicio: fechaInicio,
+      fechaFin: fechaFin,
+      departamentoResponsableId: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : (formValue.departamentoResponsableId ? [formValue.departamentoResponsableId] : undefined),
+      idDepartamentosResponsables: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : (formValue.departamentoResponsableId ? [formValue.departamentoResponsableId] : undefined),
+      modalidad: formValue.modalidad || undefined,
+      activo: formValue.activo !== undefined ? formValue.activo : true,
+      idCapacidadInstalada: (formValue.idCapacidadInstalada !== null && formValue.idCapacidadInstalada !== undefined && formValue.idCapacidadInstalada > 0) ? formValue.idCapacidadInstalada : undefined,
+      // Agregar campos de planificación
+      esPlanificada: formValue.esPlanificada !== undefined ? formValue.esPlanificada : false,
+      idIndicador: formValue.idIndicador || undefined,
+      idActividadAnual: idActividadAnualValue,
+      idActividadMensualInst: idActividadMensualInstValue,
+      // Agregar campos adicionales
+      objetivo: formValue.objetivo !== undefined && formValue.objetivo !== null ? formValue.objetivo : undefined,
+      horaRealizacion: horaRealizacion || undefined,
+      idEstadoActividad: formValue.idEstadoActividad !== undefined && formValue.idEstadoActividad !== null ? formValue.idEstadoActividad : undefined,
+      idTipoProtagonista: idTipoProtagonistaArray.length > 0 ? idTipoProtagonistaArray : undefined,
+      idTiposProtagonistas: idTipoProtagonistaArray.length > 0 ? idTipoProtagonistaArray : undefined,
+      cantidadParticipantesProyectados: formValue.cantidadParticipantesProyectados !== undefined && formValue.cantidadParticipantesProyectados !== null ? formValue.cantidadParticipantesProyectados : undefined,
+      cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados !== undefined && formValue.cantidadParticipantesEstudiantesProyectados !== null ? formValue.cantidadParticipantesEstudiantesProyectados : undefined,
+      cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas !== undefined && formValue.cantidadTotalParticipantesProtagonistas !== null ? formValue.cantidadTotalParticipantesProtagonistas : undefined,
+      idTipoEvidencias: idTipoEvidenciasArray.length > 0 ? idTipoEvidenciasArray : undefined,
+      // Código generado automáticamente
+      codigoSubactividad: codigoSubactividad
+    };
+
+    console.log('📤 Datos a enviar al backend (SubactividadCreate):', JSON.stringify(data, null, 2));
+    console.log('🔍 [SubactividadForm] Verificación de arrays:', {
+      'departamentoResponsableId (formValue)': formValue.departamentoResponsableId,
+      'departamentoResponsableId (data)': data.departamentoResponsableId,
+      'idTipoProtagonista (formValue)': formValue.idTipoProtagonista,
+      'idTipoProtagonistaArray': idTipoProtagonistaArray,
+      'idTipoProtagonista (data)': data.idTipoProtagonista
+    });
+    console.log('🔍 Campos específicos a enviar:', {
+      cantidadParticipantesProyectados: data.cantidadParticipantesProyectados,
+      cantidadParticipantesEstudiantesProyectados: data.cantidadParticipantesEstudiantesProyectados,
+      cantidadTotalParticipantesProtagonistas: data.cantidadTotalParticipantesProtagonistas,
+      idCapacidadInstalada: data.idCapacidadInstalada
+    });
+
+    if (this.isEditMode()) {
         this.subactividadService.update(this.subactividadId()!, data).subscribe({
           next: () => {
             if (this.subactividadId()) {
@@ -1068,12 +1259,47 @@ export class SubactividadFormComponent implements OnInit {
             
             this.error.set(errorMessage);
             this.loading.set(false);
-                      }
-                    });
-                  }
-                } else {
-      this.form.markAllAsTouched();
+          }
+        });
     }
+  }
+
+  // Generar código automático para subactividades (igual que actividades)
+  private generarCodigoSubactividad(idActividad: number, anio?: string): string | undefined {
+    if (!idActividad) {
+      return undefined;
+    }
+
+    // Obtener el año (del formulario o año actual)
+    const year = anio || String(new Date().getFullYear());
+
+    // Obtener la actividad padre para usar su código como base
+    const actividad = this.actividadPadre();
+    if (actividad && actividad.codigoActividad) {
+      // Si la actividad padre tiene código, usar ese código como base
+      // El código de la actividad ya incluye el año (ej: PNCA-2025)
+      // Para subactividades, agregamos un sufijo: CODIGO-SUB, CODIGO-I, CODIGO-II, etc.
+      const codigoBase = actividad.codigoActividad;
+      
+      // Contar cuántas subactividades ya tiene la actividad padre
+      const subactividadesExistentes = actividad.subactividades || [];
+      const numeroSubactividad = subactividadesExistentes.length + 1;
+      
+      // Generar código: CODIGO-SUB o CODIGO-I, CODIGO-II, etc.
+      // Ejemplo: Si actividad es "PNCA-2025", subactividades serán "PNCA-2025-SUB", "PNCA-2025-I", etc.
+      if (numeroSubactividad === 1) {
+        return `${codigoBase}-SUB`;
+      } else {
+        // Usar números romanos para múltiples subactividades
+        const romanos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+        const sufijo = romanos[numeroSubactividad - 1] || String(numeroSubactividad);
+        return `${codigoBase}-${sufijo}`;
+      }
+    }
+
+    // Si no hay código de actividad padre, el backend lo generará automáticamente
+    // No generamos código aquí para evitar conflictos con el backend
+    return undefined;
   }
 
   // Métodos para responsables (igual que actividad planificada)
@@ -1303,27 +1529,124 @@ export class SubactividadFormComponent implements OnInit {
   }
 
   crearResponsablesParaSubactividad(idSubactividad: number): void {
+    // Si estamos en modo edición, primero eliminar todos los responsables existentes
+    if (this.isEditMode() && this.subactividadId()) {
+      this.subactividadResponsableService.getBySubactividad(this.subactividadId()!).subscribe({
+        next: (responsablesExistentes) => {
+          if (responsablesExistentes && responsablesExistentes.length > 0) {
+            // Eliminar todos los responsables existentes en paralelo
+            const deleteRequests = responsablesExistentes.map(resp => {
+              if (resp.idSubactividadResponsable) {
+                return this.subactividadResponsableService.delete(resp.idSubactividadResponsable);
+              }
+              return of(null);
+            });
+            
+            forkJoin(deleteRequests).subscribe({
+              next: () => {
+                console.log('✅ Responsables existentes eliminados');
+                this.crearNuevosResponsables(idSubactividad);
+              },
+              error: (err) => {
+                console.warn('⚠️ Error eliminando responsables existentes:', err);
+                // Continuar de todas formas para crear los nuevos
+                this.crearNuevosResponsables(idSubactividad);
+              }
+            });
+          } else {
+            // No hay responsables existentes, crear directamente
+            this.crearNuevosResponsables(idSubactividad);
+          }
+        },
+        error: (err) => {
+          console.warn('⚠️ Error obteniendo responsables existentes:', err);
+          // Continuar de todas formas para crear los nuevos
+          this.crearNuevosResponsables(idSubactividad);
+        }
+      });
+    } else {
+      // Modo creación, crear directamente
+      this.crearNuevosResponsables(idSubactividad);
+    }
+  }
+
+  private crearNuevosResponsables(idSubactividad: number): void {
     const responsables: SubactividadResponsableCreate[] = [];
     const formValue = this.formResponsable.value;
 
-    // Solo agregar docentes y administrativos (el backend de subactividad solo soporta estos)
+    // Agregar docentes
     this.docentesArray.controls.forEach((control) => {
       const idDocente = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
       if (idDocente) {
         responsables.push({
           idSubactividad,
-          idDocente,
-                activo: true
+          idDocente: Number(idDocente),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined,
+          activo: true
         });
       }
     });
 
+    // Agregar administrativos
     this.administrativosArray.controls.forEach((control) => {
       const idAdmin = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
       if (idAdmin) {
         responsables.push({
           idSubactividad,
-          idAdministrativo: idAdmin,
+          idAdministrativo: Number(idAdmin),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined,
+          activo: true
+        });
+      }
+    });
+
+    // Agregar usuarios
+    this.usuariosArray.controls.forEach((control) => {
+      const idUsuario = control.get('idUsuario')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idUsuario) {
+        responsables.push({
+          idSubactividad,
+          idUsuario: Number(idUsuario),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined,
+          activo: true
+        });
+      }
+    });
+
+    // Agregar estudiantes
+    this.estudiantesArray.controls.forEach((control) => {
+      const idEstudiante = control.get('idPersona')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (idEstudiante) {
+        responsables.push({
+          idSubactividad,
+          idEstudiante: Number(idEstudiante),
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined,
+          activo: true
+        });
+      }
+    });
+
+    // Agregar responsables externos
+    this.responsablesExternosArray.controls.forEach((control) => {
+      const nombre = control.get('nombre')?.value;
+      const institucion = control.get('institucion')?.value;
+      const cargo = control.get('cargo')?.value;
+      const telefono = control.get('telefono')?.value;
+      const correo = control.get('correo')?.value;
+      const idRolResponsable = control.get('idRolResponsable')?.value;
+      if (nombre && institucion) {
+        responsables.push({
+          idSubactividad,
+          nombre,
+          institucion,
+          cargo: cargo || undefined,
+          telefono: telefono || undefined,
+          correo: correo || undefined,
+          idRolResponsable: idRolResponsable ? Number(idRolResponsable) : undefined,
           activo: true
         });
       }
@@ -1334,15 +1657,29 @@ export class SubactividadFormComponent implements OnInit {
       forkJoin(
         responsables.map(responsable => this.subactividadResponsableService.create(responsable))
       ).subscribe({
-                next: () => {
+        next: () => {
           this.mostrarAlertaExito();
         },
         error: (err) => {
           console.error('Error creando responsables:', err);
-          this.mostrarAlertaExito();
-                }
-              });
-            } else {
+          
+          // Verificar si es un error de restricción CHECK en la base de datos
+          const errorMessage = err?.error?.message || err?.message || '';
+          if (errorMessage.includes('CHK_SubactividadResponsable_Tipo') || 
+              errorMessage.includes('CHECK constraint')) {
+            this.alertService.error(
+              'Error de base de datos',
+              'La restricción CHECK en la base de datos no incluye IdEstudiante. Por favor, contacte al administrador para actualizar la restricción CHK_SubactividadResponsable_Tipo en la base de datos.'
+            );
+          } else {
+            this.alertService.error(
+              'Error al crear responsables',
+              'Ocurrió un error al intentar crear los responsables. Por favor, intente nuevamente.'
+            );
+          }
+        }
+      });
+    } else {
       this.mostrarAlertaExito();
     }
   }
@@ -1879,10 +2216,12 @@ export class SubactividadFormComponent implements OnInit {
     if (checked) {
       this.form.patchValue({ idActividad: Number(id) });
       this.mostrarDropdownActividad.set(false);
+      this.busquedaActividad.set(''); // Limpiar búsqueda al seleccionar
     } else {
       if (Number(this.form.get('idActividad')?.value) === Number(id)) {
         this.form.patchValue({ idActividad: null });
         this.mostrarDropdownActividad.set(true);
+        this.busquedaActividad.set(''); // Limpiar búsqueda al deseleccionar
       }
     }
   }
@@ -1895,14 +2234,58 @@ export class SubactividadFormComponent implements OnInit {
   eliminarActividad(): void {
     this.form.patchValue({ idActividad: null });
     this.mostrarDropdownActividad.set(true);
+    this.busquedaActividad.set(''); // Limpiar búsqueda al eliminar
   }
 
   mostrarDropdownActividadFunc(): void {
     this.mostrarDropdownActividad.set(true);
+    this.busquedaActividad.set(''); // Limpiar búsqueda al abrir dropdown
   }
 
   tieneActividadSeleccionada(): boolean {
     return !!this.form.get('idActividad')?.value;
+  }
+  
+  // Métodos para manejar indicador
+  toggleIndicador(id: number, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      this.form.patchValue({ idIndicador: Number(id) });
+      this.mostrarDropdownIndicador.set(false);
+      this.busquedaIndicador.set(''); // Limpiar búsqueda al seleccionar
+    } else {
+      if (Number(this.form.get('idIndicador')?.value) === Number(id)) {
+        this.form.patchValue({ idIndicador: null });
+        this.mostrarDropdownIndicador.set(true);
+        this.busquedaIndicador.set(''); // Limpiar búsqueda al deseleccionar
+      }
+    }
+  }
+  
+  isIndicadorSelected(id: number): boolean {
+    const currentValue = this.form.get('idIndicador')?.value;
+    return Number(currentValue) === Number(id);
+  }
+  
+  eliminarIndicador(): void {
+    this.form.patchValue({ idIndicador: null });
+    this.mostrarDropdownIndicador.set(true);
+    this.busquedaIndicador.set(''); // Limpiar búsqueda al eliminar
+  }
+  
+  mostrarDropdownIndicadorFunc(): void {
+    this.mostrarDropdownIndicador.set(true);
+    this.busquedaIndicador.set(''); // Limpiar búsqueda al abrir dropdown
+  }
+  
+  tieneIndicadorSeleccionado(): boolean {
+    return !!this.form.get('idIndicador')?.value;
+  }
+  
+  getIndicadorSeleccionado(): Indicador | null {
+    const id = this.form.get('idIndicador')?.value;
+    if (!id) return null;
+    return this.indicadores().find(ind => ind.idIndicador === id) || null;
   }
 
   getActividadSeleccionada(): Actividad | null {

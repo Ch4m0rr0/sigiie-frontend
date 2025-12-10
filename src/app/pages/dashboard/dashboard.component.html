@@ -25,26 +25,27 @@
   </header>
 
   @if (loading()) {
-    <div class="animate-pulse space-y-8">
+    <div class="space-y-8">
+      <!-- Skeleton Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        <div *ngFor="let i of [1,2,3,4,5]" class="h-32 bg-slate-200 rounded-xl"></div>
+        @for (i of [1,2,3,4,5]; track i) {
+          <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+        }
       </div>
+      <!-- Skeleton Charts -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div class="xl:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="h-80 bg-slate-200 rounded-xl"></div>
-            <div class="h-80 bg-slate-200 rounded-xl"></div>
+          <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+          <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
         </div>
-        <div class="h-80 bg-slate-200 rounded-xl"></div>
+        <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
       </div>
     </div>
   }
 
   @if (!loading()) {
     
-    <!-- Sección de Calendario -->
-    <app-calendar-section></app-calendar-section>
-
-    <!-- Cards de Estadísticas -->
+    <!-- Cards de Estadísticas - Prioridad alta para LCP -->
     <app-statistics-cards
       [totalActividades]="totalActividades()"
       [totalParticipaciones]="totalParticipaciones()"
@@ -52,13 +53,16 @@
       [totalSubactividades]="totalSubactividades()">
     </app-statistics-cards>
 
+    <!-- Sección de Calendario - Carga diferida -->
+    <app-calendar-section></app-calendar-section>
+
     <!-- Sección de Cumplimiento de Indicadores -->
     <app-indicator-compliance></app-indicator-compliance>
 
     <!-- Sección de Actividades de este Mes -->
     <app-monthly-activities></app-monthly-activities>
 
-    <!-- Cards organizadas en grid debajo de los botones -->
+    <!-- Cards organizadas en grid debajo de los botones - Componentes pesados al final -->
     <app-dashboard-charts
       [progressChartData]="progressChartData"
       [progressChartConfig]="progressChartConfig"

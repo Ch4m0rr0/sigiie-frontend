@@ -25,6 +25,7 @@ import type { Estudiante } from '../../core/models/estudiante';
 import type { Administrativo } from '../../core/models/administrativo';
 import type { Usuario } from '../../core/models/usuario';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { CalendarModule, CalendarUtils, CalendarDateFormatter, CalendarA11y, CalendarEventTitleFormatter, DateAdapter } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { es } from 'date-fns/locale';
@@ -78,6 +79,7 @@ class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
     RouterModule, 
     ReactiveFormsModule, 
     IconComponent, 
+    SkeletonCardComponent,
     CalendarModule,
     EvidenciaFormComponent,
     HasPermissionDirective

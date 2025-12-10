@@ -32,8 +32,10 @@
 
       <!-- Cards de Actividades/Subactividades -->
       @if (loadingResumen()) {
-        <div class="flex justify-center items-center h-64">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (i of [1,2,3,4,5,6]; track i) {
+            <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+          }
         </div>
       } @else if (errorParticipantes()) {
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -350,9 +352,7 @@
 
       <!-- Lista de Participantes -->
       @if (loadingParticipantes()) {
-        <div class="flex justify-center items-center h-64">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+        <app-skeleton-table [rows]="5" [columns]="4" [showHeader]="true"></app-skeleton-table>
       } @else if (errorParticipantes()) {
         <div class="bg-red-50 border border-red-200 rounded-lg p-4">
           <p class="text-red-800">{{ errorParticipantes() }}</p>

@@ -11,6 +11,7 @@ import type { Evidencia } from '../../core/models/evidencia';
 import type { Subactividad } from '../../core/models/subactividad';
 import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown/multi-select-dropdown.component';
@@ -18,7 +19,7 @@ import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown
 @Component({
   standalone: true,
   selector: 'app-evidencias-gallery',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports, MultiSelectDropdownComponent],
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonCardComponent, ...BrnButtonImports, MultiSelectDropdownComponent],
   templateUrl: './evidencias-gallery.component.html',
 })
 export class EvidenciasGalleryComponent implements OnInit {

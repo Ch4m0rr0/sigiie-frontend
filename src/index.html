@@ -6,7 +6,19 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="assets/Isotipo UNAN.jpg">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <!-- Preload de recursos críticos para mejorar LCP -->
+  <link rel="preload" href="/assets/UNAN-MANAGUA.png" as="image" type="image/png" fetchpriority="high">
+  <link rel="preload" href="/assets/Fondo.png" as="image" type="image/png" fetchpriority="high">
+  
+  <!-- Preconnect para Google Fonts - mejora LCP -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+  
+  <!-- Cargar Material Icons con font-display: swap para no bloquear renderizado -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet">
 </head>
 <body>
   <app-root></app-root>

@@ -1,7 +1,7 @@
 export interface Participacion {
   id: number;
   idParticipacion?: number; // Alias para compatibilidad
-  edicionId: number;
+  edicionId?: number;
   // NUEVOS CAMPOS
   idSubactividad?: number;
   nombreSubactividad?: string;
@@ -27,7 +27,7 @@ export interface Participacion {
 }
 
 export interface ParticipacionCreate {
-  edicionId: number;
+  edicionId?: number;
   idActividad?: number; // ID de actividad (requerido si no hay idSubactividad)
   idSubactividad?: number; // ID de subactividad (requerido si no hay idActividad)
   grupoNumero?: number;

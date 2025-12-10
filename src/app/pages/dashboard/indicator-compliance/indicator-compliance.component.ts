@@ -1,6 +1,7 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { IconComponent } from '../../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../../shared/skeleton/skeleton-card.component';
 import { ChartComponent, ChartData, ChartConfig } from '../../../shared/chart/chart.component';
 import { IndicadorService } from '../../../core/services/indicador.service';
 import { ActividadesService } from '../../../core/services/actividades.service';
@@ -22,12 +23,14 @@ export interface IndicadorCumplimiento {
 @Component({
   standalone: true,
   selector: 'app-indicator-compliance',
-  imports: [CommonModule, IconComponent, ChartComponent],
-  templateUrl: './indicator-compliance.component.html'
+  imports: [CommonModule, IconComponent, SkeletonCardComponent, ChartComponent],
+  templateUrl: './indicator-compliance.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class IndicatorComplianceComponent implements OnInit {
   private indicadorService = inject(IndicadorService);
   private actividadesService = inject(ActividadesService);
+  private cdr = inject(ChangeDetectorRef);
 
   // Datos de cumplimiento de indicadores
   indicadoresCumplimiento = signal<IndicadorCumplimiento[]>([]);
@@ -96,18 +99,21 @@ export class IndicatorComplianceComponent implements OnInit {
     this.loadCumplimientoIndicadores();
   }
 
-  // Toggle para mostrar/ocultar cumplimiento de indicadores
+  // Toggle para mostrar/ocultar cumplimiento de indicadores - Optimizado para INP
   toggleCumplimientoIndicadores(): void {
+    // Actualizar estado inmediatamente, sin trabajo pesado
     this.mostrarCumplimientoIndicadores.update(value => !value);
   }
 
-  // Toggle para mostrar/ocultar filtros
+  // Toggle para mostrar/ocultar filtros - Optimizado para INP
   toggleFiltrosIndicadores(): void {
+    // Actualizar estado inmediatamente, sin trabajo pesado
     this.mostrarFiltrosIndicadores.update(v => !v);
   }
 
-  // Limpiar filtros de indicadores
+  // Limpiar filtros de indicadores - Optimizado para INP
   limpiarFiltrosIndicadores(): void {
+    // Actualizar estado inmediatamente, sin trabajo pesado
     this.filtroIndicadoresCodigo.set('');
     this.filtroIndicadoresPorcentaje.set('todos');
   }

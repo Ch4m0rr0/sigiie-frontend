@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,7 @@ import { CalendarSectionComponent } from './calendar-section/calendar-section.co
 import { IndicatorComplianceComponent } from './indicator-compliance/indicator-compliance.component';
 import { MonthlyActivitiesComponent } from './monthly-activities/monthly-activities.component';
 import { DashboardChartsComponent } from './dashboard-charts/dashboard-charts.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { ActividadesService } from '../../core/services/actividades.service';
 import { ParticipacionService } from '../../core/services/participacion.service';
 import { EvidenciaService } from '../../core/services/evidencia.service';
@@ -17,8 +18,9 @@ import { DashboardService } from '../../core/services/dashboard.service';
 @Component({
   standalone: true,
   selector: 'app-dashboard',
-  imports: [CommonModule, RouterModule, StatisticsCardsComponent, CalendarSectionComponent, IndicatorComplianceComponent, MonthlyActivitiesComponent, DashboardChartsComponent],
+  imports: [CommonModule, RouterModule, StatisticsCardsComponent, CalendarSectionComponent, IndicatorComplianceComponent, MonthlyActivitiesComponent, DashboardChartsComponent, SkeletonCardComponent],
   templateUrl: './dashboard.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
   private actividadesService = inject(ActividadesService);
@@ -61,8 +63,14 @@ export class DashboardComponent implements OnInit {
   };
 
   ngOnInit() {
+    // Priorizar carga de estadísticas básicas (crítico para LCP)
+    // Los gráficos y datos adicionales se cargan después
     this.loadEstadisticas();
-    this.loadDashboardData();
+    
+    // Cargar datos adicionales después de un breve delay para no bloquear renderizado inicial
+    setTimeout(() => {
+      this.loadDashboardData();
+    }, 0);
   }
 
   loadEstadisticas(): void {

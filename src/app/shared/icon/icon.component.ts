@@ -1,16 +1,17 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-icon',
   standalone: true,
   imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <span 
       class="material-icons"
       [class]="sizeClass + ' ' + colorClass + ' ' + (className || '')"
       [style.font-size]="customSize"
-    >
+      style="will-change: auto; contain: layout style;">
       {{ icon }}
     </span>
   `,
@@ -30,6 +31,8 @@ import { CommonModule } from '@angular/common';
       text-rendering: optimizeLegibility;
       -moz-osx-font-smoothing: grayscale;
       font-feature-settings: 'liga';
+      contain: layout style;
+      will-change: auto;
     }
   `]
 })

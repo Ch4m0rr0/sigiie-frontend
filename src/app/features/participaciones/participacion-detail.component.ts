@@ -4,12 +4,13 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParticipacionService } from '../../core/services/participacion.service';
 import type { Participacion } from '../../core/models/participacion';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
 @Component({
   standalone: true,
   selector: 'app-participacion-detail',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonCardComponent, ...BrnButtonImports],
   templateUrl: './participacion-detail.component.html',
 })
 export class ParticipacionDetailComponent implements OnInit {

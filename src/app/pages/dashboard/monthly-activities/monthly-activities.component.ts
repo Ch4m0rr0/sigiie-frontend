@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { IconComponent } from '../../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../../shared/skeleton/skeleton-card.component';
 import { ActividadesService } from '../../../core/services/actividades.service';
 import type { Actividad } from '../../../core/models/actividad';
 import { forkJoin } from 'rxjs';
@@ -9,8 +10,9 @@ import { forkJoin } from 'rxjs';
 @Component({
   standalone: true,
   selector: 'app-monthly-activities',
-  imports: [CommonModule, RouterModule, IconComponent],
-  templateUrl: './monthly-activities.component.html'
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonCardComponent],
+  templateUrl: './monthly-activities.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MonthlyActivitiesComponent implements OnInit {
   private actividadesService = inject(ActividadesService);
