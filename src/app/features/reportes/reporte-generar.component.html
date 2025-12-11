@@ -256,16 +256,11 @@
               }
             </div>
 
-        <!-- Actividad (si aplica) -->
-        @if (tipoReporte?.value === 'actividad' || tipoReporte?.value === 'participaciones' || form.get('dividirPorGenero')?.value) {
+        <!-- Actividad (siempre visible para todos los tipos de reporte) -->
+        @if (tipoReporte?.value) {
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Actividad
-              @if (tipoReporte?.value === 'actividad') {
-                <span class="text-red-500">*</span>
-              } @else {
-                <span class="text-xs text-gray-500">(Opcional)</span>
-              }
+              Actividad <span class="text-red-500">*</span>
             </label>
             
             <!-- Buscador de actividades -->
@@ -487,39 +482,8 @@
                 </div>
               }
             </div>
-            @if (tipoReporte?.value === 'actividad' && form.get('idActividades')?.invalid && form.get('idActividades')?.touched) {
+            @if (form.get('idActividades')?.invalid && form.get('idActividades')?.touched) {
               <p class="mt-1 text-sm text-red-600">Debe seleccionar al menos una actividad</p>
-            }
-            @if (tipoReporte?.value === 'participaciones' && !form.get('dividirPorGenero')?.value) {
-              <p class="mt-1 text-xs text-slate-500">
-                Seleccione una actividad específica para filtrar solo las participaciones de esa actividad. Deje vacío para incluir todas.
-              </p>
-            }
-            @if (form.get('dividirPorGenero')?.value) {
-              <p class="mt-1 text-xs text-slate-500">
-                Seleccione una actividad específica para filtrar por esa actividad, o deje vacío para un reporte general con estadísticas de género (F Femenino y M Masculino) de todas las actividades.
-              </p>
-            }
-          </div>
-        }
-
-        <!-- Subactividad (si aplica) -->
-        @if (tipoReporte?.value === 'subactividad') {
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Subactividad <span class="text-red-500">*</span>
-            </label>
-            <select 
-              formControlName="subactividadId"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              [class.border-red-500]="subactividadId?.invalid && subactividadId?.touched">
-              <option value="">Seleccione...</option>
-              @for (subactividad of subactividades(); track subactividad.idSubactividad) {
-                <option [value]="subactividad.idSubactividad">{{ subactividad.nombre }}</option>
-              }
-            </select>
-            @if (subactividadId?.invalid && subactividadId?.touched) {
-              <p class="mt-1 text-sm text-red-600">La subactividad es requerida</p>
             }
           </div>
         }
@@ -533,53 +497,173 @@
             <h3 class="text-sm font-semibold text-blue-900">Filtro por Período / Reporte Institucional</h3>
           </div>
           <p class="text-xs text-blue-700 mb-3">
-            <strong>Período del Reporte:</strong> Seleccione el rango de fechas del período en el que se realiza el reporte. 
+            <strong>Período del Reporte:</strong> Configure las fechas según el tipo de reporte seleccionado. 
             Este período es diferente a la fecha de la actividad; puede generar un reporte de actividades que ocurrieron en diferentes fechas 
             pero que se reportan en este período específico.<br>
             <strong>Reporte Institucional:</strong> Si selecciona un rango de fechas, el sistema generará automáticamente un reporte institucional 
             con 15 columnas incluyendo estadísticas de participantes, tipos de protagonistas, evidencias y más.
           </p>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Inicio del Período
-              </label>
-              <input
-                type="date"
-                formControlName="fechaInicio"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                [class.border-red-500]="fechaInicio?.invalid && fechaInicio?.touched"
-              />
-              @if (fechaInicio?.invalid && fechaInicio?.touched) {
-                <p class="mt-1 text-sm text-red-600">Fecha de inicio inválida</p>
-              }
-              <p class="mt-1 text-xs text-slate-500">
-                Fecha de inicio del período en el que se realiza el reporte
-              </p>
-            </div>
+          <!-- Controles según el tipo de reporte -->
+          @if (tipoReporte?.value === 'actividad') {
+            <!-- Fechas personalizadas para Reporte de Actividad -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha de Inicio del Período
+                </label>
+                <input
+                  type="date"
+                  formControlName="fechaInicio"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [class.border-red-500]="fechaInicio?.invalid && fechaInicio?.touched"
+                />
+                @if (fechaInicio?.invalid && fechaInicio?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Fecha de inicio inválida</p>
+                }
+                <p class="mt-1 text-xs text-slate-500">
+                  Fecha de inicio del período en el que se realiza el reporte
+                </p>
+              </div>
 
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Fecha de Fin del Período
+                </label>
+                <input
+                  type="date"
+                  formControlName="fechaFin"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [class.border-red-500]="fechaFin?.invalid && fechaFin?.touched"
+                />
+                @if (fechaFin?.invalid && fechaFin?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Fecha de fin inválida</p>
+                }
+                <p class="mt-1 text-xs text-slate-500">
+                  Fecha de fin del período en el que se realiza el reporte
+                </p>
+                @if (form.hasError('fechaInicioMayorQueFin')) {
+                  <p class="mt-1 text-sm text-red-600">La fecha de inicio debe ser anterior o igual a la fecha de fin</p>
+                }
+              </div>
+            </div>
+          }
+
+          @if (tipoReporte?.value === 'semanal') {
+            <!-- Selector de semana -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Fecha de Fin del Período
+                Seleccione una fecha de la semana <span class="text-red-500">*</span>
               </label>
               <input
                 type="date"
-                formControlName="fechaFin"
+                formControlName="fechaSemana"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                [class.border-red-500]="fechaFin?.invalid && fechaFin?.touched"
+                [class.border-red-500]="fechaSemana?.invalid && fechaSemana?.touched"
               />
-              @if (fechaFin?.invalid && fechaFin?.touched) {
-                <p class="mt-1 text-sm text-red-600">Fecha de fin inválida</p>
+              @if (fechaSemana?.invalid && fechaSemana?.touched) {
+                <p class="mt-1 text-sm text-red-600">Debe seleccionar una fecha</p>
               }
               <p class="mt-1 text-xs text-slate-500">
-                Fecha de fin del período en el que se realiza el reporte
+                Seleccione cualquier fecha de la semana. El sistema calculará automáticamente el período de lunes a domingo de esa semana.
               </p>
-              @if (form.hasError('fechaInicioMayorQueFin')) {
-                <p class="mt-1 text-sm text-red-600">La fecha de inicio debe ser anterior o igual a la fecha de fin</p>
+              @if (fechaSemana?.value && fechaInicio?.value && fechaFin?.value) {
+                <p class="mt-2 text-xs text-blue-600 font-medium">
+                  📅 Período calculado: {{ fechaInicio?.value | date:'dd/MM/yyyy' }} - {{ fechaFin?.value | date:'dd/MM/yyyy' }}
+                </p>
               }
             </div>
-          </div>
+          }
+
+          @if (tipoReporte?.value === 'mensual') {
+            <!-- Selector de mes y año -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Mes <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="mesReporte"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [class.border-red-500]="mesReporte?.invalid && mesReporte?.touched">
+                  <option value="">Seleccione un mes...</option>
+                  @for (mes of getMeses(); track mes.value) {
+                    <option [value]="mes.value">{{ mes.label }}</option>
+                  }
+                </select>
+                @if (mesReporte?.invalid && mesReporte?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Debe seleccionar un mes</p>
+                }
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Año <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="anioReporte"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [class.border-red-500]="anioReporte?.invalid && anioReporte?.touched">
+                  @for (anio of getAnios(); track anio) {
+                    <option [value]="anio">{{ anio }}</option>
+                  }
+                </select>
+                @if (anioReporte?.invalid && anioReporte?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Debe seleccionar un año</p>
+                }
+              </div>
+            </div>
+            @if (mesReporte?.value && fechaInicio?.value && fechaFin?.value) {
+              <p class="mt-2 text-xs text-blue-600 font-medium">
+                📅 Período calculado: {{ fechaInicio?.value | date:'dd/MM/yyyy' }} - {{ fechaFin?.value | date:'dd/MM/yyyy' }}
+              </p>
+            }
+          }
+
+          @if (tipoReporte?.value === 'trimestral') {
+            <!-- Selector de trimestre y año -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Trimestre <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="trimestreReporte"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [class.border-red-500]="trimestreReporte?.invalid && trimestreReporte?.touched">
+                  <option value="">Seleccione un trimestre...</option>
+                  @for (trimestre of getTrimestres(); track trimestre.value) {
+                    <option [value]="trimestre.value">{{ trimestre.label }}</option>
+                  }
+                </select>
+                @if (trimestreReporte?.invalid && trimestreReporte?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Debe seleccionar un trimestre</p>
+                }
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Año <span class="text-red-500">*</span>
+                </label>
+                <select 
+                  formControlName="anioReporte"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  [class.border-red-500]="anioReporte?.invalid && anioReporte?.touched">
+                  @for (anio of getAnios(); track anio) {
+                    <option [value]="anio">{{ anio }}</option>
+                  }
+                </select>
+                @if (anioReporte?.invalid && anioReporte?.touched) {
+                  <p class="mt-1 text-sm text-red-600">Debe seleccionar un año</p>
+                }
+              </div>
+            </div>
+            @if (trimestreReporte?.value && fechaInicio?.value && fechaFin?.value) {
+              <p class="mt-2 text-xs text-blue-600 font-medium">
+                📅 Período calculado: {{ fechaInicio?.value | date:'dd/MM/yyyy' }} - {{ fechaFin?.value | date:'dd/MM/yyyy' }}
+              </p>
+            }
+          }
 
           @if (esReporteInstitucional()) {
             <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">

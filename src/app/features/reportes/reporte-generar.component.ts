@@ -156,11 +156,9 @@ export class ReporteGenerarComponent implements OnInit {
 
   tiposReporte = [
     { value: 'actividad', label: 'Reporte de Actividad' },
-    { value: 'subactividad', label: 'Reporte de Subactividad' },
-    { value: 'participaciones', label: 'Reporte de Participaciones' },
-    { value: 'evidencias', label: 'Reporte de Evidencias' },
-    { value: 'indicadores', label: 'Reporte de Indicadores' },
-    { value: 'general', label: 'Reporte General' }
+    { value: 'semanal', label: 'Reporte Semanal' },
+    { value: 'mensual', label: 'Reporte Mensual' },
+    { value: 'trimestral', label: 'Reporte Trimestral' }
   ];
 
   formatos = [
@@ -174,11 +172,8 @@ export class ReporteGenerarComponent implements OnInit {
     this.loadDepartamentos();
     this.loadCamposExtraccionDisponibles();
 
-    // Observar cambios en tipoReporte para mostrar/ocultar campos
-    this.form.get('tipoReporte')?.valueChanges.subscribe(tipo => {
-      this.updateFormFields(tipo);
-      this.setDefaultMetadata(tipo);
-    });
+    // Observar cambios en tipoReporte para mostrar/ocultar campos (ya manejado arriba con lógica de períodos)
+    // La lógica de updateFormFields se maneja en el observador principal de tipoReporte
 
     // Observar cambios en dividirPorGenero - NO requiere actividad
     // Permite generar reporte general con estadísticas de género (F y M)
@@ -196,6 +191,44 @@ export class ReporteGenerarComponent implements OnInit {
       actividadControl?.updateValueAndValidity();
     });
 
+    // Observar cambios en tipoReporte para actualizar fechas automáticamente y limpiar campos
+    this.form.get('tipoReporte')?.valueChanges.subscribe((tipo) => {
+      // Actualizar campos del formulario según el tipo
+      this.updateFormFields(tipo);
+      // Limpiar campos que no corresponden al nuevo tipo
+      this.limpiarCamposPorTipoReporte(tipo);
+      // Actualizar validaciones
+      this.actualizarValidacionesPorTipoReporte(tipo);
+      // Calcular fechas
+      this.actualizarFechasPorTipoReporte();
+    });
+    
+    // Observar cambios en campos específicos de cada tipo de reporte
+    this.form.get('fechaSemana')?.valueChanges.subscribe(() => {
+      if (this.form.get('tipoReporte')?.value === 'semanal') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    this.form.get('mesReporte')?.valueChanges.subscribe(() => {
+      if (this.form.get('tipoReporte')?.value === 'mensual') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    this.form.get('anioReporte')?.valueChanges.subscribe(() => {
+      const tipoReporte = this.form.get('tipoReporte')?.value;
+      if (tipoReporte === 'mensual' || tipoReporte === 'trimestral') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    this.form.get('trimestreReporte')?.valueChanges.subscribe(() => {
+      if (this.form.get('tipoReporte')?.value === 'trimestral') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
     // Observar cambios en fechas para detectar reporte institucional y seleccionar actividades automáticamente
     this.form.get('fechaInicio')?.valueChanges.subscribe((value) => {
       console.log('🔄 Cambio en fechaInicio:', value);
@@ -209,20 +242,29 @@ export class ReporteGenerarComponent implements OnInit {
     });
 
     // Inicializar valores por defecto
-    const initialType = this.form.get('tipoReporte')?.value || 'general';
-    this.setDefaultMetadata(initialType);
+    const initialType = this.form.get('tipoReporte')?.value || '';
+    if (initialType) {
+      this.setDefaultMetadata(initialType);
+    }
     this.actualizarEsReporteInstitucional();
   }
 
   initializeForm(): void {
     this.form = this.fb.group({
       tipoOperacion: ['nuevo-reporte', Validators.required], // Nuevo campo para tipo de operación
-      tipoReporte: ['', Validators.required],
+      tipoReporte: ['', Validators.required], // Tipo de reporte: actividad, semanal, mensual, trimestral
       actividadId: [null], // Mantener para compatibilidad, pero también usar idActividades
       idActividades: [[]], // Array de IDs de actividades para selección múltiple
       subactividadId: [null],
-      fechaInicio: [null], // Para reporte institucional o filtrar por período
-      fechaFin: [null], // Para reporte institucional o filtrar por período
+      fechaInicio: [null], // Para reporte institucional o filtrar por período (calculado automáticamente según tipoReporte)
+      fechaFin: [null], // Para reporte institucional o filtrar por período (calculado automáticamente según tipoReporte)
+      // Campos para tipo semanal
+      fechaSemana: [null], // Fecha de inicio de la semana (para tipo semanal)
+      // Campos para tipo mensual
+      mesReporte: [null], // Mes (1-12) para tipo mensual
+      anioReporte: [new Date().getFullYear()], // Año para tipo mensual y trimestral
+      // Campos para tipo trimestral
+      trimestreReporte: [null], // Trimestre (1-4) para tipo trimestral
       idDepartamento: [null], // Para filtrar por departamento (opcional) - Legacy, mantener para compatibilidad
       idDepartamentos: [[]], // Array de IDs de departamentos (permite múltiples selecciones)
       // descripcionImpacto eliminado - ahora se genera automáticamente en el backend desde descripcion + objetivo de cada actividad
@@ -290,6 +332,240 @@ export class ReporteGenerarComponent implements OnInit {
   }
 
   /**
+   * Limpia los campos que no corresponden al tipo de reporte seleccionado
+   */
+  limpiarCamposPorTipoReporte(tipo: string): void {
+    switch (tipo) {
+      case 'actividad':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaSemana')?.setValue(null, { emitEvent: false });
+        this.form.get('mesReporte')?.setValue(null, { emitEvent: false });
+        this.form.get('trimestreReporte')?.setValue(null, { emitEvent: false });
+        break;
+      case 'semanal':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+        this.form.get('mesReporte')?.setValue(null, { emitEvent: false });
+        this.form.get('trimestreReporte')?.setValue(null, { emitEvent: false });
+        break;
+      case 'mensual':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaSemana')?.setValue(null, { emitEvent: false });
+        this.form.get('trimestreReporte')?.setValue(null, { emitEvent: false });
+        break;
+      case 'trimestral':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaSemana')?.setValue(null, { emitEvent: false });
+        this.form.get('mesReporte')?.setValue(null, { emitEvent: false });
+        break;
+    }
+  }
+
+  /**
+   * Actualiza las validaciones según el tipo de reporte
+   */
+  actualizarValidacionesPorTipoReporte(tipo: string): void {
+    // Limpiar todas las validaciones primero
+    this.form.get('fechaInicio')?.clearValidators();
+    this.form.get('fechaFin')?.clearValidators();
+    this.form.get('fechaSemana')?.clearValidators();
+    this.form.get('mesReporte')?.clearValidators();
+    this.form.get('anioReporte')?.clearValidators();
+    this.form.get('trimestreReporte')?.clearValidators();
+
+    // Aplicar validaciones según el tipo
+    switch (tipo) {
+      case 'actividad':
+        // Las fechas son opcionales para actividad (puede no tener período)
+        break;
+      case 'semanal':
+        this.form.get('fechaSemana')?.setValidators(Validators.required);
+        break;
+      case 'mensual':
+        this.form.get('mesReporte')?.setValidators(Validators.required);
+        this.form.get('anioReporte')?.setValidators(Validators.required);
+        break;
+      case 'trimestral':
+        this.form.get('trimestreReporte')?.setValidators(Validators.required);
+        this.form.get('anioReporte')?.setValidators(Validators.required);
+        break;
+    }
+
+    // Actualizar validaciones
+    this.form.get('fechaInicio')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('fechaFin')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('fechaSemana')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('mesReporte')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('anioReporte')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('trimestreReporte')?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /**
+   * Actualiza las fechas (fechaInicio y fechaFin) según el tipo de reporte seleccionado
+   */
+  actualizarFechasPorTipoReporte(): void {
+    const tipoReporte = this.form.get('tipoReporte')?.value;
+    
+    if (!tipoReporte) {
+      return;
+    }
+    
+    let fechaInicio: string | null = null;
+    let fechaFin: string | null = null;
+    
+    switch (tipoReporte) {
+      case 'actividad':
+        // Para actividad, las fechas se manejan manualmente (no se calculan automáticamente)
+        // No hacer nada, mantener las fechas que el usuario haya ingresado
+        return;
+        
+      case 'semanal':
+        const fechaSemana = this.form.get('fechaSemana')?.value;
+        if (fechaSemana) {
+          const fecha = new Date(fechaSemana + 'T00:00:00'); // Asegurar que sea medianoche
+          
+          // Obtener el día de la semana (0 = domingo, 1 = lunes, etc.)
+          const diaSemana = fecha.getDay();
+          
+          // Calcular el lunes de esa semana
+          // Si es domingo (0), retroceder 6 días
+          // Si es lunes (1), no retroceder
+          // Si es otro día, retroceder (diaSemana - 1) días
+          const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+          
+          const lunes = new Date(fecha);
+          lunes.setDate(fecha.getDate() + diasHastaLunes);
+          lunes.setHours(0, 0, 0, 0);
+          
+          // El domingo de esa semana (6 días después del lunes)
+          const domingo = new Date(lunes);
+          domingo.setDate(lunes.getDate() + 6);
+          domingo.setHours(23, 59, 59, 999);
+          
+          fechaInicio = lunes.toISOString().split('T')[0];
+          fechaFin = domingo.toISOString().split('T')[0];
+          
+          console.log('📅 Semana calculada:', {
+            fechaSeleccionada: fechaSemana,
+            lunes: fechaInicio,
+            domingo: fechaFin,
+            diaSemana: diaSemana
+          });
+        }
+        break;
+        
+      case 'mensual':
+        const mes = this.form.get('mesReporte')?.value;
+        const anio = this.form.get('anioReporte')?.value || new Date().getFullYear();
+        
+        if (mes) {
+          // Primer día del mes
+          const primerDia = new Date(anio, mes - 1, 1);
+          primerDia.setHours(0, 0, 0, 0);
+          
+          // Último día del mes
+          const ultimoDia = new Date(anio, mes, 0);
+          ultimoDia.setHours(23, 59, 59, 999);
+          
+          fechaInicio = primerDia.toISOString().split('T')[0];
+          fechaFin = ultimoDia.toISOString().split('T')[0];
+        }
+        break;
+        
+      case 'trimestral':
+        const trimestre = this.form.get('trimestreReporte')?.value;
+        const anioTrimestre = this.form.get('anioReporte')?.value || new Date().getFullYear();
+        
+        if (trimestre) {
+          // Calcular el mes inicial y final del trimestre
+          // Trimestre 1: Enero (0) - Marzo (2)
+          // Trimestre 2: Abril (3) - Junio (5)
+          // Trimestre 3: Julio (6) - Septiembre (8)
+          // Trimestre 4: Octubre (9) - Diciembre (11)
+          const mesInicio = (trimestre - 1) * 3;
+          const mesFin = mesInicio + 2;
+          
+          // Primer día del primer mes del trimestre
+          const primerDia = new Date(anioTrimestre, mesInicio, 1);
+          primerDia.setHours(0, 0, 0, 0);
+          
+          // Último día del último mes del trimestre
+          const ultimoDia = new Date(anioTrimestre, mesFin + 1, 0);
+          ultimoDia.setHours(23, 59, 59, 999);
+          
+          fechaInicio = primerDia.toISOString().split('T')[0];
+          fechaFin = ultimoDia.toISOString().split('T')[0];
+        }
+        break;
+    }
+    
+    // Actualizar las fechas en el formulario sin emitir eventos para evitar loops
+    if (fechaInicio && fechaFin) {
+      this.form.get('fechaInicio')?.setValue(fechaInicio, { emitEvent: false });
+      this.form.get('fechaFin')?.setValue(fechaFin, { emitEvent: false });
+      
+      // Luego activar manualmente la actualización de actividades
+      setTimeout(() => {
+        this.actualizarEsReporteInstitucional();
+        this.seleccionarActividadesPorPeriodo();
+      }, 0);
+    } else {
+      // Si no hay fechas válidas, limpiar
+      this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+      this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+    }
+  }
+
+  /**
+   * Obtiene los meses disponibles para el selector
+   */
+  getMeses(): Array<{ value: number; label: string }> {
+    return [
+      { value: 1, label: 'Enero' },
+      { value: 2, label: 'Febrero' },
+      { value: 3, label: 'Marzo' },
+      { value: 4, label: 'Abril' },
+      { value: 5, label: 'Mayo' },
+      { value: 6, label: 'Junio' },
+      { value: 7, label: 'Julio' },
+      { value: 8, label: 'Agosto' },
+      { value: 9, label: 'Septiembre' },
+      { value: 10, label: 'Octubre' },
+      { value: 11, label: 'Noviembre' },
+      { value: 12, label: 'Diciembre' }
+    ];
+  }
+
+  /**
+   * Obtiene los trimestres disponibles para el selector
+   */
+  getTrimestres(): Array<{ value: number; label: string }> {
+    return [
+      { value: 1, label: 'Primer Trimestre (Ene-Mar)' },
+      { value: 2, label: 'Segundo Trimestre (Abr-Jun)' },
+      { value: 3, label: 'Tercer Trimestre (Jul-Sep)' },
+      { value: 4, label: 'Cuarto Trimestre (Oct-Dic)' }
+    ];
+  }
+
+  /**
+   * Obtiene los años disponibles (últimos 5 años y próximos 2 años)
+   */
+  getAnios(): number[] {
+    const anioActual = new Date().getFullYear();
+    const anios: number[] = [];
+    for (let i = anioActual - 5; i <= anioActual + 2; i++) {
+      anios.push(i);
+    }
+    return anios;
+  }
+
+  /**
    * Actualiza el estado de esReporteInstitucional basado en las fechas
    */
   actualizarEsReporteInstitucional(): void {
@@ -311,7 +587,10 @@ export class ReporteGenerarComponent implements OnInit {
     // Aplicar validadores según el tipo
     switch (tipoReporte) {
       case 'actividad':
-        // Validar que idActividades tenga al menos un elemento
+      case 'semanal':
+      case 'mensual':
+      case 'trimestral':
+        // Todos los tipos de reporte requieren actividades
         idActividadesControl?.setValidators([
           (control: AbstractControl): ValidationErrors | null => {
             const value = control.value;
@@ -322,13 +601,6 @@ export class ReporteGenerarComponent implements OnInit {
           }
         ]);
         break;
-      case 'subactividad':
-        subactividadControl?.setValidators(Validators.required);
-        break;
-      case 'participaciones':
-        // Para reportes de participaciones, la actividad es opcional pero útil para filtrar
-        // No es requerida, pero si se selecciona, filtra solo esa actividad
-        break;
     }
 
     // NOTA: dividirPorGenero NO requiere actividad - permite reporte general con estadísticas de género
@@ -337,6 +609,9 @@ export class ReporteGenerarComponent implements OnInit {
     actividadControl?.updateValueAndValidity();
     idActividadesControl?.updateValueAndValidity();
     subactividadControl?.updateValueAndValidity();
+    
+    // Actualizar metadata
+    this.setDefaultMetadata(tipoReporte);
   }
 
   private generarNombreDefault(tipo: string): string {
@@ -756,8 +1031,16 @@ export class ReporteGenerarComponent implements OnInit {
 
           // descripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
           
+          // Para reportes semanal, mensual y trimestral, usar 'actividad' como tipoReporte
+          // para que el backend genere el mismo formato de Excel
+          const tipoReporteParaBackend = (formValue.tipoReporte === 'semanal' || 
+                                          formValue.tipoReporte === 'mensual' || 
+                                          formValue.tipoReporte === 'trimestral')
+            ? 'actividad'
+            : (formValue.tipoReporte || 'actividad');
+          
           const config: ReporteConfig = {
-            tipoReporte: formValue.tipoReporte || 'actividad', // Importante: debe contener "actividad"
+            tipoReporte: tipoReporteParaBackend, // Siempre 'actividad' para mantener el mismo formato de Excel
             actividadId: formValue.actividadId || undefined,
             subactividadId: formValue.subactividadId || undefined,
             fechaInicio: fechaInicio,
@@ -885,8 +1168,16 @@ export class ReporteGenerarComponent implements OnInit {
           ? formValue.idActividades
           : (formValue.actividadId ? [formValue.actividadId] : undefined);
         
+        // Para reportes semanal, mensual y trimestral, usar 'actividad' como tipoReporte
+        // para que el backend genere el mismo formato de Excel
+        const tipoReporteParaBackend = (formValue.tipoReporte === 'semanal' || 
+                                        formValue.tipoReporte === 'mensual' || 
+                                        formValue.tipoReporte === 'trimestral')
+          ? 'actividad'
+          : (formValue.tipoReporte || 'actividad');
+        
         const config: ReporteConfig = {
-          tipoReporte: formValue.tipoReporte,
+          tipoReporte: tipoReporteParaBackend, // Siempre 'actividad' para mantener el mismo formato de Excel
           actividadId: formValue.actividadId || undefined, // Mantener para compatibilidad
           idActividades: idActividades, // Array de actividades seleccionadas
           subactividadId: formValue.subactividadId || undefined,
@@ -1124,32 +1415,33 @@ export class ReporteGenerarComponent implements OnInit {
       }
     }
     
-    // Prioridad 4: Tipo de reporte (si el tipo contiene "participacion" o "evidencia")
+    // Prioridad 4: Tipo de reporte (semanal, mensual, trimestral)
     if (!identificador) {
       const tipoReporte = (formValue.tipoReporte || '').toLowerCase();
-      if (tipoReporte.includes('participacion')) {
-        identificador = 'participaciones';
-      } else if (tipoReporte.includes('evidencia')) {
-        identificador = 'evidencias';
-      }
-    }
-    
-    // Prioridad 5: Indicador genérico (si el tipo es "indicador" y hay actividad)
-    if (!identificador && formValue.actividadId) {
-      const tipoReporte = (formValue.tipoReporte || '').toLowerCase();
-      if (tipoReporte.includes('indicador')) {
-        const actividad = this.actividades().find(a => a.id === formValue.actividadId);
-        if (actividad) {
-          if (actividad.codigoIndicador) {
-            identificador = actividad.codigoIndicador;
-          } else if (actividad.nombreIndicador) {
-            identificador = actividad.nombreIndicador;
-          }
+      if (tipoReporte === 'semanal') {
+        identificador = 'Semanal';
+      } else if (tipoReporte === 'mensual') {
+        const mes = formValue.mesReporte;
+        if (mes) {
+          const meses = this.getMeses();
+          const mesObj = meses.find(m => m.value === mes);
+          identificador = mesObj ? mesObj.label : 'Mensual';
+        } else {
+          identificador = 'Mensual';
+        }
+      } else if (tipoReporte === 'trimestral') {
+        const trimestre = formValue.trimestreReporte;
+        if (trimestre) {
+          const trimestres = this.getTrimestres();
+          const trimestreObj = trimestres.find(t => t.value === trimestre);
+          identificador = trimestreObj ? trimestreObj.label.split(' ')[0] + ' Trimestre' : 'Trimestral';
+        } else {
+          identificador = 'Trimestral';
         }
       }
     }
     
-    // Prioridad 6: Valor por defecto (usa el tipo de reporte o "Actividad" si no hay nada específico)
+    // Prioridad 5: Valor por defecto (usa el tipo de reporte o "Actividad" si no hay nada específico)
     if (!identificador) {
       const tipoReporte = formValue.tipoReporte || '';
       if (tipoReporte) {
@@ -1596,6 +1888,10 @@ export class ReporteGenerarComponent implements OnInit {
   get formato() { return this.form.get('formato'); }
   get fechaInicio() { return this.form.get('fechaInicio'); }
   get fechaFin() { return this.form.get('fechaFin'); }
+  get fechaSemana() { return this.form.get('fechaSemana'); }
+  get mesReporte() { return this.form.get('mesReporte'); }
+  get anioReporte() { return this.form.get('anioReporte'); }
+  get trimestreReporte() { return this.form.get('trimestreReporte'); }
   get idDepartamento() { return this.form.get('idDepartamento'); }
   get tipoOperacionControl() { return this.form.get('tipoOperacion'); }
 }
