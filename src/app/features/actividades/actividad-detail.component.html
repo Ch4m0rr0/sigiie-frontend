@@ -1642,6 +1642,9 @@
                     <div 
                       (click)="navigateToSubactividad(sub.idSubactividad)"
                       class="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition">
+                      @if (sub.codigoSubactividad) {
+                        <div class="text-xs font-mono font-semibold text-slate-600 mb-1">{{ sub.codigoSubactividad }}</div>
+                      }
                       <p class="font-medium text-slate-900">{{ sub.nombre }}</p>
                       @if (sub.descripcion) {
                         <p class="text-sm text-slate-600 mt-1 line-clamp-2">

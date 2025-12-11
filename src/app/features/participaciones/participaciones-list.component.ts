@@ -288,6 +288,7 @@ export class ParticipacionesListComponent implements OnInit {
             idSubactividad: subactividad.idSubactividad,
             nombre: subactividad.nombre,
             nombreSubactividad: subactividad.nombre,
+            codigoSubactividad: subactividad.codigoSubactividad,
             totalParticipantes: resumen?.totalParticipantes || resumen?.total || 0,
             total: resumen?.totalParticipantes || resumen?.total || 0
           })),
@@ -297,6 +298,7 @@ export class ParticipacionesListComponent implements OnInit {
             idSubactividad: subactividad.idSubactividad,
             nombre: subactividad.nombre,
             nombreSubactividad: subactividad.nombre,
+            codigoSubactividad: subactividad.codigoSubactividad,
             totalParticipantes: 0,
             total: 0
           }))
