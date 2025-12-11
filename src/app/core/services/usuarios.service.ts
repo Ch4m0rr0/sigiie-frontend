@@ -76,6 +76,59 @@ export class UsuariosService {
     return this.getAll();
   }
 
+  // Obtener solo usuarios activos
+  getActivos(): Observable<Usuario[]> {
+    console.log(`📡 Llamando a GET ${this.apiUrl}/activos...`);
+    return this.http.get<any>(`${this.apiUrl}/activos`).pipe(
+      map(response => {
+        console.log('📥 Respuesta del servidor (raw):', response);
+        const items = response.data || response;
+        console.log('📦 Items extraídos:', items);
+        
+        if (!Array.isArray(items)) {
+          console.warn('⚠️ La respuesta no es un array:', typeof items, items);
+          return [];
+        }
+        
+        const usuariosMapeados = items.map(item => this.mapUsuario(item));
+        console.log(`✅ ${usuariosMapeados.length} usuarios activos mapeados correctamente`);
+        return usuariosMapeados;
+      }),
+      catchError(error => {
+        if (error.status === 403) {
+          // Silenciar el warning - es esperado que usuarios no-admin no tengan permiso para ver usuarios
+          // El formulario continuará funcionando, solo no podrá mostrar nombres de usuarios
+          return of([]);
+        } else if (error.status === 500) {
+          const errorMessage = error.error?.message || error.error?.title || error.message || '';
+          const errorDetails = error.error?.details || error.error?.stack || '';
+          const errorString = JSON.stringify(error.error || {}).toLowerCase();
+          const fullErrorText = (errorMessage + ' ' + errorDetails + ' ' + errorString).toLowerCase();
+          
+          const isPermissionError = fullErrorText.includes('permiso') || 
+                                   fullErrorText.includes('no tiene permiso') ||
+                                   fullErrorText.includes('authentication handler') ||
+                                   fullErrorText.includes('forbid');
+          
+          if (isPermissionError) {
+            return of([]);
+          }
+          console.error('❌ Error 500 del servidor al obtener usuarios activos:', error);
+          return of([]);
+        } else if (error.status === 404) {
+          console.warn('⚠️ Endpoint /api/usuarios/activos no encontrado (404), usando getAll() como fallback');
+          // Fallback a getAll() si el endpoint no existe
+          return this.getAll().pipe(
+            map(usuarios => usuarios.filter(u => u.activo !== false))
+          );
+        } else {
+          console.error('❌ Error fetching usuarios activos:', error);
+          return of([]);
+        }
+      })
+    );
+  }
+
   getById(id: number): Observable<Usuario | null> {
     return this.http.get<any>(`${this.apiUrl}/${id}`).pipe(
       map(item => this.mapUsuario(item)),

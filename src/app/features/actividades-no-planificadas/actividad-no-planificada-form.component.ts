@@ -457,13 +457,21 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     });
 
     // Suscribirse a cambios en fechaInicio para revalidar fechaFin
+    // Usar { emitEvent: false } para evitar recursión infinita
     this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
-      this.form.get('fechaFin')?.updateValueAndValidity();
+      const fechaFinControl = this.form.get('fechaFin');
+      if (fechaFinControl) {
+        fechaFinControl.updateValueAndValidity({ emitEvent: false });
+      }
     });
 
     // Suscribirse a cambios en fechaFin para revalidar fechaInicio
+    // Usar { emitEvent: false } para evitar recursión infinita
     this.form.get('fechaFin')?.valueChanges.subscribe(() => {
-      this.form.get('fechaInicio')?.updateValueAndValidity();
+      const fechaInicioControl = this.form.get('fechaInicio');
+      if (fechaInicioControl) {
+        fechaInicioControl.updateValueAndValidity({ emitEvent: false });
+      }
     });
 
     // Sincronizar selectores de hora con el campo horaRealizacion
@@ -736,8 +744,15 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   loadCapacidadesInstaladas(): void {
-    this.catalogosService.getCapacidadesInstaladas().subscribe({
-      next: (data) => this.capacidadesInstaladas.set(data),
+    this.catalogosService.getCapacidadesInstaladas(true).subscribe({
+      next: (data) => {
+        console.log('📦 Capacidades instaladas recibidas:', data.length, 'total');
+        console.log('📋 Capacidades instaladas:', data);
+        // Filtrar solo las activas en el frontend por si acaso
+        const activas = data.filter(c => c.activo !== false);
+        console.log('✅ Capacidades instaladas activas:', activas.length, 'total');
+        this.capacidadesInstaladas.set(activas);
+      },
       error: (err) => console.error('Error loading capacidades instaladas:', err)
     });
   }
@@ -1055,6 +1070,16 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       // Construir el array de responsables antes de crear la actividad
       const responsables = this.construirResponsables(formValue);
       
+      // Si no hay departamentos seleccionados, agregar automáticamente el del usuario
+      let departamentosResponsables = formValue.departamentoResponsableId;
+      if (!Array.isArray(departamentosResponsables) || departamentosResponsables.length === 0) {
+        const user = this.authService.user();
+        if (user?.departamentoId) {
+          departamentosResponsables = [user.departamentoId];
+          console.log('✅ [ACTIVIDAD] No hay departamentos seleccionados, agregando automáticamente el del usuario:', user.departamentoId);
+        }
+      }
+      
       // Para actividades no planificadas, los campos de planificación son opcionales
       // Solo se incluyen si tienen valor válido (no null, no undefined, no arrays vacíos)
       const tieneIndicador = formValue.idIndicador !== null && formValue.idIndicador !== undefined && Number(formValue.idIndicador) > 0;
@@ -1078,7 +1103,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
         descripcion: formValue.descripcion || undefined,
         departamentoId: formValue.departamentoId || undefined,
         // Cambiar a idDepartamentosResponsables (plural) como espera el backend
-        idDepartamentosResponsables: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : undefined,
+        idDepartamentosResponsables: Array.isArray(departamentosResponsables) && departamentosResponsables.length > 0 ? departamentosResponsables : undefined,
         fechaInicio: fechaInicio,
         fechaFin: fechaFin,
         idEstadoActividad: formValue.idEstadoActividad !== null && formValue.idEstadoActividad !== undefined ? Number(formValue.idEstadoActividad) : undefined,
@@ -1176,15 +1201,37 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                       },
                       error: (err: any) => {
                         console.error('❌ Error actualizando actividad:', err);
-                        const errorMsg = err.error?.message || err.error?.details || err.message || 'Error desconocido al actualizar la actividad';
-                        this.alertService.error('Error al actualizar la actividad', errorMsg);
+                        let errorMsg = err.error?.message || err.error?.details || err.error?.title || err.message || 'Error desconocido al actualizar la actividad';
+                        
+                        // Si es un error 403, mostrar mensaje más claro sobre permisos
+                        if (err.status === 403 || err.status === 401) {
+                          errorMsg = 'No tiene permisos para editar actividades. Necesita el permiso "EditarActividad" o "actividades.editar".';
+                          this.alertService.error('Acceso Denegado', errorMsg);
+                        } else {
+                          this.alertService.error('Error al actualizar la actividad', errorMsg);
+                        }
+                        
                         this.error.set('Error al guardar la actividad');
                         this.loading.set(false);
                       }
                     });
                 },
-                error: (err) => {
+                  error: (err) => {
                   console.error('Error eliminando responsables existentes:', err);
+                  
+                  // Si es un error 403, mostrar mensaje sobre permisos
+                  if (err.status === 403 || err.status === 401) {
+                    const errorDetail = err.error?.detail || err.error?.title || err.error?.message || '';
+                    const errorMsg = `No tiene permisos para eliminar responsables. El backend rechazó la petición (${err.status}).\n\n` +
+                      `Error: ${errorDetail}\n\n` +
+                      `Permiso necesario:\n` +
+                      `- EliminarActividadResponsable\n\n` +
+                      `Por favor, contacta al administrador para verificar tus permisos.`;
+                    this.alertService.error('Acceso Denegado', errorMsg);
+                    this.loading.set(false);
+                    return;
+                  }
+                  
                   // Continuar con la actualización aunque haya error al eliminar
                   this.actividadesService.update(actividadId, data).subscribe({
                     next: () => {
@@ -1208,16 +1255,30 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                       console.error('❌ Error updating actividad:', err);
                       this.loading.set(false);
                       
-                      let errorMsg = 'Error al actualizar la actividad';
-                      if (err.error) {
-                        if (typeof err.error === 'string') {
-                          errorMsg = err.error;
-                        } else if (err.error.message) {
-                          errorMsg = err.error.message;
-                        }
+                      let errorMsg = err.error?.message || err.error?.details || err.error?.title || err.message || 'Error desconocido al actualizar la actividad';
+                      
+                      // Si es un error 403, mostrar mensaje más claro sobre permisos
+                      if (err.status === 403 || err.status === 401) {
+                        errorMsg = 'No tiene permisos para editar actividades. Necesita el permiso "EditarActividad" o "actividades.editar".';
+                        this.alertService.error('Acceso Denegado', errorMsg);
+                      } else {
+                        this.alertService.error('Error al actualizar la actividad', errorMsg);
                       }
                       
-                      this.alertService.error('Error al actualizar la actividad', errorMsg);
+                      // Si es un error 403, mostrar mensaje más claro sobre permisos
+                      if (err.status === 403 || err.status === 401) {
+                        errorMsg = 'No tiene permisos para editar actividades. Necesita el permiso "EditarActividad" o "actividades.editar".';
+                        this.alertService.error('Acceso Denegado', errorMsg);
+                      } else {
+                        if (err.error) {
+                          if (typeof err.error === 'string') {
+                            errorMsg = err.error;
+                          } else if (err.error.message) {
+                            errorMsg = err.error.message;
+                          }
+                        }
+                        this.alertService.error('Error al actualizar la actividad', errorMsg);
+                      }
                       this.error.set(errorMsg);
                     }
                   });
@@ -1243,16 +1304,16 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   console.error('❌ Error updating actividad:', err);
                   this.loading.set(false);
                   
-                  let errorMsg = 'Error al actualizar la actividad';
-                  if (err.error) {
-                    if (typeof err.error === 'string') {
-                      errorMsg = err.error;
-                    } else if (err.error.message) {
-                      errorMsg = err.error.message;
-                    }
+                  let errorMsg = err.error?.message || err.error?.details || err.error?.title || err.message || 'Error desconocido al actualizar la actividad';
+                  
+                  // Si es un error 403, mostrar mensaje más claro sobre permisos
+                  if (err.status === 403 || err.status === 401) {
+                    errorMsg = 'No tiene permisos para editar actividades. Necesita el permiso "EditarActividad" o "actividades.editar".';
+                    this.alertService.error('Acceso Denegado', errorMsg);
+                  } else {
+                    this.alertService.error('Error al actualizar la actividad', errorMsg);
                   }
                   
-                  this.alertService.error('Error al actualizar la actividad', errorMsg);
                   this.error.set(errorMsg);
                 }
               });
@@ -1279,16 +1340,16 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 console.error('❌ Error updating actividad:', err);
                 this.loading.set(false);
                 
-                let errorMsg = 'Error al actualizar la actividad';
-                if (err.error) {
-                  if (typeof err.error === 'string') {
-                    errorMsg = err.error;
-                  } else if (err.error.message) {
-                    errorMsg = err.error.message;
-                  }
+                let errorMsg = err.error?.message || err.error?.details || err.error?.title || err.message || 'Error desconocido al actualizar la actividad';
+                
+                // Si es un error 403, mostrar mensaje más claro sobre permisos
+                if (err.status === 403 || err.status === 401) {
+                  errorMsg = 'No tiene permisos para editar actividades. Necesita el permiso "EditarActividad" o "actividades.editar".';
+                  this.alertService.error('Acceso Denegado', errorMsg);
+                } else {
+                  this.alertService.error('Error al actualizar la actividad', errorMsg);
                 }
                 
-                this.alertService.error('Error al actualizar la actividad', errorMsg);
                 this.error.set(errorMsg);
               }
             });
@@ -2052,15 +2113,17 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     return this.formResponsable.get('responsablesExternos') as FormArray;
   }
 
-  crearUsuarioFormGroup(): FormGroup {
+  crearUsuarioFormGroup(nombreUsuario?: string): FormGroup {
     const formGroup = this.fb.group({
       idUsuario: [null, Validators.required],
-      idRolResponsable: [null, Validators.required]
+      idRolResponsable: [null, Validators.required],
+      nombreUsuario: [nombreUsuario || null] // Guardar nombre del backend como fallback
     });
     // Forzar reset para asegurar que esté completamente limpio
     formGroup.reset({ 
       idUsuario: null, 
-      idRolResponsable: null 
+      idRolResponsable: null,
+      nombreUsuario: nombreUsuario || null
     }, { emitEvent: false });
     return formGroup;
   }
@@ -2186,13 +2249,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   loadTodasLasPersonas(): void {
-    this.usuariosService.getAll().subscribe({
+    // Usar getActivos() para obtener solo usuarios activos
+    this.usuariosService.getActivos().subscribe({
       next: (data) => this.usuarios.set(data),
       error: (err) => {
         // El servicio ya maneja los errores 403/500 y devuelve array vacío
         // Solo loguear si es un error inesperado
         if (err.status !== 403 && err.status !== 500) {
-          console.error('Error loading usuarios:', err);
+          console.error('Error loading usuarios activos:', err);
         }
         this.usuarios.set([]);
       }
@@ -2743,7 +2807,28 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
     const formGroup = control as FormGroup;
     const id = formGroup.get('idUsuario')?.value;
     if (!id) return null;
-    return this.usuarios().find(u => (u.id || u.idUsuario) === id) || null;
+    
+    // Primero intentar encontrar en la lista de usuarios cargados
+    const usuarioEncontrado = this.usuarios().find(u => (u.id || u.idUsuario) === id);
+    if (usuarioEncontrado) {
+      return usuarioEncontrado;
+    }
+    
+    // Si no se encuentra (por falta de permisos), crear un objeto temporal con el nombre del backend
+    const nombreUsuario = formGroup.get('nombreUsuario')?.value;
+    if (nombreUsuario) {
+      return {
+        idUsuario: id,
+        id: id,
+        nombreCompleto: nombreUsuario,
+        correo: '',
+        rolNombre: '',
+        permisos: [],
+        activo: true
+      } as Usuario;
+    }
+    
+    return null;
   }
 
   getPersonaSeleccionada(control: AbstractControl, tipo: 'docente' | 'estudiante' | 'administrativo'): any {
@@ -3049,7 +3134,9 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'usuario']);
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
-                const usuarioFormGroup = this.crearUsuarioFormGroup();
+                // Obtener el nombre del usuario del backend (nombreUsuario, nombrePersona, etc.)
+                const nombreUsuario = responsable.nombreUsuario || responsable.nombrePersona || null;
+                const usuarioFormGroup = this.crearUsuarioFormGroup(nombreUsuario || undefined);
                 
                 // Asegurar que idRolResponsable se mapee correctamente
                 // Verificar múltiples campos posibles del backend
@@ -3071,12 +3158,14 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                   idRolResponsableOriginal: responsable.idRolResponsable,
                   nombreRolResponsable: responsable.nombreRolResponsable,
                   rolResponsable: responsable.rolResponsable,
-                  idRolResponsableFinal: idRolResponsable
+                  idRolResponsableFinal: idRolResponsable,
+                  nombreUsuario: nombreUsuario
                 });
                 
                 usuarioFormGroup.patchValue({
                   idUsuario: responsable.idUsuario,
-                  idRolResponsable: idRolResponsable
+                  idRolResponsable: idRolResponsable,
+                  nombreUsuario: nombreUsuario // Guardar nombre del backend
                 }, { emitEvent: false });
                 this.usuariosArray.push(usuarioFormGroup);
                 console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
@@ -3266,20 +3355,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       
       const idUsuarioNum = Number(idUsuario);
       
-      // Validación: usuarios no-admin solo pueden asignarse a sí mismos
-      if (!isAdmin && currentUserId && idUsuarioNum !== currentUserId) {
-        console.warn(`⚠️ [Usuario ${index}] Usuario no-admin intentó asignar a otro usuario (${idUsuarioNum} vs ${currentUserId})`);
-        this.alertService.warning(
-          'Restricción de Permisos',
-          'Solo puedes asignarte a ti mismo como responsable de la actividad. Los usuarios no administradores no pueden asignar a otros usuarios.',
-          {
-            backdrop: true,
-            allowOutsideClick: false,
-            allowEscapeKey: true
-          }
-        );
-        return; // Omitir este usuario
-      }
+      // Los usuarios no-admin ahora pueden asignar cualquier usuario activo
+      // No hay restricción de departamento para usuarios
       
       console.log(`🔍 [Usuario ${index}] Valores del formulario:`, {
         idUsuario,
@@ -3504,22 +3581,83 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       
       // Crear responsables con manejo de errores individuales
       forkJoin(
-        responsables.map(responsable => 
+        responsables.map((responsable, index) => 
           this.responsableService.create(responsable).pipe(
             catchError(err => {
-              console.error('❌ Error creando un responsable individual:', err);
-              console.error('❌ Responsable que falló:', responsable);
+              console.error(`❌ Error creando responsable ${index + 1}:`, err);
+              console.error(`❌ Responsable que falló:`, JSON.stringify(responsable, null, 2));
+              console.error(`❌ Error status:`, err.status);
+              console.error(`❌ Error message:`, err.message);
+              if (err.error) {
+                console.error(`❌ Error body:`, err.error);
+                if (err.error.errors) {
+                  console.error(`❌ Validation errors:`, err.error.errors);
+                }
+                if (err.error.title) {
+                  console.error(`❌ Error title:`, err.error.title);
+                }
+                if (err.error.detail) {
+                  console.error(`❌ Error detail:`, err.error.detail);
+                }
+              }
               // Continuar con los demás aunque uno falle
-              return of(null);
+              return of({ error: true, index, responsable, err });
             })
           )
         )
       ).subscribe({
         next: (responsablesCreados) => {
-          const exitosos = responsablesCreados.filter(r => r !== null).length;
-          const fallidos = responsablesCreados.filter(r => r === null).length;
-          console.log(`✅ Responsables creados: ${exitosos} exitosos, ${fallidos} fallidos`);
-          console.log('📊 Total de responsables creados:', exitosos);
+          const exitosos = responsablesCreados.filter(r => r && !(r as any).error);
+          const fallidos = responsablesCreados.filter(r => r && (r as any).error);
+          const exitososCount = exitosos.length;
+          const fallidosCount = fallidos.length;
+          
+          console.log(`✅ Responsables creados: ${exitososCount} exitosos, ${fallidosCount} fallidos`);
+          console.log('📊 Total de responsables creados:', exitososCount);
+          
+          if (fallidosCount > 0) {
+            console.warn('⚠️ Responsables que fallaron:', fallidosCount);
+            const primerError = fallidos[0] as any;
+            const errorStatus = primerError.err?.status;
+            const errorDetail = primerError.err?.error?.detail || primerError.err?.error?.title || primerError.err?.error?.message || primerError.err?.message || 'Error desconocido';
+            
+            fallidos.forEach((f: any) => {
+              console.warn(`⚠️ Falló responsable ${f.index + 1}:`, f.err);
+              console.warn(`⚠️ Mensaje de error:`, f.err?.error?.title || f.err?.error?.detail || f.err?.message || 'Error desconocido');
+            });
+            
+            // Detectar errores de permisos (403/401)
+            const esErrorPermisos = errorStatus === 403 || errorStatus === 401;
+            
+            let mensajeError = '';
+            if (esErrorPermisos) {
+              mensajeError = fallidosCount === responsables.length
+                ? `No se pudieron crear los responsables debido a falta de permisos. El backend rechazó la petición (${errorStatus}).\n\n` +
+                  `Error: ${errorDetail}\n\n` +
+                  `Permiso necesario:\n` +
+                  `- CrearActividadResponsable\n\n` +
+                  `Por favor, contacta al administrador para verificar tus permisos.`
+                : `Se crearon ${exitososCount} de ${responsables.length} responsables. Algunos responsables no se pudieron crear debido a falta de permisos (${errorStatus}).\n\n` +
+                  `Error: ${errorDetail}\n\n` +
+                  `Verifica la consola para más detalles.`;
+              
+              this.alertService.warning(
+                'Error de Permisos',
+                mensajeError
+              );
+            } else {
+              // Mostrar alerta con más detalles
+              mensajeError = fallidosCount === responsables.length 
+                ? `No se pudieron crear los responsables. Verifica la consola para más detalles. Error: ${errorDetail}`
+                : `Se crearon ${exitososCount} de ${responsables.length} responsables. Algunos responsables no se pudieron crear. Verifica la consola para más detalles.`;
+              
+              this.alertService.warning(
+                'Advertencia',
+                mensajeError
+              );
+            }
+          }
+          
           this.loading.set(false);
           // Ejecutar callback si se proporciona, sino mostrar alerta
           if (onComplete) {

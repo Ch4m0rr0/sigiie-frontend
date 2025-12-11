@@ -2491,12 +2491,22 @@ export class ActividadDetailComponent implements OnInit {
         error: (err) => {
           this.loadingResponsable.set(false);
           let errorMessage = 'Error al actualizar el responsable.';
-          if (err.error?.message) {
+          
+          // Detectar errores de permisos (403/401)
+          if (err.status === 403 || err.status === 401) {
+            const errorDetail = err.error?.detail || err.error?.title || err.error?.message || '';
+            errorMessage = `No tiene permisos para editar responsables. El backend rechazó la petición (${err.status}).\n\n` +
+              `Error: ${errorDetail}\n\n` +
+              `Permiso necesario:\n` +
+              `- EditarActividadResponsable\n\n` +
+              `Por favor, contacta al administrador para verificar tus permisos.`;
+          } else if (err.error?.message) {
             errorMessage = err.error.message;
           } else if (err.error?.errors) {
             const errors = Object.values(err.error.errors).flat();
             errorMessage = errors.join('\n');
           }
+          
           // Mostrar más detalles del error en la consola
           console.error('❌ Error updating responsable:', err);
           console.error('❌ Error status:', err.status);
@@ -2839,9 +2849,19 @@ export class ActividadDetailComponent implements OnInit {
         error: (err) => {
           console.error('Error deleting responsable:', err);
           let errorMessage = 'Error al eliminar el responsable.';
-          if (err.error?.message) {
+          
+          // Detectar errores de permisos (403/401)
+          if (err.status === 403 || err.status === 401) {
+            const errorDetail = err.error?.detail || err.error?.title || err.error?.message || '';
+            errorMessage = `No tiene permisos para eliminar responsables. El backend rechazó la petición (${err.status}).\n\n` +
+              `Error: ${errorDetail}\n\n` +
+              `Permiso necesario:\n` +
+              `- EliminarActividadResponsable\n\n` +
+              `Por favor, contacta al administrador para verificar tus permisos.`;
+          } else if (err.error?.message) {
             errorMessage = err.error.message;
           }
+          
           alert(errorMessage);
         }
       });

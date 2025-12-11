@@ -166,19 +166,21 @@ export class ActividadResponsableService {
     if (data.fechaAsignacion && data.fechaAsignacion.trim()) {
       payload.FechaAsignacion = data.fechaAsignacion.trim();
     }
-    // Enviar IdRolResponsable si está presente
+    
+    // Enviar IdRolResponsable y RolResponsable según el tipo de responsable
+    // NOTA: Para usuarios (idTipoResponsable = 1), el backend puede no requerir IdRolResponsable
+    // pero lo aceptamos si se envía. Para otros tipos, es más importante.
     if (data.idRolResponsable !== undefined && data.idRolResponsable !== null) {
-      payload.IdRolResponsable = Number(data.idRolResponsable);
-      console.log('✅ [CREATE] IdRolResponsable incluido en payload:', payload.IdRolResponsable);
-    } else {
-      console.warn('⚠️ [CREATE] IdRolResponsable NO está presente en data:', data);
+      const idRolNum = Number(data.idRolResponsable);
+      if (idRolNum > 0) {
+        payload.IdRolResponsable = idRolNum;
+        console.log('✅ [CREATE] IdRolResponsable incluido en payload:', payload.IdRolResponsable);
+      }
     }
     // Enviar RolResponsable si está presente (nombre del rol)
     if (data.rolResponsable && data.rolResponsable.trim()) {
       payload.RolResponsable = data.rolResponsable.trim();
       console.log('✅ [CREATE] RolResponsable incluido en payload:', payload.RolResponsable);
-    } else {
-      console.warn('⚠️ [CREATE] RolResponsable NO está presente en data:', data);
     }
 
     console.log('🔄 CREATE ActividadResponsable - Payload completo enviado al backend:', JSON.stringify(payload, null, 2));

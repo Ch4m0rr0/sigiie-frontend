@@ -451,13 +451,21 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     });
 
     // Suscribirse a cambios en fechaInicio para revalidar fechaFin
+    // Usar { emitEvent: false } para evitar recursión infinita
     this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
-      this.form.get('fechaFin')?.updateValueAndValidity();
+      const fechaFinControl = this.form.get('fechaFin');
+      if (fechaFinControl) {
+        fechaFinControl.updateValueAndValidity({ emitEvent: false });
+      }
     });
 
     // Suscribirse a cambios en fechaFin para revalidar fechaInicio
+    // Usar { emitEvent: false } para evitar recursión infinita
     this.form.get('fechaFin')?.valueChanges.subscribe(() => {
-      this.form.get('fechaInicio')?.updateValueAndValidity();
+      const fechaInicioControl = this.form.get('fechaInicio');
+      if (fechaInicioControl) {
+        fechaInicioControl.updateValueAndValidity({ emitEvent: false });
+      }
     });
 
     // Sincronizar selectores de hora con el campo horaRealizacion
@@ -864,8 +872,15 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   loadCapacidadesInstaladas(): void {
-    this.catalogosService.getCapacidadesInstaladas().subscribe({
-      next: (data) => this.capacidadesInstaladas.set(data),
+    this.catalogosService.getCapacidadesInstaladas(true).subscribe({
+      next: (data) => {
+        console.log('📦 Capacidades instaladas recibidas:', data.length, 'total');
+        console.log('📋 Capacidades instaladas:', data);
+        // Filtrar solo las activas en el frontend por si acaso
+        const activas = data.filter(c => c.activo !== false);
+        console.log('✅ Capacidades instaladas activas:', activas.length, 'total');
+        this.capacidadesInstaladas.set(activas);
+      },
       error: (err) => console.error('Error loading capacidades instaladas:', err)
     });
   }
@@ -1099,7 +1114,9 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                   this.ordenTiposResponsables.set([...this.ordenTiposResponsables(), 'usuario']);
                 }
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
-                const usuarioFormGroup = this.crearUsuarioFormGroup();
+                // Obtener el nombre del usuario del backend (nombreUsuario, nombrePersona, etc.)
+                const nombreUsuario = responsable.nombreUsuario || responsable.nombrePersona || null;
+                const usuarioFormGroup = this.crearUsuarioFormGroup(nombreUsuario || undefined);
                 
                 // Asegurar que idRolResponsable se mapee correctamente
                 // Verificar múltiples campos posibles del backend
@@ -1121,12 +1138,14 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
                   idRolResponsableOriginal: responsable.idRolResponsable,
                   nombreRolResponsable: responsable.nombreRolResponsable,
                   rolResponsable: responsable.rolResponsable,
-                  idRolResponsableFinal: idRolResponsable
+                  idRolResponsableFinal: idRolResponsable,
+                  nombreUsuario: nombreUsuario
                 });
                 
                 usuarioFormGroup.patchValue({
                   idUsuario: responsable.idUsuario,
-                  idRolResponsable: idRolResponsable
+                  idRolResponsable: idRolResponsable,
+                  nombreUsuario: nombreUsuario // Guardar nombre del backend
                 }, { emitEvent: false });
                 this.usuariosArray.push(usuarioFormGroup);
                 console.log('✅ Usuario agregado:', responsable.idUsuario, 'Rol ID:', idRolResponsable, 'Rol Nombre:', responsable.nombreRolResponsable || responsable.rolResponsable);
@@ -1429,13 +1448,23 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       // porque se eliminan y recrean después de actualizar la actividad
       const responsables = this.isEditMode() ? [] : this.construirResponsables(formValue);
       
+      // Si no hay departamentos seleccionados, agregar automáticamente el del usuario
+      let departamentosResponsables = formValue.departamentoResponsableId;
+      if (!Array.isArray(departamentosResponsables) || departamentosResponsables.length === 0) {
+        const user = this.authService.user();
+        if (user?.departamentoId) {
+          departamentosResponsables = [user.departamentoId];
+          console.log('✅ [ACTIVIDAD] No hay departamentos seleccionados, agregando automáticamente el del usuario:', user.departamentoId);
+        }
+      }
+      
       const data: ActividadCreate = {
         nombreActividad: formValue.nombreActividad || formValue.nombre,
         nombre: formValue.nombreActividad || formValue.nombre,
         descripcion: formValue.descripcion || undefined,
         departamentoId: formValue.departamentoId || undefined,
         // Cambiar a idDepartamentosResponsables (plural) como espera el backend
-        idDepartamentosResponsables: Array.isArray(formValue.departamentoResponsableId) && formValue.departamentoResponsableId.length > 0 ? formValue.departamentoResponsableId : undefined,
+        idDepartamentosResponsables: Array.isArray(departamentosResponsables) && departamentosResponsables.length > 0 ? departamentosResponsables : undefined,
         fechaInicio: fechaInicio,
         fechaFin: fechaFin,
         idEstadoActividad: formValue.idEstadoActividad !== null && formValue.idEstadoActividad !== undefined ? Number(formValue.idEstadoActividad) : undefined,
@@ -1493,7 +1522,13 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
               forkJoin(
                 deleteRequests.map(req => req.pipe(
                   catchError(err => {
-                    console.warn('⚠️ Error eliminando un responsable (continuando):', err);
+                    console.warn('⚠️ Error eliminando un responsable:', err);
+                    // Si es un error 403/401, registrar el error de permisos
+                    if (err.status === 403 || err.status === 401) {
+                      const errorDetail = err.error?.detail || err.error?.title || err.error?.message || '';
+                      console.error(`❌ Error de permisos al eliminar responsable: ${errorDetail}`);
+                      console.error(`❌ Permiso necesario: EliminarActividadResponsable`);
+                    }
                     return of(null); // Continuar aunque haya error
                   })
                 ))
@@ -2287,15 +2322,17 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     return this.formResponsable.get('responsablesExternos') as FormArray;
   }
 
-  crearUsuarioFormGroup(): FormGroup {
+  crearUsuarioFormGroup(nombreUsuario?: string): FormGroup {
     const formGroup = this.fb.group({
       idUsuario: [null, Validators.required],
-      idRolResponsable: [null, Validators.required]
+      idRolResponsable: [null, Validators.required],
+      nombreUsuario: [nombreUsuario || null] // Guardar nombre del backend como fallback
     });
     // Forzar reset para asegurar que esté completamente limpio
     formGroup.reset({ 
       idUsuario: null, 
-      idRolResponsable: null 
+      idRolResponsable: null,
+      nombreUsuario: nombreUsuario || null
     }, { emitEvent: false });
     return formGroup;
   }
@@ -2577,7 +2614,28 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     const formGroup = control as FormGroup;
     const id = formGroup.get('idUsuario')?.value;
     if (!id) return null;
-    return this.usuarios().find(u => (u.id || u.idUsuario) === id) || null;
+    
+    // Primero intentar encontrar en la lista de usuarios cargados
+    const usuarioEncontrado = this.usuarios().find(u => (u.id || u.idUsuario) === id);
+    if (usuarioEncontrado) {
+      return usuarioEncontrado;
+    }
+    
+    // Si no se encuentra (por falta de permisos), crear un objeto temporal con el nombre del backend
+    const nombreUsuario = formGroup.get('nombreUsuario')?.value;
+    if (nombreUsuario) {
+      return {
+        idUsuario: id,
+        id: id,
+        nombreCompleto: nombreUsuario,
+        correo: '',
+        rolNombre: '',
+        permisos: [],
+        activo: true
+      } as Usuario;
+    }
+    
+    return null;
   }
 
   getPersonaSeleccionada(control: AbstractControl, tipo: 'docente' | 'estudiante' | 'administrativo'): any {
@@ -2829,13 +2887,14 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
   }
 
   loadTodasLasPersonas(): void {
-    this.usuariosService.getAll().subscribe({
+    // Usar getActivos() para obtener solo usuarios activos
+    this.usuariosService.getActivos().subscribe({
       next: (data) => this.usuarios.set(data),
       error: (err) => {
         // El servicio ya maneja los errores 403/500 y devuelve array vacío
         // Solo loguear si es un error inesperado
         if (err.status !== 403 && err.status !== 500) {
-          console.error('Error loading usuarios:', err);
+          console.error('Error loading usuarios activos:', err);
         }
         this.usuarios.set([]);
       }
@@ -3039,22 +3098,8 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       
       const idUsuarioNum = Number(idUsuario);
       
-      // Validación: usuarios no-admin solo pueden asignarse a sí mismos
-      if (!isAdmin && currentUserId && idUsuarioNum !== currentUserId) {
-        console.warn(`⚠️ [Usuario ${index}] Usuario no-admin intentó asignar a otro usuario (${idUsuarioNum} vs ${currentUserId})`);
-        if (mostrarAlerta) {
-          this.alertService.warning(
-            'Restricción de Permisos',
-            'Solo puedes asignarte a ti mismo como responsable de la actividad. Los usuarios no administradores no pueden asignar a otros usuarios.',
-            {
-              backdrop: true,
-              allowOutsideClick: false,
-              allowEscapeKey: true
-            }
-          );
-        }
-        return; // Omitir este usuario
-      }
+      // Los usuarios no-admin ahora pueden asignar cualquier usuario activo
+      // No hay restricción de departamento para usuarios
       
       // Verificar duplicados
       if (usuariosAgregados.has(idUsuarioNum)) {
@@ -3288,6 +3333,20 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             catchError(err => {
               console.error(`❌ Error creando responsable ${index + 1}:`, err);
               console.error(`❌ Responsable que falló:`, JSON.stringify(responsable, null, 2));
+              console.error(`❌ Error status:`, err.status);
+              console.error(`❌ Error message:`, err.message);
+              if (err.error) {
+                console.error(`❌ Error body:`, err.error);
+                if (err.error.errors) {
+                  console.error(`❌ Validation errors:`, err.error.errors);
+                }
+                if (err.error.title) {
+                  console.error(`❌ Error title:`, err.error.title);
+                }
+                if (err.error.detail) {
+                  console.error(`❌ Error detail:`, err.error.detail);
+                }
+              }
               return of({ error: true, index, responsable, err });
             })
           )
@@ -3302,17 +3361,39 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             console.warn('⚠️ Responsables que fallaron:', fallidos.length);
             fallidos.forEach((f: any) => {
               console.warn(`⚠️ Falló responsable ${f.index + 1}:`, f.err);
+              const errorMsg = f.err?.error?.title || f.err?.error?.detail || f.err?.message || 'Error desconocido';
+              console.warn(`⚠️ Mensaje de error:`, errorMsg);
             });
+            
+            // Detectar errores de permisos (403/401)
+            const primerError = (fallidos[0] as any).err;
+            const esErrorPermisos = primerError?.status === 403 || primerError?.status === 401;
+            
+            let mensajeError = '';
+            if (esErrorPermisos) {
+              const errorDetail = primerError?.error?.detail || primerError?.error?.title || primerError?.error?.message || '';
+              mensajeError = fallidos.length === responsables.length
+                ? `No se pudieron crear los responsables debido a falta de permisos. El backend rechazó la petición (${primerError.status}).\n\n` +
+                  `Error: ${errorDetail}\n\n` +
+                  `Permiso necesario:\n` +
+                  `- CrearActividadResponsable\n\n` +
+                  `Por favor, contacta al administrador para verificar tus permisos.`
+                : `Se crearon ${exitosos.length} de ${responsables.length} responsables. Algunos responsables no se pudieron crear debido a falta de permisos (${primerError.status}).\n\n` +
+                  `Error: ${errorDetail}\n\n` +
+                  `Verifica la consola para más detalles.`;
+            } else {
+              mensajeError = fallidos.length === responsables.length 
+                ? `No se pudieron crear los responsables. Verifica la consola para más detalles. Error: ${primerError?.error?.title || primerError?.error?.detail || 'Error desconocido'}`
+                : `Se crearon ${exitosos.length} de ${responsables.length} responsables. Algunos responsables no se pudieron crear. Verifica la consola para más detalles.`;
+            }
+            
+            this.alertService.warning(
+              esErrorPermisos ? 'Error de Permisos' : 'Advertencia',
+              mensajeError
+            );
           }
           
           this.loading.set(false);
-          
-          if (fallidos.length > 0) {
-            this.alertService.warning(
-              'Advertencia',
-              `Se crearon ${exitosos.length} de ${responsables.length} responsables. Algunos responsables no se pudieron crear. Puedes intentar agregarlos manualmente más tarde.`
-            );
-          }
           
           // Ejecutar callback si se proporciona
           if (onComplete) {

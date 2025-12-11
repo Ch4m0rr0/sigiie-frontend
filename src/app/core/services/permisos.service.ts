@@ -100,6 +100,12 @@ export class PermisosService {
     'EliminarActividad': 'actividades.eliminar',
     'VerActividad': 'actividades.ver',
     
+    // Responsables de Actividades
+    'CrearActividadResponsable': 'actividades.responsables.crear',
+    'EditarActividadResponsable': 'actividades.responsables.editar',
+    'EliminarActividadResponsable': 'actividades.responsables.eliminar',
+    'VerActividadResponsable': 'actividades.responsables.ver',
+    
     // Subactividades
     'CrearSubactividad': 'subactividades.crear',
     'EditarSubactividad': 'subactividades.editar',
