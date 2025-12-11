@@ -33,8 +33,13 @@ export class NotificacionesService {
   public mostrarToasts$ = this.mostrarToastsSubject.asObservable();
 
   constructor() {
-    // Cargar notificaciones al inicializar el servicio
+    // Limpiar cualquier notificación local almacenada al iniciar
+    this.notificacionesSubject.next([]);
+    this.updateNoLeidasCount([]);
+    
+    // Cargar notificaciones del backend al inicializar el servicio
     this.loadNotificaciones();
+    
     // Asegurar que el valor inicial esté sincronizado con localStorage
     const valorInicial = this.getMostrarToastsFromStorage();
     if (this.mostrarToastsSubject.value !== valorInicial) {
@@ -98,35 +103,20 @@ export class NotificacionesService {
         return notificaciones;
       }),
       catchError(error => {
-        // Si el endpoint no existe o hay un error del servidor, usar notificaciones locales
+        // Si el endpoint no existe o hay un error, retornar array vacío
+        // Las notificaciones ahora vienen solo del backend
         if (error.status === 404 || error.status === 500) {
           const statusMsg = error.status === 404 
             ? 'Endpoint /api/notificaciones no encontrado'
             : 'Error del servidor al obtener notificaciones';
-          console.warn(`⚠️ ${statusMsg}. Usando notificaciones locales.`);
-          
-          // Combinar notificaciones mock con las notificaciones locales existentes
-          const notificacionesLocales = this.notificacionesSubject.value;
-          const mockNotificaciones = this.getMockNotificaciones();
-          
-          // Si ya hay notificaciones locales, usarlas; si no, usar mock
-          const notificacionesFinales = notificacionesLocales.length > 0 
-            ? notificacionesLocales 
-            : mockNotificaciones;
-          
-          this.updateNotificaciones(notificacionesFinales);
-          return of(notificacionesFinales);
+          console.warn(`⚠️ ${statusMsg}. Retornando array vacío.`);
+        } else {
+          console.warn('⚠️ Error obteniendo notificaciones del backend. Retornando array vacío.');
         }
         
-        // Para otros errores, también usar notificaciones locales
-        console.warn('⚠️ Error obteniendo notificaciones del backend. Usando notificaciones locales.');
-        const notificacionesLocales = this.notificacionesSubject.value;
-        const mockNotificaciones = this.getMockNotificaciones();
-        const notificacionesFinales = notificacionesLocales.length > 0 
-          ? notificacionesLocales 
-          : mockNotificaciones;
-        this.updateNotificaciones(notificacionesFinales);
-        return of(notificacionesFinales);
+        // Limpiar cualquier notificación local y retornar array vacío
+        this.updateNotificaciones([]);
+        return of([]);
       })
     );
   }
@@ -232,43 +222,12 @@ export class NotificacionesService {
 
   /**
    * Agrega una notificación localmente (sin llamar al backend)
-   * Útil para notificaciones generadas automáticamente
+   * DESACTIVADO: Las notificaciones ahora vienen solo del backend
    */
   agregarNotificacionLocal(notificacion: Omit<Notificacion, 'id'>, codigoNotificacion?: string): void {
-    const notificacionesActuales = this.notificacionesSubject.value;
-    
-    // Evitar duplicados si se proporciona un código de notificación
-    if (codigoNotificacion) {
-      // Verificar si ya existe una notificación similar (mismo mensaje y título en los últimos 5 minutos)
-      const ahora = new Date();
-      const hace5Minutos = new Date(ahora.getTime() - 5 * 60 * 1000);
-      
-      const existeDuplicado = notificacionesActuales.some(n => 
-        n.titulo === notificacion.titulo && 
-        n.mensaje === notificacion.mensaje &&
-        n.fecha > hace5Minutos
-      );
-      
-      if (existeDuplicado) {
-        console.log('⚠️ Notificación duplicada ignorada:', codigoNotificacion);
-        return;
-      }
-    }
-    
-    const nuevoId = notificacionesActuales.length > 0 
-      ? Math.max(...notificacionesActuales.map(n => n.id)) + 1 
-      : 1;
-    
-    const nuevaNotificacion: Notificacion = {
-      ...notificacion,
-      id: nuevoId
-    };
-
-    // Agregar al inicio de la lista
-    const notificacionesActualizadas = [nuevaNotificacion, ...notificacionesActuales];
-    this.updateNotificaciones(notificacionesActualizadas);
-    
-    console.log('✅ Notificación agregada localmente:', nuevaNotificacion);
+    // Método desactivado - las notificaciones ahora vienen solo del backend
+    console.log('⚠️ agregarNotificacionLocal desactivado - las notificaciones vienen solo del backend');
+    return;
   }
 
   // Métodos privados para manejo local del estado
@@ -322,51 +281,11 @@ export class NotificacionesService {
 
   /**
    * Genera notificaciones mock para desarrollo
+   * DESACTIVADO: Las notificaciones ahora vienen solo del backend
    */
   private getMockNotificaciones(): Notificacion[] {
-    const ahora = new Date();
-    return [
-      {
-        id: 1,
-        titulo: 'Nueva actividad asignada',
-        mensaje: 'Se te ha asignado una nueva actividad: "Revisión de indicadores"',
-        tipo: 'info',
-        fecha: new Date(ahora.getTime() - 5 * 60 * 1000), // Hace 5 minutos
-        leida: false
-      },
-      {
-        id: 2,
-        titulo: 'Actividad completada',
-        mensaje: 'La actividad "Reunión de seguimiento" ha sido marcada como completada',
-        tipo: 'success',
-        fecha: new Date(ahora.getTime() - 30 * 60 * 1000), // Hace 30 minutos
-        leida: false
-      },
-      {
-        id: 3,
-        titulo: 'Recordatorio importante',
-        mensaje: 'Tienes 3 actividades pendientes que requieren atención',
-        tipo: 'warning',
-        fecha: new Date(ahora.getTime() - 2 * 60 * 60 * 1000), // Hace 2 horas
-        leida: true
-      },
-      {
-        id: 4,
-        titulo: 'Nueva evidencia subida',
-        mensaje: 'Se ha subido una nueva evidencia para la actividad "Capacitación"',
-        tipo: 'info',
-        fecha: new Date(ahora.getTime() - 1 * 24 * 60 * 60 * 1000), // Hace 1 día
-        leida: false
-      },
-      {
-        id: 5,
-        titulo: 'Indicador actualizado',
-        mensaje: 'El indicador 6.1.1 ha sido actualizado con nuevos datos',
-        tipo: 'success',
-        fecha: new Date(ahora.getTime() - 2 * 24 * 60 * 60 * 1000), // Hace 2 días
-        leida: true
-      }
-    ];
+    // Método desactivado - las notificaciones ahora vienen solo del backend
+    return [];
   }
 }
 

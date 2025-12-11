@@ -131,8 +131,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
-    // Iniciar el servicio de notificaciones automáticas
-    this.notificacionesAutomaticas.iniciar();
+    // Notificaciones automáticas desactivadas - ahora vienen solo del backend
+    // this.notificacionesAutomaticas.iniciar();
     // El PermisosService se inicializa automáticamente en su constructor
     // pero forzamos la carga inicial de permisos
     this.permisosService.loadPermisosUsuarioActual();
@@ -158,8 +158,8 @@ export class LayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Detener el servicio cuando se destruye el componente
-    this.notificacionesAutomaticas.detener();
+    // Notificaciones automáticas desactivadas
+    // this.notificacionesAutomaticas.detener();
   }
 
   private updateBreadcrumbs(route: ActivatedRoute): void {
