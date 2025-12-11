@@ -197,11 +197,13 @@ export class ReporteGenerarComponent implements OnInit {
     });
 
     // Observar cambios en fechas para detectar reporte institucional y seleccionar actividades automáticamente
-    this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
+    this.form.get('fechaInicio')?.valueChanges.subscribe((value) => {
+      console.log('🔄 Cambio en fechaInicio:', value);
       this.actualizarEsReporteInstitucional();
       this.seleccionarActividadesPorPeriodo();
     });
-    this.form.get('fechaFin')?.valueChanges.subscribe(() => {
+    this.form.get('fechaFin')?.valueChanges.subscribe((value) => {
+      console.log('🔄 Cambio en fechaFin:', value);
       this.actualizarEsReporteInstitucional();
       this.seleccionarActividadesPorPeriodo();
     });
@@ -1413,17 +1415,13 @@ export class ReporteGenerarComponent implements OnInit {
 
   /**
    * Selecciona automáticamente todas las actividades que caen dentro del período definido
-   * Cuando hay un período definido, SOLO selecciona las actividades dentro del período
-   * Si no hay período, mantiene las selecciones manuales del usuario
+   * Calcula directamente las actividades sin depender del computed para asegurar actualización inmediata
    */
   seleccionarActividadesPorPeriodo(): void {
-    // Usar setTimeout para asegurar que el computed se actualice después del cambio del formulario
+    // Usar setTimeout para asegurar que el formulario se actualice completamente
     setTimeout(() => {
       const fechaInicio = this.form.get('fechaInicio')?.value;
       const fechaFin = this.form.get('fechaFin')?.value;
-      
-      // Obtener actividades actualmente seleccionadas
-      const actividadesSeleccionadasActuales = this.form.get('idActividades')?.value || [];
       
       // Si se limpiaron las fechas, mantener las selecciones manuales del usuario
       if (!fechaInicio && !fechaFin) {
@@ -1431,45 +1429,68 @@ export class ReporteGenerarComponent implements OnInit {
         return;
       }
       
-      // Obtener IDs de actividades dentro del período
-      const actividadesEnPeriodo = this.actividadesEnPeriodo();
-      const idsEnPeriodo = actividadesEnPeriodo
+      // Calcular directamente las actividades dentro del período (no usar el computed)
+      // Esto asegura que siempre use los valores más recientes del formulario
+      const todasLasActividades = this.actividades();
+      const actividadesEnPeriodo = todasLasActividades.filter(actividad => {
+        const fechaActividad = actividad.fechaInicio || actividad.fechaEvento;
+        
+        if (!fechaActividad) {
+          return false;
+        }
+        
+        const fechaAct = new Date(fechaActividad);
+        fechaAct.setHours(0, 0, 0, 0);
+        
+        let dentroDelPeriodo = true;
+        
+        if (fechaInicio) {
+          const fechaInicioObj = new Date(fechaInicio);
+          fechaInicioObj.setHours(0, 0, 0, 0);
+          if (fechaAct < fechaInicioObj) {
+            dentroDelPeriodo = false;
+          }
+        }
+        
+        if (fechaFin) {
+          const fechaFinObj = new Date(fechaFin);
+          fechaFinObj.setHours(23, 59, 59, 999);
+          if (fechaAct > fechaFinObj) {
+            dentroDelPeriodo = false;
+          }
+        }
+        
+        return dentroDelPeriodo;
+      });
+      
+      // Extraer los IDs de las actividades
+      const idsActividades: number[] = actividadesEnPeriodo
         .map(actividad => {
           const id = Number(actividad.id || actividad.idActividad);
           return isNaN(id) || id <= 0 ? null : id;
         })
         .filter((id): id is number => id !== null);
       
-      // Cuando hay un período definido, SOLO seleccionar las actividades dentro del período
-      // No combinar con selecciones anteriores para evitar mantener actividades fuera del período
-      const idsFinalesArray = idsEnPeriodo;
+      // Establecer las actividades seleccionadas (siempre actualizar cuando hay período)
+      // Usar setValue directamente sin verificar cambios previos para forzar la actualización
+      const idActividadesControl = this.form.get('idActividades');
+      idActividadesControl?.setValue(idsActividades, { emitEvent: false });
+      idActividadesControl?.markAsTouched();
+      idActividadesControl?.updateValueAndValidity();
       
-      // Verificar si hay cambios comparando los arrays
-      const idsActualesSet = new Set(actividadesSeleccionadasActuales.map((id: any) => Number(id)));
-      const idsFinalesSet = new Set(idsFinalesArray);
-      
-      const hayCambios = idsFinalesArray.length !== actividadesSeleccionadasActuales.length ||
-        !idsFinalesArray.every(id => idsActualesSet.has(id)) ||
-        !actividadesSeleccionadasActuales.every((id: any) => idsFinalesSet.has(Number(id)));
-      
-      // Actualizar solo si hay cambios
-      if (hayCambios) {
-        const idActividadesControl = this.form.get('idActividades');
-        idActividadesControl?.setValue(idsFinalesArray, { emitEvent: false });
-        idActividadesControl?.markAsTouched();
-        idActividadesControl?.updateValueAndValidity();
-        
-        // Cargar departamentos automáticamente
-        this.cargarDepartamentosDeActividades(idsFinalesArray);
-        
-        // Actualizar nombre del archivo
-        this.actualizarNombreArchivoReporte();
-        
-        console.log(`✅ Período actualizado: ${idsEnPeriodo.length} actividad(es) seleccionada(s) dentro del período`);
-        console.log(`📅 Período: ${fechaInicio || 'sin inicio'} - ${fechaFin || 'sin fin'}`);
+      // Cargar departamentos automáticamente
+      if (idsActividades.length > 0) {
+        this.cargarDepartamentosDeActividades(idsActividades);
       } else {
-        console.log(`ℹ️ No hay cambios en las actividades del período (${idsEnPeriodo.length} actividades)`);
+        this.form.get('idDepartamentos')?.setValue([]);
       }
+      
+      // Actualizar nombre del archivo
+      this.actualizarNombreArchivoReporte();
+      
+      console.log(`✅ Período actualizado: ${idsActividades.length} actividad(es) seleccionada(s) automáticamente`);
+      console.log(`📅 Período: ${fechaInicio || 'sin inicio'} - ${fechaFin || 'sin fin'}`);
+      console.log(`📋 IDs seleccionados:`, idsActividades);
     }, 0);
   }
 
