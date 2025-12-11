@@ -5,6 +5,7 @@ import { IconComponent } from '../../../shared/icon/icon.component';
 import { ActividadesService } from '../../../core/services/actividades.service';
 import { SubactividadService } from '../../../core/services/subactividad.service';
 import { CatalogosService } from '../../../core/services/catalogos.service';
+import { environment } from '../../../../environments/environment';
 import type { Actividad } from '../../../core/models/actividad';
 import type { Subactividad } from '../../../core/models/subactividad';
 import { CalendarEvent, CalendarView } from 'angular-calendar';
@@ -267,6 +268,22 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 
+  /**
+   * Parsea una fecha string del backend como fecha local (no UTC)
+   * Evita el problema de que "2024-12-11" se interprete como UTC y aparezca un día antes
+   */
+  private parseLocalDate(dateString: string): Date {
+    // Si la fecha viene en formato "YYYY-MM-DD" o "YYYY-MM-DDTHH:mm:ss"
+    if (dateString.includes('T')) {
+      // Si tiene hora, parsear normalmente
+      return new Date(dateString);
+    } else {
+      // Si solo tiene fecha (YYYY-MM-DD), parsear como fecha local
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Date(year, month - 1, day); // month es 0-indexed en Date
+    }
+  }
+
   // Actualizar eventos del calendario
   actualizarEventosCalendario(actividades: Actividad[], subactividades: Subactividad[] = []): void {
     const eventosActividades: CalendarEvent[] = actividades
@@ -276,15 +293,15 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
         let fechaFin: Date | undefined;
         
         if (actividad.fechaInicio && actividad.fechaFin) {
-          fechaInicio = startOfDay(new Date(actividad.fechaInicio));
-          fechaFin = endOfDay(new Date(actividad.fechaFin));
+          fechaInicio = startOfDay(this.parseLocalDate(actividad.fechaInicio));
+          fechaFin = endOfDay(this.parseLocalDate(actividad.fechaFin));
           if (fechaFin < fechaInicio) {
             fechaFin = undefined;
           }
         } else if (actividad.fechaInicio) {
-          fechaInicio = startOfDay(new Date(actividad.fechaInicio));
+          fechaInicio = startOfDay(this.parseLocalDate(actividad.fechaInicio));
         } else if (actividad.fechaEvento) {
-          fechaInicio = startOfDay(new Date(actividad.fechaEvento));
+          fechaInicio = startOfDay(this.parseLocalDate(actividad.fechaEvento));
         } else {
           fechaInicio = startOfDay(new Date(actividad.fechaCreacion));
         }
@@ -323,7 +340,25 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
           secondary: colorSecondary
         };
         
-        const codigo = actividad.codigoActividad || '';
+        // Obtener el código de la actividad - verificar múltiples posibles ubicaciones
+        const codigo = actividad.codigoActividad || 
+                      (actividad as any).CodigoActividad || 
+                      (actividad as any).codigo || 
+                      (actividad as any).Codigo || 
+                      '';
+        
+        // Log para depuración (solo en desarrollo)
+        if (!environment.production && actividad.id) {
+          console.log(`🔍 [CALENDARIO] Actividad ID ${actividad.id}:`, {
+            codigoActividad: actividad.codigoActividad,
+            CodigoActividad: (actividad as any).CodigoActividad,
+            codigo: (actividad as any).codigo,
+            Codigo: (actividad as any).Codigo,
+            codigoFinal: codigo,
+            nombre: actividad.nombre || actividad.nombreActividad
+          });
+        }
+        
         const nombre = actividad.nombre || actividad.nombreActividad || 'Sin nombre';
         let title = codigo ? `${codigo} - ${nombre}` : nombre;
         
@@ -342,7 +377,7 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
           meta: {
             actividad: actividad,
             estado: nombreEstado,
-            codigoActividad: actividad.codigoActividad,
+            codigoActividad: codigo || actividad.codigoActividad || undefined,
             tipo: 'actividad'
           }
         };
@@ -362,13 +397,13 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
         let fechaFin: Date | undefined;
         
         if (subactividad.fechaInicio && subactividad.fechaFin) {
-          fechaInicio = startOfDay(new Date(subactividad.fechaInicio));
-          fechaFin = endOfDay(new Date(subactividad.fechaFin));
+          fechaInicio = startOfDay(this.parseLocalDate(subactividad.fechaInicio));
+          fechaFin = endOfDay(this.parseLocalDate(subactividad.fechaFin));
           if (fechaFin < fechaInicio) {
             fechaFin = undefined;
           }
         } else if (subactividad.fechaInicio) {
-          fechaInicio = startOfDay(new Date(subactividad.fechaInicio));
+          fechaInicio = startOfDay(this.parseLocalDate(subactividad.fechaInicio));
         } else {
           fechaInicio = startOfDay(new Date(subactividad.fechaCreacion));
         }

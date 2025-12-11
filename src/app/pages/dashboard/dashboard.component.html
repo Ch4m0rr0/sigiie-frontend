@@ -42,32 +42,127 @@
   @if (!loading()) {
     
     <!-- Sección de Calendario -->
-    <app-calendar-section></app-calendar-section>
+    <div class="mb-8">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+          <h3 class="text-lg font-bold text-slate-900">Calendario</h3>
+          <button
+            type="button"
+            (click)="toggleCalendario()"
+            class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-sm font-medium flex items-center gap-2"
+            [class.bg-slate-100]="!mostrarCalendario()">
+            <app-icon [icon]="mostrarCalendario() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+            <span>{{ mostrarCalendario() ? 'Ocultar' : 'Mostrar' }}</span>
+          </button>
+        </div>
+        @if (mostrarCalendario()) {
+          <div class="p-0">
+            <app-calendar-section></app-calendar-section>
+          </div>
+        }
+      </div>
+    </div>
 
     <!-- Cards de Estadísticas -->
-    <app-statistics-cards
-      [totalActividades]="totalActividades()"
-      [totalParticipaciones]="totalParticipaciones()"
-      [totalEvidencias]="totalEvidencias()"
-      [totalSubactividades]="totalSubactividades()">
-    </app-statistics-cards>
+    <div class="mb-8">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+          <h3 class="text-lg font-bold text-slate-900">Estadísticas</h3>
+          <button
+            type="button"
+            (click)="toggleEstadisticas()"
+            class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-sm font-medium flex items-center gap-2"
+            [class.bg-slate-100]="!mostrarEstadisticas()">
+            <app-icon [icon]="mostrarEstadisticas() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+            <span>{{ mostrarEstadisticas() ? 'Ocultar' : 'Mostrar' }}</span>
+          </button>
+        </div>
+        @if (mostrarEstadisticas()) {
+          <div class="p-6">
+            <app-statistics-cards
+              [totalActividades]="totalActividades()"
+              [totalParticipaciones]="totalParticipaciones()"
+              [totalEvidencias]="totalEvidencias()"
+              [totalSubactividades]="totalSubactividades()">
+            </app-statistics-cards>
+          </div>
+        }
+      </div>
+    </div>
 
     <!-- Sección de Cumplimiento de Indicadores (solo para admins) -->
     @if (esAdmin()) {
-      <app-indicator-compliance></app-indicator-compliance>
+      <div class="mb-8">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-900">Cumplimiento de Indicadores</h3>
+            <button
+              type="button"
+              (click)="toggleIndicadores()"
+              class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-sm font-medium flex items-center gap-2"
+              [class.bg-slate-100]="!mostrarIndicadores()">
+              <app-icon [icon]="mostrarIndicadores() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+              <span>{{ mostrarIndicadores() ? 'Ocultar' : 'Mostrar' }}</span>
+            </button>
+          </div>
+          @if (mostrarIndicadores()) {
+            <div class="p-6">
+              <app-indicator-compliance></app-indicator-compliance>
+            </div>
+          }
+        </div>
+      </div>
     }
 
     <!-- Sección de Actividades de este Mes -->
-    <app-monthly-activities></app-monthly-activities>
+    <div class="mb-8">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+          <h3 class="text-lg font-bold text-slate-900">Actividades del Mes</h3>
+          <button
+            type="button"
+            (click)="toggleActividadesMes()"
+            class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-sm font-medium flex items-center gap-2"
+            [class.bg-slate-100]="!mostrarActividadesMes()">
+            <app-icon [icon]="mostrarActividadesMes() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+            <span>{{ mostrarActividadesMes() ? 'Ocultar' : 'Mostrar' }}</span>
+          </button>
+        </div>
+        @if (mostrarActividadesMes()) {
+          <div class="p-6">
+            <app-monthly-activities></app-monthly-activities>
+          </div>
+        }
+      </div>
+    </div>
 
     <!-- Cards organizadas en grid debajo de los botones -->
-    <app-dashboard-charts
-      [progressChartData]="progressChartData"
-      [progressChartConfig]="progressChartConfig"
-      [usersChartData]="usersChartData"
-      [usersChartConfig]="usersChartConfig"
-      [vistaEspecialMetricas]="vistaEspecialMetricas()"
-      [vistaEspecialRendimiento]="vistaEspecialRendimiento()">
-    </app-dashboard-charts>
+    <div class="mb-8">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex items-center justify-between">
+          <h3 class="text-lg font-bold text-slate-900">Gráficos y Análisis</h3>
+          <button
+            type="button"
+            (click)="toggleGraficos()"
+            class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 transition-all duration-200 text-sm font-medium flex items-center gap-2"
+            [class.bg-slate-100]="!mostrarGraficos()">
+            <app-icon [icon]="mostrarGraficos() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+            <span>{{ mostrarGraficos() ? 'Ocultar' : 'Mostrar' }}</span>
+          </button>
+        </div>
+        @if (mostrarGraficos()) {
+          <div class="p-6">
+            <app-dashboard-charts
+              [progressChartData]="progressChartData"
+              [progressChartConfig]="progressChartConfig"
+              [usersChartData]="usersChartData"
+              [usersChartConfig]="usersChartConfig"
+              [vistaEspecialMetricas]="vistaEspecialMetricas()"
+              [vistaEspecialRendimiento]="vistaEspecialRendimiento()">
+            </app-dashboard-charts>
+          </div>
+        }
+      </div>
+    </div>
   }
 </div>

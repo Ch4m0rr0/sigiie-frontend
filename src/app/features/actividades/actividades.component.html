@@ -2612,6 +2612,25 @@
               <app-icon icon="chevron_right" size="sm"></app-icon>
             </button>
           </div>
+          
+          <!-- Leyenda de Estados - Solo colores -->
+          <div class="flex items-center gap-3 flex-wrap">
+            @if (estadosActividad().length > 0) {
+              @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                @let estadoColor = getEstadoColor(estado);
+                <div class="flex items-center gap-1.5">
+                  <div 
+                    class="w-3.5 h-3.5 rounded" 
+                    [style.backgroundColor]="estadoColor"
+                    [style.border]="'1px solid ' + estadoColor"
+                    [title]="estado.nombre">
+                  </div>
+                  <span class="text-xs text-slate-600">{{ estado.nombre }}</span>
+                </div>
+              }
+            }
+          </div>
+          
           <button
             type="button"
             (click)="irAHoy()"
@@ -2706,28 +2725,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-          }
-        </div>
-
-        <!-- Leyenda de Estados -->
-        <div class="mt-6 flex items-center gap-4 text-sm flex-wrap">
-          @if (estadosActividad().length > 0) {
-            @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
-              @let estadoColor = getEstadoColor(estado);
-              <div class="flex items-center gap-2">
-                <div 
-                  class="w-4 h-4 rounded" 
-                  [style.backgroundColor]="estadoColor"
-                  [style.border]="'1px solid ' + estadoColor">
-                </div>
-                <span class="text-slate-600">{{ estado.nombre }}</span>
-              </div>
-            }
-          } @else {
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded bg-slate-400"></div>
-              <span class="text-slate-600 text-xs italic">Cargando estados...</span>
             </div>
           }
         </div>

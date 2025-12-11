@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { ChartData, ChartConfig } from '../../shared/chart/chart.component';
+import { IconComponent } from '../../shared/icon/icon.component';
 import { StatisticsCardsComponent } from './statistics-cards/statistics-cards.component';
 import { CalendarSectionComponent } from './calendar-section/calendar-section.component';
 import { IndicatorComplianceComponent } from './indicator-compliance/indicator-compliance.component';
@@ -19,7 +20,7 @@ import { AuthService } from '../../core/services/auth.service';
 @Component({
   standalone: true,
   selector: 'app-dashboard',
-  imports: [CommonModule, RouterModule, StatisticsCardsComponent, CalendarSectionComponent, IndicatorComplianceComponent, MonthlyActivitiesComponent, DashboardChartsComponent],
+  imports: [CommonModule, RouterModule, IconComponent, StatisticsCardsComponent, CalendarSectionComponent, IndicatorComplianceComponent, MonthlyActivitiesComponent, DashboardChartsComponent],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
@@ -47,6 +48,13 @@ export class DashboardComponent implements OnInit {
   
   // Verificar si el usuario es admin para mostrar sección de cumplimiento de indicadores
   esAdmin = signal(false);
+  
+  // Control de visibilidad de secciones
+  mostrarCalendario = signal(true);
+  mostrarEstadisticas = signal(true);
+  mostrarIndicadores = signal(true);
+  mostrarActividadesMes = signal(true);
+  mostrarGraficos = signal(true);
 
   // Datos para gráficos
   progressChartData: ChartData | null = null;
@@ -317,5 +325,26 @@ export class DashboardComponent implements OnInit {
         };
       }
     }
+  }
+
+  // Métodos para toggle de secciones
+  toggleCalendario(): void {
+    this.mostrarCalendario.update(v => !v);
+  }
+
+  toggleEstadisticas(): void {
+    this.mostrarEstadisticas.update(v => !v);
+  }
+
+  toggleIndicadores(): void {
+    this.mostrarIndicadores.update(v => !v);
+  }
+
+  toggleActividadesMes(): void {
+    this.mostrarActividadesMes.update(v => !v);
+  }
+
+  toggleGraficos(): void {
+    this.mostrarGraficos.update(v => !v);
   }
 }

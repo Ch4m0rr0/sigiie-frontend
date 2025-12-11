@@ -1607,7 +1607,7 @@ export class ActividadesService {
       
       // Campos adicionales
       semanaMes: item.SemanaMes || item.semanaMes,
-      codigoActividad: item.CodigoActividad || item.codigoActividad,
+      codigoActividad: item.CodigoActividad || item.codigoActividad || item.Codigo || item.codigo || undefined,
       idActividadMensualInst: item.IdActividadMensualInst || item.idActividadMensualInst,
       nombreActividadMensualInst: item.NombreActividadMensualInst || item.nombreActividadMensualInst,
       codigoIndicador: item.CodigoIndicador || item.codigoIndicador,

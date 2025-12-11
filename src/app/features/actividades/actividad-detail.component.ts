@@ -3372,10 +3372,13 @@ export class ActividadDetailComponent implements OnInit {
 
   /**
    * Verifica si el usuario actual puede validar actividades
+   * Pueden validar: Administradores, Jefes de Departamento, y usuarios con permiso ValidarActividad
    */
   puedeValidar(): boolean {
     return this.permisosService.esAdministrador() || 
-           this.permisosService.tienePermiso('ValidarActividad');
+           this.permisosService.esJefeDepartamento() ||
+           this.permisosService.tienePermiso('ValidarActividad') ||
+           this.permisosService.tienePermiso('actividades.validar');
   }
 
   /**

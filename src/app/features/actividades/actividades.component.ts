@@ -2505,6 +2505,22 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 
+  /**
+   * Parsea una fecha string del backend como fecha local (no UTC)
+   * Evita el problema de que "2024-12-11" se interprete como UTC y aparezca un día antes
+   */
+  private parseLocalDate(dateString: string): Date {
+    // Si la fecha viene en formato "YYYY-MM-DD" o "YYYY-MM-DDTHH:mm:ss"
+    if (dateString.includes('T')) {
+      // Si tiene hora, parsear normalmente
+      return new Date(dateString);
+    } else {
+      // Si solo tiene fecha (YYYY-MM-DD), parsear como fecha local
+      const [year, month, day] = dateString.split('-').map(Number);
+      return new Date(year, month - 1, day); // month es 0-indexed en Date
+    }
+  }
+
   actualizarEventosCalendario(actividades: Actividad[]): void {
     const eventos: CalendarEvent[] = actividades
       .filter(actividad => actividad.fechaInicio || actividad.fechaEvento || actividad.fechaCreacion)
@@ -2515,8 +2531,8 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
         
         if (actividad.fechaInicio && actividad.fechaFin) {
           // Actividad con rango de fechas
-          fechaInicio = startOfDay(new Date(actividad.fechaInicio));
-          fechaFin = endOfDay(new Date(actividad.fechaFin));
+          fechaInicio = startOfDay(this.parseLocalDate(actividad.fechaInicio));
+          fechaFin = endOfDay(this.parseLocalDate(actividad.fechaFin));
           
           // Verificar que la fecha fin sea posterior a la fecha inicio
           if (fechaFin < fechaInicio) {
@@ -2525,10 +2541,10 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           }
         } else if (actividad.fechaInicio) {
           // Solo fecha inicio
-          fechaInicio = startOfDay(new Date(actividad.fechaInicio));
+          fechaInicio = startOfDay(this.parseLocalDate(actividad.fechaInicio));
         } else if (actividad.fechaEvento) {
           // Fecha evento como fallback
-          fechaInicio = startOfDay(new Date(actividad.fechaEvento));
+          fechaInicio = startOfDay(this.parseLocalDate(actividad.fechaEvento));
         } else {
           // Fecha creación como último recurso
           fechaInicio = startOfDay(new Date(actividad.fechaCreacion));
@@ -2596,6 +2612,13 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
           tooltip += `\nDel ${format(fechaInicio, 'dd/MM/yyyy')} al ${format(fechaFin, 'dd/MM/yyyy')}`;
         }
         
+        // Obtener el código de la actividad - verificar múltiples posibles ubicaciones
+        const codigo = actividad.codigoActividad || 
+                      (actividad as any).CodigoActividad || 
+                      (actividad as any).codigo || 
+                      (actividad as any).Codigo || 
+                      '';
+        
         // Construir el título solo con el nombre (el código se mostrará como badge separado)
         let title = actividad.nombre;
         
@@ -2616,7 +2639,7 @@ export class ListActividadesComponent implements OnInit, AfterViewInit, OnDestro
             actividad: actividad,
             estado: nombreEstado,
             tooltip: tooltip,
-            codigoActividad: actividad.codigoActividad // Guardar código por separado para estilos
+            codigoActividad: codigo || actividad.codigoActividad || undefined // Guardar código por separado para estilos
           }
         };
         

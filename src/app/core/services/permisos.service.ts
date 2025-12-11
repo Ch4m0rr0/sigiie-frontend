@@ -118,6 +118,9 @@ export class PermisosService {
     'EliminarEvidencia': 'evidencias.eliminar',
     'VerEvidencia': 'evidencias.ver',
     
+    // Validación de Actividades
+    'ValidarActividad': 'actividades.validar',
+    
     // Reportes
     'VerReporte': 'reportes.ver',
     'CrearReporte': 'reportes.crear',
@@ -312,6 +315,10 @@ export class PermisosService {
       'Asistente': 'Sub-Encargado / Asistente',
       'Colaborador': 'Participante / Colaborador',
       'Visualizador': 'Consultor / Visualizador',
+      // Jefe de Departamento
+      'Jefe de Departamento': 'Jefe de Departamento',
+      'JefeDepartamento': 'Jefe de Departamento',
+      'Jefe_Departamento': 'Jefe de Departamento',
     };
     
     const rolConvertido = mapeoRoles[rolBackend] || rolBackend;
@@ -533,6 +540,36 @@ export class PermisosService {
   tieneRol(rol: string): boolean {
     const roles = this.roles();
     return roles.includes(rol);
+  }
+
+  /**
+   * Verifica si el usuario es Jefe de Departamento
+   */
+  esJefeDepartamento(): boolean {
+    const roles = this.roles();
+    const user = this.authService.user();
+    
+    // Verificar por rol
+    if (roles.some(r => 
+      r.toLowerCase().includes('jefe') && r.toLowerCase().includes('departamento') ||
+      r === 'Jefe de Departamento' ||
+      r === 'JefeDepartamento' ||
+      r === 'Jefe_Departamento'
+    )) {
+      return true;
+    }
+    
+    // Verificar por rol del usuario directamente
+    if (user?.role && (
+      user.role.toLowerCase().includes('jefe') && user.role.toLowerCase().includes('departamento') ||
+      user.role === 'Jefe de Departamento' ||
+      user.role === 'JefeDepartamento' ||
+      user.role === 'Jefe_Departamento'
+    )) {
+      return true;
+    }
+    
+    return false;
   }
 
   /**
