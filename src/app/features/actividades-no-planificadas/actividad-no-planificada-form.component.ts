@@ -3123,8 +3123,18 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       next: (responsables) => {
         console.log('👥 Responsables recibidos del backend:', responsables);
         if (responsables && responsables.length > 0) {
-          // Esperar un momento para asegurar que las listas de personas estén cargadas
-          setTimeout(() => {
+          // Esperar un momento para asegurar que las listas de personas y roles estén cargadas
+          // Verificar que los roles estén disponibles antes de procesar
+          const verificarRolesYProcesar = () => {
+            const rolesDisponibles = this.rolesResponsable();
+            if (rolesDisponibles.length === 0) {
+              console.warn('⚠️ Los roles aún no están cargados, esperando...');
+              setTimeout(verificarRolesYProcesar, 200);
+              return;
+            }
+            
+            console.log('✅ Roles disponibles:', rolesDisponibles.length);
+            
             // Verificar nuevamente que los arrays estén limpios antes de agregar
             if (this.usuariosArray.length > 0 || this.docentesArray.length > 0 || 
                 this.estudiantesArray.length > 0 || this.administrativosArray.length > 0 || 
@@ -3156,6 +3166,46 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 rolResponsable: responsable.rolResponsable
               });
               
+              // Función auxiliar para encontrar el ID del rol de manera robusta
+              const encontrarIdRolResponsable = (): number | null => {
+                const rolesDisponibles = this.rolesResponsable();
+                console.log('🔍 [Buscar Rol] Roles disponibles:', rolesDisponibles.length, rolesDisponibles);
+                
+                // Primero intentar por ID directo
+                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
+                  const idBuscado = Number(responsable.idRolResponsable);
+                  const rolPorId = rolesDisponibles.find(r => 
+                    Number(r.id) === idBuscado || 
+                    Number(r.idRolResponsable) === idBuscado
+                  );
+                  if (rolPorId) {
+                    console.log('✅ Rol encontrado por ID:', idBuscado, '->', rolPorId.nombre);
+                    return Number(rolPorId.id || rolPorId.idRolResponsable);
+                  }
+                }
+                
+                // Si no se encuentra por ID, intentar por nombre
+                const nombreBuscado = responsable.nombreRolResponsable || responsable.rolResponsable;
+                if (nombreBuscado) {
+                  const rolPorNombre = rolesDisponibles.find(r => 
+                    r.nombre?.toLowerCase() === nombreBuscado.toLowerCase() ||
+                    r.nombre === nombreBuscado
+                  );
+                  if (rolPorNombre) {
+                    console.log('✅ Rol encontrado por nombre:', nombreBuscado, '-> ID:', rolPorNombre.id || rolPorNombre.idRolResponsable);
+                    return Number(rolPorNombre.id || rolPorNombre.idRolResponsable);
+                  }
+                }
+                
+                console.warn('⚠️ No se encontró el rol:', {
+                  idRolResponsable: responsable.idRolResponsable,
+                  nombreRolResponsable: responsable.nombreRolResponsable,
+                  rolResponsable: responsable.rolResponsable,
+                  rolesDisponibles: rolesDisponibles.map(r => ({ id: r.id || r.idRolResponsable, nombre: r.nombre }))
+                });
+                return null;
+              };
+              
               if (responsable.idUsuario) {
                 // Es un usuario - verificar que no esté duplicado
                 if (usuariosUnicos.has(responsable.idUsuario)) {
@@ -3173,21 +3223,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 const nombreUsuario = responsable.nombreUsuario || responsable.nombrePersona || null;
                 const usuarioFormGroup = this.crearUsuarioFormGroup(nombreUsuario || undefined);
                 
-                // Asegurar que idRolResponsable se mapee correctamente
-                // Verificar múltiples campos posibles del backend
-                let idRolResponsable: number | null = null;
-                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
-                  idRolResponsable = Number(responsable.idRolResponsable);
-                } else if (responsable.nombreRolResponsable) {
-                  // Si solo tenemos el nombre, intentar encontrar el ID en la lista de roles
-                  const rolEncontrado = this.rolesResponsable().find(r => 
-                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
-                    r.nombre === responsable.nombreRolResponsable
-                  );
-                  if (rolEncontrado) {
-                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
-                  }
-                }
+                // Asegurar que idRolResponsable se mapee correctamente usando la función auxiliar
+                const idRolResponsable = encontrarIdRolResponsable();
                 
                 console.log('🔍 [Usuario] Mapeo de rol:', {
                   idRolResponsableOriginal: responsable.idRolResponsable,
@@ -3219,19 +3256,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const docenteFormGroup = this.crearPersonaFormGroup('docente');
                 
-                // Asegurar que idRolResponsable se mapee correctamente
-                let idRolResponsable: number | null = null;
-                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
-                  idRolResponsable = Number(responsable.idRolResponsable);
-                } else if (responsable.nombreRolResponsable) {
-                  const rolEncontrado = this.rolesResponsable().find(r => 
-                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
-                    r.nombre === responsable.nombreRolResponsable
-                  );
-                  if (rolEncontrado) {
-                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
-                  }
-                }
+                // Asegurar que idRolResponsable se mapee correctamente usando la función auxiliar
+                const idRolResponsable = encontrarIdRolResponsable();
                 
                 docenteFormGroup.patchValue({
                   idPersona: responsable.idDocente,
@@ -3254,19 +3280,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const estudianteFormGroup = this.crearPersonaFormGroup('estudiante');
                 
-                // Asegurar que idRolResponsable se mapee correctamente
-                let idRolResponsable: number | null = null;
-                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
-                  idRolResponsable = Number(responsable.idRolResponsable);
-                } else if (responsable.nombreRolResponsable) {
-                  const rolEncontrado = this.rolesResponsable().find(r => 
-                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
-                    r.nombre === responsable.nombreRolResponsable
-                  );
-                  if (rolEncontrado) {
-                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
-                  }
-                }
+                // Asegurar que idRolResponsable se mapee correctamente usando la función auxiliar
+                const idRolResponsable = encontrarIdRolResponsable();
                 
                 estudianteFormGroup.patchValue({
                   idPersona: responsable.idEstudiante,
@@ -3289,19 +3304,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 // Crear el FormGroup directamente en lugar de usar agregarPersona para evitar problemas de índice
                 const adminFormGroup = this.crearPersonaFormGroup('administrativo');
                 
-                // Asegurar que idRolResponsable se mapee correctamente
-                let idRolResponsable: number | null = null;
-                if (responsable.idRolResponsable !== undefined && responsable.idRolResponsable !== null) {
-                  idRolResponsable = Number(responsable.idRolResponsable);
-                } else if (responsable.nombreRolResponsable) {
-                  const rolEncontrado = this.rolesResponsable().find(r => 
-                    r.nombre?.toLowerCase() === responsable.nombreRolResponsable?.toLowerCase() ||
-                    r.nombre === responsable.nombreRolResponsable
-                  );
-                  if (rolEncontrado) {
-                    idRolResponsable = rolEncontrado.id || rolEncontrado.idRolResponsable || null;
-                  }
-                }
+                // Asegurar que idRolResponsable se mapee correctamente usando la función auxiliar
+                const idRolResponsable = encontrarIdRolResponsable();
                 
                 adminFormGroup.patchValue({
                   idPersona: responsable.idAdmin,
@@ -3323,6 +3327,8 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                 }
                 this.agregarResponsableExterno();
                 const externoIndex = this.responsablesExternosArray.length - 1;
+                // Asegurar que idRolResponsable se mapee correctamente usando la función auxiliar
+                const idRolResponsable = encontrarIdRolResponsable();
                 setTimeout(() => {
                   if (this.responsablesExternosArray.at(externoIndex)) {
                     this.responsablesExternosArray.at(externoIndex).patchValue({
@@ -3333,20 +3339,49 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
                       cargo: responsable.cargoResponsableExterno || '',
                       telefono: responsable.telefonoResponsableExterno || '',
                       correo: responsable.correoResponsableExterno || '',
-                      idRolResponsable: responsable.idRolResponsable || null
+                      idRolResponsable: idRolResponsable
                     }, { emitEvent: false });
                   }
                 }, 100);
-                console.log('✅ Responsable externo agregado:', responsable.idResponsableExterno, 'Rol:', responsable.idRolResponsable);
+                console.log('✅ Responsable externo agregado:', responsable.idResponsableExterno, 'Rol ID:', idRolResponsable);
               }
             });
             
             console.log('✅ Total de responsables cargados:', responsables.length);
             this.cargandoResponsables = false;
+            
+            // Forzar actualización de los selects después de establecer los valores
             setTimeout(() => {
+              this.usuariosArray.controls.forEach(control => {
+                const idRol = control.get('idRolResponsable')?.value;
+                if (idRol) {
+                  control.get('idRolResponsable')?.setValue(idRol, { emitEvent: false });
+                }
+              });
+              this.docentesArray.controls.forEach(control => {
+                const idRol = control.get('idRolResponsable')?.value;
+                if (idRol) {
+                  control.get('idRolResponsable')?.setValue(idRol, { emitEvent: false });
+                }
+              });
+              this.estudiantesArray.controls.forEach(control => {
+                const idRol = control.get('idRolResponsable')?.value;
+                if (idRol) {
+                  control.get('idRolResponsable')?.setValue(idRol, { emitEvent: false });
+                }
+              });
+              this.administrativosArray.controls.forEach(control => {
+                const idRol = control.get('idRolResponsable')?.value;
+                if (idRol) {
+                  control.get('idRolResponsable')?.setValue(idRol, { emitEvent: false });
+                }
+              });
               this.cdr.markForCheck(); // Marcar para detección de cambios después de un delay
-            }, 300);
-          }, 300); // Esperar 300ms para que las listas de personas estén cargadas
+            }, 500);
+          };
+          
+          // Iniciar la verificación y procesamiento
+          setTimeout(verificarRolesYProcesar, 300); // Esperar 300ms para que las listas de personas estén cargadas
         } else {
           console.log('ℹ️ No hay responsables para esta actividad');
           this.cargandoResponsables = false;

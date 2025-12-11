@@ -1883,14 +1883,14 @@ export class CatalogosService {
     );
   }
 
-  // Tipos Responsable - Endpoint: /api/tipo-responsable
+  // Tipos Responsable - Endpoint: /api/rol-responsable (corregido)
   getTiposResponsable(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/tipo-responsable`).pipe(
+    return this.http.get<any>(`${this.apiUrl}/rol-responsable`).pipe(
       map(response => {
         const items = response.data || response;
         return Array.isArray(items) ? items.map(item => ({
-          id: item.idTipoResponsable || item.IdTipoResponsable || item.id || item.Id || 0,
-          idTipoResponsable: item.idTipoResponsable || item.IdTipoResponsable || item.id || item.Id || 0,
+          id: item.idRolResponsable || item.IdRolResponsable || item.id || item.Id || 0,
+          idTipoResponsable: item.idRolResponsable || item.IdRolResponsable || item.id || item.Id || 0,
           nombre: item.nombre || item.Nombre || '',
           descripcion: item.descripcion || item.Descripcion || '',
           activo: item.activo !== undefined ? item.activo : (item.Activo !== undefined ? item.Activo : true)
@@ -1898,7 +1898,7 @@ export class CatalogosService {
       }),
       catchError(error => {
         if (error.status === 404) {
-          console.warn('⚠️ Endpoint /api/tipo-responsable no encontrado (404)');
+          console.warn('⚠️ Endpoint /api/rol-responsable no encontrado (404)');
         } else {
           console.error('❌ Error fetching tipos responsable:', error);
         }
