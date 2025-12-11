@@ -73,7 +73,8 @@ export class ReporteGenerarComponent implements OnInit {
     return actividades;
   });
 
-  // Actividades dentro del período seleccionado
+  // Actividades dentro del período seleccionado (usa TODAS las actividades, sin filtro de búsqueda)
+  // Esta es la versión completa para selección automática
   actividadesEnPeriodo = computed(() => {
     const fechaInicio = this.form.get('fechaInicio')?.value;
     const fechaFin = this.form.get('fechaFin')?.value;
@@ -82,7 +83,8 @@ export class ReporteGenerarComponent implements OnInit {
       return [];
     }
     
-    return this.actividadesFiltradas().filter(actividad => {
+    // Usar TODAS las actividades, no solo las filtradas por búsqueda
+    return this.actividades().filter(actividad => {
       const fechaActividad = actividad.fechaInicio || actividad.fechaEvento;
       
       if (!fechaActividad) {
@@ -112,6 +114,22 @@ export class ReporteGenerarComponent implements OnInit {
       
       return dentroDelPeriodo;
     });
+  });
+
+  // Actividades dentro del período filtradas por búsqueda (para mostrar en el HTML)
+  actividadesEnPeriodoFiltradas = computed(() => {
+    const actividadesEnPeriodo = this.actividadesEnPeriodo();
+    const filtro = this.filtroActividad().toLowerCase().trim();
+    
+    if (!filtro) {
+      return actividadesEnPeriodo;
+    }
+    
+    return actividadesEnPeriodo.filter(actividad => 
+      actividad.nombre?.toLowerCase().includes(filtro) ||
+      actividad.codigoActividad?.toLowerCase().includes(filtro) ||
+      actividad.nombreActividad?.toLowerCase().includes(filtro)
+    );
   });
 
   // Actividades fuera del período seleccionado

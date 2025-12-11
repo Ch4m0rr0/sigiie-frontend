@@ -320,7 +320,7 @@
                       📅 Actividades dentro del período ({{ actividadesEnPeriodo().length }})
                     </p>
                   </div>
-                  @for (actividad of actividadesEnPeriodo(); track actividad.id) {
+                  @for (actividad of actividadesEnPeriodoFiltradas(); track actividad.id) {
                     <div class="flex items-start p-3 border-b border-gray-200 hover:bg-blue-50/50 transition-colors"
                          [class.bg-blue-50]="estaActividadSeleccionada(actividad.id)">
                       <input 
