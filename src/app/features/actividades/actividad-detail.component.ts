@@ -20,6 +20,9 @@ import { ImageStorageService } from '../../core/services/image-storage.service';
 import { ParticipacionService } from '../../core/services/participacion.service';
 import { ReportesService } from '../../core/services/reportes.service';
 import { AlertService } from '../../core/services/alert.service';
+import { AuthService } from '../../core/services/auth.service';
+import { PermisosService } from '../../core/services/permisos.service';
+import { ActividadValidacionService, type ValidarActividadDto } from '../../core/services/actividad-validacion.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import type { Actividad } from '../../core/models/actividad';
 import type { ActividadResponsable } from '../../core/models/actividad-responsable';
@@ -57,6 +60,9 @@ export class ActividadDetailComponent implements OnInit {
   private participacionService = inject(ParticipacionService);
   private reportesService = inject(ReportesService);
   private alertService = inject(AlertService);
+  private authService = inject(AuthService);
+  private permisosService = inject(PermisosService);
+  private validacionService = inject(ActividadValidacionService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
@@ -140,11 +146,22 @@ export class ActividadDetailComponent implements OnInit {
   seccionPlanificacionExpandida = signal(true);
   seccionInformacionExpandida = signal(true);
   seccionResponsablesExpandida = signal(true);
+  
+  // Validación de actividades
+  mostrarModalValidacion = signal(false);
+  formValidacion!: FormGroup;
+  validando = signal(false);
+  errorValidacion = signal<string | null>(null);
+  mostrarModalNotificarCorrecciones = signal(false);
+  formNotificarCorrecciones!: FormGroup;
+  notificandoCorrecciones = signal(false);
 
   ngOnInit(): void {
     this.initializeFormIndicador();
     this.initializeFormResponsable();
     this.initializeFormEditarResponsable();
+    this.initializeFormValidacion();
+    this.initializeFormNotificarCorrecciones();
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadActividad(+id);
@@ -3334,5 +3351,252 @@ export class ActividadDetailComponent implements OnInit {
     return 'Sin cargo asignado';
   }
 
+  /**
+   * Inicializa el formulario de validación
+   */
+  initializeFormValidacion(): void {
+    this.formValidacion = this.fb.group({
+      estadoValidacion: ['Aprobada', Validators.required],
+      mensajeValidacion: ['']
+    });
+  }
+
+  /**
+   * Inicializa el formulario para notificar correcciones completadas
+   */
+  initializeFormNotificarCorrecciones(): void {
+    this.formNotificarCorrecciones = this.fb.group({
+      mensaje: ['']
+    });
+  }
+
+  /**
+   * Verifica si el usuario actual puede validar actividades
+   */
+  puedeValidar(): boolean {
+    return this.permisosService.esAdministrador() || 
+           this.permisosService.tienePermiso('ValidarActividad');
+  }
+
+  /**
+   * Verifica si el usuario actual es el creador de la actividad
+   */
+  esCreador(): boolean {
+    const user = this.authService.user();
+    const actividad = this.actividad();
+    return user?.id === actividad?.creadoPor;
+  }
+
+  /**
+   * Obtiene el color del badge según el estado de validación
+   */
+  getColorEstadoValidacion(estado: string | null | undefined): string {
+    if (!estado) return 'bg-slate-100 text-slate-800';
+    
+    const estadoLower = estado.toLowerCase();
+    if (estadoLower === 'aprobada') return 'bg-green-100 text-green-800';
+    if (estadoLower === 'rechazada') return 'bg-red-100 text-red-800';
+    if (estadoLower === 'corregir') return 'bg-amber-100 text-amber-800';
+    if (estadoLower === 'pendiente') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-slate-100 text-slate-800';
+  }
+
+  /**
+   * Obtiene el icono según el estado de validación
+   */
+  getIconoEstadoValidacion(estado: string | null | undefined): string {
+    if (!estado) return 'help_outline';
+    
+    const estadoLower = estado.toLowerCase();
+    if (estadoLower === 'aprobada') return 'check_circle';
+    if (estadoLower === 'rechazada') return 'cancel';
+    if (estadoLower === 'corregir') return 'warning';
+    if (estadoLower === 'pendiente') return 'schedule';
+    return 'help_outline';
+  }
+
+  /**
+   * Obtiene el texto del estado de validación
+   */
+  getTextoEstadoValidacion(estado: string | null | undefined): string {
+    if (!estado) return 'Sin validar';
+    
+    const estadoLower = estado.toLowerCase();
+    if (estadoLower === 'aprobada') return 'Aprobada';
+    if (estadoLower === 'rechazada') return 'Rechazada';
+    if (estadoLower === 'corregir') return 'Requiere Correcciones';
+    if (estadoLower === 'pendiente') return 'Pendiente de Validación';
+    return estado;
+  }
+
+  /**
+   * Abre el modal de validación
+   */
+  abrirModalValidacion(): void {
+    const actividad = this.actividad();
+    if (!actividad) return;
+    
+    // Asegurar que el formulario esté inicializado
+    if (!this.formValidacion) {
+      this.initializeFormValidacion();
+    }
+    
+    // Establecer estado por defecto según el estado actual
+    const estadoActual = actividad.estadoValidacion;
+    const estadoInicial = estadoActual === 'Pendiente' ? 'Aprobada' : (estadoActual || 'Aprobada');
+    
+    this.formValidacion.patchValue({
+      estadoValidacion: estadoInicial,
+      mensajeValidacion: actividad.mensajeValidacion || ''
+    });
+    
+    this.mostrarModalValidacion.set(true);
+    this.errorValidacion.set(null);
+  }
+
+  /**
+   * Cierra el modal de validación
+   */
+  cerrarModalValidacion(): void {
+    this.mostrarModalValidacion.set(false);
+    if (this.formValidacion) {
+      this.formValidacion.reset({ estadoValidacion: 'Aprobada', mensajeValidacion: '' });
+    }
+    this.errorValidacion.set(null);
+  }
+
+  /**
+   * Valida la actividad
+   */
+  validarActividad(): void {
+    if (!this.formValidacion.valid) {
+      this.formValidacion.markAllAsTouched();
+      return;
+    }
+
+    const actividad = this.actividad();
+    if (!actividad) return;
+
+    this.validando.set(true);
+    this.errorValidacion.set(null);
+
+    const formValue = this.formValidacion.value;
+    const dto: ValidarActividadDto = {
+      estadoValidacion: formValue.estadoValidacion,
+      mensajeValidacion: formValue.mensajeValidacion?.trim() || undefined
+    };
+
+    this.validacionService.validar(actividad.id, dto).subscribe({
+      next: (actividadValidada) => {
+        console.log('✅ Actividad validada:', actividadValidada);
+        
+        // Actualizar la actividad con los nuevos datos de validación
+        this.actividad.update(act => {
+          if (!act) return act;
+          return {
+            ...act,
+            estadoValidacion: actividadValidada.estadoValidacion,
+            mensajeValidacion: actividadValidada.mensajeValidacion,
+            validadoPor: actividadValidada.validadoPor,
+            nombreValidador: actividadValidada.nombreValidador,
+            fechaValidacion: actividadValidada.fechaValidacion
+          };
+        });
+
+        this.validando.set(false);
+        this.cerrarModalValidacion();
+
+        // Mostrar mensaje de éxito
+        const estadoTexto = this.getTextoEstadoValidacion(dto.estadoValidacion);
+        this.alertService.success(
+          'Actividad validada',
+          `La actividad ha sido ${estadoTexto.toLowerCase()} correctamente.`
+        );
+      },
+      error: (err) => {
+        console.error('❌ Error validando actividad:', err);
+        this.validando.set(false);
+        
+        let errorMsg = 'Error al validar la actividad';
+        if (err.error?.message) {
+          errorMsg = err.error.message;
+        } else if (err.error?.title) {
+          errorMsg = err.error.title;
+        } else if (err.status === 403) {
+          errorMsg = 'No tiene permisos para validar actividades. Necesita el permiso "ValidarActividad" o ser administrador.';
+        } else if (err.status === 404) {
+          errorMsg = 'La actividad no fue encontrada.';
+        }
+        
+        this.errorValidacion.set(errorMsg);
+        this.alertService.error('Error al validar', errorMsg);
+      }
+    });
+  }
+
+  /**
+   * Abre el modal para notificar correcciones completadas
+   */
+  abrirModalNotificarCorrecciones(): void {
+    // Asegurar que el formulario esté inicializado
+    if (!this.formNotificarCorrecciones) {
+      this.initializeFormNotificarCorrecciones();
+    }
+    this.formNotificarCorrecciones.reset({ mensaje: '' });
+    this.mostrarModalNotificarCorrecciones.set(true);
+  }
+
+  /**
+   * Cierra el modal de notificar correcciones
+   */
+  cerrarModalNotificarCorrecciones(): void {
+    this.mostrarModalNotificarCorrecciones.set(false);
+    if (this.formNotificarCorrecciones) {
+      this.formNotificarCorrecciones.reset({ mensaje: '' });
+    }
+  }
+
+  /**
+   * Notifica que se completaron las correcciones
+   */
+  notificarCorreccionesCompletadas(): void {
+    const actividad = this.actividad();
+    if (!actividad) return;
+
+    this.notificandoCorrecciones.set(true);
+    const mensaje = this.formNotificarCorrecciones.value.mensaje?.trim();
+
+    this.validacionService.notificarCorreccionesCompletadas(actividad.id, mensaje).subscribe({
+      next: () => {
+        console.log('✅ Correcciones notificadas');
+        
+        // Recargar la actividad para obtener el estado actualizado
+        this.loadActividad(actividad.id);
+        
+        this.notificandoCorrecciones.set(false);
+        this.cerrarModalNotificarCorrecciones();
+
+        this.alertService.success(
+          'Correcciones notificadas',
+          'Los validadores han sido notificados. La actividad está pendiente de revisión nuevamente.'
+        );
+      },
+      error: (err) => {
+        console.error('❌ Error notificando correcciones:', err);
+        this.notificandoCorrecciones.set(false);
+        
+        let errorMsg = 'Error al notificar correcciones';
+        if (err.error?.message) {
+          errorMsg = err.error.message;
+        } else if (err.status === 403) {
+          errorMsg = 'Solo el creador de la actividad puede notificar correcciones completadas.';
+        } else if (err.status === 400) {
+          errorMsg = 'La actividad no está en estado "Corregir".';
+        }
+        
+        this.alertService.error('Error al notificar', errorMsg);
+      }
+    });
+  }
 }
 

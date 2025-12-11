@@ -99,6 +99,13 @@ export interface Actividad {
   fechaCreacion: string; // DateTime del backend
   fechaModificacion?: string; // DateTime del backend
   
+  // Validación
+  estadoValidacion?: string | null; // "Pendiente" | "Aprobada" | "Rechazada" | "Corregir" | null
+  mensajeValidacion?: string | null; // Comentarios del validador
+  validadoPor?: number | null; // ID del usuario que validó
+  nombreValidador?: string | null; // Nombre del validador
+  fechaValidacion?: string | null; // Fecha de validación (ISO 8601)
+  
   // Contadores
   totalSubactividades: number;
   totalEvidencias: number;

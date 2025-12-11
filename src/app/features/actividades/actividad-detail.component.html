@@ -209,7 +209,7 @@
                 <h1 class="text-3xl font-bold text-slate-900 mb-2">
                   {{ actividad()!.nombreActividad || actividad()!.nombre }}
               </h1>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   @if (actividad()!.esPlanificada) {
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-emerald-100 text-emerald-800 rounded-full">
                       <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
@@ -221,11 +221,33 @@
                       Actividad No Planificada
                   </span>
                 }
+                  @if (actividad()!.estadoValidacion) {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-full" [ngClass]="getColorEstadoValidacion(actividad()!.estadoValidacion)">
+                      <app-icon [icon]="getIconoEstadoValidacion(actividad()!.estadoValidacion)" size="xs"></app-icon>
+                      {{ getTextoEstadoValidacion(actividad()!.estadoValidacion) }}
+                    </span>
+                  }
               </div>
           </div>
             </div>
           </div>
-          <div class="flex gap-2 ml-4">
+          <div class="flex gap-2 ml-4 flex-wrap">
+            @if (puedeValidar() && actividad()!.estadoValidacion !== 'Aprobada') {
+              <button 
+                (click)="abrirModalValidacion()"
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
+                <app-icon icon="verified" size="sm" color="white"></app-icon>
+                Validar
+              </button>
+            }
+            @if (esCreador() && actividad()!.estadoValidacion === 'Corregir') {
+              <button 
+                (click)="abrirModalNotificarCorrecciones()"
+                class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
+                <app-icon icon="notifications_active" size="sm" color="white"></app-icon>
+                Notificar Correcciones
+              </button>
+            }
             <button 
               (click)="navigateToEdit()"
               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
@@ -354,6 +376,123 @@
           <!-- Tab: Información -->
           @if (activeTab() === 'info') {
             <div class="space-y-6 max-w-6xl mx-auto">
+              <!-- Sección 0: Estado de Validación -->
+              @if (actividad()!.estadoValidacion) {
+                <div class="border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                  <div class="p-5" [ngClass]="{
+                    'bg-green-50 border-green-200': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                    'bg-red-50 border-red-200': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                    'bg-amber-50 border-amber-200': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                    'bg-yellow-50 border-yellow-200': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                  }">
+                    <div class="flex items-start gap-4">
+                      <div class="flex-shrink-0">
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" [ngClass]="{
+                          'bg-green-100': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                          'bg-red-100': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                          'bg-amber-100': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                          'bg-yellow-100': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                        }">
+                          <app-icon 
+                            [icon]="getIconoEstadoValidacion(actividad()!.estadoValidacion)" 
+                            size="md"
+                            [ngClass]="{
+                              'text-green-600': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                              'text-red-600': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                              'text-amber-600': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                              'text-yellow-600': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                            }">
+                          </app-icon>
+                        </div>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-3 mb-2">
+                          <h3 class="text-lg font-bold" [ngClass]="{
+                            'text-green-900': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                            'text-red-900': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                            'text-amber-900': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                            'text-yellow-900': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                          }">
+                            {{ getTextoEstadoValidacion(actividad()!.estadoValidacion) }}
+                          </h3>
+                          <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full" 
+                                [ngClass]="getColorEstadoValidacion(actividad()!.estadoValidacion)">
+                            <app-icon [icon]="getIconoEstadoValidacion(actividad()!.estadoValidacion)" size="xs"></app-icon>
+                            {{ actividad()!.estadoValidacion }}
+                          </span>
+                        </div>
+                        
+                        @if (actividad()!.mensajeValidacion) {
+                          <div class="bg-white/80 rounded-lg p-4 mb-3 border" [ngClass]="{
+                            'border-green-200': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                            'border-red-200': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                            'border-amber-200': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                            'border-yellow-200': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                          }">
+                            <div class="flex items-start gap-2 mb-2">
+                              <app-icon icon="comment" size="sm" [ngClass]="{
+                                'text-green-600': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                                'text-red-600': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                                'text-amber-600': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                                'text-yellow-600': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                              }"></app-icon>
+                              <span class="text-sm font-semibold" [ngClass]="{
+                                'text-green-800': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                                'text-red-800': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                                'text-amber-800': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                                'text-yellow-800': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                              }">
+                                Comentario del Validador:
+                              </span>
+                            </div>
+                            <p class="text-sm whitespace-pre-wrap" [ngClass]="{
+                              'text-green-900': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                              'text-red-900': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                              'text-amber-900': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                              'text-yellow-900': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                            }">
+                              {{ actividad()!.mensajeValidacion }}
+                            </p>
+                          </div>
+                        }
+                        
+                        @if (actividad()!.nombreValidador && actividad()!.fechaValidacion) {
+                          <div class="flex items-center gap-2 text-xs" [ngClass]="{
+                            'text-green-700': actividad()!.estadoValidacion?.toLowerCase() === 'aprobada',
+                            'text-red-700': actividad()!.estadoValidacion?.toLowerCase() === 'rechazada',
+                            'text-amber-700': actividad()!.estadoValidacion?.toLowerCase() === 'corregir',
+                            'text-yellow-700': actividad()!.estadoValidacion?.toLowerCase() === 'pendiente'
+                          }">
+                            <app-icon icon="person" size="xs"></app-icon>
+                            <span>Validado por <strong>{{ actividad()!.nombreValidador }}</strong></span>
+                            <span>•</span>
+                            <app-icon icon="schedule" size="xs"></app-icon>
+                            <span>{{ actividad()!.fechaValidacion | date:'short' }}</span>
+                          </div>
+                        }
+                        
+                        @if (esCreador() && actividad()!.estadoValidacion === 'Corregir') {
+                          <div class="mt-4 pt-4 border-t" [ngClass]="{
+                            'border-amber-200': actividad()!.estadoValidacion?.toLowerCase() === 'corregir'
+                          }">
+                            <p class="text-sm mb-3 text-amber-800">
+                              <app-icon icon="info" size="sm" class="text-amber-600"></app-icon>
+                              <strong>Acción requerida:</strong> Realiza las correcciones solicitadas y luego notifica cuando estén completadas.
+                            </p>
+                            <button 
+                              (click)="abrirModalNotificarCorrecciones()"
+                              class="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors shadow-sm hover:shadow-md">
+                              <app-icon icon="notifications_active" size="sm" color="white"></app-icon>
+                              Notificar que las Correcciones están Listas
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
               <!-- Sección 1: Planificación (si es planificada O si tiene indicador asociado válido) -->
               @if (actividad()!.esPlanificada || (actividad()!.idIndicador && actividad()!.idIndicador !== null)) {
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
@@ -2115,5 +2254,167 @@
   }
   }
 </div>
+
+<!-- Modal de Validación -->
+@if (mostrarModalValidacion()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" (click)="cerrarModalValidacion()">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
+      <div class="p-6 border-b border-slate-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-slate-900">Validar Actividad</h2>
+          <button 
+            (click)="cerrarModalValidacion()"
+            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+            <app-icon icon="close" size="sm"></app-icon>
+          </button>
+        </div>
+      </div>
+      
+      <form [formGroup]="formValidacion" (ngSubmit)="validarActividad()" class="p-6 space-y-6">
+        @if (errorValidacion()) {
+          <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-sm text-red-800">{{ errorValidacion() }}</p>
+          </div>
+        }
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Estado de Validación <span class="text-red-500">*</span>
+          </label>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                   [class.border-green-500]="formValidacion.get('estadoValidacion')?.value === 'Aprobada'"
+                   [class.bg-green-50]="formValidacion.get('estadoValidacion')?.value === 'Aprobada'"
+                   [class.border-slate-200]="formValidacion.get('estadoValidacion')?.value !== 'Aprobada'">
+              <input type="radio" formControlName="estadoValidacion" value="Aprobada" class="w-4 h-4 text-green-600">
+              <div class="flex-1">
+                <div class="font-medium text-slate-900">Aprobar</div>
+                <div class="text-sm text-slate-500">La actividad cumple con todos los requisitos</div>
+              </div>
+              <app-icon icon="check_circle" size="sm" class="text-green-600"></app-icon>
+            </label>
+            
+            <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                   [class.border-amber-500]="formValidacion.get('estadoValidacion')?.value === 'Corregir'"
+                   [class.bg-amber-50]="formValidacion.get('estadoValidacion')?.value === 'Corregir'"
+                   [class.border-slate-200]="formValidacion.get('estadoValidacion')?.value !== 'Corregir'">
+              <input type="radio" formControlName="estadoValidacion" value="Corregir" class="w-4 h-4 text-amber-600">
+              <div class="flex-1">
+                <div class="font-medium text-slate-900">Solicitar Correcciones</div>
+                <div class="text-sm text-slate-500">La actividad requiere modificaciones antes de ser aprobada</div>
+              </div>
+              <app-icon icon="warning" size="sm" class="text-amber-600"></app-icon>
+            </label>
+            
+            <label class="flex items-center gap-3 p-4 border-2 rounded-lg cursor-pointer transition-colors"
+                   [class.border-red-500]="formValidacion.get('estadoValidacion')?.value === 'Rechazada'"
+                   [class.bg-red-50]="formValidacion.get('estadoValidacion')?.value === 'Rechazada'"
+                   [class.border-slate-200]="formValidacion.get('estadoValidacion')?.value !== 'Rechazada'">
+              <input type="radio" formControlName="estadoValidacion" value="Rechazada" class="w-4 h-4 text-red-600">
+              <div class="flex-1">
+                <div class="font-medium text-slate-900">Rechazar</div>
+                <div class="text-sm text-slate-500">La actividad no cumple con los requisitos establecidos</div>
+              </div>
+              <app-icon icon="cancel" size="sm" class="text-red-600"></app-icon>
+            </label>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Comentarios / Observaciones
+          </label>
+          <textarea 
+            formControlName="mensajeValidacion"
+            rows="4"
+            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            placeholder="Agregue comentarios u observaciones sobre la actividad (opcional)"></textarea>
+          <p class="mt-1 text-xs text-slate-500">
+            Estos comentarios serán visibles para el creador de la actividad
+          </p>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <button 
+            type="button"
+            (click)="cerrarModalValidacion()"
+            class="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            [disabled]="validando() || !formValidacion.valid"
+            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+            @if (validando()) {
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Validando...
+            } @else {
+              <app-icon icon="verified" size="sm" color="white"></app-icon>
+              Confirmar Validación
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal para Notificar Correcciones Completadas -->
+@if (mostrarModalNotificarCorrecciones()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" (click)="cerrarModalNotificarCorrecciones()">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full" (click)="$event.stopPropagation()">
+      <div class="p-6 border-b border-slate-200">
+        <div class="flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-slate-900">Notificar Correcciones Completadas</h2>
+          <button 
+            (click)="cerrarModalNotificarCorrecciones()"
+            class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+            <app-icon icon="close" size="sm"></app-icon>
+          </button>
+        </div>
+      </div>
+      
+      <form [formGroup]="formNotificarCorrecciones" (ngSubmit)="notificarCorreccionesCompletadas()" class="p-6 space-y-6">
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p class="text-sm text-amber-800">
+            Al notificar que las correcciones están completadas, la actividad volverá a estado "Pendiente" y los validadores serán notificados automáticamente.
+          </p>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">
+            Mensaje (Opcional)
+          </label>
+          <textarea 
+            formControlName="mensaje"
+            rows="3"
+            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+            placeholder="Agregue un mensaje para los validadores (opcional)"></textarea>
+        </div>
+        
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <button 
+            type="button"
+            (click)="cerrarModalNotificarCorrecciones()"
+            class="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+            Cancelar
+          </button>
+          <button 
+            type="submit"
+            [disabled]="notificandoCorrecciones()"
+            class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+            @if (notificandoCorrecciones()) {
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              Notificando...
+            } @else {
+              <app-icon icon="notifications_active" size="sm" color="white"></app-icon>
+              Notificar
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
 
 

@@ -1760,6 +1760,13 @@ export class ActividadesService {
       fechaCreacion: item.FechaCreacion || item.fechaCreacion || new Date().toISOString(),
       fechaModificacion: item.FechaModificacion || item.fechaModificacion,
       
+      // Validación
+      estadoValidacion: item.EstadoValidacion || item.estadoValidacion || null,
+      mensajeValidacion: item.MensajeValidacion || item.mensajeValidacion || null,
+      validadoPor: item.ValidadoPor !== undefined && item.ValidadoPor !== null ? item.ValidadoPor : (item.validadoPor !== undefined && item.validadoPor !== null ? item.validadoPor : null),
+      nombreValidador: item.NombreValidador || item.nombreValidador || null,
+      fechaValidacion: item.FechaValidacion || item.fechaValidacion || null,
+      
       // Contadores
       totalSubactividades: item.TotalSubactividades !== undefined ? item.TotalSubactividades : (item.totalSubactividades !== undefined ? item.totalSubactividades : 0),
       totalEvidencias: item.TotalEvidencias !== undefined ? item.TotalEvidencias : (item.totalEvidencias !== undefined ? item.totalEvidencias : 0),
