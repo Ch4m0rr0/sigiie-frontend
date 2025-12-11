@@ -1,8 +1,9 @@
 <div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
   <!-- Loading State -->
   @if (loading()) {
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <div class="max-w-6xl mx-auto space-y-6">
+      <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+      <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
     </div>
   }
 

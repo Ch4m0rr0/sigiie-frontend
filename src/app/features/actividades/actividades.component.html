@@ -2206,26 +2206,7 @@
   @if (loading()) {
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @for (i of [1,2,3,4,5,6]; track i) {
-            <div class="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
-                <div class="flex items-start gap-3 mb-4">
-                    <div class="w-10 h-10 rounded-lg bg-slate-200"></div>
-                    <div class="flex-1 space-y-2">
-                        <div class="h-4 bg-slate-200 rounded w-3/4"></div>
-                        <div class="h-3 bg-slate-200 rounded w-1/2"></div>
-                    </div>
-                </div>
-                <div class="space-y-2 mb-4">
-                    <div class="h-3 bg-slate-200 rounded"></div>
-                    <div class="h-3 bg-slate-200 rounded w-5/6"></div>
-                </div>
-                <div class="flex items-center gap-2 pt-4 border-t border-slate-200">
-                    <div class="w-8 h-8 rounded bg-slate-200"></div>
-                    <div class="flex-1">
-                        <div class="h-3 bg-slate-200 rounded w-2/3 mb-1"></div>
-                        <div class="h-2 bg-slate-200 rounded w-1/2"></div>
-                    </div>
-                </div>
-            </div>
+            <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
         }
     </div>
   }

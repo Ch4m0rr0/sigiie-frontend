@@ -12,6 +12,7 @@ export interface Subactividad {
   horaRealizacion?: string;
   horaInicioPrevista?: string;
   departamentoResponsableId?: number | number[];
+  idDepartamentosResponsables?: number[];
   departamentoId?: number;
   nombreDepartamentoResponsable?: string;
   ubicacion?: string;
@@ -31,6 +32,7 @@ export interface Subactividad {
   idActividadAnual?: number | number[];
   idActividadMensualInst?: number | number[];
   idTipoProtagonista?: number | number[];
+  idTiposProtagonistas?: number[];
   idTipoEvidencias?: number | number[];
   objetivo?: string;
   anio?: string;
@@ -53,6 +55,7 @@ export interface SubactividadCreate {
   horaRealizacion?: string;
   horaInicioPrevista?: string;
   departamentoResponsableId?: number | number[];
+  idDepartamentosResponsables?: number[];
   departamentoId?: number;
   ubicacion?: string;
   modalidad?: string;
@@ -68,6 +71,7 @@ export interface SubactividadCreate {
   idActividadAnual?: number | number[];
   idActividadMensualInst?: number | number[];
   idTipoProtagonista?: number | number[];
+  idTiposProtagonistas?: number[];
   idTipoEvidencias?: number | number[];
   objetivo?: string;
   anio?: string;

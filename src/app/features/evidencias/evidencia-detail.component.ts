@@ -8,6 +8,7 @@ import { ActividadesService } from '../../core/services/actividades.service';
 import type { Evidencia } from '../../core/models/evidencia';
 import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import JSZip from 'jszip';
 import { firstValueFrom } from 'rxjs';
@@ -15,7 +16,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   standalone: true,
   selector: 'app-evidencia-detail',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonCardComponent, ...BrnButtonImports],
   templateUrl: './evidencia-detail.component.html',
 })
 export class EvidenciaDetailComponent implements OnInit, OnDestroy {

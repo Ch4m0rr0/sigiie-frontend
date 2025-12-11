@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { ReportesService, ReporteGenerado } from '../../core/services/reportes.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonTableComponent } from '../../shared/skeleton/skeleton-table.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { filter, Subscription } from 'rxjs';
 
 @Component({
   standalone: true,
   selector: 'app-reportes-list',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonTableComponent, ...BrnButtonImports],
   templateUrl: './reportes-list.component.html',
 })
 export class ReportesListComponent implements OnInit, OnDestroy {

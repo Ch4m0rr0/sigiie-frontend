@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -42,14 +42,123 @@ export class ReporteGenerarComponent implements OnInit {
   
   // Computed para detectar si es reporte institucional
   esReporteInstitucional = signal(false);
+  
+  // Tipo de operación: 'nuevo-reporte' o 'extraccion-datos'
+  tipoOperacion = signal<'nuevo-reporte' | 'extraccion-datos'>('nuevo-reporte');
+  
+  // Filtro de búsqueda para actividades
+  filtroActividad = signal<string>('');
+  
+  // Actividades filtradas basadas en el texto de búsqueda (sin filtrar por período)
+  actividadesFiltradas = computed(() => {
+    let actividades = this.actividades();
+    
+    // Filtrar solo por texto de búsqueda
+    const filtro = this.filtroActividad().toLowerCase().trim();
+    if (filtro) {
+      actividades = actividades.filter(actividad => 
+        actividad.nombre?.toLowerCase().includes(filtro) ||
+        actividad.codigoActividad?.toLowerCase().includes(filtro) ||
+        actividad.nombreActividad?.toLowerCase().includes(filtro)
+      );
+    }
+    
+    // Ordenar de más reciente a más antigua
+    actividades.sort((a, b) => {
+      const fechaA = new Date(a.fechaInicio || a.fechaEvento || 0);
+      const fechaB = new Date(b.fechaInicio || b.fechaEvento || 0);
+      return fechaB.getTime() - fechaA.getTime(); // Orden descendente (más reciente primero)
+    });
+    
+    return actividades;
+  });
+
+  // Actividades dentro del período seleccionado (usa TODAS las actividades, sin filtro de búsqueda)
+  // Esta es la versión completa para selección automática
+  actividadesEnPeriodo = computed(() => {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    const fechaFin = this.form.get('fechaFin')?.value;
+    
+    if (!fechaInicio && !fechaFin) {
+      return [];
+    }
+    
+    // Usar TODAS las actividades, no solo las filtradas por búsqueda
+    return this.actividades().filter(actividad => {
+      const fechaActividad = actividad.fechaInicio || actividad.fechaEvento;
+      
+      if (!fechaActividad) {
+        return false;
+      }
+      
+      const fechaAct = new Date(fechaActividad);
+      fechaAct.setHours(0, 0, 0, 0);
+      
+      let dentroDelPeriodo = true;
+      
+      if (fechaInicio) {
+        const fechaInicioObj = new Date(fechaInicio);
+        fechaInicioObj.setHours(0, 0, 0, 0);
+        if (fechaAct < fechaInicioObj) {
+          dentroDelPeriodo = false;
+        }
+      }
+      
+      if (fechaFin) {
+        const fechaFinObj = new Date(fechaFin);
+        fechaFinObj.setHours(23, 59, 59, 999);
+        if (fechaAct > fechaFinObj) {
+          dentroDelPeriodo = false;
+        }
+      }
+      
+      return dentroDelPeriodo;
+    });
+  });
+
+  // Actividades dentro del período filtradas por búsqueda (para mostrar en el HTML)
+  actividadesEnPeriodoFiltradas = computed(() => {
+    const actividadesEnPeriodo = this.actividadesEnPeriodo();
+    const filtro = this.filtroActividad().toLowerCase().trim();
+    
+    if (!filtro) {
+      return actividadesEnPeriodo;
+    }
+    
+    return actividadesEnPeriodo.filter(actividad => 
+      actividad.nombre?.toLowerCase().includes(filtro) ||
+      actividad.codigoActividad?.toLowerCase().includes(filtro) ||
+      actividad.nombreActividad?.toLowerCase().includes(filtro)
+    );
+  });
+
+  // Actividades fuera del período seleccionado
+  actividadesFueraPeriodo = computed(() => {
+    const fechaInicio = this.form.get('fechaInicio')?.value;
+    const fechaFin = this.form.get('fechaFin')?.value;
+    
+    if (!fechaInicio && !fechaFin) {
+      return [];
+    }
+    
+    const idsEnPeriodo = new Set(this.actividadesEnPeriodo().map(a => Number(a.id || a.idActividad)));
+    
+    return this.actividadesFiltradas().filter(actividad => {
+      const id = Number(actividad.id || actividad.idActividad);
+      return !idsEnPeriodo.has(id);
+    });
+  });
+  
+  // Campos disponibles para extracción de datos (cargados dinámicamente del backend)
+  camposExtraccionDisponibles = signal<any>(null);
+  camposExtraccion = signal<Array<{ value: string; label: string; categoria: string; checked: boolean }>>([]);
+  loadingCampos = signal(false);
 
   tiposReporte = [
     { value: 'actividad', label: 'Reporte de Actividad' },
-    { value: 'subactividad', label: 'Reporte de Subactividad' },
-    { value: 'participaciones', label: 'Reporte de Participaciones' },
-    { value: 'evidencias', label: 'Reporte de Evidencias' },
-    { value: 'indicadores', label: 'Reporte de Indicadores' },
-    { value: 'general', label: 'Reporte General' }
+    { value: 'semanal', label: 'Reporte Semanal' },
+    { value: 'mensual', label: 'Reporte Mensual' },
+    { value: 'trimestral', label: 'Reporte Trimestral' }
   ];
 
   formatos = [
@@ -61,12 +170,10 @@ export class ReporteGenerarComponent implements OnInit {
     this.loadActividades();
     this.loadSubactividades();
     this.loadDepartamentos();
+    this.loadCamposExtraccionDisponibles();
 
-    // Observar cambios en tipoReporte para mostrar/ocultar campos
-    this.form.get('tipoReporte')?.valueChanges.subscribe(tipo => {
-      this.updateFormFields(tipo);
-      this.setDefaultMetadata(tipo);
-    });
+    // Observar cambios en tipoReporte para mostrar/ocultar campos (ya manejado arriba con lógica de períodos)
+    // La lógica de updateFormFields se maneja en el observador principal de tipoReporte
 
     // Observar cambios en dividirPorGenero - NO requiere actividad
     // Permite generar reporte general con estadísticas de género (F y M)
@@ -84,38 +191,123 @@ export class ReporteGenerarComponent implements OnInit {
       actividadControl?.updateValueAndValidity();
     });
 
-    // Observar cambios en fechas para detectar reporte institucional
-    this.form.get('fechaInicio')?.valueChanges.subscribe(() => {
-      this.actualizarEsReporteInstitucional();
+    // Observar cambios en tipoReporte para actualizar fechas automáticamente y limpiar campos
+    this.form.get('tipoReporte')?.valueChanges.subscribe((tipo) => {
+      // Actualizar campos del formulario según el tipo
+      this.updateFormFields(tipo);
+      // Limpiar campos que no corresponden al nuevo tipo
+      this.limpiarCamposPorTipoReporte(tipo);
+      // Actualizar validaciones
+      this.actualizarValidacionesPorTipoReporte(tipo);
+      // Calcular fechas
+      this.actualizarFechasPorTipoReporte();
     });
-    this.form.get('fechaFin')?.valueChanges.subscribe(() => {
+    
+    // Observar cambios en campos específicos de cada tipo de reporte
+    this.form.get('fechaSemana')?.valueChanges.subscribe(() => {
+      if (this.form.get('tipoReporte')?.value === 'semanal') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    this.form.get('mesReporte')?.valueChanges.subscribe(() => {
+      if (this.form.get('tipoReporte')?.value === 'mensual') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    this.form.get('anioReporte')?.valueChanges.subscribe(() => {
+      const tipoReporte = this.form.get('tipoReporte')?.value;
+      if (tipoReporte === 'mensual' || tipoReporte === 'trimestral') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    this.form.get('trimestreReporte')?.valueChanges.subscribe(() => {
+      if (this.form.get('tipoReporte')?.value === 'trimestral') {
+        this.actualizarFechasPorTipoReporte();
+      }
+    });
+    
+    // Observar cambios en fechas para detectar reporte institucional y seleccionar actividades automáticamente
+    this.form.get('fechaInicio')?.valueChanges.subscribe((value) => {
+      console.log('🔄 Cambio en fechaInicio:', value);
       this.actualizarEsReporteInstitucional();
+      this.seleccionarActividadesPorPeriodo();
+    });
+    this.form.get('fechaFin')?.valueChanges.subscribe((value) => {
+      console.log('🔄 Cambio en fechaFin:', value);
+      this.actualizarEsReporteInstitucional();
+      this.seleccionarActividadesPorPeriodo();
     });
 
     // Inicializar valores por defecto
-    const initialType = this.form.get('tipoReporte')?.value || 'general';
-    this.setDefaultMetadata(initialType);
+    const initialType = this.form.get('tipoReporte')?.value || '';
+    if (initialType) {
+      this.setDefaultMetadata(initialType);
+    }
     this.actualizarEsReporteInstitucional();
   }
 
   initializeForm(): void {
     this.form = this.fb.group({
-      tipoReporte: ['', Validators.required],
-      actividadId: [null],
+      tipoOperacion: ['nuevo-reporte', Validators.required], // Nuevo campo para tipo de operación
+      tipoReporte: ['', Validators.required], // Tipo de reporte: actividad, semanal, mensual, trimestral
+      actividadId: [null], // Mantener para compatibilidad, pero también usar idActividades
+      idActividades: [[]], // Array de IDs de actividades para selección múltiple
       subactividadId: [null],
-      fechaInicio: [null], // Para reporte institucional o filtrar por período
-      fechaFin: [null], // Para reporte institucional o filtrar por período
-      idDepartamento: [null], // Para filtrar por departamento (opcional)
+      fechaInicio: [null], // Para reporte institucional o filtrar por período (calculado automáticamente según tipoReporte)
+      fechaFin: [null], // Para reporte institucional o filtrar por período (calculado automáticamente según tipoReporte)
+      // Campos para tipo semanal
+      fechaSemana: [null], // Fecha de inicio de la semana (para tipo semanal)
+      // Campos para tipo mensual
+      mesReporte: [null], // Mes (1-12) para tipo mensual
+      anioReporte: [new Date().getFullYear()], // Año para tipo mensual y trimestral
+      // Campos para tipo trimestral
+      trimestreReporte: [null], // Trimestre (1-4) para tipo trimestral
+      idDepartamento: [null], // Para filtrar por departamento (opcional) - Legacy, mantener para compatibilidad
+      idDepartamentos: [[]], // Array de IDs de departamentos (permite múltiples selecciones)
+      // descripcionImpacto eliminado - ahora se genera automáticamente en el backend desde descripcion + objetivo de cada actividad
       formato: ['excel', Validators.required],
       incluirEvidencias: [true],
       incluirParticipaciones: [true],
       incluirIndicadores: [true],
-      dividirPorGenero: [false], // Nueva opción para incluir cantidad de hombres y mujeres
+      dividirPorGenero: [true], // Por defecto true para nuevo reporte (consolidado)
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       rutaArchivo: ['', Validators.required],
-      tipoArchivo: ['excel', Validators.required]
+      tipoArchivo: ['excel', Validators.required],
+      // Campos para extracción de datos
+      camposSeleccionados: [[]] // Array de campos seleccionados para extracción
     }, {
       validators: [this.validarFechas.bind(this)]
+    });
+    
+    // Observar cambios en tipoOperacion
+    this.form.get('tipoOperacion')?.valueChanges.subscribe(tipo => {
+      this.tipoOperacion.set(tipo);
+      // Actualizar validaciones según el tipo de operación
+      if (tipo === 'extraccion-datos') {
+        // Para extracción de datos, los campos de reporte tradicional no son requeridos
+        this.form.get('tipoReporte')?.clearValidators();
+        this.form.get('tipoReporte')?.updateValueAndValidity();
+        // Los campos de nombre y ruta siguen siendo requeridos
+      } else {
+        // Para nuevo reporte, tipoReporte es requerido
+        this.form.get('tipoReporte')?.setValidators(Validators.required);
+        this.form.get('tipoReporte')?.updateValueAndValidity();
+        // Asegurar que dividirPorGenero esté en true para consolidado
+        this.form.get('dividirPorGenero')?.setValue(true);
+      }
+    });
+
+    // Observar cambios en actividadId para cargar departamentos automáticamente
+    this.form.get('actividadId')?.valueChanges.subscribe(actividadId => {
+      if (actividadId) {
+        this.cargarDepartamentosDeActividad(actividadId);
+      } else {
+        // Si se deselecciona la actividad, limpiar departamentos
+        this.form.get('idDepartamentos')?.setValue([]);
+      }
     });
   }
 
@@ -140,6 +332,240 @@ export class ReporteGenerarComponent implements OnInit {
   }
 
   /**
+   * Limpia los campos que no corresponden al tipo de reporte seleccionado
+   */
+  limpiarCamposPorTipoReporte(tipo: string): void {
+    switch (tipo) {
+      case 'actividad':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaSemana')?.setValue(null, { emitEvent: false });
+        this.form.get('mesReporte')?.setValue(null, { emitEvent: false });
+        this.form.get('trimestreReporte')?.setValue(null, { emitEvent: false });
+        break;
+      case 'semanal':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+        this.form.get('mesReporte')?.setValue(null, { emitEvent: false });
+        this.form.get('trimestreReporte')?.setValue(null, { emitEvent: false });
+        break;
+      case 'mensual':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaSemana')?.setValue(null, { emitEvent: false });
+        this.form.get('trimestreReporte')?.setValue(null, { emitEvent: false });
+        break;
+      case 'trimestral':
+        // Limpiar campos de otros tipos
+        this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+        this.form.get('fechaSemana')?.setValue(null, { emitEvent: false });
+        this.form.get('mesReporte')?.setValue(null, { emitEvent: false });
+        break;
+    }
+  }
+
+  /**
+   * Actualiza las validaciones según el tipo de reporte
+   */
+  actualizarValidacionesPorTipoReporte(tipo: string): void {
+    // Limpiar todas las validaciones primero
+    this.form.get('fechaInicio')?.clearValidators();
+    this.form.get('fechaFin')?.clearValidators();
+    this.form.get('fechaSemana')?.clearValidators();
+    this.form.get('mesReporte')?.clearValidators();
+    this.form.get('anioReporte')?.clearValidators();
+    this.form.get('trimestreReporte')?.clearValidators();
+
+    // Aplicar validaciones según el tipo
+    switch (tipo) {
+      case 'actividad':
+        // Las fechas son opcionales para actividad (puede no tener período)
+        break;
+      case 'semanal':
+        this.form.get('fechaSemana')?.setValidators(Validators.required);
+        break;
+      case 'mensual':
+        this.form.get('mesReporte')?.setValidators(Validators.required);
+        this.form.get('anioReporte')?.setValidators(Validators.required);
+        break;
+      case 'trimestral':
+        this.form.get('trimestreReporte')?.setValidators(Validators.required);
+        this.form.get('anioReporte')?.setValidators(Validators.required);
+        break;
+    }
+
+    // Actualizar validaciones
+    this.form.get('fechaInicio')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('fechaFin')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('fechaSemana')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('mesReporte')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('anioReporte')?.updateValueAndValidity({ emitEvent: false });
+    this.form.get('trimestreReporte')?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /**
+   * Actualiza las fechas (fechaInicio y fechaFin) según el tipo de reporte seleccionado
+   */
+  actualizarFechasPorTipoReporte(): void {
+    const tipoReporte = this.form.get('tipoReporte')?.value;
+    
+    if (!tipoReporte) {
+      return;
+    }
+    
+    let fechaInicio: string | null = null;
+    let fechaFin: string | null = null;
+    
+    switch (tipoReporte) {
+      case 'actividad':
+        // Para actividad, las fechas se manejan manualmente (no se calculan automáticamente)
+        // No hacer nada, mantener las fechas que el usuario haya ingresado
+        return;
+        
+      case 'semanal':
+        const fechaSemana = this.form.get('fechaSemana')?.value;
+        if (fechaSemana) {
+          const fecha = new Date(fechaSemana + 'T00:00:00'); // Asegurar que sea medianoche
+          
+          // Obtener el día de la semana (0 = domingo, 1 = lunes, etc.)
+          const diaSemana = fecha.getDay();
+          
+          // Calcular el lunes de esa semana
+          // Si es domingo (0), retroceder 6 días
+          // Si es lunes (1), no retroceder
+          // Si es otro día, retroceder (diaSemana - 1) días
+          const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+          
+          const lunes = new Date(fecha);
+          lunes.setDate(fecha.getDate() + diasHastaLunes);
+          lunes.setHours(0, 0, 0, 0);
+          
+          // El domingo de esa semana (6 días después del lunes)
+          const domingo = new Date(lunes);
+          domingo.setDate(lunes.getDate() + 6);
+          domingo.setHours(23, 59, 59, 999);
+          
+          fechaInicio = lunes.toISOString().split('T')[0];
+          fechaFin = domingo.toISOString().split('T')[0];
+          
+          console.log('📅 Semana calculada:', {
+            fechaSeleccionada: fechaSemana,
+            lunes: fechaInicio,
+            domingo: fechaFin,
+            diaSemana: diaSemana
+          });
+        }
+        break;
+        
+      case 'mensual':
+        const mes = this.form.get('mesReporte')?.value;
+        const anio = this.form.get('anioReporte')?.value || new Date().getFullYear();
+        
+        if (mes) {
+          // Primer día del mes
+          const primerDia = new Date(anio, mes - 1, 1);
+          primerDia.setHours(0, 0, 0, 0);
+          
+          // Último día del mes
+          const ultimoDia = new Date(anio, mes, 0);
+          ultimoDia.setHours(23, 59, 59, 999);
+          
+          fechaInicio = primerDia.toISOString().split('T')[0];
+          fechaFin = ultimoDia.toISOString().split('T')[0];
+        }
+        break;
+        
+      case 'trimestral':
+        const trimestre = this.form.get('trimestreReporte')?.value;
+        const anioTrimestre = this.form.get('anioReporte')?.value || new Date().getFullYear();
+        
+        if (trimestre) {
+          // Calcular el mes inicial y final del trimestre
+          // Trimestre 1: Enero (0) - Marzo (2)
+          // Trimestre 2: Abril (3) - Junio (5)
+          // Trimestre 3: Julio (6) - Septiembre (8)
+          // Trimestre 4: Octubre (9) - Diciembre (11)
+          const mesInicio = (trimestre - 1) * 3;
+          const mesFin = mesInicio + 2;
+          
+          // Primer día del primer mes del trimestre
+          const primerDia = new Date(anioTrimestre, mesInicio, 1);
+          primerDia.setHours(0, 0, 0, 0);
+          
+          // Último día del último mes del trimestre
+          const ultimoDia = new Date(anioTrimestre, mesFin + 1, 0);
+          ultimoDia.setHours(23, 59, 59, 999);
+          
+          fechaInicio = primerDia.toISOString().split('T')[0];
+          fechaFin = ultimoDia.toISOString().split('T')[0];
+        }
+        break;
+    }
+    
+    // Actualizar las fechas en el formulario sin emitir eventos para evitar loops
+    if (fechaInicio && fechaFin) {
+      this.form.get('fechaInicio')?.setValue(fechaInicio, { emitEvent: false });
+      this.form.get('fechaFin')?.setValue(fechaFin, { emitEvent: false });
+      
+      // Luego activar manualmente la actualización de actividades
+      setTimeout(() => {
+        this.actualizarEsReporteInstitucional();
+        this.seleccionarActividadesPorPeriodo();
+      }, 0);
+    } else {
+      // Si no hay fechas válidas, limpiar
+      this.form.get('fechaInicio')?.setValue(null, { emitEvent: false });
+      this.form.get('fechaFin')?.setValue(null, { emitEvent: false });
+    }
+  }
+
+  /**
+   * Obtiene los meses disponibles para el selector
+   */
+  getMeses(): Array<{ value: number; label: string }> {
+    return [
+      { value: 1, label: 'Enero' },
+      { value: 2, label: 'Febrero' },
+      { value: 3, label: 'Marzo' },
+      { value: 4, label: 'Abril' },
+      { value: 5, label: 'Mayo' },
+      { value: 6, label: 'Junio' },
+      { value: 7, label: 'Julio' },
+      { value: 8, label: 'Agosto' },
+      { value: 9, label: 'Septiembre' },
+      { value: 10, label: 'Octubre' },
+      { value: 11, label: 'Noviembre' },
+      { value: 12, label: 'Diciembre' }
+    ];
+  }
+
+  /**
+   * Obtiene los trimestres disponibles para el selector
+   */
+  getTrimestres(): Array<{ value: number; label: string }> {
+    return [
+      { value: 1, label: 'Primer Trimestre (Ene-Mar)' },
+      { value: 2, label: 'Segundo Trimestre (Abr-Jun)' },
+      { value: 3, label: 'Tercer Trimestre (Jul-Sep)' },
+      { value: 4, label: 'Cuarto Trimestre (Oct-Dic)' }
+    ];
+  }
+
+  /**
+   * Obtiene los años disponibles (últimos 5 años y próximos 2 años)
+   */
+  getAnios(): number[] {
+    const anioActual = new Date().getFullYear();
+    const anios: number[] = [];
+    for (let i = anioActual - 5; i <= anioActual + 2; i++) {
+      anios.push(i);
+    }
+    return anios;
+  }
+
+  /**
    * Actualiza el estado de esReporteInstitucional basado en las fechas
    */
   actualizarEsReporteInstitucional(): void {
@@ -150,23 +576,30 @@ export class ReporteGenerarComponent implements OnInit {
 
   updateFormFields(tipoReporte: string): void {
     const actividadControl = this.form.get('actividadId');
+    const idActividadesControl = this.form.get('idActividades');
     const subactividadControl = this.form.get('subactividadId');
 
     // Limpiar validadores
     actividadControl?.clearValidators();
+    idActividadesControl?.clearValidators();
     subactividadControl?.clearValidators();
 
     // Aplicar validadores según el tipo
     switch (tipoReporte) {
       case 'actividad':
-        actividadControl?.setValidators(Validators.required);
-        break;
-      case 'subactividad':
-        subactividadControl?.setValidators(Validators.required);
-        break;
-      case 'participaciones':
-        // Para reportes de participaciones, la actividad es opcional pero útil para filtrar
-        // No es requerida, pero si se selecciona, filtra solo esa actividad
+      case 'semanal':
+      case 'mensual':
+      case 'trimestral':
+        // Todos los tipos de reporte requieren actividades
+        idActividadesControl?.setValidators([
+          (control: AbstractControl): ValidationErrors | null => {
+            const value = control.value;
+            if (!value || !Array.isArray(value) || value.length === 0) {
+              return { required: true };
+            }
+            return null;
+          }
+        ]);
         break;
     }
 
@@ -174,7 +607,11 @@ export class ReporteGenerarComponent implements OnInit {
     // El backend debe poder procesar dividirPorGenero sin actividadId
 
     actividadControl?.updateValueAndValidity();
+    idActividadesControl?.updateValueAndValidity();
     subactividadControl?.updateValueAndValidity();
+    
+    // Actualizar metadata
+    this.setDefaultMetadata(tipoReporte);
   }
 
   private generarNombreDefault(tipo: string): string {
@@ -226,12 +663,356 @@ export class ReporteGenerarComponent implements OnInit {
     });
   }
 
+  /**
+   * Carga los campos disponibles para extracción de datos desde el backend
+   */
+  loadCamposExtraccionDisponibles(): void {
+    this.loadingCampos.set(true);
+    this.reportesService.obtenerCamposExtraccionDisponibles().subscribe({
+      next: (data) => {
+        this.camposExtraccionDisponibles.set(data);
+        
+        // Convertir la estructura del backend a la estructura del componente
+        const campos: Array<{ value: string; label: string; categoria: string; checked: boolean }> = [];
+        
+        // Agregar campos de estudiantes
+        if (data.estudiantes && Array.isArray(data.estudiantes)) {
+          data.estudiantes.forEach((campo: any) => {
+            campos.push({
+              value: campo.nombre,
+              label: campo.etiqueta,
+              categoria: 'estudiantes',
+              checked: false
+            });
+          });
+        }
+        
+        // Agregar campos de docentes
+        if (data.docentes && Array.isArray(data.docentes)) {
+          data.docentes.forEach((campo: any) => {
+            campos.push({
+              value: campo.nombre,
+              label: campo.etiqueta,
+              categoria: 'docentes',
+              checked: false
+            });
+          });
+        }
+        
+        // Agregar campos de administrativos
+        if (data.administrativos && Array.isArray(data.administrativos)) {
+          data.administrativos.forEach((campo: any) => {
+            campos.push({
+              value: campo.nombre,
+              label: campo.etiqueta,
+              categoria: 'administrativos',
+              checked: false
+            });
+          });
+        }
+        
+        // Agregar campos de actividad
+        if (data.actividad && Array.isArray(data.actividad)) {
+          data.actividad.forEach((campo: any) => {
+            campos.push({
+              value: campo.nombre,
+              label: campo.etiqueta,
+              categoria: 'actividad',
+              checked: false
+            });
+          });
+        }
+        
+        // Agregar campos de participación
+        if (data.participacion && Array.isArray(data.participacion)) {
+          data.participacion.forEach((campo: any) => {
+            campos.push({
+              value: campo.nombre,
+              label: campo.etiqueta,
+              categoria: 'participacion',
+              checked: false
+            });
+          });
+        }
+        
+        this.camposExtraccion.set(campos);
+        console.log('✅ Campos de extracción cargados:', campos.length, 'campos en', 
+          new Set(campos.map(c => c.categoria)).size, 'categorías');
+        this.loadingCampos.set(false);
+      },
+      error: (err) => {
+        console.error('❌ Error loading campos de extracción:', err);
+        // Usar campos por defecto si falla
+        this.camposExtraccion.set([
+          { value: 'NombreEstudiante', label: 'Nombre de estudiantes', categoria: 'estudiantes', checked: false },
+          { value: 'NombreDocente', label: 'Nombre de docentes', categoria: 'docentes', checked: false },
+          { value: 'NombreAdministrativo', label: 'Nombre de administrativos', categoria: 'administrativos', checked: false },
+          { value: 'Sexo', label: 'Sexo', categoria: 'participacion', checked: false },
+          { value: 'NombreActividad', label: 'Actividades', categoria: 'actividad', checked: false },
+          { value: 'LugarDesarrollo', label: 'Lugar de la actividad', categoria: 'actividad', checked: false },
+          { value: 'FechaActividad', label: 'Fecha de realización', categoria: 'actividad', checked: false },
+          { value: 'FechaFinalizacion', label: 'Fecha de finalización', categoria: 'actividad', checked: false },
+          { value: 'idModalidad', label: 'Modalidad', categoria: 'actividad', checked: false },
+          { value: 'TipoParticipante', label: 'Tipo de participante', categoria: 'participacion', checked: false },
+          { value: 'idCarrera', label: 'Carrera', categoria: 'estudiantes', checked: false },
+          { value: 'idIndicador', label: 'Indicador asignado a esa actividad', categoria: 'actividad', checked: false }
+        ]);
+        this.loadingCampos.set(false);
+      }
+    });
+  }
+
+  /**
+   * Obtiene los campos agrupados por categoría
+   */
+  getCamposPorCategoria(categoria: string) {
+    return this.camposExtraccion().filter(c => c.categoria === categoria);
+  }
+
+  /**
+   * Obtiene el nombre legible de la categoría
+   */
+  getNombreCategoria(categoria: string): string {
+    const nombres: { [key: string]: string } = {
+      'estudiantes': 'Estudiantes',
+      'docentes': 'Docentes',
+      'administrativos': 'Administrativos',
+      'actividad': 'Actividad',
+      'participacion': 'Participación'
+    };
+    return nombres[categoria] || categoria;
+  }
+
+  /**
+   * Verifica si todos los campos de una categoría están seleccionados
+   */
+  todosCamposSeleccionados(categoria: string): boolean {
+    const campos = this.getCamposPorCategoria(categoria);
+    return campos.length > 0 && campos.every(c => c.checked);
+  }
+
+  /**
+   * Carga los departamentos asociados a múltiples actividades y los selecciona automáticamente
+   * Combina todos los departamentos únicos de las actividades seleccionadas
+   */
+  cargarDepartamentosDeActividades(actividadIds: number[]): void {
+    if (!actividadIds || actividadIds.length === 0) {
+      return;
+    }
+    
+    const idsDepartamentosSet = new Set<number>();
+    
+    actividadIds.forEach(actividadId => {
+      const id = typeof actividadId === 'string' ? parseInt(actividadId, 10) : actividadId;
+      if (isNaN(id) || id <= 0) {
+        return;
+      }
+      
+      const actividad = this.actividades().find(a => {
+        const aId = Number(a.id || a.idActividad);
+        return aId === id;
+      });
+      
+      if (actividad) {
+        // Agregar departamento principal
+        if (actividad.departamentoId) {
+          const deptId = Number(actividad.departamentoId);
+          if (deptId > 0) {
+            idsDepartamentosSet.add(deptId);
+          }
+        }
+        
+        // Agregar departamentos responsables
+        const actividadData = actividad as any;
+        const departamentosResponsables = 
+          actividadData.idDepartamentosResponsables || 
+          actividadData.IdDepartamentosResponsables || 
+          (Array.isArray(actividadData.departamentoResponsableId) ? actividadData.departamentoResponsableId : [actividadData.departamentoResponsableId]);
+        
+        if (departamentosResponsables && Array.isArray(departamentosResponsables)) {
+          departamentosResponsables.forEach((deptId: any) => {
+            const numId = Number(deptId);
+            if (numId > 0) {
+              idsDepartamentosSet.add(numId);
+            }
+          });
+        }
+      }
+    });
+    
+    if (idsDepartamentosSet.size > 0) {
+      const idsDepartamentos = Array.from(idsDepartamentosSet);
+      this.form.get('idDepartamentos')?.setValue(idsDepartamentos);
+      console.log('✅ Departamentos seleccionados automáticamente desde actividades:', idsDepartamentos);
+    }
+  }
+
+  /**
+   * Carga los departamentos asociados a una actividad y los selecciona automáticamente
+   * Extrae los departamentos directamente del objeto Actividad que ya está cargado
+   */
+  cargarDepartamentosDeActividad(actividadId: number | string): void {
+    // Convertir a número si es string
+    const id = typeof actividadId === 'string' ? parseInt(actividadId, 10) : actividadId;
+    
+    if (isNaN(id) || id <= 0) {
+      console.warn('⚠️ ID de actividad inválido:', actividadId);
+      return;
+    }
+    
+    // Buscar la actividad en la lista cargada (puede tener id o idActividad)
+    const actividad = this.actividades().find(a => {
+      const aId = Number(a.id || a.idActividad);
+      return aId === id;
+    });
+    
+    if (actividad) {
+      const idsDepartamentos: number[] = [];
+      const idsDepartamentosSet = new Set<number>();
+      
+      // Agregar departamento principal si existe
+      if (actividad.departamentoId) {
+        const deptId = Number(actividad.departamentoId);
+        if (deptId > 0 && !idsDepartamentosSet.has(deptId)) {
+          idsDepartamentosSet.add(deptId);
+          idsDepartamentos.push(deptId);
+        }
+      }
+      
+      // Agregar departamentos responsables (puede venir en diferentes formatos)
+      const actividadData = actividad as any;
+      
+      // Formato 1: idDepartamentosResponsables (array)
+      if (actividadData.idDepartamentosResponsables && Array.isArray(actividadData.idDepartamentosResponsables)) {
+        actividadData.idDepartamentosResponsables.forEach((id: any) => {
+          const numId = Number(id);
+          if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+            idsDepartamentosSet.add(numId);
+            idsDepartamentos.push(numId);
+          }
+        });
+      }
+      
+      // Formato 2: IdDepartamentosResponsables (array, PascalCase)
+      if (actividadData.IdDepartamentosResponsables && Array.isArray(actividadData.IdDepartamentosResponsables)) {
+        actividadData.IdDepartamentosResponsables.forEach((id: any) => {
+          const numId = Number(id);
+          if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+            idsDepartamentosSet.add(numId);
+            idsDepartamentos.push(numId);
+          }
+        });
+      }
+      
+      // Formato 3: departamentoResponsableId (puede ser single o array)
+      if (actividadData.departamentoResponsableId) {
+        if (Array.isArray(actividadData.departamentoResponsableId)) {
+          actividadData.departamentoResponsableId.forEach((id: any) => {
+            const numId = Number(id);
+            if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+              idsDepartamentosSet.add(numId);
+              idsDepartamentos.push(numId);
+            }
+          });
+        } else {
+          const numId = Number(actividadData.departamentoResponsableId);
+          if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+            idsDepartamentosSet.add(numId);
+            idsDepartamentos.push(numId);
+          }
+        }
+      }
+      
+      // Seleccionar automáticamente los departamentos encontrados
+      if (idsDepartamentos.length > 0) {
+        this.form.get('idDepartamentos')?.setValue(idsDepartamentos);
+        console.log('✅ Departamentos seleccionados automáticamente desde la actividad:', idsDepartamentos);
+      } else {
+        console.log('ℹ️ La actividad no tiene departamentos asociados en sus datos');
+      }
+    } else {
+      // Si la actividad no está en la lista, puede ser que la lista aún no se haya cargado
+      // o que la actividad no esté disponible. Intentar obtenerla del backend como fallback
+      // pero solo si realmente no está en la lista (evitar advertencias innecesarias)
+      const actividadEnLista = this.actividades().length > 0;
+      
+      if (actividadEnLista) {
+        // La lista está cargada pero la actividad no está - puede ser un problema de sincronización
+        // o la actividad fue eliminada. No hacer nada, el usuario puede seleccionar manualmente.
+        console.log('ℹ️ La actividad no se encontró en la lista cargada. El usuario puede seleccionar los departamentos manualmente.');
+        return;
+      }
+      
+      // Si la lista está vacía, intentar obtener la actividad del backend
+      this.actividadesService.getById(id).subscribe({
+        next: (actividadCompleta) => {
+          if (actividadCompleta) {
+            // Recursivamente llamar a este método con la actividad completa
+            // Pero mejor extraer los departamentos directamente aquí
+            const idsDepartamentos: number[] = [];
+            const idsDepartamentosSet = new Set<number>();
+            
+            if (actividadCompleta.departamentoId) {
+              const deptId = Number(actividadCompleta.departamentoId);
+              if (deptId > 0) {
+                idsDepartamentosSet.add(deptId);
+                idsDepartamentos.push(deptId);
+              }
+            }
+            
+            const actividadData = actividadCompleta as any;
+            if (actividadData.idDepartamentosResponsables && Array.isArray(actividadData.idDepartamentosResponsables)) {
+              actividadData.idDepartamentosResponsables.forEach((id: any) => {
+                const numId = Number(id);
+                if (numId > 0 && !idsDepartamentosSet.has(numId)) {
+                  idsDepartamentosSet.add(numId);
+                  idsDepartamentos.push(numId);
+                }
+              });
+            }
+            
+            if (idsDepartamentos.length > 0) {
+              this.form.get('idDepartamentos')?.setValue(idsDepartamentos);
+              console.log('✅ Departamentos seleccionados automáticamente desde backend:', idsDepartamentos);
+            }
+          }
+        },
+        error: (err) => {
+          // Error silencioso - el usuario puede seleccionar los departamentos manualmente
+          // No mostrar advertencia en consola para no generar ruido
+        }
+      });
+    }
+  }
+
   async onSubmit(): Promise<void> {
+    // Validación personalizada según el tipo de operación
+    const tipoOperacion = this.form.get('tipoOperacion')?.value || 'nuevo-reporte';
+    
+    if (tipoOperacion === 'extraccion-datos') {
+      // Para extracción de datos, validar que haya campos seleccionados
+      const camposSeleccionados = this.form.get('camposSeleccionados')?.value || [];
+      if (camposSeleccionados.length === 0) {
+        this.form.get('camposSeleccionados')?.setErrors({ required: true });
+        this.form.get('camposSeleccionados')?.markAsTouched();
+        this.form.markAllAsTouched();
+        return;
+      }
+    }
+    
     if (this.form.valid) {
       this.generando.set(true);
       this.error.set(null);
 
       const formValue = this.form.value;
+      
+      // Si es extracción de datos, manejar de forma diferente
+      if (tipoOperacion === 'extraccion-datos') {
+        await this.generarExtraccionDatos(formValue);
+        return;
+      }
+      
+      // Si es nuevo reporte, continuar con la lógica existente
       const fechaInicio = formValue.fechaInicio;
       const fechaFin = formValue.fechaFin;
       const esInstitucional = fechaInicio && fechaFin;
@@ -244,16 +1025,29 @@ export class ReporteGenerarComponent implements OnInit {
         if (esInstitucional) {
           console.log('📊 Generando reporte institucional con fechas:', fechaInicio, 'a', fechaFin);
           
-          const nombreReporte = formValue.nombre?.trim() || 
-            `Reporte Institucional ${this.formatearFecha(fechaInicio)} - ${this.formatearFecha(fechaFin)}`;
+          // Generar nombre del reporte con el nuevo formato
+          // Formato: "Reporte de [Código de actividad O Nombre de subActividad O Indicador O participaciones O evidencias] [fecha del reporte]"
+          const nombreReporte = this.generarNombreReporte(formValue);
 
+          // descripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+          
+          // Para reportes semanal, mensual y trimestral, usar 'actividad' como tipoReporte
+          // para que el backend genere el mismo formato de Excel
+          const tipoReporteParaBackend = (formValue.tipoReporte === 'semanal' || 
+                                          formValue.tipoReporte === 'mensual' || 
+                                          formValue.tipoReporte === 'trimestral')
+            ? 'actividad'
+            : (formValue.tipoReporte || 'actividad');
+          
           const config: ReporteConfig = {
-            tipoReporte: formValue.tipoReporte || 'actividad', // Importante: debe contener "actividad"
+            tipoReporte: tipoReporteParaBackend, // Siempre 'actividad' para mantener el mismo formato de Excel
             actividadId: formValue.actividadId || undefined,
             subactividadId: formValue.subactividadId || undefined,
             fechaInicio: fechaInicio,
             fechaFin: fechaFin,
             idDepartamento: formValue.idDepartamento || undefined,
+            idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
+            // descripcionImpacto eliminado - se genera automáticamente en el backend
             formato: formValue.formato,
             incluirEvidencias: formValue.incluirEvidencias ?? true,
             incluirParticipaciones: formValue.incluirParticipaciones ?? true,
@@ -261,7 +1055,10 @@ export class ReporteGenerarComponent implements OnInit {
             dividirPorGenero: formValue.dividirPorGenero ?? false, // Incluir cantidad de hombres y mujeres
             nombre: nombreReporte,
             rutaArchivo: formValue.rutaArchivo?.trim() || `reportes/institucional-${Date.now()}.xlsx`,
-            tipoArchivo: 'actividad' // Importante: debe contener "actividad" para que el backend detecte el formato institucional
+            tipoArchivo: 'actividad', // Importante: debe contener "actividad" para que el backend detecte el formato institucional
+            parametrosJson: JSON.stringify({
+              SinInstrucciones: true // Eliminar instrucciones del Excel
+            })
           };
 
           // Usar generarExcel que detecta automáticamente el formato institucional
@@ -300,7 +1097,10 @@ export class ReporteGenerarComponent implements OnInit {
                 const url = window.URL.createObjectURL(excelBlob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${nombreReporte}.xlsx`;
+                // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+                // Usar el nombre generado con la misma lógica del backend
+                const nombreArchivoLimpio = nombreReporte.replace(/[<>:"/\\|?*]/g, '_');
+                a.download = `${nombreArchivoLimpio}.xlsx`;
                 document.body.appendChild(a);
                 a.click();
                 
@@ -355,21 +1155,48 @@ export class ReporteGenerarComponent implements OnInit {
         }
 
         // Si no es institucional, usar el método tradicional
+        // Para nuevo reporte, siempre incluir dividirPorGenero para el consolidado
+        
+        // Generar nombre del reporte con el nuevo formato
+        // Formato: "Reporte de [Código de actividad O Nombre de subActividad O Indicador O participaciones O evidencias] [fecha del reporte]"
+        const nombreReporte = this.generarNombreReporte(formValue);
+        
+        // descripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+        
+        // Obtener actividades seleccionadas (puede ser array o single)
+        const idActividades = formValue.idActividades && Array.isArray(formValue.idActividades) && formValue.idActividades.length > 0
+          ? formValue.idActividades
+          : (formValue.actividadId ? [formValue.actividadId] : undefined);
+        
+        // Para reportes semanal, mensual y trimestral, usar 'actividad' como tipoReporte
+        // para que el backend genere el mismo formato de Excel
+        const tipoReporteParaBackend = (formValue.tipoReporte === 'semanal' || 
+                                        formValue.tipoReporte === 'mensual' || 
+                                        formValue.tipoReporte === 'trimestral')
+          ? 'actividad'
+          : (formValue.tipoReporte || 'actividad');
+        
         const config: ReporteConfig = {
-          tipoReporte: formValue.tipoReporte,
-          actividadId: formValue.actividadId || undefined,
+          tipoReporte: tipoReporteParaBackend, // Siempre 'actividad' para mantener el mismo formato de Excel
+          actividadId: formValue.actividadId || undefined, // Mantener para compatibilidad
+          idActividades: idActividades, // Array de actividades seleccionadas
           subactividadId: formValue.subactividadId || undefined,
-          fechaInicio: fechaInicio || undefined, // Para filtrar actividades por período
-          fechaFin: fechaFin || undefined, // Para filtrar actividades por período
+          fechaInicio: fechaInicio || undefined, // Período del reporte - filtra actividades dentro de este rango
+          fechaFin: fechaFin || undefined, // Período del reporte - filtra actividades dentro de este rango
           idDepartamento: formValue.idDepartamento || undefined,
+          idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
+          // descripcionImpacto eliminado - se genera automáticamente en el backend
           formato: formValue.formato,
           incluirEvidencias: formValue.incluirEvidencias,
           incluirParticipaciones: formValue.incluirParticipaciones,
           incluirIndicadores: formValue.incluirIndicadores,
-          dividirPorGenero: formValue.dividirPorGenero ?? false, // Incluir cantidad de hombres y mujeres
-          nombre: formValue.nombre?.trim(),
+          dividirPorGenero: formValue.dividirPorGenero ?? true, // Por defecto true para consolidado (M y F)
+          nombre: nombreReporte,
           rutaArchivo: formValue.rutaArchivo?.trim(),
-          tipoArchivo: formValue.tipoArchivo || 'excel'
+          tipoArchivo: formValue.tipoArchivo || 'excel',
+          parametrosJson: JSON.stringify({
+            SinInstrucciones: true // Eliminar instrucciones del Excel
+          })
         };
 
         // Usar el endpoint POST /api/Reportes/generar/excel que genera el Excel Y lo guarda en la BD
@@ -410,11 +1237,12 @@ export class ReporteGenerarComponent implements OnInit {
             const url = window.URL.createObjectURL(excelBlob);
             const a = document.createElement('a');
             a.href = url;
-            const fecha = new Date().toISOString().split('T')[0];
-            const nombreArchivo = config.nombre 
-              ? `${config.nombre}.xlsx` 
-              : `reporte-${config.tipoReporte || 'exportacion'}-${fecha}.xlsx`;
-            a.download = nombreArchivo;
+            // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+            // Usar el nombre del config que ya fue generado con la misma lógica del backend
+            const nombreArchivoLimpio = config.nombre 
+              ? config.nombre.replace(/[<>:"/\\|?*]/g, '_')
+              : this.generarNombreReporte(formValue).replace(/[<>:"/\\|?*]/g, '_');
+            a.download = `${nombreArchivoLimpio}.xlsx`;
             document.body.appendChild(a);
             a.click();
             
@@ -530,9 +1358,528 @@ export class ReporteGenerarComponent implements OnInit {
   /**
    * Formatear fecha de YYYY-MM-DD a DD/MM/YYYY
    */
+  /**
+   * Genera el nombre del reporte con el formato: 
+   * "Reporte de {identificador} {fecha}"
+   * Sigue la misma lógica y prioridad que el backend
+   */
+  private generarNombreReporte(formValue: any): string {
+    // Fecha en formato yyyy-MM-dd (igual que el backend)
+    const fechaActual = new Date();
+    const fechaFormateada = fechaActual.toISOString().split('T')[0]; // Formato: yyyy-MM-dd
+    
+    let identificador = '';
+    
+    // Prioridad 1: Código de la actividad (si hay ActividadId, busca CodigoActividad)
+    if (formValue.actividadId) {
+      const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+      if (actividad?.codigoActividad) {
+        identificador = actividad.codigoActividad;
+      }
+    }
+    
+    // Prioridad 2: Indicador de la actividad (si no hay código pero hay indicador)
+    // Usa el nombre o código del indicador
+    if (!identificador && formValue.actividadId) {
+      const actividad = this.actividades().find(a => a.id === formValue.actividadId);
+      if (actividad) {
+        // Primero intentar código del indicador
+        if (actividad.codigoIndicador) {
+          identificador = actividad.codigoIndicador;
+        } else if (actividad.codigoIndicadorAsociado) {
+          identificador = actividad.codigoIndicadorAsociado;
+        }
+        // Si no hay código, usar nombre del indicador
+        else if (actividad.nombreIndicador) {
+          identificador = actividad.nombreIndicador;
+        } else if (actividad.nombreIndicadorAsociado) {
+          identificador = actividad.nombreIndicadorAsociado;
+        }
+      }
+    }
+    
+    // Prioridad 3: Nombre de subactividad (si hay SubactividadId)
+    if (!identificador && formValue.subactividadId) {
+      const subactividad = this.subactividades().find(s => s.idSubactividad === formValue.subactividadId);
+      if (subactividad) {
+        // Primero intentar código de subactividad
+        if (subactividad.codigoSubactividad) {
+          identificador = subactividad.codigoSubactividad;
+        }
+        // Si no hay código, usar nombre
+        else if (subactividad.nombre) {
+          identificador = subactividad.nombre;
+        } else if (subactividad.nombreSubactividad) {
+          identificador = subactividad.nombreSubactividad;
+        }
+      }
+    }
+    
+    // Prioridad 4: Tipo de reporte (semanal, mensual, trimestral)
+    if (!identificador) {
+      const tipoReporte = (formValue.tipoReporte || '').toLowerCase();
+      if (tipoReporte === 'semanal') {
+        identificador = 'Semanal';
+      } else if (tipoReporte === 'mensual') {
+        const mes = formValue.mesReporte;
+        if (mes) {
+          const meses = this.getMeses();
+          const mesObj = meses.find(m => m.value === mes);
+          identificador = mesObj ? mesObj.label : 'Mensual';
+        } else {
+          identificador = 'Mensual';
+        }
+      } else if (tipoReporte === 'trimestral') {
+        const trimestre = formValue.trimestreReporte;
+        if (trimestre) {
+          const trimestres = this.getTrimestres();
+          const trimestreObj = trimestres.find(t => t.value === trimestre);
+          identificador = trimestreObj ? trimestreObj.label.split(' ')[0] + ' Trimestre' : 'Trimestral';
+        } else {
+          identificador = 'Trimestral';
+        }
+      }
+    }
+    
+    // Prioridad 5: Valor por defecto (usa el tipo de reporte o "Actividad" si no hay nada específico)
+    if (!identificador) {
+      const tipoReporte = formValue.tipoReporte || '';
+      if (tipoReporte) {
+        // Capitalizar primera letra del tipo de reporte
+        identificador = tipoReporte.charAt(0).toUpperCase() + tipoReporte.slice(1);
+      } else {
+        identificador = 'Actividad';
+      }
+    }
+    
+    // Construir el nombre final: "Reporte de {identificador} {fecha}"
+    const nombreFinal = `Reporte de ${identificador} ${fechaFormateada}`;
+    
+    console.log('🔍 Nombre del reporte generado:', nombreFinal);
+    console.log('🔍 Identificador usado:', identificador);
+    console.log('🔍 Fecha formateada:', fechaFormateada);
+    
+    return nombreFinal;
+  }
+
   private formatearFecha(fecha: string): string {
     const [year, month, day] = fecha.split('-');
     return `${day}/${month}/${year}`;
+  }
+
+  /**
+   * Maneja la generación de extracción de datos
+   * El backend genera columnas dinámicamente según los campos seleccionados por el usuario.
+   * Si no hay campos seleccionados, el backend usa campos por defecto:
+   * NombreEstudiante, TipoParticipante, NombreActividad, FechaRegistro
+   */
+  async generarExtraccionDatos(formValue: any): Promise<void> {
+    const camposSeleccionados = formValue.camposSeleccionados || [];
+    
+    if (camposSeleccionados.length === 0) {
+      this.error.set('Debe seleccionar al menos un campo para la extracción de datos.');
+      this.generando.set(false);
+      return;
+    }
+    
+    try {
+      // Generar nombre del reporte usando la misma lógica del backend
+      // Si el usuario no ha modificado el nombre manualmente, generarlo automáticamente
+      let nombreReporte = formValue.nombre?.trim();
+      const nombreControl = this.form.get('nombre');
+      
+      if (!nombreReporte || (nombreControl && !nombreControl.dirty)) {
+        // Usar la misma lógica de generación de nombre que el backend
+        // Para extracción de datos, el tipo será "extraccion-datos"
+        const formValueConTipo = { ...formValue, tipoReporte: 'extraccion-datos' };
+        nombreReporte = this.generarNombreReporte(formValueConTipo);
+      }
+      
+      // Configurar para extracción de datos
+      // El backend usará CamposSeleccionados para generar las columnas dinámicamente
+      const parametrosJson: any = {
+        CamposSeleccionados: camposSeleccionados, // Campos seleccionados por el usuario - el backend generará columnas dinámicamente
+        TipoOperacion: 'extraccion-datos',
+        SinInstrucciones: true, // Eliminar instrucciones del Excel
+        OmitirInstrucciones: true // Algunos backends usan este nombre
+      };
+      
+      // Agregar filtros opcionales al ParametrosJson
+      if (formValue.actividadId) {
+        const actividadIdNum = typeof formValue.actividadId === 'string' ? parseInt(formValue.actividadId, 10) : Number(formValue.actividadId);
+        if (!isNaN(actividadIdNum) && actividadIdNum > 0) {
+          parametrosJson.ActividadId = actividadIdNum;
+        }
+      }
+      
+      if (formValue.fechaInicio) {
+        parametrosJson.FechaInicio = formValue.fechaInicio;
+      }
+      
+      if (formValue.fechaFin) {
+        parametrosJson.FechaFin = formValue.fechaFin;
+      }
+      
+      if (formValue.idDepartamentos && Array.isArray(formValue.idDepartamentos) && formValue.idDepartamentos.length > 0) {
+        parametrosJson.IdDepartamentos = formValue.idDepartamentos;
+      } else if (formValue.idDepartamento) {
+        parametrosJson.IdDepartamento = formValue.idDepartamento;
+      }
+      
+      const config: ReporteConfig = {
+        tipoReporte: 'extraccion-datos',
+        actividadId: formValue.actividadId || undefined,
+        fechaInicio: formValue.fechaInicio || undefined,
+        fechaFin: formValue.fechaFin || undefined,
+        idDepartamento: formValue.idDepartamento || undefined,
+        idDepartamentos: formValue.idDepartamentos || undefined,
+        formato: 'excel',
+        nombre: nombreReporte,
+        rutaArchivo: formValue.rutaArchivo?.trim() || `reportes/extraccion-datos-${Date.now()}.xlsx`,
+        tipoArchivo: 'excel',
+        parametrosJson: JSON.stringify(parametrosJson)
+      };
+      
+      console.log('🔍 Configuración de extracción de datos:', config);
+      console.log('🔍 Campos seleccionados:', camposSeleccionados);
+      console.log('🔍 ParametrosJson:', config.parametrosJson);
+      
+      this.reportesService.generarExcel(config).subscribe({
+        next: (blob) => {
+          console.log('✅ Extracción de datos generada exitosamente, tamaño:', blob.size);
+          
+          if (!blob || blob.size === 0) {
+            this.error.set('El archivo generado está vacío o es inválido.');
+            this.generando.set(false);
+            return;
+          }
+          
+          blob.slice(0, 4).arrayBuffer().then((buffer: ArrayBuffer) => {
+            const bytes = new Uint8Array(buffer);
+            const isValidExcel = bytes[0] === 0x50 && bytes[1] === 0x4B;
+            
+            if (!isValidExcel) {
+              this.error.set('El archivo generado no es un Excel válido.');
+              this.generando.set(false);
+              return;
+            }
+            
+            const excelBlob = blob.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+              ? blob 
+              : new Blob([blob], {
+                  type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                });
+            
+            const url = window.URL.createObjectURL(excelBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            // Limpiar el nombre del archivo para que sea válido (sin caracteres especiales)
+            const nombreArchivo = nombreReporte.replace(/[<>:"/\\|?*]/g, '_');
+            a.download = `${nombreArchivo}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            }, 100);
+            
+            this.generando.set(false);
+            this.router.navigate(['/reportes']);
+          }).catch((error) => {
+            console.error('❌ Error al validar el archivo:', error);
+            this.error.set('Error al validar el archivo generado.');
+            this.generando.set(false);
+          });
+        },
+        error: (err: any) => {
+          console.error('❌ Error generando extracción de datos:', err);
+          this.generando.set(false);
+          
+          let errorMessage = 'Error al generar la extracción de datos';
+          if (err.backendMessage) {
+            errorMessage = err.backendMessage;
+          } else if (err.message) {
+            errorMessage = err.message;
+          } else if (err.error?.message) {
+            errorMessage = err.error.message;
+          }
+          
+          this.error.set(errorMessage);
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ Error en generarExtraccionDatos:', error);
+      this.generando.set(false);
+      this.error.set(error.message || 'Error al generar la extracción de datos');
+    }
+  }
+  
+  /**
+   * Toggle para seleccionar/deseleccionar campos de extracción
+   */
+  toggleCampoExtraccion(campoValue: string): void {
+    const campos = this.camposExtraccion();
+    const campo = campos.find(c => c.value === campoValue);
+    if (campo) {
+      campo.checked = !campo.checked;
+      this.camposExtraccion.set([...campos]);
+      
+      // Actualizar el formulario
+      const camposSeleccionados = campos.filter(c => c.checked).map(c => c.value);
+      this.form.get('camposSeleccionados')?.setValue(camposSeleccionados);
+      
+      console.log('🔍 Campos seleccionados:', camposSeleccionados);
+    }
+  }
+  
+  /**
+   * Seleccionar todos los campos de una categoría
+   */
+  seleccionarTodosCategoria(categoria: string): void {
+    const campos = this.camposExtraccion();
+    const camposCategoria = campos.filter(c => c.categoria === categoria);
+    const todosSeleccionados = camposCategoria.every(c => c.checked);
+    
+    campos.forEach(campo => {
+      if (campo.categoria === categoria) {
+        campo.checked = !todosSeleccionados;
+      }
+    });
+    
+    this.camposExtraccion.set([...campos]);
+    
+    // Actualizar el formulario
+    const camposSeleccionados = campos.filter(c => c.checked).map(c => c.value);
+    this.form.get('camposSeleccionados')?.setValue(camposSeleccionados);
+  }
+
+  /**
+   * Actualiza el nombre del archivo para extracción de datos cuando se selecciona una actividad
+   */
+  actualizarNombreArchivoExtraccion(): void {
+    const actividadId = this.form.get('actividadId')?.value;
+    const nombreControl = this.form.get('nombre');
+    
+    // Solo actualizar si el usuario no ha modificado manualmente el nombre
+    if (actividadId && nombreControl && !nombreControl.dirty) {
+      const actividad = this.actividades().find(a => a.id === actividadId);
+      if (actividad) {
+        const nombreReporte = `Extracción de datos de ${actividad.nombre}`;
+        nombreControl.setValue(nombreReporte, { emitEvent: false });
+      }
+    }
+  }
+
+  /**
+   * Actualiza el nombre del archivo para nuevo reporte cuando se selecciona una actividad
+   */
+  actualizarNombreArchivoReporte(): void {
+    const tipoOperacion = this.form.get('tipoOperacion')?.value;
+    const nombreControl = this.form.get('nombre');
+    
+    // Solo actualizar si es nuevo reporte y el usuario no ha modificado manualmente el nombre
+    if (tipoOperacion === 'nuevo-reporte' && nombreControl) {
+      // Si el campo no ha sido modificado por el usuario (no está dirty), actualizar automáticamente
+      if (!nombreControl.dirty) {
+        const formValue = this.form.value;
+        const nombreReporte = this.generarNombreReporte(formValue);
+        nombreControl.setValue(nombreReporte, { emitEvent: false });
+      }
+      // Si el usuario ya modificó el nombre manualmente, no sobrescribirlo
+    }
+  }
+
+  /**
+   * Maneja el cambio de actividad
+   */
+  onActividadChange(actividadId: number | string): void {
+    const id = typeof actividadId === 'string' ? parseInt(actividadId) : actividadId;
+    if (id && !isNaN(id)) {
+      this.actualizarNombreArchivoReporte();
+      this.cargarDepartamentosDeActividad(id);
+      // Limpiar el filtro de búsqueda después de seleccionar una actividad
+      this.filtroActividad.set('');
+    } else {
+      this.form.get('idDepartamentos')?.setValue([]);
+    }
+  }
+
+  /**
+   * Selecciona automáticamente todas las actividades que caen dentro del período definido
+   * Calcula directamente las actividades sin depender del computed para asegurar actualización inmediata
+   */
+  seleccionarActividadesPorPeriodo(): void {
+    // Usar setTimeout para asegurar que el formulario se actualice completamente
+    setTimeout(() => {
+      const fechaInicio = this.form.get('fechaInicio')?.value;
+      const fechaFin = this.form.get('fechaFin')?.value;
+      
+      // Si se limpiaron las fechas, mantener las selecciones manuales del usuario
+      if (!fechaInicio && !fechaFin) {
+        // No limpiar las selecciones - el usuario puede haber seleccionado actividades sin período
+        return;
+      }
+      
+      // Calcular directamente las actividades dentro del período (no usar el computed)
+      // Esto asegura que siempre use los valores más recientes del formulario
+      const todasLasActividades = this.actividades();
+      const actividadesEnPeriodo = todasLasActividades.filter(actividad => {
+        const fechaActividad = actividad.fechaInicio || actividad.fechaEvento;
+        
+        if (!fechaActividad) {
+          return false;
+        }
+        
+        const fechaAct = new Date(fechaActividad);
+        fechaAct.setHours(0, 0, 0, 0);
+        
+        let dentroDelPeriodo = true;
+        
+        if (fechaInicio) {
+          const fechaInicioObj = new Date(fechaInicio);
+          fechaInicioObj.setHours(0, 0, 0, 0);
+          if (fechaAct < fechaInicioObj) {
+            dentroDelPeriodo = false;
+          }
+        }
+        
+        if (fechaFin) {
+          const fechaFinObj = new Date(fechaFin);
+          fechaFinObj.setHours(23, 59, 59, 999);
+          if (fechaAct > fechaFinObj) {
+            dentroDelPeriodo = false;
+          }
+        }
+        
+        return dentroDelPeriodo;
+      });
+      
+      // Extraer los IDs de las actividades
+      const idsActividades: number[] = actividadesEnPeriodo
+        .map(actividad => {
+          const id = Number(actividad.id || actividad.idActividad);
+          return isNaN(id) || id <= 0 ? null : id;
+        })
+        .filter((id): id is number => id !== null);
+      
+      // Establecer las actividades seleccionadas (siempre actualizar cuando hay período)
+      // Usar setValue directamente sin verificar cambios previos para forzar la actualización
+      const idActividadesControl = this.form.get('idActividades');
+      idActividadesControl?.setValue(idsActividades, { emitEvent: false });
+      idActividadesControl?.markAsTouched();
+      idActividadesControl?.updateValueAndValidity();
+      
+      // Cargar departamentos automáticamente
+      if (idsActividades.length > 0) {
+        this.cargarDepartamentosDeActividades(idsActividades);
+      } else {
+        this.form.get('idDepartamentos')?.setValue([]);
+      }
+      
+      // Actualizar nombre del archivo
+      this.actualizarNombreArchivoReporte();
+      
+      console.log(`✅ Período actualizado: ${idsActividades.length} actividad(es) seleccionada(s) automáticamente`);
+      console.log(`📅 Período: ${fechaInicio || 'sin inicio'} - ${fechaFin || 'sin fin'}`);
+      console.log(`📋 IDs seleccionados:`, idsActividades);
+    }, 0);
+  }
+
+  /**
+   * Verifica si una actividad está seleccionada
+   */
+  estaActividadSeleccionada(actividadId: number | string): boolean {
+    const id = Number(actividadId);
+    const actividadesSeleccionadas = this.form.get('idActividades')?.value || [];
+    return actividadesSeleccionadas.includes(id);
+  }
+
+  /**
+   * Toggle para seleccionar/deseleccionar una actividad
+   */
+  toggleActividad(actividadId: number | string): void {
+    const id = Number(actividadId);
+    if (isNaN(id) || id <= 0) {
+      return;
+    }
+    
+    const actividadesSeleccionadas = this.form.get('idActividades')?.value || [];
+    const index = actividadesSeleccionadas.indexOf(id);
+    
+    let nuevasSelecciones: number[];
+    if (index >= 0) {
+      // Deseleccionar
+      nuevasSelecciones = actividadesSeleccionadas.filter((selectedId: number) => selectedId !== id);
+    } else {
+      // Seleccionar
+      nuevasSelecciones = [...actividadesSeleccionadas, id];
+    }
+    
+    // Actualizar el form control
+    const idActividadesControl = this.form.get('idActividades');
+    idActividadesControl?.setValue(nuevasSelecciones, { emitEvent: false });
+    idActividadesControl?.markAsTouched();
+    idActividadesControl?.updateValueAndValidity();
+    
+    // Cargar departamentos de las actividades seleccionadas
+    if (nuevasSelecciones.length > 0) {
+      this.cargarDepartamentosDeActividades(nuevasSelecciones);
+      this.actualizarNombreArchivoReporte();
+    } else {
+      this.form.get('idDepartamentos')?.setValue([]);
+    }
+    
+    console.log('✅ Actividades seleccionadas:', nuevasSelecciones);
+  }
+
+  /**
+   * Maneja el cambio en la selección múltiple de actividades (legacy - para compatibilidad)
+   */
+  onActividadesChange(selectedOptions: HTMLCollectionOf<HTMLOptionElement>): void {
+    const selectedIds: number[] = [];
+    for (let i = 0; i < selectedOptions.length; i++) {
+      const option = selectedOptions[i];
+      const value = option.value;
+      if (value) {
+        const id = parseInt(value, 10);
+        if (!isNaN(id) && id > 0) {
+          selectedIds.push(id);
+        }
+      }
+    }
+    
+    // Actualizar el form control
+    this.form.get('idActividades')?.setValue(selectedIds, { emitEvent: false });
+    
+    // Cargar departamentos de las actividades seleccionadas
+    if (selectedIds.length > 0) {
+      this.cargarDepartamentosDeActividades(selectedIds);
+      this.actualizarNombreArchivoReporte();
+    } else {
+      this.form.get('idDepartamentos')?.setValue([]);
+    }
+    
+    // Limpiar el filtro de búsqueda
+    this.filtroActividad.set('');
+    
+    console.log('✅ Actividades seleccionadas:', selectedIds);
+  }
+
+  /**
+   * Obtiene un departamento por su ID
+   */
+  obtenerDepartamentoPorId(id: number): any | null {
+    return this.departamentos().find(d => d.id === id) || null;
+  }
+
+  /**
+   * Remueve un departamento de la selección
+   */
+  removerDepartamento(departamentoId: number): void {
+    const departamentosActuales = this.form.get('idDepartamentos')?.value || [];
+    const nuevosDepartamentos = departamentosActuales.filter((id: number) => id !== departamentoId);
+    this.form.get('idDepartamentos')?.setValue(nuevosDepartamentos);
   }
 
   get tipoReporte() { return this.form.get('tipoReporte'); }
@@ -541,6 +1888,11 @@ export class ReporteGenerarComponent implements OnInit {
   get formato() { return this.form.get('formato'); }
   get fechaInicio() { return this.form.get('fechaInicio'); }
   get fechaFin() { return this.form.get('fechaFin'); }
+  get fechaSemana() { return this.form.get('fechaSemana'); }
+  get mesReporte() { return this.form.get('mesReporte'); }
+  get anioReporte() { return this.form.get('anioReporte'); }
+  get trimestreReporte() { return this.form.get('trimestreReporte'); }
   get idDepartamento() { return this.form.get('idDepartamento'); }
+  get tipoOperacionControl() { return this.form.get('tipoOperacion'); }
 }
 

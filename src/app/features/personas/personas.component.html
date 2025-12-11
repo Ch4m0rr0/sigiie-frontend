@@ -157,24 +157,7 @@
 
   <!-- Loading State -->
   @if (isLoading()) {
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="p-8">
-        <div class="flex flex-col items-center justify-center gap-4">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p class="text-sm text-slate-500">Cargando datos...</p>
-        </div>
-        <!-- Skeleton Loaders -->
-        <div class="mt-8 space-y-4">
-          @for (i of [1,2,3,4,5]; track i) {
-            <div class="animate-pulse flex items-center gap-4">
-              <div class="h-10 bg-slate-200 rounded-lg flex-1"></div>
-              <div class="h-10 bg-slate-200 rounded-lg w-32"></div>
-              <div class="h-10 bg-slate-200 rounded-lg w-24"></div>
-            </div>
-          }
-        </div>
-      </div>
-    </div>
+    <app-skeleton-table [rows]="5" [columns]="5" [showHeader]="true"></app-skeleton-table>
   }
 
   <!-- Error State -->

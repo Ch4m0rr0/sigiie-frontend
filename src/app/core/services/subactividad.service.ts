@@ -67,12 +67,28 @@ export class SubactividadService {
       dto.FechaFin = data.fechaFin;
     }
 
-    // Manejar DepartamentoResponsableId: si es array, tomar el primer elemento; si es número, usarlo; si no, omitir
-    if (data.departamentoResponsableId !== undefined && data.departamentoResponsableId !== null) {
+    // IdDepartamentosResponsables - el backend espera List<int>? (array)
+    if (data.idDepartamentosResponsables && Array.isArray(data.idDepartamentosResponsables) && data.idDepartamentosResponsables.length > 0) {
+      const idsValidos = data.idDepartamentosResponsables
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdDepartamentosResponsables = idsValidos;
+      }
+    } else if (data.departamentoResponsableId !== undefined && data.departamentoResponsableId !== null) {
+      // Legacy: si viene departamentoResponsableId, convertirlo a array
       if (Array.isArray(data.departamentoResponsableId) && data.departamentoResponsableId.length > 0) {
-        dto.DepartamentoResponsableId = data.departamentoResponsableId[0];
+        const idsValidos = data.departamentoResponsableId
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdDepartamentosResponsables = idsValidos;
+        }
       } else if (!Array.isArray(data.departamentoResponsableId)) {
-        dto.DepartamentoResponsableId = data.departamentoResponsableId;
+        const idNum = Number(data.departamentoResponsableId);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdDepartamentosResponsables = [idNum];
+        }
       }
     }
 
@@ -145,13 +161,28 @@ export class SubactividadService {
       dto.IdEstadoActividad = data.idEstadoActividad;
     }
 
-    if (data.idTipoProtagonista !== undefined && data.idTipoProtagonista !== null) {
-      // El backend espera un int? (nullable int), no un array
-      // Si es un array, tomar el primer elemento; si es un número, usarlo directamente
+    // IdTiposProtagonistas - el backend espera List<int>? (array)
+    if (data.idTiposProtagonistas && Array.isArray(data.idTiposProtagonistas) && data.idTiposProtagonistas.length > 0) {
+      const idsValidos = data.idTiposProtagonistas
+        .map((id: number) => Number(id))
+        .filter((id: number) => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdTiposProtagonistas = idsValidos;
+      }
+    } else if (data.idTipoProtagonista !== undefined && data.idTipoProtagonista !== null) {
+      // Legacy: si viene idTipoProtagonista, convertirlo a array
       if (Array.isArray(data.idTipoProtagonista) && data.idTipoProtagonista.length > 0) {
-        dto.IdTipoProtagonista = data.idTipoProtagonista[0];
+        const idsValidos = data.idTipoProtagonista
+          .map((id: number) => Number(id))
+          .filter((id: number) => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdTiposProtagonistas = idsValidos;
+        }
       } else if (!Array.isArray(data.idTipoProtagonista)) {
-        dto.IdTipoProtagonista = data.idTipoProtagonista;
+        const idNum = Number(data.idTipoProtagonista);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdTiposProtagonistas = [idNum];
+        }
       }
     }
 
@@ -214,7 +245,8 @@ export class SubactividadService {
       'dto.HoraRealizacion': dto.HoraRealizacion,
       'dto.IdEstadoActividad': dto.IdEstadoActividad,
       'dto.IdCapacidadInstalada': dto.IdCapacidadInstalada,
-      'dto.IdTipoProtagonista': dto.IdTipoProtagonista,
+      'dto.IdDepartamentosResponsables': dto.IdDepartamentosResponsables,
+      'dto.IdTiposProtagonistas': dto.IdTiposProtagonistas,
       'dto.IdTipoEvidencias': dto.IdTipoEvidencias,
       'dto.CantidadTotalParticipantesProtagonistas': dto.CantidadTotalParticipantesProtagonistas
     });
@@ -269,39 +301,55 @@ export class SubactividadService {
       dto.FechaFin = data.fechaFin;
     }
     
-    // Manejar DepartamentoResponsableId: si es array, tomar el primer elemento; si es número, usarlo; si no, omitir
-    if (data.departamentoResponsableId !== undefined && data.departamentoResponsableId !== null) {
+    // IdDepartamentosResponsables - el backend espera List<int>? (array)
+    if (data.idDepartamentosResponsables && Array.isArray(data.idDepartamentosResponsables) && data.idDepartamentosResponsables.length > 0) {
+      const idsValidos = data.idDepartamentosResponsables
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdDepartamentosResponsables = idsValidos;
+      }
+    } else if (data.departamentoResponsableId !== undefined && data.departamentoResponsableId !== null) {
+      // Legacy: si viene departamentoResponsableId, convertirlo a array
       if (Array.isArray(data.departamentoResponsableId) && data.departamentoResponsableId.length > 0) {
-        dto.DepartamentoResponsableId = data.departamentoResponsableId[0];
+        const idsValidos = data.departamentoResponsableId
+          .map(id => Number(id))
+          .filter(id => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdDepartamentosResponsables = idsValidos;
+        }
       } else if (!Array.isArray(data.departamentoResponsableId)) {
-        dto.DepartamentoResponsableId = data.departamentoResponsableId;
+        const idNum = Number(data.departamentoResponsableId);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdDepartamentosResponsables = [idNum];
+        }
       }
     }
     
     if (data.ubicacion !== undefined && data.ubicacion !== null && data.ubicacion !== '') {
       dto.Ubicacion = data.ubicacion;
     }
-    
+
     if (data.modalidad !== undefined && data.modalidad !== null && data.modalidad !== '') {
       dto.Modalidad = data.modalidad;
     }
-    
+
     if (data.organizador !== undefined && data.organizador !== null && data.organizador !== '') {
       dto.Organizador = data.organizador;
     }
-    
+
     if (data.activo !== undefined) {
       dto.Activo = data.activo;
     }
-    
+
     if (data.esPlanificada !== undefined) {
       dto.EsPlanificada = data.esPlanificada;
     }
-    
+
     if (data.idCapacidadInstalada !== undefined && data.idCapacidadInstalada !== null && data.idCapacidadInstalada > 0) {
       dto.IdCapacidadInstalada = data.idCapacidadInstalada;
     }
-    
+
     if (data.idDocenteOrganizador !== undefined && data.idDocenteOrganizador !== null) {
       dto.IdDocenteOrganizador = data.idDocenteOrganizador;
     }
@@ -319,13 +367,28 @@ export class SubactividadService {
       dto.IdEstadoActividad = data.idEstadoActividad;
     }
 
-    if (data.idTipoProtagonista !== undefined && data.idTipoProtagonista !== null) {
-      // El backend espera un int? (nullable int), no un array
-      // Si es un array, tomar el primer elemento; si es un número, usarlo directamente
+    // IdTiposProtagonistas - el backend espera List<int>? (array)
+    if (data.idTiposProtagonistas && Array.isArray(data.idTiposProtagonistas) && data.idTiposProtagonistas.length > 0) {
+      const idsValidos = data.idTiposProtagonistas
+        .map((id: number) => Number(id))
+        .filter((id: number) => !isNaN(id) && id > 0);
+      if (idsValidos.length > 0) {
+        dto.IdTiposProtagonistas = idsValidos;
+      }
+    } else if (data.idTipoProtagonista !== undefined && data.idTipoProtagonista !== null) {
+      // Legacy: si viene idTipoProtagonista, convertirlo a array
       if (Array.isArray(data.idTipoProtagonista) && data.idTipoProtagonista.length > 0) {
-        dto.IdTipoProtagonista = data.idTipoProtagonista[0];
+        const idsValidos = data.idTipoProtagonista
+          .map((id: number) => Number(id))
+          .filter((id: number) => !isNaN(id) && id > 0);
+        if (idsValidos.length > 0) {
+          dto.IdTiposProtagonistas = idsValidos;
+        }
       } else if (!Array.isArray(data.idTipoProtagonista)) {
-        dto.IdTipoProtagonista = data.idTipoProtagonista;
+        const idNum = Number(data.idTipoProtagonista);
+        if (!isNaN(idNum) && idNum > 0) {
+          dto.IdTiposProtagonistas = [idNum];
+        }
       }
     }
 
@@ -567,14 +630,26 @@ export class SubactividadService {
       'item.HoraRealizacion': item.HoraRealizacion,
       'item.idCapacidadInstalada': item.idCapacidadInstalada,
       'item.IdCapacidadInstalada': item.IdCapacidadInstalada,
+      'item.departamentoResponsableId': item.departamentoResponsableId,
+      'item.DepartamentoResponsableId': item.DepartamentoResponsableId,
+      'item.idDepartamentosResponsables': item.idDepartamentosResponsables,
+      'item.IdDepartamentosResponsables': item.IdDepartamentosResponsables,
       'item.idTipoProtagonista': item.idTipoProtagonista,
       'item.IdTipoProtagonista': item.IdTipoProtagonista,
+      'item.idTiposProtagonistas': item.idTiposProtagonistas,
+      'item.IdTiposProtagonistas': item.IdTiposProtagonistas,
       'item.idTipoEvidencias': item.idTipoEvidencias,
       'item.IdTipoEvidencias': item.IdTipoEvidencias,
       'item.idTipoEvidencias (array)': Array.isArray(item.idTipoEvidencias) ? item.idTipoEvidencias : 'no es array',
       'item.IdTipoEvidencias (array)': Array.isArray(item.IdTipoEvidencias) ? item.IdTipoEvidencias : 'no es array',
       'item.cantidadTotalParticipantesProtagonistas': item.cantidadTotalParticipantesProtagonistas,
       'item.CantidadTotalParticipantesProtagonistas': item.CantidadTotalParticipantesProtagonistas,
+      'item.organizador': item.organizador,
+      'item.Organizador': item.Organizador,
+      'item.ubicacion': item.ubicacion,
+      'item.Ubicacion': item.Ubicacion,
+      'item.cantidadParticipantesEstudiantesProyectados': item.cantidadParticipantesEstudiantesProyectados,
+      'item.CantidadParticipantesEstudiantesProyectados': item.CantidadParticipantesEstudiantesProyectados,
       'Todas las claves del objeto': Object.keys(item)
     });
     
@@ -588,7 +663,39 @@ export class SubactividadService {
       nombreTipoSubactividad: item.nombreTipoSubactividad || item.NombreTipoSubactividad,
       fechaInicio: item.fechaInicio || item.FechaInicio,
       fechaFin: item.fechaFin || item.FechaFin,
-      departamentoResponsableId: item.departamentoResponsableId || item.DepartamentoResponsableId,
+      departamentoResponsableId: (() => {
+        // Intentar obtener en diferentes formatos
+        if (item.idDepartamentosResponsables && Array.isArray(item.idDepartamentosResponsables) && item.idDepartamentosResponsables.length > 0) {
+          return item.idDepartamentosResponsables;
+        }
+        if (item.IdDepartamentosResponsables && Array.isArray(item.IdDepartamentosResponsables) && item.IdDepartamentosResponsables.length > 0) {
+          return item.IdDepartamentosResponsables;
+        }
+        if (item.departamentoResponsableId !== undefined && item.departamentoResponsableId !== null) {
+          return item.departamentoResponsableId;
+        }
+        if (item.DepartamentoResponsableId !== undefined && item.DepartamentoResponsableId !== null) {
+          return item.DepartamentoResponsableId;
+        }
+        return undefined;
+      })(),
+      idDepartamentosResponsables: (() => {
+        // Intentar obtener en diferentes formatos
+        if (item.idDepartamentosResponsables && Array.isArray(item.idDepartamentosResponsables)) {
+          return item.idDepartamentosResponsables;
+        }
+        if (item.IdDepartamentosResponsables && Array.isArray(item.IdDepartamentosResponsables)) {
+          return item.IdDepartamentosResponsables;
+        }
+        // Si viene como singular, convertirlo a array
+        if (item.departamentoResponsableId !== undefined && item.departamentoResponsableId !== null) {
+          return Array.isArray(item.departamentoResponsableId) ? item.departamentoResponsableId : [item.departamentoResponsableId];
+        }
+        if (item.DepartamentoResponsableId !== undefined && item.DepartamentoResponsableId !== null) {
+          return Array.isArray(item.DepartamentoResponsableId) ? item.DepartamentoResponsableId : [item.DepartamentoResponsableId];
+        }
+        return undefined;
+      })(),
       nombreDepartamentoResponsable: item.nombreDepartamentoResponsable || item.NombreDepartamentoResponsable,
       ubicacion: item.ubicacion || item.Ubicacion,
       modalidad: item.modalidad || item.Modalidad,
@@ -609,7 +716,39 @@ export class SubactividadService {
       idIndicador: item.idIndicador !== undefined && item.idIndicador !== null ? item.idIndicador : (item.IdIndicador !== undefined && item.IdIndicador !== null ? item.IdIndicador : undefined),
       idActividadAnual: item.idActividadAnual !== undefined && item.idActividadAnual !== null ? item.idActividadAnual : (item.IdActividadAnual !== undefined && item.IdActividadAnual !== null ? item.IdActividadAnual : undefined),
       idActividadMensualInst: item.idActividadMensualInst !== undefined && item.idActividadMensualInst !== null ? item.idActividadMensualInst : (item.IdActividadMensualInst !== undefined && item.IdActividadMensualInst !== null ? item.IdActividadMensualInst : undefined),
-      idTipoProtagonista: item.idTipoProtagonista !== undefined && item.idTipoProtagonista !== null ? item.idTipoProtagonista : (item.IdTipoProtagonista !== undefined && item.IdTipoProtagonista !== null ? item.IdTipoProtagonista : undefined),
+      idTipoProtagonista: (() => {
+        // Intentar obtener en diferentes formatos
+        if (item.idTiposProtagonistas && Array.isArray(item.idTiposProtagonistas) && item.idTiposProtagonistas.length > 0) {
+          return item.idTiposProtagonistas;
+        }
+        if (item.IdTiposProtagonistas && Array.isArray(item.IdTiposProtagonistas) && item.IdTiposProtagonistas.length > 0) {
+          return item.IdTiposProtagonistas;
+        }
+        if (item.idTipoProtagonista !== undefined && item.idTipoProtagonista !== null) {
+          return item.idTipoProtagonista;
+        }
+        if (item.IdTipoProtagonista !== undefined && item.IdTipoProtagonista !== null) {
+          return item.IdTipoProtagonista;
+        }
+        return undefined;
+      })(),
+      idTiposProtagonistas: (() => {
+        // Intentar obtener en diferentes formatos
+        if (item.idTiposProtagonistas && Array.isArray(item.idTiposProtagonistas)) {
+          return item.idTiposProtagonistas;
+        }
+        if (item.IdTiposProtagonistas && Array.isArray(item.IdTiposProtagonistas)) {
+          return item.IdTiposProtagonistas;
+        }
+        // Si viene como singular, convertirlo a array
+        if (item.idTipoProtagonista !== undefined && item.idTipoProtagonista !== null) {
+          return Array.isArray(item.idTipoProtagonista) ? item.idTipoProtagonista : [item.idTipoProtagonista];
+        }
+        if (item.IdTipoProtagonista !== undefined && item.IdTipoProtagonista !== null) {
+          return Array.isArray(item.IdTipoProtagonista) ? item.IdTipoProtagonista : [item.IdTipoProtagonista];
+        }
+        return undefined;
+      })(),
       idTipoEvidencias: (() => {
         // Intentar obtener idTipoEvidencias en diferentes formatos
         if (item.idTipoEvidencias !== undefined && item.idTipoEvidencias !== null) {
@@ -644,7 +783,11 @@ export class SubactividadService {
       idCapacidadInstalada: mapped.idCapacidadInstalada,
       idTipoProtagonista: mapped.idTipoProtagonista,
       idTipoEvidencias: mapped.idTipoEvidencias,
-      cantidadTotalParticipantesProtagonistas: mapped.cantidadTotalParticipantesProtagonistas
+      cantidadTotalParticipantesProtagonistas: mapped.cantidadTotalParticipantesProtagonistas,
+      organizador: mapped.organizador,
+      ubicacion: mapped.ubicacion,
+      cantidadParticipantesEstudiantesProyectados: mapped.cantidadParticipantesEstudiantesProyectados,
+      cantidadParticipantesProyectados: mapped.cantidadParticipantesProyectados
     });
     
     return mapped;

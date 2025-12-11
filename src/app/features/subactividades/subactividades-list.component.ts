@@ -8,6 +8,7 @@ import type { Subactividad } from '../../core/models/subactividad';
 import type { Actividad } from '../../core/models/actividad';
 import type { TipoSubactividad } from '../../core/models/catalogos-nuevos';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { CalendarEvent, CalendarView } from 'angular-calendar';
 import { CalendarModule, CalendarUtils, CalendarDateFormatter, CalendarA11y, CalendarEventTitleFormatter, DateAdapter } from 'angular-calendar';
@@ -57,6 +58,7 @@ class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
     CommonModule, 
     RouterModule, 
     IconComponent, 
+    SkeletonCardComponent,
     ...BrnButtonImports,
     CalendarModule,
     EvidenciaFormComponent
@@ -115,6 +117,9 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
   // Modal de evidencia
   showEvidenciaModal = signal(false);
   subactividadParaEvidencia = signal<Subactividad | null>(null);
+  
+  // Dropdown de nueva subactividad
+  mostrarDropdownSubactividad = signal(false);
 
   // Subactividades filtradas por búsqueda
   subactividadesFiltradas = computed(() => {
@@ -369,7 +374,21 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
     this.loadSubactividades();
   }
 
+  toggleDropdownSubactividad(): void {
+    this.mostrarDropdownSubactividad.set(!this.mostrarDropdownSubactividad());
+  }
+
+  seleccionarTipoSubactividad(tipo: 'anual' | 'mensual' | 'planificada' | 'no-planificada'): void {
+    this.mostrarDropdownSubactividad.set(false);
+    
+    // Navegar a la ruta de nueva subactividad con el tipo como query param
+    this.router.navigate(['/subactividades/nueva'], {
+      queryParams: { tipo: tipo }
+    });
+  }
+
   navigateToCreate(): void {
+    this.mostrarDropdownSubactividad.set(false);
     this.router.navigate(['/subactividades/nueva']);
   }
 
@@ -505,5 +524,13 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
     }
     
     return null;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.dropdown-subactividad')) {
+      this.mostrarDropdownSubactividad.set(false);
+    }
   }
 }

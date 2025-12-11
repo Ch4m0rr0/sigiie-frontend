@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, ElementRef, inject, signal, computed, NgZone, ChangeDetectorRef, effect } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ElementRef, inject, signal, computed, NgZone, ChangeDetectorRef, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { IconComponent } from '../../../shared/icon/icon.component';
@@ -53,6 +53,7 @@ class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
   standalone: true,
   selector: 'app-calendar-section',
   imports: [CommonModule, IconComponent, CalendarModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     CalendarUtils,
     {
@@ -69,7 +70,116 @@ class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
       useFactory: adapterFactory,
     },
   ],
-  templateUrl: './calendar-section.component.html'
+  templateUrl: './calendar-section.component.html',
+  styles: [`
+    /* Prevenir layout shifts en el calendario */
+    .calendar-container {
+      min-height: 700px;
+      height: auto;
+      contain: layout style;
+    }
+    
+    .calendar-month-view {
+      min-height: 700px;
+      height: auto;
+      contain: layout style;
+    }
+    
+    /* Estabilizar la tabla del calendario */
+    .cal-month-view {
+      table-layout: fixed;
+      width: 100%;
+    }
+    
+    .cal-month-view .cal-days {
+      table-layout: fixed;
+    }
+    
+    /* Estabilizar eventos del calendario */
+    .cal-event {
+      contain: layout style paint;
+      will-change: transform;
+      transform: translateZ(0);
+      min-height: 22px;
+      height: auto;
+      margin-bottom: 2px;
+      display: block;
+      position: relative;
+    }
+    
+    /* Estabilizar el contenido del evento */
+    .cal-event-title {
+      min-height: 18px;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .cal-day-cell {
+      min-height: 180px;
+      height: auto;
+      contain: layout style;
+      position: relative;
+      padding-bottom: 8px;
+      padding-top: 4px;
+    }
+    
+    /* Prevenir shifts en celdas del calendario */
+    mwl-calendar-month-cell {
+      min-height: 180px;
+      height: auto;
+      contain: layout style;
+      position: relative;
+      padding-bottom: 8px;
+      padding-top: 4px;
+    }
+    
+    /* Reservar espacio para eventos antes de que se agreguen */
+    .cal-day-cell .cal-events {
+      min-height: 80px;
+      position: relative;
+      padding: 4px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    /* Asegurar que cada evento tenga espacio reservado */
+    .cal-day-cell .cal-event {
+      min-height: 22px;
+      height: auto;
+      flex-shrink: 0;
+    }
+    
+    /* Reservar espacio para badges antes de que se agreguen */
+    .cal-day-cell::before {
+      content: '';
+      display: block;
+      height: 20px;
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      opacity: 0;
+    }
+    
+    /* Estabilizar badges cuando se agregan */
+    .activity-code-badge-inline {
+      position: absolute;
+      will-change: transform;
+      transform: translateZ(0);
+      contain: layout style paint;
+    }
+    
+    /* Prevenir shifts en tooltips */
+    .calendar-event-tooltip {
+      will-change: transform;
+      transform: translateZ(0);
+      contain: layout style paint;
+    }
+  `]
 })
 export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestroy {
   private actividadesService = inject(ActividadesService);
@@ -133,6 +243,11 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
   eventoHovered: CalendarEvent | null = null;
   hoverPosition = signal<{ x: number; y: number } | null>(null);
   hoverTimeout: any = null;
+  
+  // Mapas para búsquedas O(1) en lugar de O(n) - optimización de rendimiento
+  private eventosPorCodigo?: Map<string, CalendarEvent>;
+  private eventosPorId?: Map<string, CalendarEvent>;
+  private eventosPorTitulo?: Map<string, CalendarEvent>;
 
   ngOnInit() {
     this.loadEstadosActividad();
@@ -143,24 +258,30 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
     effect(() => {
       // Acceder a los eventos filtrados para que el efecto se active cuando cambien
       const eventos = this.eventosCalendarioFiltrados();
-      // Regenerar badges después de que Angular actualice el DOM
+      // Optimización CLS: Diferir regeneración de badges usando requestAnimationFrame doble
+      // para asegurar que el layout esté completamente estable antes de manipular el DOM
       if (eventos.length > 0) {
-        setTimeout(() => {
-          this.agregarBadgesCodigo();
-          this.agregarPuntosColorEstado();
-          this.agregarSombreadoRangos();
-        }, 300);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.agregarBadgesCodigo();
+            this.agregarPuntosColorEstado();
+            this.agregarSombreadoRangos();
+          });
+        });
       }
     });
   }
 
   ngAfterViewInit(): void {
-    setTimeout(() => {
-      this.attachEventListeners();
-      this.agregarPuntosColorEstado();
-      this.agregarBadgesCodigo();
-      this.agregarSombreadoRangos();
-    }, 500);
+    // Optimización CLS: Usar requestAnimationFrame doble para asegurar que el layout esté estable
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.attachEventListeners();
+        this.agregarPuntosColorEstado();
+        this.agregarBadgesCodigo();
+        this.agregarSombreadoRangos();
+      });
+    });
   }
 
   ngOnDestroy(): void {
@@ -195,59 +316,72 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
   
-  // Limpiar filtros del calendario
+  // Limpiar filtros del calendario - Optimizado para INP
   limpiarFiltrosCalendario(): void {
+    // Actualizar estado inmediatamente
     this.filtroCalendarioEstado.set(null);
     this.filtroCalendarioTipo.set(null);
     this.filtroCalendarioMostrarSolo.set('todos');
-    // Regenerar badges después de limpiar filtros
-    setTimeout(() => {
-      this.agregarBadgesCodigo();
-      this.agregarPuntosColorEstado();
-      this.agregarSombreadoRangos();
-    }, 300);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.agregarBadgesCodigo();
+        this.agregarPuntosColorEstado();
+        this.agregarSombreadoRangos();
+      }, 300);
+    });
   }
 
-  // Toggle para mostrar/ocultar filtros
+  // Toggle para mostrar/ocultar filtros - Optimizado para INP
   toggleFiltrosCalendario(): void {
+    // Actualizar estado inmediatamente, sin trabajo pesado
     this.mostrarFiltrosCalendario.update(v => !v);
   }
 
-  // Métodos helper para el template
+  // Métodos helper para el template - Optimizados para INP
   onFiltroEstadoChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const value = target.value;
+    // Actualizar estado inmediatamente
     this.filtroCalendarioEstado.set(value ? Number(value) : null);
-    // Regenerar badges después de que el filtro cambie
-    setTimeout(() => {
-      this.agregarBadgesCodigo();
-      this.agregarPuntosColorEstado();
-      this.agregarSombreadoRangos();
-    }, 300);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.agregarBadgesCodigo();
+        this.agregarPuntosColorEstado();
+        this.agregarSombreadoRangos();
+      }, 300);
+    });
   }
 
   onFiltroTipoChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const value = target.value;
+    // Actualizar estado inmediatamente
     this.filtroCalendarioTipo.set(value ? Number(value) : null);
-    // Regenerar badges después de que el filtro cambie
-    setTimeout(() => {
-      this.agregarBadgesCodigo();
-      this.agregarPuntosColorEstado();
-      this.agregarSombreadoRangos();
-    }, 300);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.agregarBadgesCodigo();
+        this.agregarPuntosColorEstado();
+        this.agregarSombreadoRangos();
+      }, 300);
+    });
   }
 
   onFiltroMostrarSoloChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const value = target.value as 'todos' | 'actividades' | 'subactividades';
+    // Actualizar estado inmediatamente
     this.filtroCalendarioMostrarSolo.set(value);
-    // Regenerar badges después de que el filtro cambie y el DOM se actualice
-    setTimeout(() => {
-      this.agregarBadgesCodigo();
-      this.agregarPuntosColorEstado();
-      this.agregarSombreadoRangos();
-    }, 300);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.agregarBadgesCodigo();
+        this.agregarPuntosColorEstado();
+        this.agregarSombreadoRangos();
+      }, 300);
+    });
   }
 
   // Cargar eventos del calendario
@@ -476,6 +610,11 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
     const todosLosEventos = [...eventosActividades, ...eventosSubactividades];
     this.eventosCalendario.set(todosLosEventos);
     
+    // Limpiar mapas de caché cuando se actualizan los eventos
+    this.eventosPorCodigo = undefined;
+    this.eventosPorId = undefined;
+    this.eventosPorTitulo = undefined;
+    
     setTimeout(() => {
       this.attachEventListeners();
       this.agregarPuntosColorEstado();
@@ -486,6 +625,7 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
 
   // Métodos para navegar el calendario
   cambiarMes(direccion: 'anterior' | 'siguiente'): void {
+    // Optimización INP: Actualizar estado inmediatamente, diferir trabajo pesado
     const nuevaFecha = new Date(this.viewDate);
     if (direccion === 'anterior') {
       nuevaFecha.setMonth(nuevaFecha.getMonth() - 1);
@@ -493,56 +633,66 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
       nuevaFecha.setMonth(nuevaFecha.getMonth() + 1);
     }
     this.viewDate = nuevaFecha;
-    setTimeout(() => {
-      this.attachEventListeners();
-      this.agregarPuntosColorEstado();
-      this.agregarBadgesCodigo();
-      this.agregarSombreadoRangos();
-    }, 500);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.attachEventListeners();
+        this.agregarPuntosColorEstado();
+        this.agregarBadgesCodigo();
+        this.agregarSombreadoRangos();
+      }, 500);
+    });
   }
 
   irAHoy(): void {
+    // Optimización INP: Actualizar estado inmediatamente, diferir trabajo pesado
     this.viewDate = new Date();
-    setTimeout(() => {
-      this.attachEventListeners();
-      this.agregarPuntosColorEstado();
-      this.agregarBadgesCodigo();
-      this.agregarSombreadoRangos();
-    }, 500);
+    // Diferir trabajo pesado usando requestAnimationFrame
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        this.attachEventListeners();
+        this.agregarPuntosColorEstado();
+        this.agregarBadgesCodigo();
+        this.agregarSombreadoRangos();
+      }, 500);
+    });
   }
 
   eventoClicked({ event }: { event: CalendarEvent }): void {
+    // Optimización INP: Diferir navegación para no bloquear el hilo principal
     const meta = event.meta as any;
     
-    // Navegar a detalles de actividad
-    if (meta?.actividad && meta.actividad.id) {
-      this.router.navigate(['/actividades', meta.actividad.id]);
-      return;
-    }
-    
-    // Navegar a detalles de subactividad
-    if (meta?.subactividad && meta.subactividad.idSubactividad) {
-      this.router.navigate(['/subactividades', meta.subactividad.idSubactividad]);
-      return;
-    }
-    
-    // Fallback: intentar obtener el ID del evento
-    if (event.id) {
-      const eventId = String(event.id);
-      if (eventId.startsWith('actividad-')) {
-        const id = parseInt(eventId.replace('actividad-', ''), 10);
-        if (!isNaN(id)) {
-          this.router.navigate(['/actividades', id]);
-          return;
-        }
-      } else if (eventId.startsWith('subactividad-')) {
-        const id = parseInt(eventId.replace('subactividad-', ''), 10);
-        if (!isNaN(id)) {
-          this.router.navigate(['/subactividades', id]);
-          return;
+    requestAnimationFrame(() => {
+      // Navegar a detalles de actividad
+      if (meta?.actividad && meta.actividad.id) {
+        this.router.navigate(['/actividades', meta.actividad.id]);
+        return;
+      }
+      
+      // Navegar a detalles de subactividad
+      if (meta?.subactividad && meta.subactividad.idSubactividad) {
+        this.router.navigate(['/subactividades', meta.subactividad.idSubactividad]);
+        return;
+      }
+      
+      // Fallback: intentar obtener el ID del evento
+      if (event.id) {
+        const eventId = String(event.id);
+        if (eventId.startsWith('actividad-')) {
+          const id = parseInt(eventId.replace('actividad-', ''), 10);
+          if (!isNaN(id)) {
+            this.router.navigate(['/actividades', id]);
+            return;
+          }
+        } else if (eventId.startsWith('subactividad-')) {
+          const id = parseInt(eventId.replace('subactividad-', ''), 10);
+          if (!isNaN(id)) {
+            this.router.navigate(['/subactividades', id]);
+            return;
+          }
         }
       }
-    }
+    });
   }
 
   getEstadoColor(estado: any): string {
@@ -595,21 +745,28 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   agregarBadgesCodigo(): void {
+    // Optimización CLS: Diferir toda la manipulación del DOM usando requestAnimationFrame
     this.ngZone.runOutsideAngular(() => {
-      // Primero limpiar todos los badges existentes
-      this.limpiarBadgesExistentes();
-      
-      const dayCells = this.obtenerCeldasCalendario();
-      if (!dayCells || dayCells.length === 0) {
-        setTimeout(() => {
-          const retryCells = this.obtenerCeldasCalendario();
-          if (retryCells && retryCells.length > 0) {
-            this.agregarBadgesCodigoEnCeldas(retryCells);
+      requestAnimationFrame(() => {
+        // Primero limpiar todos los badges existentes
+        this.limpiarBadgesExistentes();
+        
+        // Esperar un frame adicional para que el layout se estabilice después de limpiar
+        requestAnimationFrame(() => {
+          const dayCells = this.obtenerCeldasCalendario();
+          if (!dayCells || dayCells.length === 0) {
+            // Si no hay celdas, reintentar después de un frame adicional
+            requestAnimationFrame(() => {
+              const retryCells = this.obtenerCeldasCalendario();
+              if (retryCells && retryCells.length > 0) {
+                this.agregarBadgesCodigoEnCeldas(retryCells);
+              }
+            });
+            return;
           }
-        }, 200);
-        return;
-      }
-      this.agregarBadgesCodigoEnCeldas(dayCells);
+          this.agregarBadgesCodigoEnCeldas(dayCells);
+        });
+      });
     });
   }
 
@@ -632,6 +789,14 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
   private agregarBadgesCodigoEnCeldas(dayCells: NodeListOf<HTMLElement>): void {
     const eventos = this.eventosCalendarioFiltrados();
     if (eventos.length === 0) return;
+    
+    // Optimización CLS: Usar requestAnimationFrame para agregar todos los badges en un solo frame
+    requestAnimationFrame(() => {
+      this.agregarBadgesCodigoEnCeldasSync(dayCells, eventos);
+    });
+  }
+  
+  private agregarBadgesCodigoEnCeldasSync(dayCells: NodeListOf<HTMLElement>, eventos: CalendarEvent[]): void {
     
     const eventosPorFecha = new Map<string, CalendarEvent[]>();
     eventos.forEach(evento => {
@@ -819,7 +984,8 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
           if (eventoEncontrado) {
             const dataEventId = eventoEncontrado.getAttribute('data-event-id');
             if (!dataEventId || dataEventId === String(evento.id)) {
-              this.agregarBadgeAElemento(eventoEncontrado, codigo, evento.id);
+              // Ya estamos dentro de requestAnimationFrame, agregar directamente
+              this.agregarBadgeAElementoSync(eventoEncontrado, codigo, evento.id);
             }
           }
         }
@@ -827,21 +993,19 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
     });
   }
 
-  private agregarBadgeAElemento(eventEl: HTMLElement, codigo: string, eventoId?: string | number): void {
+  private agregarBadgeAElementoSync(eventEl: HTMLElement, codigo: string, eventoId?: string | number): void {
     if (!eventEl.parentNode) return;
     
     // Verificar si ya existe un badge con este código
     const existingBadge = eventEl.querySelector('.activity-code-badge-inline');
     if (existingBadge) {
       const codigoExistente = existingBadge.textContent?.trim();
-      // Si el badge existente tiene el mismo código, no hacer nada
       if (codigoExistente === codigo) {
         if (eventoId) {
           eventEl.setAttribute('data-event-id', String(eventoId));
         }
         return;
       }
-      // Si tiene un código diferente, removerlo
       try {
         existingBadge.remove();
       } catch (e) {
@@ -849,25 +1013,19 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
       }
     }
     
-    // Verificar si el código ya está en el título como texto (no como badge)
     const titleElement = eventEl.querySelector('.cal-event-title') as HTMLElement;
-    const textoCompleto = titleElement ? titleElement.textContent || '' : eventEl.textContent || '';
-    
-    // Si el código ya está visible en el título como parte del texto, aún así agregar el badge
-    // para mantener consistencia visual con las actividades
     
     const badge = document.createElement('span');
     badge.className = 'activity-code-badge-inline';
-    badge.style.cssText = 'margin-left: 0.5rem; padding: 0.125rem 0.375rem; font-size: 0.625rem; font-family: monospace; font-weight: 600; background-color: rgba(255, 255, 255, 0.9); color: #334155; border-radius: 0.25rem; border: 1px solid rgba(203, 213, 225, 0.8); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); white-space: nowrap; display: inline-block; vertical-align: middle;';
+    // Optimización CLS: Usar will-change y transform para forzar composición de capas y evitar layout shifts
+    badge.style.cssText = 'margin-left: 0.5rem; padding: 0.125rem 0.375rem; font-size: 0.625rem; font-family: monospace; font-weight: 600; background-color: rgba(255, 255, 255, 0.9); color: #334155; border-radius: 0.25rem; border: 1px solid rgba(203, 213, 225, 0.8); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); white-space: nowrap; display: inline-block; vertical-align: middle; will-change: transform; transform: translateZ(0); contain: layout style paint;';
     badge.textContent = codigo;
     badge.title = `Código: ${codigo}`;
     
     try {
       if (titleElement && titleElement.parentNode) {
-        // Agregar el badge al final del título
         titleElement.appendChild(badge);
       } else if (eventEl.parentNode) {
-        // Si no hay elemento de título, agregar al evento directamente
         eventEl.appendChild(badge);
       }
     } catch (e) {
@@ -878,6 +1036,11 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
     if (eventoId) {
       eventEl.setAttribute('data-event-id', String(eventoId));
     }
+  }
+  
+  private agregarBadgeAElemento(eventEl: HTMLElement, codigo: string, eventoId?: string | number): void {
+    // Wrapper para mantener compatibilidad, pero usar sync directamente
+    this.agregarBadgeAElementoSync(eventEl, codigo, eventoId);
   }
 
   obtenerFechaDeCelda(cell: HTMLElement): Date | null {
@@ -914,73 +1077,94 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
             this.hoverTimeout = null;
           }
           
-          let eventElementFound: HTMLElement | null = target;
-          while (eventElementFound && !eventElementFound.classList.contains('cal-event')) {
-            eventElementFound = eventElementFound.parentElement;
-          }
-          if (!eventElementFound) {
-            eventElementFound = target;
-          }
-          
-          let evento: CalendarEvent | undefined;
-          
-          if (target.classList.contains('activity-code-badge-inline')) {
-            const codigoBadge = target.textContent?.trim() || '';
-            if (codigoBadge) {
-              evento = this.eventosCalendario().find(ev => {
+          // Optimización: Usar requestAnimationFrame para diferir el trabajo pesado
+          requestAnimationFrame(() => {
+            let eventElementFound: HTMLElement | null = target;
+            while (eventElementFound && !eventElementFound.classList.contains('cal-event')) {
+              eventElementFound = eventElementFound.parentElement;
+            }
+            if (!eventElementFound) {
+              eventElementFound = target;
+            }
+            
+            let evento: CalendarEvent | undefined;
+            const eventos = this.eventosCalendario(); // Cachear la referencia
+            
+            // Crear mapas de búsqueda O(1) si no existen
+            if (!this.eventosPorCodigo) {
+              this.eventosPorCodigo = new Map();
+              eventos.forEach(ev => {
                 const meta = ev.meta as any;
                 const codigo = meta?.codigoActividad || meta?.codigoSubactividad || meta?.actividad?.codigoActividad || meta?.subactividad?.codigoSubactividad;
-                return codigo === codigoBadge;
+                if (codigo) {
+                  this.eventosPorCodigo!.set(codigo, ev);
+                }
               });
             }
-          }
-          
-          if (!evento) {
-            const badge = eventElementFound.querySelector('.activity-code-badge-inline');
-            if (badge) {
-              const codigoBadge = badge.textContent?.trim() || '';
+            
+            if (target.classList.contains('activity-code-badge-inline')) {
+              const codigoBadge = target.textContent?.trim() || '';
               if (codigoBadge) {
-                evento = this.eventosCalendario().find(ev => {
-                  const meta = ev.meta as any;
-                  const codigo = meta?.codigoActividad || meta?.codigoSubactividad || meta?.actividad?.codigoActividad || meta?.subactividad?.codigoSubactividad;
-                  return codigo === codigoBadge;
-                });
+                evento = this.eventosPorCodigo!.get(codigoBadge);
               }
             }
-          }
-          
-          if (!evento) {
-            const eventId = eventElementFound.getAttribute('data-event-id');
-            if (eventId) {
-              evento = this.eventosCalendario().find(ev => String(ev.id) === eventId);
+            
+            if (!evento) {
+              const badge = eventElementFound.querySelector('.activity-code-badge-inline');
+              if (badge) {
+                const codigoBadge = badge.textContent?.trim() || '';
+                if (codigoBadge) {
+                  evento = this.eventosPorCodigo!.get(codigoBadge);
+                }
+              }
             }
-          }
-          
-          if (!evento) {
-            const titleElement = eventElementFound.querySelector('.cal-event-title');
-            let titulo = titleElement ? titleElement.textContent?.trim() : eventElementFound.textContent?.trim() || '';
-            titulo = titulo.replace(/[A-Z0-9]+-\d{4}/g, '').trim();
-            if (titulo) {
-              evento = this.eventosCalendario().find(ev => {
-                if (ev.title === titulo) return true;
-                const actividad = (ev.meta as any)?.actividad;
-                const subactividad = (ev.meta as any)?.subactividad;
-                if (actividad?.nombre === titulo || actividad?.nombreActividad === titulo) return true;
-                if (subactividad?.nombre === titulo || subactividad?.nombreSubactividad === titulo) return true;
-                return false;
+            
+            if (!evento) {
+              const eventId = eventElementFound.getAttribute('data-event-id');
+              if (eventId) {
+                if (!this.eventosPorId) {
+                  this.eventosPorId = new Map();
+                  eventos.forEach(ev => {
+                    this.eventosPorId!.set(String(ev.id), ev);
+                  });
+                }
+                evento = this.eventosPorId!.get(eventId);
+              }
+            }
+            
+            if (!evento) {
+              const titleElement = eventElementFound.querySelector('.cal-event-title');
+              let titulo = titleElement ? titleElement.textContent?.trim() : eventElementFound.textContent?.trim() || '';
+              titulo = titulo.replace(/[A-Z0-9]+-\d{4}/g, '').trim();
+              if (titulo) {
+                if (!this.eventosPorTitulo) {
+                  this.eventosPorTitulo = new Map();
+                  eventos.forEach(ev => {
+                    const tituloEv = ev.title;
+                    if (tituloEv) this.eventosPorTitulo!.set(tituloEv, ev);
+                    const actividad = (ev.meta as any)?.actividad;
+                    const subactividad = (ev.meta as any)?.subactividad;
+                    if (actividad?.nombre) this.eventosPorTitulo!.set(actividad.nombre, ev);
+                    if (actividad?.nombreActividad) this.eventosPorTitulo!.set(actividad.nombreActividad, ev);
+                    if (subactividad?.nombre) this.eventosPorTitulo!.set(subactividad.nombre, ev);
+                    if (subactividad?.nombreSubactividad) this.eventosPorTitulo!.set(subactividad.nombreSubactividad, ev);
+                  });
+                }
+                evento = this.eventosPorTitulo!.get(titulo);
+              }
+            }
+            
+            if (evento) {
+              this.ngZone.run(() => {
+                this.eventoHovered = evento!;
+                this.hoverPosition.set({
+                  x: mouseEvent.clientX,
+                  y: mouseEvent.clientY
+                });
+                this.cdr.markForCheck();
               });
             }
-          }
-          
-          if (evento) {
-            this.ngZone.run(() => {
-              this.eventoHovered = evento!;
-              this.hoverPosition.set({
-                x: mouseEvent.clientX,
-                y: mouseEvent.clientY
-              });
-            });
-          }
+          });
         });
         
         eventElement.addEventListener('mouseleave', (e: Event) => {
@@ -1141,17 +1325,22 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   agregarSombreadoRangos(): void {
-    const dayCells = this.obtenerCeldasCalendario();
-    if (!dayCells || dayCells.length === 0) {
-      setTimeout(() => {
-        const retryCells = this.obtenerCeldasCalendario();
-        if (retryCells && retryCells.length > 0) {
-          this.agregarSombreadoRangosEnCeldas(retryCells);
+    // Optimización CLS: Diferir manipulación del DOM usando requestAnimationFrame
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        const dayCells = this.obtenerCeldasCalendario();
+        if (!dayCells || dayCells.length === 0) {
+          requestAnimationFrame(() => {
+            const retryCells = this.obtenerCeldasCalendario();
+            if (retryCells && retryCells.length > 0) {
+              this.agregarSombreadoRangosEnCeldas(retryCells);
+            }
+          });
+          return;
         }
-      }, 200);
-      return;
-    }
-    this.agregarSombreadoRangosEnCeldas(dayCells);
+        this.agregarSombreadoRangosEnCeldas(dayCells);
+      });
+    });
   }
 
   private agregarSombreadoRangosEnCeldas(dayCells: NodeListOf<HTMLElement>): void {
@@ -1214,9 +1403,11 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   agregarPuntosColorEstado(): void {
+    // Optimización CLS: Diferir manipulación del DOM usando requestAnimationFrame
     this.ngZone.runOutsideAngular(() => {
-      const events = this.elementRef.nativeElement.querySelectorAll('.cal-event');
-      const eventos = this.eventosCalendario();
+      requestAnimationFrame(() => {
+        const events = this.elementRef.nativeElement.querySelectorAll('.cal-event');
+        const eventos = this.eventosCalendario();
       
       events.forEach((eventEl: HTMLElement) => {
         if (eventEl.querySelector('.estado-color-dot')) {
@@ -1293,6 +1484,7 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
             }
           }
         }
+      });
       });
     });
   }

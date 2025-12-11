@@ -103,8 +103,9 @@
 
   <!-- Loading State para Vista de Detalle -->
   @if (vistaDetalle() && loading()) {
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <div class="max-w-4xl mx-auto space-y-6">
+      <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+      <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
     </div>
   }
 
@@ -184,6 +185,9 @@
               <img 
                 [src]="previewUrls().get(evidencia.idEvidencia)!" 
                 alt="Evidencia"
+                loading="lazy"
+                width="300"
+                height="300"
                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300">
               @if (modoSeleccion() && isEvidenciaSeleccionada(evidencia.idEvidencia)) {
                 <div class="absolute inset-0 bg-blue-500 bg-opacity-20 border-2 border-blue-500"></div>
@@ -239,8 +243,10 @@
 
   <!-- Loading State para Resumen -->
   @if (!vistaDetalle() && loadingResumen()) {
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (i of [1,2,3,4,5,6]; track i) {
+        <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+      }
     </div>
   }
 </div>

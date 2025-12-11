@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { UsuariosService } from '../../core/services/usuarios.service';
 import type { Usuario } from '../../core/models/usuario';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonTableComponent } from '../../shared/skeleton/skeleton-table.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { finalize } from 'rxjs/operators';
 import { firstValueFrom } from 'rxjs';
@@ -12,7 +13,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   standalone: true,
   selector: 'app-list-usuarios',
-  imports: [CommonModule, FormsModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, FormsModule, RouterModule, IconComponent, SkeletonTableComponent, ...BrnButtonImports],
   templateUrl: './usuarios.component.html',
 })
 export class ListUsuariosComponent implements OnInit {

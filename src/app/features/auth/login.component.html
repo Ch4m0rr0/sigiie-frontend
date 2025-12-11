@@ -1,6 +1,14 @@
 <div class="flex h-screen items-center justify-center bg-gray-100 relative">
   <!-- Imagen de fondo con overlay -->
-  <img src="/assets/Fondo.png" alt="Fondo" class="absolute inset-0 w-full h-full object-cover z-0">
+  <img 
+    src="/assets/Fondo.png" 
+    alt="Fondo" 
+    class="absolute inset-0 w-full h-full object-cover z-0"
+    loading="eager"
+    fetchpriority="high"
+    width="1920"
+    height="1080"
+  >
   <div class="absolute inset-0 bg-black/40 z-0"></div>
 
   <!-- Loading Overlay -->
@@ -23,6 +31,10 @@
           src="/assets/UNAN-MANAGUA.png" 
           alt="Logo" 
           class="max-w-[200px] w-auto h-auto object-contain"
+          width="200"
+          height="200"
+          loading="eager"
+          fetchpriority="high"
         />
       </div>
       <p class="text-sm text-gray-500 mt-2">Ingresa tus credenciales por favor</p>

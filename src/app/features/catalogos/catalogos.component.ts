@@ -28,7 +28,10 @@ import type { ActividadMensualInst } from '../../core/models/actividad-mensual-i
 // Spartan UI
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
+
 import { PermisosService } from '../../core/services/permisos.service';
+
+import { SkeletonTableComponent } from '../../shared/skeleton/skeleton-table.component';
 
 type CatalogoType = 'departamentos' | 'generos' | 'estadoestudiantes' | 'estadoparticipaciones' | 'estadosproyecto' | 'categoriaparticipaciones' | 'categoriaactividades' | 'tiposactividad' | 'tiposunidad' | 'tiposiniciativas' | 'tiposinvestigaciones' | 'tiposdocumentos' | 'tiposdocumentosdivulgados' | 'tiposevidencia' | 'tiposprotagonista' | 'areasconocimiento' | 'estadosactividad' | 'nivelesactividad' | 'nivelesacademico' | 'rolesequipo' | 'rolesresponsable' | 'roles' | 'indicadores' | 'carreras' | 'actividades-anuales' | 'actividades-mensuales' | 'capacidadesinstaladas';
 
@@ -50,6 +53,7 @@ interface CatalogoItem {
     NgIf,
     FormsModule,
     ReactiveFormsModule,
+    SkeletonTableComponent,
     ...BrnButtonImports,
     ...BrnLabelImports,
   ],

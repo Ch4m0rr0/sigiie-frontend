@@ -3344,7 +3344,7 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             console.log('✅ Total de responsables cargados:', responsables.length);
             this.cargandoResponsables = false;
             setTimeout(() => {
-              this.cdr.detectChanges(); // Forzar detección de cambios después de un delay
+              this.cdr.markForCheck(); // Marcar para detección de cambios después de un delay
             }, 300);
           }, 300); // Esperar 300ms para que las listas de personas estén cargadas
         } else {

@@ -2,8 +2,14 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, OnDestroy, ViewChil
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Chart, ChartConfiguration, ChartType, registerables } from 'chart.js';
 
-// Registrar todos los componentes de Chart.js
-Chart.register(...registerables);
+// Lazy registration de Chart.js - solo se registra cuando se necesita (optimización LCP)
+let chartRegistered = false;
+function ensureChartRegistered() {
+  if (!chartRegistered) {
+    Chart.register(...registerables);
+    chartRegistered = true;
+  }
+}
 
 export interface ChartData {
   labels: string[];
@@ -88,6 +94,8 @@ export class ChartComponent implements OnInit, OnChanges, OnDestroy, AfterViewIn
 
   ngAfterViewInit() {
     if (this.isBrowser) {
+      // Lazy registration de Chart.js solo cuando se necesita renderizar
+      ensureChartRegistered();
       this.createChart();
     }
   }

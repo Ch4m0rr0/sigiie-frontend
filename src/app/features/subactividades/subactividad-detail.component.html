@@ -1,8 +1,9 @@
 <div class="h-full bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen p-6">
   <!-- Loading State -->
   @if (loading()) {
-    <div class="flex justify-center items-center h-64">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <div class="max-w-6xl mx-auto space-y-6">
+      <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
+      <app-skeleton-card [showHeader]="true" [showContent]="true" [showFooter]="false"></app-skeleton-card>
     </div>
   }
 
@@ -20,35 +21,55 @@
       <div class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 mb-6">
         <div class="flex items-start justify-between mb-4">
           <div class="flex-1">
-            <h1 class="text-3xl font-bold text-slate-900 mb-2">
-              {{ subactividad()!.nombre }}
-            </h1>
+            <div class="flex items-center gap-3 mb-3">
+              <button 
+                [routerLink]="['/subactividades']"
+                class="p-2 -ml-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors"
+                title="Regresar a subactividades">
+                <app-icon icon="arrow_back" size="sm"></app-icon>
+              </button>
+              <div class="flex-1">
+                <h1 class="text-3xl font-bold text-slate-900 mb-2">
+                  {{ subactividad()!.nombre }}
+                </h1>
+                <div class="flex items-center gap-2">
+                  @if (subactividad()!.codigoSubactividad) {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                      <app-icon icon="tag" size="xs" class="text-emerald-600"></app-icon>
+                      {{ subactividad()!.codigoSubactividad }}
+                    </span>
+                  }
+                  @if (subactividad()!.nombreTipoSubactividad) {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">
+                      <app-icon icon="category" size="xs" class="text-purple-600"></app-icon>
+                      {{ subactividad()!.nombreTipoSubactividad }}
+                    </span>
+                  }
+                  @if (subactividad()!.activo) {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">
+                      <app-icon icon="check_circle" size="xs" class="text-green-600"></app-icon>
+                      Activa
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
             @if (subactividad()!.nombreActividad) {
               <p class="text-slate-600 mb-2">
                 Actividad: <span class="font-semibold">{{ subactividad()!.nombreActividad }}</span>
               </p>
             }
-            @if (subactividad()!.nombreTipoSubactividad) {
-              <span class="inline-block px-3 py-1 text-sm font-medium bg-purple-100 text-purple-800 rounded-full">
-                {{ subactividad()!.nombreTipoSubactividad }}
-              </span>
-            }
-            @if (subactividad()!.activo) {
-              <span class="ml-2 inline-block px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">
-                Activa
-              </span>
-            }
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 ml-4">
             <button 
               (click)="navigateToEdit()"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
               <app-icon icon="edit" size="sm" color="white"></app-icon>
               Editar
             </button>
             <button 
               (click)="onDelete()"
-              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2">
+              class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center gap-2 shadow-sm hover:shadow-md">
               <app-icon icon="delete" size="sm" color="white"></app-icon>
               Eliminar
             </button>
@@ -146,34 +167,524 @@
         <div class="p-6">
           <!-- Tab: Información -->
           @if (activeTab() === 'info') {
-            <div class="space-y-4">
-              <div>
-                <h3 class="text-lg font-semibold text-slate-900 mb-2">Detalles de la subactividad</h3>
-                <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <dt class="text-sm font-medium text-slate-500">Fecha de creación</dt>
-                    <dd class="text-sm text-slate-900">
-                      {{ subactividad()!.fechaCreacion | date:'short' }}
-                    </dd>
+            <div class="space-y-6 max-w-6xl mx-auto">
+              <!-- Sección 1: Planificación (solo si es planificada) -->
+              @if (subactividad()!.esPlanificada) {
+                <div class="border border-slate-200 rounded-lg overflow-hidden">
+                  <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                          <app-icon icon="calendar_today" size="sm"></app-icon>
+                        </div>
+                        <div>
+                          <h3 class="text-base font-bold text-slate-900">Planificación</h3>
+                          <p class="text-xs text-slate-500 mt-0.5">Indicador y actividades relacionadas</p>
+                        </div>
+                      </div>
+                      <button
+                        (click)="toggleSeccionPlanificacion()"
+                        class="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        [title]="seccionPlanificacionExpandida() ? 'Ocultar sección' : 'Mostrar sección'">
+                        <span class="text-xs font-medium">{{ seccionPlanificacionExpandida() ? 'Abierta' : 'Cerrada' }}</span>
+                        <app-icon [icon]="seccionPlanificacionExpandida() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+                      </button>
+                    </div>
                   </div>
-                  @if (subactividad()!.organizador) {
+                  
+                  @if (seccionPlanificacionExpandida()) {
+                  <div class="p-4">
+                    <div class="space-y-4">
+                      <!-- Indicador (si existe) -->
+                      @if (subactividad()!.idIndicador && getIndicador()) {
+                        <div class="bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-lg p-4 shadow-sm border border-emerald-200">
+                          <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-white/80 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                              <app-icon icon="assessment" size="sm" class="text-emerald-800"></app-icon>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="text-sm font-semibold text-slate-800 mb-1">Indicador</div>
+                              @if (getIndicador()?.codigo) {
+                                <div class="text-lg font-bold text-slate-900 font-mono truncate">
+                                  {{ getIndicador()!.codigo }}
+                                </div>
+                              }
+                              @if (getIndicador()!.nombre) {
+                                <div class="text-base text-slate-900 font-medium mt-1 truncate">
+                                  {{ getIndicador()!.nombre }}
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Actividades Anuales y Mensuales -->
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Actividades Anuales -->
+                        @if (getActividadesAnualesSeleccionadas().length > 0) {
+                          <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                            <div class="flex items-center gap-2 mb-3">
+                              <div class="w-8 h-8 rounded bg-blue-300 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_today" size="sm" color="white"></app-icon>
+                              </div>
+                              <h4 class="text-sm font-bold text-blue-800">Actividades Anuales</h4>
+                              <span class="text-sm text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
+                                {{ getActividadesAnualesSeleccionadas().length }}
+                              </span>
+                            </div>
+                            <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                              @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
+                                <div class="bg-white rounded p-3 border border-blue-200 shadow-sm">
+                                  <div class="text-sm font-semibold text-blue-800 mb-1">Año {{ anual.anio }}</div>
+                                  <div class="text-base font-semibold text-slate-900 break-words">
+                                    {{ anual.nombre || 'Actividad ' + anual.idActividadAnual }}
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                            <div class="flex items-center gap-2 mb-2">
+                              <div class="w-8 h-8 rounded bg-slate-300 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_today" size="sm" color="white"></app-icon>
+                              </div>
+                              <h4 class="text-sm font-bold text-slate-600">Actividades Anuales</h4>
+                            </div>
+                            <p class="text-sm text-slate-500 italic">Sin actividades anuales</p>
+                          </div>
+                        }
+
+                        <!-- Actividades Mensuales -->
+                        @if (getActividadesMensualesSeleccionadas().length > 0) {
+                          <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                            <div class="flex items-center gap-2 mb-3">
+                              <div class="w-8 h-8 rounded bg-purple-300 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_month" size="sm" color="white"></app-icon>
+                            </div>
+                              <h4 class="text-sm font-bold text-purple-800">Actividades Mensuales</h4>
+                              <span class="text-sm text-purple-700 bg-purple-200 px-2 py-1 rounded-full">
+                                {{ getActividadesMensualesSeleccionadas().length }}
+                              </span>
+                            </div>
+                            <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                              @for (mensual of getActividadesMensualesSeleccionadas(); track mensual.idActividadMensualInst) {
+                                <div class="bg-white rounded p-3 border border-purple-200 shadow-sm">
+                                  <div class="text-sm font-semibold text-purple-800 mb-1">
+                                    @if (mensual.mes) {
+                                      Mes {{ mensual.mes }}
+                                    } @else {
+                                      Mensual
+                                    }
+                                  </div>
+                                  <div class="text-base font-semibold text-slate-900 break-words">
+                                    {{ mensual.nombre || 'Actividad ' + mensual.idActividadMensualInst }}
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                            <div class="flex items-center gap-2 mb-2">
+                              <div class="w-8 h-8 rounded bg-slate-300 text-white flex items-center justify-center flex-shrink-0">
+                                <app-icon icon="calendar_month" size="sm" color="white"></app-icon>
+                              </div>
+                              <h4 class="text-sm font-bold text-slate-600">Actividades Mensuales</h4>
+                            </div>
+                            <p class="text-sm text-slate-500 italic">Sin actividades mensuales</p>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Mensaje si no hay datos de planificación -->
+                      @if (!subactividad()!.idIndicador && getActividadesAnualesSeleccionadas().length === 0 && getActividadesMensualesSeleccionadas().length === 0) {
+                        <div class="text-center py-4 text-slate-500">
+                          <app-icon icon="info" size="sm" class="mx-auto mb-1 text-slate-400"></app-icon>
+                          <p class="text-sm">No hay información de planificación disponible</p>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  }
+                </div>
+              }
+
+              <!-- Sección 2: Información de la Subactividad -->
+              <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <app-icon icon="edit_note" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h3 class="text-base font-bold text-slate-900">Información de la Subactividad</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Detalles de la subactividad</p>
+                      </div>
+                    </div>
+                    <button
+                      (click)="toggleSeccionInformacion()"
+                      class="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      [title]="seccionInformacionExpandida() ? 'Ocultar sección' : 'Mostrar sección'">
+                      <span class="text-xs font-medium">{{ seccionInformacionExpandida() ? 'Abierta' : 'Cerrada' }}</span>
+                      <app-icon [icon]="seccionInformacionExpandida() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+                    </button>
+                  </div>
+                </div>
+                
+                @if (seccionInformacionExpandida()) {
+                <div class="p-6 space-y-5 text-left">
+                  <!-- Descripción y Objetivo lado a lado -->
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div>
-                      <dt class="text-sm font-medium text-slate-500">Organizador</dt>
-                      <dd class="text-sm text-slate-900">{{ subactividad()!.organizador }}</dd>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                        Descripción
+                      </label>
+                      <p class="text-sm text-slate-700 whitespace-pre-wrap text-left bg-slate-50 p-4 rounded-lg border border-slate-200 min-h-[120px]">
+                        {{ subactividad()!.descripcion || 'Sin descripción' }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="flag" size="xs" class="text-emerald-600"></app-icon>
+                        Objetivo
+                      </label>
+                      <p class="text-sm text-slate-700 whitespace-pre-wrap text-left bg-slate-50 p-4 rounded-lg border border-slate-200 min-h-[120px]">
+                        {{ subactividad()!.objetivo || 'Sin objetivo' }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Fecha Inicio, Fecha Fin y Hora de realización en la misma línea -->
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-200 shadow-sm">
+                      <label class="block text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="event" size="sm" class="text-blue-600"></app-icon>
+                        Fecha de inicio
+                      </label>
+                      <p class="text-lg text-blue-900 text-left font-bold">
+                        {{ subactividad()!.fechaInicio ? (subactividad()!.fechaInicio | date:'shortDate') : 'Sin fecha' }}
+                      </p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border-2 border-amber-200 shadow-sm">
+                      <label class="block text-sm font-semibold text-amber-900 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="event_busy" size="sm" class="text-amber-600"></app-icon>
+                        Fecha de fin
+                      </label>
+                      <p class="text-lg text-amber-900 text-left font-bold">
+                        {{ subactividad()!.fechaFin ? (subactividad()!.fechaFin | date:'shortDate') : 'Sin fecha' }}
+                      </p>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border-2 border-emerald-200 shadow-sm">
+                      <label class="block text-sm font-semibold text-emerald-900 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="schedule" size="sm" class="text-emerald-600"></app-icon>
+                        Hora de realización
+                      </label>
+                      <p class="text-lg text-emerald-900 text-left font-bold">
+                        {{ convertir24hA12h(subactividad()!.horaRealizacion) }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Código más atractivo -->
+                  @if (subactividad()!.codigoSubactividad) {
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="tag" size="xs" class="text-emerald-600"></app-icon>
+                        Código de Subactividad
+                      </label>
+                      <div class="bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 rounded-lg border-2 border-emerald-300 shadow-sm">
+                        <p class="text-lg text-emerald-900 font-mono font-bold text-left">
+                          {{ subactividad()!.codigoSubactividad }}
+                        </p>
+                      </div>
                     </div>
                   }
-                </dl>
+
+                  <!-- Estado de Actividad y Protagonistas Principales -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="toggle_on" size="xs" class="text-emerald-600"></app-icon>
+                        Estado de Actividad
+                      </label>
+                      @if (!editandoEstado()) {
+                        <div class="flex items-center gap-2">
+                          @if (subactividad()!.idEstadoActividad) {
+                            @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                              @if ((estado.idEstadoActividad || estado.id) === subactividad()!.idEstadoActividad) {
+                                <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                                  <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                                  <span>{{ estado.nombre || estado.Nombre }}</span>
+                                </div>
+                              }
+                            }
+                          } @else {
+                            <p class="text-sm text-slate-500 italic text-left">Sin estado asignado</p>
+                          }
+                          <button
+                            (click)="editandoEstado.set(true)"
+                            class="ml-2 px-2 py-1 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition flex items-center gap-1"
+                            title="Editar estado">
+                            <app-icon icon="edit" size="xs"></app-icon>
+                            Editar
+                          </button>
+                        </div>
+                      } @else {
+                        <div class="flex items-center gap-2">
+                          <div class="relative flex-1">
+                            <select
+                              [value]="subactividad()!.idEstadoActividad || ''"
+                              (change)="onEstadoChange($event)"
+                              [disabled]="guardandoEstado()"
+                              class="w-full pl-3 pr-8 py-2 bg-white border-2 border-emerald-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none appearance-none cursor-pointer transition-all">
+                              <option [value]="">Sin estado</option>
+                              @for (estado of estadosActividad(); track estado.idEstadoActividad || estado.id) {
+                                <option [value]="estado.idEstadoActividad || estado.id">
+                                  {{ estado.nombre || estado.Nombre }}
+                                </option>
+                              }
+                            </select>
+                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                              <app-icon icon="expand_more" size="xs"></app-icon>
+                            </span>
+                          </div>
+                          <button
+                            (click)="editandoEstado.set(false)"
+                            [disabled]="guardandoEstado()"
+                            class="px-2 py-1 text-xs text-slate-600 hover:text-slate-700 hover:bg-slate-50 rounded-md transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Cancelar">
+                            <app-icon icon="close" size="xs"></app-icon>
+                          </button>
+                          @if (guardandoEstado()) {
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Protagonistas Principales -->
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="groups" size="xs" class="text-emerald-600"></app-icon>
+                        Protagonistas Principales
+                      </label>
+                      @if (getProtagonistasArray().length > 0) {
+                        <div class="flex flex-wrap gap-2 justify-start">
+                          @for (tipo of getProtagonistasArray(); track tipo.id) {
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                              <span>{{ tipo.nombre }}</span>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500 italic text-left">Sin protagonistas asignados</p>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Departamentos y Modalidad -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="business" size="xs" class="text-emerald-600"></app-icon>
+                        Departamentos Responsables
+                      </label>
+                      @if (getDepartamentosResponsablesArray().length > 0) {
+                        <div class="flex flex-wrap gap-2 justify-start">
+                          @for (dept of getDepartamentosResponsablesArray(); track dept.id) {
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                              <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                              <span>{{ dept.nombre }}</span>
+                            </div>
+                          }
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500 italic text-left">Sin departamentos asignados</p>
+                      }
+                  </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="video_call" size="xs" class="text-emerald-600"></app-icon>
+                        Modalidad
+                      </label>
+                      @if (subactividad()!.modalidad) {
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                          <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                          <span>{{ subactividad()!.modalidad }}</span>
+                        </div>
+                      } @else {
+                        <p class="text-sm text-slate-500 italic text-left">Sin modalidad</p>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Local Principal -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                      <app-icon icon="location_on" size="xs" class="text-emerald-600"></app-icon>
+                      Local Principal
+                    </label>
+                    @if (getUbicacion()) {
+                      <p class="text-sm text-slate-900 text-left">{{ getUbicacion() }}</p>
+                    } @else {
+                      <p class="text-sm text-slate-500 italic text-left">Sin local asignado</p>
+                    }
+                  </div>
+
+                  <!-- Sección 3: Asignación de Responsables -->
+              <div class="border border-slate-200 rounded-lg overflow-hidden">
+                <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                        <app-icon icon="person" size="sm"></app-icon>
+                      </div>
+                      <div>
+                        <h3 class="text-base font-bold text-slate-900">Asignación de Responsables</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Responsables asignados a la subactividad</p>
+                      </div>
+                    </div>
+                    <button
+                      (click)="toggleSeccionResponsables()"
+                      class="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                      [title]="seccionResponsablesExpandida() ? 'Ocultar sección' : 'Mostrar sección'">
+                      <span class="text-xs font-medium">{{ seccionResponsablesExpandida() ? 'Abierta' : 'Cerrada' }}</span>
+                      <app-icon [icon]="seccionResponsablesExpandida() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
+                    </button>
+                  </div>
+                </div>
+                
+                @if (seccionResponsablesExpandida()) {
+                <div class="p-6 space-y-4">
+                  @if (responsables().length > 0) {
+                    <div class="space-y-2">
+                      @for (responsable of responsables(); track responsable.idSubactividadResponsable) {
+                        <div class="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+                          <div class="flex items-start gap-2">
+                            <app-icon icon="check_circle" size="sm" class="text-emerald-600 mt-0.5 flex-shrink-0"></app-icon>
+                            <div class="flex-1 space-y-1">
+                              <div class="text-sm font-semibold text-emerald-900">
+                                {{ getNombreResponsable(responsable) }}
+                              </div>
+                              <div class="text-xs text-emerald-700">
+                                {{ getCargoResponsable(responsable) }}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <p class="text-sm text-slate-500 italic text-left">Sin responsables asignados</p>
+                  }
+                </div>
+                }
+              </div>
+
+                  <!-- Participantes y Protagonistas con más estilo -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-200 shadow-sm">
+                      <label class="block text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2 text-left">
+                        <app-icon icon="people" size="sm" class="text-blue-600"></app-icon>
+                        Cantidad total de participantes proyectados
+                      </label>
+                      <div class="flex items-baseline gap-3">
+                        <span class="text-3xl font-bold text-blue-900">
+                          {{ subactividad()!.cantidadParticipantesProyectados || 0 }}
+                        </span>
+                        @if (subactividad()!.cantidadParticipantesEstudiantesProyectados) {
+                          <span class="text-sm font-medium text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
+                            {{ subactividad()!.cantidadParticipantesEstudiantesProyectados }} estudiantes
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border-2 border-purple-200 shadow-sm">
+                      <label class="block text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2 text-left">
+                        <app-icon icon="groups" size="sm" class="text-purple-600"></app-icon>
+                        Total de participantes protagonistas principales proyectados
+                      </label>
+                      <div class="flex items-baseline gap-3">
+                        <span class="text-3xl font-bold text-purple-900">
+                          {{ subactividad()!.cantidadTotalParticipantesProtagonistas || 0 }}
+                        </span>
+                        @if (getProtagonistasArray().length > 0) {
+                          <span class="text-sm font-medium text-purple-700 bg-purple-200 px-2 py-1 rounded-full">
+                            {{ getProtagonistasArray().length }} tipo{{ getProtagonistasArray().length > 1 ? 's' : '' }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Tipo de Evidencia -->
+                  @if (getTiposEvidenciaArray().length > 0) {
+                    <div>
+                      <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                        <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
+                        Tipo de Evidencia
+                      </label>
+                      <div class="flex flex-wrap gap-2 justify-start">
+                        @for (tipo of getTiposEvidenciaArray(); track tipo.idTipoEvidencia || tipo.id) {
+                          <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200">
+                            <app-icon icon="check_circle" size="xs" class="text-emerald-600"></app-icon>
+                            <span>{{ tipo.nombre }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Fecha de creación -->
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
+                      <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
+                      Fecha de creación
+                    </label>
+                    <p class="text-sm text-slate-900 text-left">
+                      {{ subactividad()!.fechaCreacion | date:'short' }}
+                    </p>
+                  </div>
+                </div>
+                }
               </div>
             </div>
           }
 
           <!-- Tab: Participantes -->
           @if (activeTab() === 'participantes') {
-            <div>
-              @if (participaciones().length > 0) {
+            <div class="max-w-6xl mx-auto">
+              <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-slate-900">Participantes</h3>
+                <button
+                  [routerLink]="['/participaciones/nueva']"
+                  [queryParams]="{ subactividadId: subactividad()!.idSubactividad }"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 text-sm font-medium">
+                  <app-icon icon="group" size="sm" color="white"></app-icon>
+                  Gestionar Participantes
+                </button>
+              </div>
+
+              @if (participaciones().length === 0) {
+                <div class="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+                  <app-icon icon="people" size="lg" class="text-slate-400 mb-3 mx-auto"></app-icon>
+                  <p class="text-slate-600 font-medium mb-1">No hay participantes registrados</p>
+                  <p class="text-slate-500 text-sm">Agrega participantes para esta subactividad haciendo clic en el botón "Gestionar Participantes"</p>
+                </div>
+              } @else {
                 <div class="space-y-2">
                   @for (participacion of participaciones(); track participacion.id) {
-                    <div class="p-4 border border-slate-200 rounded-lg">
+                    <div class="p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
                       <p class="font-medium text-slate-900">
                         {{ participacion.nombreEstudiante || participacion.nombreDocente || participacion.nombreAdmin || 'Sin nombre' }}
                       </p>
@@ -182,37 +693,95 @@
                           Rol: {{ participacion.nombreRolEquipo }}
                         }
                       </p>
+                      @if (participacion.fechaParticipacion) {
+                        <p class="text-xs text-slate-500 mt-1">
+                          Fecha: {{ participacion.fechaParticipacion | date:'short' }}
+                        </p>
+                      }
                     </div>
                   }
                 </div>
-              } @else {
-                <p class="text-slate-600 text-center py-8">
-                  No hay participantes registrados
-                </p>
               }
             </div>
           }
 
           <!-- Tab: Evidencias -->
           @if (activeTab() === 'evidencias') {
-            <div>
-              @if (evidencias().length > 0) {
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  @for (evidencia of evidencias(); track evidencia.idEvidencia) {
-                    <div class="p-4 border border-slate-200 rounded-lg">
-                      <p class="font-medium text-slate-900">{{ evidencia.descripcion || 'Sin descripción' }}</p>
-                      <p class="text-sm text-slate-600">
-                        @if (evidencia.nombreTipoEvidencia) {
-                          Tipo: {{ evidencia.nombreTipoEvidencia }}
+            <div class="max-w-6xl mx-auto">
+              <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-slate-900">Evidencias</h3>
+                <button
+                  [routerLink]="['/evidencias/nueva']"
+                  [queryParams]="{ subactividadId: subactividad()!.idSubactividad }"
+                  class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2 text-sm font-medium">
+                  <app-icon icon="add" size="sm" color="white"></app-icon>
+                  Agregar Evidencia
+                </button>
+              </div>
+
+              @if (evidencias().length === 0) {
+                <div class="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+                  <app-icon icon="perm_media" size="lg" class="text-slate-400 mb-3 mx-auto"></app-icon>
+                  <p class="text-slate-600 font-medium mb-1">No hay evidencias registradas</p>
+                  <p class="text-slate-500 text-sm">Agrega evidencias para esta subactividad haciendo clic en el botón "Agregar Evidencia"</p>
+                </div>
+              } @else {
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  @for (evidencia of evidencias(); track evidencia.idEvidencia || evidencia.id) {
+                    <div 
+                      [routerLink]="['/evidencias', evidencia.idEvidencia || evidencia.id]"
+                      class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 hover:shadow-xl transition-all duration-300 cursor-pointer group">
+                      
+                      <!-- Header -->
+                      <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                          @if (evidencia.nombreTipoEvidencia) {
+                            <span class="inline-block px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full mb-2">
+                              {{ evidencia.nombreTipoEvidencia }}
+                            </span>
+                          }
+                          @if (evidencia.descripcion) {
+                            <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2">
+                              {{ evidencia.descripcion }}
+                            </h3>
+                          } @else {
+                            <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              Evidencia #{{ evidencia.idEvidencia || evidencia.id }}
+                            </h3>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Información -->
+                      <div class="space-y-2 mb-4">
+                        @if (evidencia.fechaEvidencia) {
+                          <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <app-icon icon="calendar_today" size="sm" color="slate-500"></app-icon>
+                            <span>{{ evidencia.fechaEvidencia | date:'short' }}</span>
+                          </div>
                         }
-                      </p>
+                        @if (evidencia.fechaSubida) {
+                          <div class="flex items-center gap-2 text-sm text-slate-600">
+                            <app-icon icon="upload" size="sm" color="slate-500"></app-icon>
+                            <span>Subida: {{ evidencia.fechaSubida | date:'short' }}</span>
+                          </div>
+                        }
+                        @if (evidencia.seleccionadaParaReporte) {
+                          <div class="flex items-center gap-2 text-sm">
+                            <span class="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full">
+                              Para Reporte
+                            </span>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Acción rápida -->
+                      <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+                        <app-icon icon="chevron_right" size="sm" color="slate-400" class="group-hover:text-blue-500 transition-colors"></app-icon>
+                      </div>
                     </div>
                   }
                 </div>
-              } @else {
-                <p class="text-slate-600 text-center py-8">
-                  No hay evidencias registradas
-                </p>
               }
             </div>
           }

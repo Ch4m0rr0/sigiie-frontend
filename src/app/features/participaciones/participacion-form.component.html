@@ -12,9 +12,7 @@
 
     <!-- Loading State -->
     @if (loading()) {
-      <div class="flex justify-center items-center h-64">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <app-skeleton-form [sections]="2" [showSectionTitle]="true" [showTextArea]="true" [showActions]="true"></app-skeleton-form>
     }
 
     <!-- Error State -->
@@ -28,30 +26,6 @@
     @if (!loading()) {
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6">
         <div class="space-y-6">
-          <!-- Edición -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Edición <span class="text-red-500">*</span>
-            </label>
-            <select 
-              formControlName="edicionId"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              [class.border-red-500]="edicionId?.invalid && edicionId?.touched">
-              <option [ngValue]="null">Seleccione una edición...</option>
-              @for (edicion of ediciones(); track edicion.id) {
-                <option [ngValue]="edicion.id">
-                  {{ edicion.nombreActividad || 'Actividad ' + edicion.idActividad }} - {{ edicion.anio }}
-                  @if (edicion.lugar) {
-                    ({{ edicion.lugar }})
-                  }
-                </option>
-              }
-            </select>
-            @if (edicionId?.invalid && edicionId?.touched) {
-              <p class="mt-1 text-sm text-red-600">La edición es requerida</p>
-            }
-          </div>
-
           <!-- Subactividad (Opcional) -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">

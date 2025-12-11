@@ -1,16 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, of, throwError, from } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface ReporteConfig {
   tipoReporte: string;
   planificacionId?: number;
-  actividadId?: number;
+  actividadId?: number; // Mantener para compatibilidad (single activity)
+  idActividades?: number[]; // Array de IDs de actividades para selección múltiple
   subactividadId?: number;
-  fechaInicio?: string; // Formato: "YYYY-MM-DD"
-  fechaFin?: string; // Formato: "YYYY-MM-DD"
+  fechaInicio?: string; // Formato: "YYYY-MM-DD" - Período del reporte (filtra actividades dentro de este rango)
+  fechaFin?: string; // Formato: "YYYY-MM-DD" - Período del reporte (filtra actividades dentro de este rango)
   formato?: 'pdf' | 'excel' | 'html';
   incluirEvidencias?: boolean;
   incluirParticipaciones?: boolean;
@@ -20,7 +21,10 @@ export interface ReporteConfig {
   nombre?: string;
   rutaArchivo?: string;
   tipoArchivo?: string;
-  idDepartamento?: number; // Para filtrar por departamento
+  idDepartamento?: number; // Para filtrar por departamento (legacy)
+  idDepartamentos?: number[]; // Array de IDs de departamentos (permite múltiples)
+  // @deprecated descripcionImpacto ya no se usa - el backend genera automáticamente este campo desde descripcion + objetivo de cada actividad
+  // descripcionImpacto?: string;
   parametrosJson?: string; // JSON stringificado con configuración adicional
 }
 
@@ -82,6 +86,19 @@ export interface ReportePorDepartamento {
   [key: string]: any;
 }
 
+export interface CampoExtraccion {
+  nombre: string;
+  etiqueta: string;
+}
+
+export interface CamposExtraccionDisponibles {
+  estudiantes: CampoExtraccion[];
+  docentes: CampoExtraccion[];
+  administrativos: CampoExtraccion[];
+  actividad: CampoExtraccion[];
+  participacion: CampoExtraccion[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportesService {
   private http = inject(HttpClient);
@@ -113,6 +130,49 @@ export class ReportesService {
           return of([]);
         }
         return throwError(() => new Error(backendMessage));
+      })
+    );
+  }
+
+  /**
+   * GET /api/reportes/campos-extraccion
+   * Obtener todos los campos disponibles para extracción de datos, agrupados por categoría
+   */
+  obtenerCamposExtraccionDisponibles(): Observable<CamposExtraccionDisponibles> {
+    console.log('🔄 GET Campos Extracción - URL:', `${this.apiUrl}/campos-extraccion`);
+    return this.http.get<CamposExtraccionDisponibles>(`${this.apiUrl}/campos-extraccion`).pipe(
+      tap(data => {
+        console.log('✅ GET Campos Extracción - Respuesta recibida:', data);
+        console.log(`📊 Total campos: Estudiantes: ${data.estudiantes?.length || 0}, Docentes: ${data.docentes?.length || 0}, Administrativos: ${data.administrativos?.length || 0}, Actividad: ${data.actividad?.length || 0}, Participación: ${data.participacion?.length || 0}`);
+      }),
+      catchError(error => {
+        console.error('❌ GET Campos Extracción - Error:', error);
+        // Si el endpoint no existe, devolver campos por defecto
+        console.warn('⚠️ Endpoint de campos no disponible, usando campos por defecto');
+        return of({
+          estudiantes: [
+            { nombre: 'NombreEstudiante', etiqueta: 'Nombre Estudiante' }
+          ],
+          docentes: [
+            { nombre: 'NombreDocente', etiqueta: 'Nombre Docente' }
+          ],
+          administrativos: [
+            { nombre: 'NombreAdministrativo', etiqueta: 'Nombre Administrativo' }
+          ],
+          actividad: [
+            { nombre: 'NombreActividad', etiqueta: 'Actividad' },
+            { nombre: 'LugarDesarrollo', etiqueta: 'Lugar de la Actividad' },
+            { nombre: 'FechaActividad', etiqueta: 'Fecha de Realización' },
+            { nombre: 'FechaFinalizacion', etiqueta: 'Fecha de Finalización' },
+            { nombre: 'idModalidad', etiqueta: 'Modalidad' },
+            { nombre: 'idIndicador', etiqueta: 'Indicador' }
+          ],
+          participacion: [
+            { nombre: 'TipoParticipante', etiqueta: 'Tipo de Participante' },
+            { nombre: 'Sexo', etiqueta: 'Sexo' },
+            { nombre: 'idCarrera', etiqueta: 'Carrera' }
+          ]
+        } as CamposExtraccionDisponibles);
       })
     );
   }
@@ -476,6 +536,7 @@ export class ReportesService {
   generarExcel(config: ReporteConfig): Observable<Blob> {
     console.log('🔄 POST Generar Excel - URL:', `${this.apiUrl}/generar/excel`);
     console.log('🔄 POST Generar Excel - Config:', config);
+    console.log('🔄 POST Generar Excel - ParametrosJson:', config.parametrosJson);
     
     // Si hay fechaInicio y fechaFin, usar formato institucional con ParametrosJson
     const esReporteInstitucional = config.fechaInicio && config.fechaFin;
@@ -489,35 +550,146 @@ export class ReportesService {
       TipoArchivo: config.tipoArchivo || 'excel'
     };
     
+    // Verificar si es extracción de datos
+    const esExtraccionDatos = config.tipoReporte === 'extraccion-datos';
+    
     // Si es reporte institucional, enviar parámetros en ParametrosJson
     if (esReporteInstitucional) {
+      // Primero parsear parametrosJson si viene del componente (para preservar SinInstrucciones, etc.)
+      let parametrosExistentes: any = {};
+      if (config.parametrosJson) {
+        try {
+          parametrosExistentes = JSON.parse(config.parametrosJson);
+        } catch (e) {
+          console.warn('No se pudo parsear parametrosJson adicional:', e);
+        }
+      }
+      
+      // Construir parametrosJson: primero los existentes, luego los del config (tienen prioridad)
       const parametrosJson: any = {
+        ...parametrosExistentes, // Merge de parámetros existentes primero (SinInstrucciones, etc.)
         FechaInicio: config.fechaInicio,
         FechaFin: config.fechaFin,
       };
       
-      if (config.actividadId) parametrosJson.ActividadId = config.actividadId;
-      if (config.subactividadId) parametrosJson.SubactividadId = config.subactividadId;
+      // Convertir actividadId a número si es string y agregarlo (tiene prioridad sobre parametrosExistentes)
+      if (config.actividadId) {
+        const actividadIdNum = typeof config.actividadId === 'string' ? parseInt(config.actividadId, 10) : Number(config.actividadId);
+        if (!isNaN(actividadIdNum) && actividadIdNum > 0) {
+          parametrosJson.ActividadId = actividadIdNum;
+        }
+      }
+      // Agregar idActividades (array) si existe
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        parametrosJson.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al ParametrosJson:', config.idActividades);
+      }
+      if (config.subactividadId) {
+        const subactividadIdNum = typeof config.subactividadId === 'string' ? parseInt(config.subactividadId, 10) : Number(config.subactividadId);
+        if (!isNaN(subactividadIdNum) && subactividadIdNum > 0) {
+          parametrosJson.SubactividadId = subactividadIdNum;
+        }
+      }
       if (config.incluirEvidencias !== undefined) parametrosJson.IncluirEvidencias = config.incluirEvidencias;
       if (config.incluirParticipaciones !== undefined) parametrosJson.IncluirParticipaciones = config.incluirParticipaciones;
       if (config.incluirIndicadores !== undefined) parametrosJson.IncluirIndicadores = config.incluirIndicadores;
       if (config.incluirDetalleParticipantes !== undefined) parametrosJson.IncluirDetalleParticipantes = config.incluirDetalleParticipantes;
       if (config.dividirPorGenero !== undefined) parametrosJson.DividirPorGenero = config.dividirPorGenero;
       if (config.idDepartamento) parametrosJson.IdDepartamento = config.idDepartamento;
+      if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       dto.ParametrosJson = JSON.stringify(parametrosJson);
+      
+      console.log('🔍 ParametrosJson construido para reporte institucional:', dto.ParametrosJson);
+      console.log('🔍 ParametrosJson parseado (para verificar estructura):', JSON.parse(dto.ParametrosJson));
+      
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       // Asegurar que TipoArchivo contenga "actividad" para que el backend detecte el formato institucional
       if (!dto.TipoArchivo.includes('actividad')) {
         dto.TipoArchivo = 'actividad';
       }
       
+      // También enviar campos directamente al DTO para asegurar que el backend los reciba
+      if (config.actividadId) {
+        const actividadIdNum = typeof config.actividadId === 'string' ? parseInt(config.actividadId, 10) : Number(config.actividadId);
+        if (!isNaN(actividadIdNum) && actividadIdNum > 0) {
+          dto.ActividadId = actividadIdNum;
+        }
+      }
+      // Enviar idActividades al DTO si existe
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        dto.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al DTO:', config.idActividades);
+      }
+      if (config.subactividadId) {
+        const subactividadIdNum = typeof config.subactividadId === 'string' ? parseInt(config.subactividadId, 10) : Number(config.subactividadId);
+        if (!isNaN(subactividadIdNum) && subactividadIdNum > 0) {
+          dto.SubactividadId = subactividadIdNum;
+        }
+      }
       if (config.idDepartamento) {
         dto.IdDepartamento = config.idDepartamento;
       }
+      if (config.idDepartamentos && config.idDepartamentos.length > 0) {
+        dto.IdDepartamentos = config.idDepartamentos;
+      }
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+      
+      // Agregar idActividades al ParametrosJson también para reportes institucionales
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        parametrosJson.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al ParametrosJson (reporte institucional):', config.idActividades);
+      }
+      
+      console.log('🔍 DTO para reporte institucional:', dto);
+      console.log('🔍 ParametrosJson final:', dto.ParametrosJson);
+    } else if (esExtraccionDatos) {
+      // Para extracción de datos, usar ParametrosJson con los campos seleccionados
+      const parametrosJson: any = {};
+      
+      if (config.actividadId) parametrosJson.ActividadId = config.actividadId;
+      if (config.subactividadId) parametrosJson.SubactividadId = config.subactividadId;
+      if (config.fechaInicio) parametrosJson.FechaInicio = config.fechaInicio;
+      if (config.fechaFin) parametrosJson.FechaFin = config.fechaFin;
+      if (config.idDepartamento) parametrosJson.IdDepartamento = config.idDepartamento;
+      if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+      
+      // Si viene parametrosJson directamente (con los campos seleccionados), hacer merge
+      if (config.parametrosJson) {
+        try {
+          const parametrosAdicionales = JSON.parse(config.parametrosJson);
+          Object.assign(parametrosJson, parametrosAdicionales);
+        } catch (e) {
+          console.warn('No se pudo parsear parametrosJson adicional:', e);
+        }
+      }
+      
+      dto.ParametrosJson = JSON.stringify(parametrosJson);
+      
+      console.log('🔍 DTO para extracción de datos:', dto);
+      console.log('🔍 ParametrosJson final:', dto.ParametrosJson);
+      
+      // También enviar campos directamente por si el backend los necesita
+      if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        dto.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al DTO (extracción de datos):', config.idActividades);
+      }
+      if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
+      if (config.fechaFin) dto.FechaFin = config.fechaFin;
+      if (config.idDepartamento) dto.IdDepartamento = config.idDepartamento;
+      if (config.idDepartamentos && config.idDepartamentos.length > 0) dto.IdDepartamentos = config.idDepartamentos;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
     } else {
       // Formato tradicional: enviar campos directamente
       if (config.actividadId) dto.ActividadId = config.actividadId;
+      if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+        dto.IdActividades = config.idActividades;
+        console.log('✅ IdActividades agregado al DTO (formato tradicional):', config.idActividades);
+      }
       if (config.subactividadId) dto.SubactividadId = config.subactividadId;
       if (config.planificacionId) dto.PlanificacionId = config.planificacionId;
       if (config.fechaInicio) dto.FechaInicio = config.fechaInicio;
@@ -528,11 +700,47 @@ export class ReportesService {
       if (config.incluirDetalleParticipantes !== undefined) dto.IncluirDetalleParticipantes = config.incluirDetalleParticipantes;
       if (config.dividirPorGenero !== undefined) dto.DividirPorGenero = config.dividirPorGenero;
       if (config.idDepartamento) dto.IdDepartamento = config.idDepartamento;
-    }
-    
-    // Si viene parametrosJson directamente, usarlo (tiene prioridad)
-    if (config.parametrosJson) {
-      dto.ParametrosJson = config.parametrosJson;
+      if (config.idDepartamentos && config.idDepartamentos.length > 0) dto.IdDepartamentos = config.idDepartamentos;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+      
+      // Si viene parametrosJson directamente, hacer merge en lugar de reemplazar
+      if (config.parametrosJson) {
+        try {
+          const parametrosExistentes = dto.ParametrosJson ? JSON.parse(dto.ParametrosJson) : {};
+          const parametrosAdicionales = JSON.parse(config.parametrosJson);
+          const parametrosCombinados = { ...parametrosExistentes, ...parametrosAdicionales };
+          // Asegurar que los nuevos campos estén incluidos (tienen prioridad)
+          if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosCombinados.IdDepartamentos = config.idDepartamentos;
+          if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+            parametrosCombinados.IdActividades = config.idActividades;
+            console.log('✅ IdActividades agregado al ParametrosJson (formato tradicional):', config.idActividades);
+          }
+          // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+          dto.ParametrosJson = JSON.stringify(parametrosCombinados);
+          console.log('🔍 ParametrosJson final (formato tradicional):', dto.ParametrosJson);
+        } catch (e) {
+          console.warn('No se pudo parsear parametrosJson, usando directamente:', e);
+          // Si falla el parse, crear uno nuevo con los campos necesarios
+          const parametrosJson: any = JSON.parse(config.parametrosJson);
+          // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+          dto.ParametrosJson = JSON.stringify(parametrosJson);
+        }
+      } else {
+        // Si no hay parametrosJson, crear uno con los nuevos campos
+        const parametrosJson: any = {};
+        if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
+        if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
+          parametrosJson.IdActividades = config.idActividades;
+          console.log('✅ IdActividades agregado al ParametrosJson (sin parametrosJson previo):', config.idActividades);
+        }
+        // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
+        if (Object.keys(parametrosJson).length > 0) {
+          dto.ParametrosJson = JSON.stringify(parametrosJson);
+          console.log('🔍 ParametrosJson creado (formato tradicional):', dto.ParametrosJson);
+        }
+      }
+      
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
     }
     
     return this.http.post<Blob>(`${this.apiUrl}/generar/excel`, dto, {
@@ -743,13 +951,23 @@ export class ReportesService {
               }
               
               console.error('❌ GET Descargar Reporte - El servidor devolvió un error o metadatos en lugar del archivo:', errorData);
+              console.error('❌ GET Descargar Reporte - Status Code:', response.status);
+              console.error('❌ GET Descargar Reporte - Content-Type:', contentType);
+              
+              // Construir mensaje de error más descriptivo
+              let errorMessage = 'Error al generar/descargar el reporte.';
+              if (response.status === 500) {
+                errorMessage = 'Error interno del servidor al generar el reporte. El backend no pudo generar el archivo Excel.';
+              } else if (response.status === 404) {
+                errorMessage = 'El reporte no se encontró o el endpoint no está disponible.';
+              }
               
               // El backend debe generar el reporte dinámicamente, no devolver metadatos
               return throwError(() => ({
                 status: response.status,
                 error: errorData,
-                message: errorData.message || errorData.title || errorData.detail || 'Error al generar/descargar el reporte. El backend debe generar el reporte Excel dinámicamente y devolverlo como archivo binario.',
-                backendMessage: errorData.message || errorData.title || errorData.detail || 'El endpoint GET /api/Reportes/descargar/{id} debe generar el reporte dinámicamente y devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                message: errorData.message || errorData.title || errorData.detail || errorMessage,
+                backendMessage: errorData.message || errorData.title || errorData.detail || `El endpoint GET /api/Reportes/descargar/${idReporte} debe generar el reporte dinámicamente y devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet. Error recibido: ${response.status} ${response.statusText}`
               }));
             })
           );
@@ -797,8 +1015,8 @@ export class ReportesService {
       catchError((error: any) => {
         console.error('❌ GET Descargar Reporte - Error:', error);
         
-        // Si el error es 404, el backend puede estar devolviendo un JSON con el mensaje de error
-        if (error.status === 404 && error.error) {
+        // Si el error es 404 o 500, el backend puede estar devolviendo un JSON con el mensaje de error
+        if ((error.status === 404 || error.status === 500) && error.error) {
           // Si error.error es un Blob (porque responseType es 'blob'), leerlo como texto
           if (error.error instanceof Blob) {
             return from(error.error.text() as Promise<string>).pipe(
@@ -807,29 +1025,40 @@ export class ReportesService {
                 try {
                   errorData = JSON.parse(text);
                 } catch {
-                  errorData = { message: text || 'El reporte no se encontró o no se pudo generar' };
+                  errorData = { message: text || 'Error al generar o descargar el reporte' };
                 }
                 
+                const statusCode = error.status;
+                const statusMessage = statusCode === 404 
+                  ? 'no existe o no está configurado'
+                  : 'tiene un error interno';
+                
                 return throwError(() => ({
-                  status: 404,
+                  status: statusCode,
                   error: errorData,
-                  message: errorData.message || `El endpoint GET /api/reportes/descargar/${idReporte} no existe o no está configurado. El backend debe implementar este endpoint para generar el reporte dinámicamente basándose en la configuración almacenada en la base de datos.`,
-                  backendMessage: errorData.message || `El endpoint GET /api/reportes/descargar/${idReporte} debe: 1) Obtener la configuración del reporte desde la BD usando idReporte=${idReporte}, 2) Generar el Excel dinámicamente con los datos actuales, 3) Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+                  message: errorData.message || errorData.title || errorData.detail || `El endpoint GET /api/reportes/descargar/${idReporte} ${statusMessage}. El backend debe implementar este endpoint para generar el reporte dinámicamente basándose en la configuración almacenada en la base de datos.`,
+                  backendMessage: errorData.message || errorData.title || errorData.detail || `El endpoint GET /api/reportes/descargar/${idReporte} debe: 1) Obtener la configuración del reporte desde la BD usando idReporte=${idReporte}, 2) Generar el Excel dinámicamente con los datos actuales, 3) Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
                 }));
               })
             );
           } else if (typeof error.error === 'object' && error.error.message) {
             // Si ya es un objeto JSON
+            const statusCode = error.status;
+            const statusMessage = statusCode === 404 
+              ? 'no existe o no está configurado'
+              : 'tiene un error interno';
+            
             return throwError(() => ({
-              status: 404,
+              status: statusCode,
               error: error.error,
-              message: error.error.message || `El endpoint GET /api/reportes/descargar/${idReporte} no existe o no está configurado. El backend debe implementar este endpoint para generar el reporte dinámicamente basándose en la configuración almacenada en la base de datos.`,
-              backendMessage: error.error.message || `El endpoint GET /api/reportes/descargar/${idReporte} debe: 1) Obtener la configuración del reporte desde la BD usando idReporte=${idReporte}, 2) Generar el Excel dinámicamente con los datos actuales, 3) Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+              message: error.error.message || error.error.title || error.error.detail || `El endpoint GET /api/reportes/descargar/${idReporte} ${statusMessage}. El backend debe implementar este endpoint para generar el reporte dinámicamente basándose en la configuración almacenada en la base de datos.`,
+              backendMessage: error.error.message || error.error.title || error.error.detail || `El endpoint GET /api/reportes/descargar/${idReporte} debe: 1) Obtener la configuración del reporte desde la BD usando idReporte=${idReporte}, 2) Generar el Excel dinámicamente con los datos actuales, 3) Devolver el archivo Excel binario con Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
             }));
           }
         }
         
-        return throwError(() => error);
+        // Para otros errores, usar el manejo de errores de blob estándar
+        return this.handleBlobError(error);
       })
     );
   }

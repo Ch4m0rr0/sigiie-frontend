@@ -13,6 +13,8 @@ import type { Subactividad } from '../../core/models/subactividad';
 import type { TipoEvidencia } from '../../core/models/catalogos-nuevos';
 import type { Actividad } from '../../core/models/actividad';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonFormComponent } from '../../shared/skeleton/skeleton-form.component';
+import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 import { BrnLabelImports } from '@spartan-ng/brain/label';
 import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown/multi-select-dropdown.component';
@@ -25,6 +27,8 @@ import { MultiSelectDropdownComponent } from '../../shared/multi-select-dropdown
     ReactiveFormsModule,
     RouterModule,
     IconComponent,
+    SkeletonFormComponent,
+    SkeletonComponent,
     ...BrnButtonImports,
     ...BrnLabelImports,
     MultiSelectDropdownComponent

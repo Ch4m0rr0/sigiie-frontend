@@ -114,7 +114,6 @@ export class ProyectoFormComponent implements OnInit {
       fechaFin: [''],
       departamentoId: [null],
       idEstadoProyecto: [null],
-      idEdicion: [null],
       idTipoIniciativa: [null],
       idTipoInvestigacion: [null],
       idAreaConocimiento: [null],
@@ -126,16 +125,6 @@ export class ProyectoFormComponent implements OnInit {
       administrativos: this.fb.array([])
     });
 
-    // Listener para habilitar/deshabilitar campos de fecha cuando cambia idEdicion
-    this.form.get('idEdicion')?.valueChanges.subscribe(value => {
-      if (value) {
-        this.form.get('fechaInicio')?.disable({ emitEvent: false });
-        this.form.get('fechaFin')?.disable({ emitEvent: false });
-      } else {
-        this.form.get('fechaInicio')?.enable({ emitEvent: false });
-        this.form.get('fechaFin')?.enable({ emitEvent: false });
-      }
-    });
   }
 
   // Getters para FormArrays
@@ -250,7 +239,6 @@ export class ProyectoFormComponent implements OnInit {
           console.log('📦 Campos del proyecto:', {
             departamentoId: proyecto.departamentoId,
             idEstadoProyecto: proyecto.idEstadoProyecto,
-            idEdicion: proyecto.idEdicion,
             idTipoIniciativa: proyecto.idTipoIniciativa,
             idTipoInvestigacion: proyecto.idTipoInvestigacion,
             idAreaConocimiento: proyecto.idAreaConocimiento,
@@ -277,7 +265,6 @@ export class ProyectoFormComponent implements OnInit {
             const catalogosListos = 
               this.departamentos().length > 0 || 
               this.estadosProyecto().length > 0 || 
-              this.ediciones().length > 0 ||
               this.tiposIniciativa().length > 0 ||
               this.tiposInvestigacion().length > 0 ||
               this.areasConocimiento().length > 0 ||
@@ -292,7 +279,6 @@ export class ProyectoFormComponent implements OnInit {
             // Convertir valores a números cuando sea necesario para asegurar coincidencia con los selects
             const departamentoId = proyecto.departamentoId ? Number(proyecto.departamentoId) : null;
             const idEstadoProyecto = proyecto.idEstadoProyecto ? Number(proyecto.idEstadoProyecto) : null;
-            const idEdicion = proyecto.idEdicion ? Number(proyecto.idEdicion) : null;
             const idTipoIniciativa = proyecto.idTipoIniciativa ? Number(proyecto.idTipoIniciativa) : null;
             const idTipoInvestigacion = proyecto.idTipoInvestigacion ? Number(proyecto.idTipoInvestigacion) : null;
             const idAreaConocimiento = proyecto.idAreaConocimiento ? Number(proyecto.idAreaConocimiento) : null;
@@ -301,7 +287,6 @@ export class ProyectoFormComponent implements OnInit {
             // Verificar que los valores existan en los catálogos antes de establecerlos
             const deptExists = !departamentoId || this.departamentos().some(d => d.id === departamentoId);
             const estadoExists = !idEstadoProyecto || this.estadosProyecto().some(e => e.id === idEstadoProyecto);
-            const edicionExists = !idEdicion || this.ediciones().some(e => e.id === idEdicion);
             const tipoIniciativaExists = !idTipoIniciativa || this.tiposIniciativa().some(t => t.id === idTipoIniciativa);
             const tipoInvestigacionExists = !idTipoInvestigacion || this.tiposInvestigacion().some(t => t.id === idTipoInvestigacion);
             const areaConocimientoExists = !idAreaConocimiento || this.areasConocimiento().some(a => a.id === idAreaConocimiento);
@@ -310,7 +295,6 @@ export class ProyectoFormComponent implements OnInit {
             console.log('🔍 Cargando proyecto - Valores extraídos:', {
               departamentoId,
               idEstadoProyecto,
-              idEdicion,
               idTipoIniciativa,
               idTipoInvestigacion,
               idAreaConocimiento,
@@ -319,23 +303,19 @@ export class ProyectoFormComponent implements OnInit {
             console.log('🔍 Cargando proyecto - Validaciones:', {
               deptExists,
               estadoExists,
-              edicionExists,
               tipoIniciativaExists,
               tipoInvestigacionExists,
               areaConocimientoExists,
               tipoDocumentoExists,
               totalDepartamentos: this.departamentos().length,
               totalEstados: this.estadosProyecto().length,
-              totalEdiciones: this.ediciones().length,
               departamentosIds: this.departamentos().map(d => d.id),
               estadosIds: this.estadosProyecto().map(e => e.id),
-              edicionesIds: this.ediciones().map(e => e.id)
             });
 
             // Establecer valores - usar los valores del proyecto directamente si existen
             const finalDepartamentoId = deptExists ? departamentoId : (proyecto.departamentoId ? Number(proyecto.departamentoId) : null);
             const finalIdEstadoProyecto = estadoExists ? idEstadoProyecto : (proyecto.idEstadoProyecto ? Number(proyecto.idEstadoProyecto) : null);
-            const finalIdEdicion = edicionExists ? idEdicion : (proyecto.idEdicion ? Number(proyecto.idEdicion) : null);
             const finalIdTipoIniciativa = tipoIniciativaExists ? idTipoIniciativa : (proyecto.idTipoIniciativa ? Number(proyecto.idTipoIniciativa) : null);
             const finalIdTipoInvestigacion = tipoInvestigacionExists ? idTipoInvestigacion : (proyecto.idTipoInvestigacion ? Number(proyecto.idTipoInvestigacion) : null);
             const finalIdAreaConocimiento = areaConocimientoExists ? idAreaConocimiento : (proyecto.idAreaConocimiento ? Number(proyecto.idAreaConocimiento) : null);
@@ -348,7 +328,6 @@ export class ProyectoFormComponent implements OnInit {
               fechaFin: fechaFin,
               departamentoId: finalDepartamentoId,
               idEstadoProyecto: finalIdEstadoProyecto,
-              idEdicion: finalIdEdicion,
               idTipoIniciativa: finalIdTipoIniciativa,
               idTipoInvestigacion: finalIdTipoInvestigacion,
               idAreaConocimiento: finalIdAreaConocimiento,
@@ -356,14 +335,6 @@ export class ProyectoFormComponent implements OnInit {
               tipoAutor: proyecto.tipoAutor || ''
             }, { emitEvent: false });
 
-            // Deshabilitar campos de fecha si hay edición seleccionada
-            if (finalIdEdicion) {
-              this.form.get('fechaInicio')?.disable({ emitEvent: false });
-              this.form.get('fechaFin')?.disable({ emitEvent: false });
-            } else {
-              this.form.get('fechaInicio')?.enable({ emitEvent: false });
-              this.form.get('fechaFin')?.enable({ emitEvent: false });
-            }
 
             // Cargar participantes
             if (proyecto.docentes && proyecto.docentes.length > 0) {
@@ -406,7 +377,6 @@ export class ProyectoFormComponent implements OnInit {
               console.log('✅ Valores establecidos en el formulario:', {
                 departamentoId: this.form.get('departamentoId')?.value,
                 idEstadoProyecto: this.form.get('idEstadoProyecto')?.value,
-                idEdicion: this.form.get('idEdicion')?.value,
                 idTipoIniciativa: this.form.get('idTipoIniciativa')?.value,
                 idTipoInvestigacion: this.form.get('idTipoInvestigacion')?.value,
                 idAreaConocimiento: this.form.get('idAreaConocimiento')?.value,
@@ -462,18 +432,13 @@ export class ProyectoFormComponent implements OnInit {
         rolEnProyecto: a.rolEnProyecto || undefined
       }));
 
-    // Si hay una edición seleccionada, no enviar fechas (el backend las toma de la edición)
-    const tieneEdicion = formValue.idEdicion && formValue.idEdicion !== null && formValue.idEdicion !== '';
-
     const proyectoData: ProyectoCreate = {
       nombreProyecto: formValue.nombreProyecto,
       descripcion: formValue.descripcion || undefined,
-      // Solo incluir fechas si NO hay edición seleccionada
-      fechaInicio: tieneEdicion ? undefined : (formValue.fechaInicio || undefined),
-      fechaFin: tieneEdicion ? undefined : (formValue.fechaFin || undefined),
+      fechaInicio: formValue.fechaInicio || undefined,
+      fechaFin: formValue.fechaFin || undefined,
       departamentoId: formValue.departamentoId || undefined,
       idEstadoProyecto: formValue.idEstadoProyecto || undefined,
-      idEdicion: formValue.idEdicion || undefined,
       idTipoIniciativa: formValue.idTipoIniciativa || undefined,
       idTipoInvestigacion: formValue.idTipoInvestigacion || undefined,
       idAreaConocimiento: formValue.idAreaConocimiento || undefined,
@@ -566,7 +531,6 @@ export class ProyectoFormComponent implements OnInit {
       formValue.fechaFin ||
       formValue.departamentoId ||
       formValue.idEstadoProyecto ||
-      formValue.idEdicion ||
       formValue.idTipoIniciativa ||
       formValue.idTipoInvestigacion ||
       formValue.idAreaConocimiento ||

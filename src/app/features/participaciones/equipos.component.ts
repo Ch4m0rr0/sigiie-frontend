@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ParticipacionService } from '../../core/services/participacion.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { SkeletonCardComponent } from '../../shared/skeleton/skeleton-card.component';
 import { BrnButtonImports } from '@spartan-ng/brain/button';
 
 @Component({
   standalone: true,
   selector: 'app-equipos',
-  imports: [CommonModule, RouterModule, IconComponent, ...BrnButtonImports],
+  imports: [CommonModule, RouterModule, IconComponent, SkeletonCardComponent, ...BrnButtonImports],
   templateUrl: './equipos.component.html',
 })
 export class EquiposComponent implements OnInit {
