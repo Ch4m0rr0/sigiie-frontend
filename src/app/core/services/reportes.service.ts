@@ -23,7 +23,8 @@ export interface ReporteConfig {
   tipoArchivo?: string;
   idDepartamento?: number; // Para filtrar por departamento (legacy)
   idDepartamentos?: number[]; // Array de IDs de departamentos (permite múltiples)
-  descripcionImpacto?: string; // Descripción del impacto de la actividad desarrollada
+  // @deprecated descripcionImpacto ya no se usa - el backend genera automáticamente este campo desde descripcion + objetivo de cada actividad
+  // descripcionImpacto?: string;
   parametrosJson?: string; // JSON stringificado con configuración adicional
 }
 
@@ -596,29 +597,14 @@ export class ReportesService {
       if (config.dividirPorGenero !== undefined) parametrosJson.DividirPorGenero = config.dividirPorGenero;
       if (config.idDepartamento) parametrosJson.IdDepartamento = config.idDepartamento;
       if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
-      // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía, el backend decidirá)
-      if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
-        parametrosJson.DescripcionImpacto = config.descripcionImpacto;
-        console.log('✅ DescripcionImpacto agregado al ParametrosJson:', config.descripcionImpacto);
-        console.log('✅ DescripcionImpacto tipo:', typeof config.descripcionImpacto);
-        console.log('✅ DescripcionImpacto length:', config.descripcionImpacto?.length || 0);
-      } else {
-        console.warn('⚠️ DescripcionImpacto no está presente en config (undefined o null)');
-      }
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       dto.ParametrosJson = JSON.stringify(parametrosJson);
       
       console.log('🔍 ParametrosJson construido para reporte institucional:', dto.ParametrosJson);
       console.log('🔍 ParametrosJson parseado (para verificar estructura):', JSON.parse(dto.ParametrosJson));
       
-      // Verificar específicamente DescripcionImpacto
-      const parametrosParsed = JSON.parse(dto.ParametrosJson);
-      if (parametrosParsed.DescripcionImpacto !== undefined) {
-        console.log('✅ DescripcionImpacto está en ParametrosJson:', parametrosParsed.DescripcionImpacto);
-        console.log('✅ DescripcionImpacto tipo en JSON:', typeof parametrosParsed.DescripcionImpacto);
-      } else {
-        console.error('❌ DescripcionImpacto NO está en ParametrosJson');
-      }
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       // Asegurar que TipoArchivo contenga "actividad" para que el backend detecte el formato institucional
       if (!dto.TipoArchivo.includes('actividad')) {
@@ -649,15 +635,7 @@ export class ReportesService {
       if (config.idDepartamentos && config.idDepartamentos.length > 0) {
         dto.IdDepartamentos = config.idDepartamentos;
       }
-      // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía)
-      if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
-        dto.DescripcionImpacto = config.descripcionImpacto;
-        console.log('✅ DescripcionImpacto agregado al DTO:', config.descripcionImpacto);
-        console.log('✅ DescripcionImpacto en DTO - tipo:', typeof config.descripcionImpacto);
-        console.log('✅ DescripcionImpacto en DTO - length:', config.descripcionImpacto?.length || 0);
-      } else {
-        console.warn('⚠️ DescripcionImpacto no está presente en config para DTO (undefined o null)');
-      }
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       // Agregar idActividades al ParametrosJson también para reportes institucionales
       if (config.idActividades && Array.isArray(config.idActividades) && config.idActividades.length > 0) {
@@ -677,7 +655,7 @@ export class ReportesService {
       if (config.fechaFin) parametrosJson.FechaFin = config.fechaFin;
       if (config.idDepartamento) parametrosJson.IdDepartamento = config.idDepartamento;
       if (config.idDepartamentos && config.idDepartamentos.length > 0) parametrosJson.IdDepartamentos = config.idDepartamentos;
-      if (config.descripcionImpacto) parametrosJson.DescripcionImpacto = config.descripcionImpacto;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       // Si viene parametrosJson directamente (con los campos seleccionados), hacer merge
       if (config.parametrosJson) {
@@ -704,7 +682,7 @@ export class ReportesService {
       if (config.fechaFin) dto.FechaFin = config.fechaFin;
       if (config.idDepartamento) dto.IdDepartamento = config.idDepartamento;
       if (config.idDepartamentos && config.idDepartamentos.length > 0) dto.IdDepartamentos = config.idDepartamentos;
-      if (config.descripcionImpacto) dto.DescripcionImpacto = config.descripcionImpacto;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
     } else {
       // Formato tradicional: enviar campos directamente
       if (config.actividadId) dto.ActividadId = config.actividadId;
@@ -723,7 +701,7 @@ export class ReportesService {
       if (config.dividirPorGenero !== undefined) dto.DividirPorGenero = config.dividirPorGenero;
       if (config.idDepartamento) dto.IdDepartamento = config.idDepartamento;
       if (config.idDepartamentos && config.idDepartamentos.length > 0) dto.IdDepartamentos = config.idDepartamentos;
-      if (config.descripcionImpacto) dto.DescripcionImpacto = config.descripcionImpacto;
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
       
       // Si viene parametrosJson directamente, hacer merge en lugar de reemplazar
       if (config.parametrosJson) {
@@ -737,20 +715,14 @@ export class ReportesService {
             parametrosCombinados.IdActividades = config.idActividades;
             console.log('✅ IdActividades agregado al ParametrosJson (formato tradicional):', config.idActividades);
           }
-          // DescripcionImpacto: enviar siempre que exista (incluso si es cadena vacía)
-          if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
-            parametrosCombinados.DescripcionImpacto = config.descripcionImpacto;
-            console.log('✅ DescripcionImpacto agregado al ParametrosJson (formato tradicional):', config.descripcionImpacto);
-          }
+          // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
           dto.ParametrosJson = JSON.stringify(parametrosCombinados);
           console.log('🔍 ParametrosJson final (formato tradicional):', dto.ParametrosJson);
         } catch (e) {
           console.warn('No se pudo parsear parametrosJson, usando directamente:', e);
           // Si falla el parse, crear uno nuevo con los campos necesarios
           const parametrosJson: any = JSON.parse(config.parametrosJson);
-          if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
-            parametrosJson.DescripcionImpacto = config.descripcionImpacto;
-          }
+          // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
           dto.ParametrosJson = JSON.stringify(parametrosJson);
         }
       } else {
@@ -761,22 +733,14 @@ export class ReportesService {
           parametrosJson.IdActividades = config.idActividades;
           console.log('✅ IdActividades agregado al ParametrosJson (sin parametrosJson previo):', config.idActividades);
         }
-        // DescripcionImpacto: enviar siempre que exista
-        if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
-          parametrosJson.DescripcionImpacto = config.descripcionImpacto;
-          console.log('✅ DescripcionImpacto agregado al ParametrosJson nuevo (formato tradicional):', config.descripcionImpacto);
-        }
+        // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
         if (Object.keys(parametrosJson).length > 0) {
           dto.ParametrosJson = JSON.stringify(parametrosJson);
           console.log('🔍 ParametrosJson creado (formato tradicional):', dto.ParametrosJson);
         }
       }
       
-      // También asegurar que DescripcionImpacto esté en el DTO directamente
-      if (config.descripcionImpacto !== undefined && config.descripcionImpacto !== null) {
-        dto.DescripcionImpacto = config.descripcionImpacto;
-        console.log('✅ DescripcionImpacto agregado al DTO (formato tradicional):', config.descripcionImpacto);
-      }
+      // DescripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
     }
     
     return this.http.post<Blob>(`${this.apiUrl}/generar/excel`, dto, {

@@ -223,7 +223,7 @@ export class ReporteGenerarComponent implements OnInit {
       fechaFin: [null], // Para reporte institucional o filtrar por período
       idDepartamento: [null], // Para filtrar por departamento (opcional) - Legacy, mantener para compatibilidad
       idDepartamentos: [[]], // Array de IDs de departamentos (permite múltiples selecciones)
-      descripcionImpacto: [''], // Descripción del impacto de la actividad desarrollada
+      // descripcionImpacto eliminado - ahora se genera automáticamente en el backend desde descripcion + objetivo de cada actividad
       formato: ['excel', Validators.required],
       incluirEvidencias: [true],
       incluirParticipaciones: [true],
@@ -752,17 +752,7 @@ export class ReporteGenerarComponent implements OnInit {
           // Formato: "Reporte de [Código de actividad O Nombre de subActividad O Indicador O participaciones O evidencias] [fecha del reporte]"
           const nombreReporte = this.generarNombreReporte(formValue);
 
-          // Verificar que descripcionImpacto se está capturando
-          // Capturar el valor tal cual está (sin trim para no perder espacios intencionales)
-          // Solo enviar si tiene contenido (no cadena vacía después de trim)
-          const descripcionImpactoRaw = formValue.descripcionImpacto || '';
-          const descripcionImpacto = descripcionImpactoRaw.trim() || undefined;
-          
-          console.log('🔍 DescripcionImpacto del formulario (raw):', descripcionImpactoRaw);
-          console.log('🔍 DescripcionImpacto del formulario (trimmed):', descripcionImpacto);
-          console.log('🔍 DescripcionImpacto length (raw):', descripcionImpactoRaw.length);
-          console.log('🔍 DescripcionImpacto length (trimmed):', descripcionImpacto?.length || 0);
-          console.log('🔍 DescripcionImpacto será enviado?', descripcionImpacto !== undefined);
+          // descripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
           
           const config: ReporteConfig = {
             tipoReporte: formValue.tipoReporte || 'actividad', // Importante: debe contener "actividad"
@@ -772,7 +762,7 @@ export class ReporteGenerarComponent implements OnInit {
             fechaFin: fechaFin,
             idDepartamento: formValue.idDepartamento || undefined,
             idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
-            descripcionImpacto: descripcionImpacto,
+            // descripcionImpacto eliminado - se genera automáticamente en el backend
             formato: formValue.formato,
             incluirEvidencias: formValue.incluirEvidencias ?? true,
             incluirParticipaciones: formValue.incluirParticipaciones ?? true,
@@ -886,14 +876,7 @@ export class ReporteGenerarComponent implements OnInit {
         // Formato: "Reporte de [Código de actividad O Nombre de subActividad O Indicador O participaciones O evidencias] [fecha del reporte]"
         const nombreReporte = this.generarNombreReporte(formValue);
         
-        // Verificar que descripcionImpacto se está capturando (para formato no institucional)
-        const descripcionImpactoRaw = formValue.descripcionImpacto || '';
-        const descripcionImpacto = descripcionImpactoRaw.trim() || undefined;
-        
-        console.log('🔍 [Formato no institucional] DescripcionImpacto del formulario (raw):', descripcionImpactoRaw);
-        console.log('🔍 [Formato no institucional] DescripcionImpacto del formulario (trimmed):', descripcionImpacto);
-        console.log('🔍 [Formato no institucional] DescripcionImpacto length (raw):', descripcionImpactoRaw.length);
-        console.log('🔍 [Formato no institucional] DescripcionImpacto será enviado?', descripcionImpacto !== undefined);
+        // descripcionImpacto ya no se envía - el backend lo genera automáticamente desde descripcion + objetivo de cada actividad
         
         // Obtener actividades seleccionadas (puede ser array o single)
         const idActividades = formValue.idActividades && Array.isArray(formValue.idActividades) && formValue.idActividades.length > 0
@@ -909,7 +892,7 @@ export class ReporteGenerarComponent implements OnInit {
           fechaFin: fechaFin || undefined, // Período del reporte - filtra actividades dentro de este rango
           idDepartamento: formValue.idDepartamento || undefined,
           idDepartamentos: formValue.idDepartamentos || undefined, // Array de departamentos
-          descripcionImpacto: descripcionImpacto, // Descripción del impacto
+          // descripcionImpacto eliminado - se genera automáticamente en el backend
           formato: formValue.formato,
           incluirEvidencias: formValue.incluirEvidencias,
           incluirParticipaciones: formValue.incluirParticipaciones,
@@ -1430,7 +1413,8 @@ export class ReporteGenerarComponent implements OnInit {
 
   /**
    * Selecciona automáticamente todas las actividades que caen dentro del período definido
-   * Si el usuario ya tenía actividades seleccionadas antes de poner el período, las mantiene
+   * Cuando hay un período definido, SOLO selecciona las actividades dentro del período
+   * Si no hay período, mantiene las selecciones manuales del usuario
    */
   seleccionarActividadesPorPeriodo(): void {
     // Usar setTimeout para asegurar que el computed se actualice después del cambio del formulario
@@ -1440,14 +1424,6 @@ export class ReporteGenerarComponent implements OnInit {
       
       // Obtener actividades actualmente seleccionadas
       const actividadesSeleccionadasActuales = this.form.get('idActividades')?.value || [];
-      const idsSeleccionadosActuales = new Set<number>(
-        actividadesSeleccionadasActuales
-          .map((id: any) => {
-            const numId = Number(id);
-            return isNaN(numId) || numId <= 0 ? null : numId;
-          })
-          .filter((id: number | null): id is number => id !== null)
-      );
       
       // Si se limpiaron las fechas, mantener las selecciones manuales del usuario
       if (!fechaInicio && !fechaFin) {
@@ -1464,20 +1440,20 @@ export class ReporteGenerarComponent implements OnInit {
         })
         .filter((id): id is number => id !== null);
       
-      // Combinar: mantener selecciones actuales + agregar actividades del período
-      const idsFinales = new Set<number>();
+      // Cuando hay un período definido, SOLO seleccionar las actividades dentro del período
+      // No combinar con selecciones anteriores para evitar mantener actividades fuera del período
+      const idsFinalesArray = idsEnPeriodo;
       
-      // Agregar actividades ya seleccionadas
-      idsSeleccionadosActuales.forEach(id => idsFinales.add(id));
+      // Verificar si hay cambios comparando los arrays
+      const idsActualesSet = new Set(actividadesSeleccionadasActuales.map((id: any) => Number(id)));
+      const idsFinalesSet = new Set(idsFinalesArray);
       
-      // Agregar todas las actividades dentro del período
-      idsEnPeriodo.forEach(id => idsFinales.add(id));
-      
-      const idsFinalesArray = Array.from(idsFinales);
+      const hayCambios = idsFinalesArray.length !== actividadesSeleccionadasActuales.length ||
+        !idsFinalesArray.every(id => idsActualesSet.has(id)) ||
+        !actividadesSeleccionadasActuales.every((id: any) => idsFinalesSet.has(Number(id)));
       
       // Actualizar solo si hay cambios
-      if (idsFinalesArray.length !== actividadesSeleccionadasActuales.length ||
-          !idsFinalesArray.every(id => idsSeleccionadosActuales.has(id))) {
+      if (hayCambios) {
         const idActividadesControl = this.form.get('idActividades');
         idActividadesControl?.setValue(idsFinalesArray, { emitEvent: false });
         idActividadesControl?.markAsTouched();
@@ -1489,7 +1465,10 @@ export class ReporteGenerarComponent implements OnInit {
         // Actualizar nombre del archivo
         this.actualizarNombreArchivoReporte();
         
-        console.log(`✅ ${idsEnPeriodo.length} actividad(es) dentro del período agregada(s). Total seleccionadas: ${idsFinalesArray.length}`);
+        console.log(`✅ Período actualizado: ${idsEnPeriodo.length} actividad(es) seleccionada(s) dentro del período`);
+        console.log(`📅 Período: ${fechaInicio || 'sin inicio'} - ${fechaFin || 'sin fin'}`);
+      } else {
+        console.log(`ℹ️ No hay cambios en las actividades del período (${idsEnPeriodo.length} actividades)`);
       }
     }, 0);
   }
