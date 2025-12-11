@@ -87,8 +87,7 @@ export class NotificacionesService {
   }
 
   /**
-   * Obtiene todas las notificaciones del usuario actual
-   * Si el endpoint no existe, retorna notificaciones mock
+   * Obtiene todas las notificaciones del usuario actual desde el backend
    */
   getAll(): Observable<Notificacion[]> {
     console.log('🔄 GET Notificaciones - URL:', this.apiUrl);
@@ -230,6 +229,57 @@ export class NotificacionesService {
     return;
   }
 
+  /**
+   * Crea notificaciones masivas para múltiples usuarios
+   * @param usuarioIds Array de IDs de usuarios que recibirán la notificación
+   * @param titulo Título de la notificación
+   * @param mensaje Mensaje de la notificación
+   * @param tipo Tipo de notificación
+   * @param url URL opcional para navegar cuando se hace clic
+   * @param codigoNotificacion Código opcional para evitar duplicados
+   */
+  crearNotificacionMasiva(
+    usuarioIds: number[],
+    titulo: string,
+    mensaje: string,
+    tipo: 'info' | 'success' | 'warning' | 'error' = 'info',
+    url?: string,
+    codigoNotificacion?: string
+  ): Observable<boolean> {
+    if (!usuarioIds || usuarioIds.length === 0) {
+      console.warn('⚠️ No hay usuarios para notificar');
+      return of(false);
+    }
+
+    console.log(`🔄 POST Crear notificación masiva - ${usuarioIds.length} usuarios`);
+
+    const dto = {
+      UsuarioIds: usuarioIds,
+      Titulo: titulo,
+      Mensaje: mensaje,
+      Tipo: tipo,
+      Url: url,
+      CodigoNotificacion: codigoNotificacion
+    };
+
+    return this.http.post<any>(`${this.apiUrl}/masiva`, dto).pipe(
+      map(() => {
+        console.log(`✅ Notificaciones masivas creadas para ${usuarioIds.length} usuarios`);
+        return true;
+      }),
+      catchError(error => {
+        // Si el endpoint no existe, registrar el error pero no fallar
+        if (error.status === 404) {
+          console.warn('⚠️ Endpoint para crear notificaciones masivas no encontrado. El backend puede no estar actualizado.');
+        } else {
+          console.error('❌ Error creando notificaciones masivas:', error);
+        }
+        // Retornar false pero no lanzar error para no bloquear el flujo
+        return of(false);
+      })
+    );
+  }
+
   // Métodos privados para manejo local del estado
 
   private updateNotificaciones(notificaciones: Notificacion[]): void {
@@ -277,15 +327,6 @@ export class NotificacionesService {
     if (tipoLower === 'warning' || tipoLower === 'advertencia' || tipoLower === 'alerta') return 'warning';
     if (tipoLower === 'error' || tipoLower === 'error') return 'error';
     return 'info';
-  }
-
-  /**
-   * Genera notificaciones mock para desarrollo
-   * DESACTIVADO: Las notificaciones ahora vienen solo del backend
-   */
-  private getMockNotificaciones(): Notificacion[] {
-    // Método desactivado - las notificaciones ahora vienen solo del backend
-    return [];
   }
 }
 

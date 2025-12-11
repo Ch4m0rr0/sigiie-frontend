@@ -1380,17 +1380,36 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
             const nombreActividad = formValue.nombreActividad || formValue.nombre || 'la actividad';
             
             // Crear responsables para la actividad recién creada
-            if (actividadCreada.id) {
-              console.log('🔄 Actividad creada, ahora creando responsables...', actividadCreada.id);
+            // Obtener el ID con múltiples intentos
+            const idActividadCreada = actividadCreada.id || 
+                                     actividadCreada.idActividad || 
+                                     (actividadCreada as any).Id || 
+                                     (actividadCreada as any).IdActividad ||
+                                     (actividadCreada as any).idActividad ||
+                                     (actividadCreada as any).IdActividad;
+            
+            // Log para debugging
+            console.log('🔍 ID de actividad creada:', {
+              'actividadCreada.id': actividadCreada.id,
+              'actividadCreada.idActividad': actividadCreada.idActividad,
+              'actividadCreada completo': actividadCreada,
+              'idActividadCreada final': idActividadCreada
+            });
+            
+            // Validar que el ID sea válido (mayor que 0)
+            const idValidoParaResponsables = idActividadCreada && Number(idActividadCreada) > 0;
+            
+            if (idValidoParaResponsables) {
+              console.log('🔄 Actividad creada, ahora creando responsables...', idActividadCreada);
               this.loading.set(false); // Detener el loading
               // Guardar el ID de la actividad creada para usarlo en mostrarAlertaExito
-              (this as any).actividadIdCreada = actividadCreada.id;
-              this.crearResponsablesParaActividad(actividadCreada.id);
+              (this as any).actividadIdCreada = idActividadCreada;
+              this.crearResponsablesParaActividad(idActividadCreada);
               // No mostrar alerta aquí, se mostrará en crearResponsablesParaActividad
               
               // Si hay un indicador adicional desde query params, asociarlo en segundo plano
-              if (indicadorId) {
-                this.actividadesService.agregarIndicador(actividadCreada.id, indicadorId).subscribe({
+              if (indicadorId && idActividadCreada) {
+                this.actividadesService.agregarIndicador(idActividadCreada, indicadorId).subscribe({
                   next: () => {
                     console.log('✅ Indicador asociado correctamente');
                   },
@@ -1402,18 +1421,23 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
               return; // Salir temprano, la alerta se mostrará después en crearResponsablesParaActividad
             }
             
-            // Si no hay ID de actividad, mostrar alerta y redirigir
+            // Si no hay ID de actividad válido, mostrar alerta y redirigir
             this.loading.set(false);
-            const idActividadCreada = actividadCreada.id || actividadCreada.idActividad || (actividadCreada as any).Id || (actividadCreada as any).IdActividad;
+            
+            // Validar que el ID sea válido (mayor que 0) para navegación
+            const idValidoParaNavegacion = idActividadCreada && Number(idActividadCreada) > 0;
+            
             this.alertService.success(
               '¡Actividad creada exitosamente!',
               `La actividad "${nombreActividad}" ha sido creada correctamente.`
             ).then(() => {
               // Redirigir a la vista de detalles de la actividad creada
               this.clearFormState();
-              if (idActividadCreada) {
+              if (idValidoParaNavegacion) {
+                console.log('✅ Navegando a actividad:', idActividadCreada);
                 this.router.navigate(['/actividades', idActividadCreada]);
               } else {
+                console.warn('⚠️ ID de actividad no válido, redirigiendo a lista de actividades');
                 this.router.navigate(['/actividades']);
               }
             });
@@ -2068,14 +2092,25 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       // Mensaje para actividad creada - necesitamos obtener el ID de la actividad creada
       // Buscar el ID desde el formulario o desde una variable de instancia
       const actividadId = (this as any).actividadIdCreada || null;
+      
+      // Validar que el ID sea válido (mayor que 0)
+      const idValido = actividadId && Number(actividadId) > 0;
+      
+      console.log('🔍 mostrarAlertaExito - ID de actividad:', {
+        'actividadId': actividadId,
+        'idValido': idValido
+      });
+      
       this.alertService.success(
         '¡Actividad creada exitosamente!',
         `La actividad "${nombreActividad}" ha sido creada correctamente.`
       ).then(() => {
         this.clearFormState();
-        if (actividadId) {
+        if (idValido) {
+          console.log('✅ Navegando a actividad:', actividadId);
           this.router.navigate(['/actividades', actividadId]);
         } else {
+          console.warn('⚠️ ID de actividad no válido, redirigiendo a lista de actividades');
           this.router.navigate(['/actividades']);
         }
       });
@@ -3918,5 +3953,6 @@ export class ActividadNoPlanificadaFormComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 }
 

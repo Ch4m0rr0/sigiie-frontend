@@ -306,7 +306,10 @@ export class NotificacionesAutomaticasService {
   }
 
   /**
-   * Crea una notificación en el backend (si está disponible) y localmente
+   * Crea una notificación en el backend
+   * NOTA: Las notificaciones ahora se crean automáticamente en el backend.
+   * Este método solo muestra toasts si están habilitados.
+   * Las notificaciones persistentes vienen del backend cuando se cargan.
    */
   private crearNotificacionBackend(notificacion: {
     titulo: string;
@@ -314,18 +317,10 @@ export class NotificacionesAutomaticasService {
     tipo: 'info' | 'success' | 'warning' | 'error';
     url?: string;
   }, codigoNotificacion?: string): void {
-    // Agregar la notificación localmente para que aparezca en el dropdown
-    this.notificacionesService.agregarNotificacionLocal({
-      titulo: notificacion.titulo,
-      mensaje: notificacion.mensaje,
-      tipo: notificacion.tipo,
-      fecha: new Date(),
-      leida: false,
-      url: notificacion.url
-    }, codigoNotificacion);
-
-    // Cuando el backend esté listo, aquí se haría la llamada HTTP
-    // this.notificacionesService.crear(notificacion).subscribe();
+    // Las notificaciones persistentes se crean automáticamente en el backend
+    // Solo mostramos toasts aquí si están habilitados
+    // Las notificaciones del backend se cargarán automáticamente cuando se llame a getAll()
+    console.log('ℹ️ Notificación automática detectada - el backend maneja las notificaciones persistentes');
   }
 
   /**

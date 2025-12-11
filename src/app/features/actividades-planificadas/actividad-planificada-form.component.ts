@@ -1651,16 +1651,37 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
             
             // Mostrar alerta de éxito inmediatamente después de crear la actividad
             this.loading.set(false);
-            const idActividadCreada = actividadCreada.id || actividadCreada.idActividad || (actividadCreada as any).Id || (actividadCreada as any).IdActividad;
+            
+            // Obtener el ID de la actividad creada con múltiples intentos
+            const idActividadCreada = actividadCreada.id || 
+                                     actividadCreada.idActividad || 
+                                     (actividadCreada as any).Id || 
+                                     (actividadCreada as any).IdActividad ||
+                                     (actividadCreada as any).idActividad ||
+                                     (actividadCreada as any).IdActividad;
+            
+            // Log para debugging
+            console.log('🔍 ID de actividad creada:', {
+              'actividadCreada.id': actividadCreada.id,
+              'actividadCreada.idActividad': actividadCreada.idActividad,
+              'actividadCreada completo': actividadCreada,
+              'idActividadCreada final': idActividadCreada
+            });
+            
+            // Validar que el ID sea válido (mayor que 0)
+            const idValido = idActividadCreada && Number(idActividadCreada) > 0;
+            
             this.alertService.success(
               '¡Actividad creada exitosamente!',
               `La actividad "${nombreActividad}" ha sido creada correctamente.`
             ).then(() => {
               // Redirigir a la vista de detalles de la actividad creada
               this.clearFormState();
-              if (idActividadCreada) {
+              if (idValido) {
+                console.log('✅ Navegando a actividad:', idActividadCreada);
                 this.router.navigate(['/actividades', idActividadCreada]);
               } else {
+                console.warn('⚠️ ID de actividad no válido, redirigiendo a lista de actividades');
                 this.router.navigate(['/actividades']);
               }
             });
@@ -3457,14 +3478,25 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
     } else {
       // Mensaje para actividad creada - necesitamos obtener el ID de la actividad creada
       // El ID debería estar disponible desde el método que llama a mostrarAlertaExito
-      const actividadId = (this as any).actividadIdCreada || null;
+      const actividadIdValue = actividadId || (this as any).actividadIdCreada || null;
+      // Validar que el ID sea válido (mayor que 0)
+      const idValido = actividadIdValue && Number(actividadIdValue) > 0;
+      
+      console.log('🔍 mostrarAlertaExito - ID de actividad:', {
+        'actividadId param': actividadId,
+        'actividadIdCreada': (this as any).actividadIdCreada,
+        'actividadIdValue': actividadIdValue,
+        'idValido': idValido
+      });
+      
       this.alertService.success(
         '¡Actividad creada exitosamente!',
         `La actividad "${nombreActividad}" ha sido creada correctamente.`
       ).then(() => {
         this.clearFormState();
-        if (actividadId) {
-          this.router.navigate(['/actividades', actividadId]);
+        if (idValido) {
+          console.log('✅ Navegando a actividad:', actividadIdValue);
+          this.router.navigate(['/actividades', actividadIdValue]);
         } else {
           this.router.navigate(['/actividades']);
         }
@@ -4126,5 +4158,6 @@ export class ActividadPlanificadaFormComponent implements OnInit, OnDestroy {
       this.seccionInformacionExpandida.set(false);
     }
   }
+
 }
 
