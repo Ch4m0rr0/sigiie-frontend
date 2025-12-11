@@ -623,6 +623,11 @@ export class SubactividadService {
 
   private mapSubactividad(item: any): Subactividad {
     console.log('🔄 mapSubactividad - Item original del backend:', JSON.stringify(item, null, 2));
+    console.log('🔍 Código de subactividad recibido del backend:', {
+      'item.codigoSubactividad': item.codigoSubactividad,
+      'item.CodigoSubactividad': item.CodigoSubactividad,
+      'Tiene código?': !!(item.codigoSubactividad || item.CodigoSubactividad)
+    });
     console.log('🔍 Campos específicos en item original:', {
       'item.objetivo': item.objetivo,
       'item.Objetivo': item.Objetivo,

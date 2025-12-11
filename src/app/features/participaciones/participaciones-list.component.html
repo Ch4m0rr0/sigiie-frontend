@@ -49,6 +49,12 @@
               class="bg-white rounded-lg border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
               <div class="flex items-start justify-between mb-4">
                 <div class="flex-1">
+                  @if (item.codigoSubactividad) {
+                    <div class="text-xs font-mono font-semibold text-slate-600 mb-1">{{ item.codigoSubactividad }}</div>
+                  }
+                  @if (item.codigoActividad) {
+                    <div class="text-xs font-mono font-semibold text-slate-600 mb-1">{{ item.codigoActividad }}</div>
+                  }
                   <h4 class="text-lg font-semibold text-slate-900 mb-1">
                     {{ item.nombre || item.nombreActividad || item.nombreSubactividad }}
                   </h4>

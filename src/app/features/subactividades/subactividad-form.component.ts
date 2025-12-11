@@ -1109,36 +1109,14 @@ export class SubactividadFormComponent implements OnInit {
         ? formValue.idTipoEvidencias.filter((id: number) => id !== null && id !== undefined)
         : (formValue.idTipoEvidencias ? [formValue.idTipoEvidencias] : []);
 
-      // Generar código automático para subactividades (igual que actividades)
-      let codigoSubactividad: string | undefined = undefined;
-      if (!this.isEditMode()) {
-        // Solo generar código automático al crear, no al editar
-        // Generar código basado en la actividad padre (si está cargada)
-        codigoSubactividad = this.generarCodigoSubactividad(formValue.idActividad, formValue.anio);
-        
-        // Si no se pudo generar porque la actividad padre no está cargada, cargarla primero
-        if (!codigoSubactividad && formValue.idActividad && !this.actividadPadre()) {
-          // Cargar actividad padre de forma síncrona para obtener el código
-          this.actividadesService.get(formValue.idActividad).subscribe({
-            next: (actividad) => {
-              this.actividadPadre.set(actividad);
-              // Regenerar código con la actividad padre cargada
-              const codigoGenerado = this.generarCodigoSubactividad(formValue.idActividad, formValue.anio);
-              // Continuar con la creación usando el código generado
-              this.crearSubactividadConCodigo(formValue, fechaInicio, fechaFin, horaRealizacion, idActividadAnualValue, idActividadMensualInstValue, idTipoProtagonistaArray, idTipoEvidenciasArray, codigoGenerado);
-            },
-            error: (err) => {
-              console.warn('No se pudo cargar la actividad padre para generar código:', err);
-              // Continuar sin código, el backend lo generará
-              this.crearSubactividadConCodigo(formValue, fechaInicio, fechaFin, horaRealizacion, idActividadAnualValue, idActividadMensualInstValue, idTipoProtagonistaArray, idTipoEvidenciasArray, undefined);
-            }
-          });
-          // Salir temprano, la creación se hará en el callback
-          return;
-        }
-      }
+      // El backend genera el código automáticamente al crear una subactividad
+      // (igual que lo hace para actividades), por lo que no lo generamos en el frontend
+      // Solo se envía codigoSubactividad si estamos editando y el usuario lo ha modificado manualmente
+      const codigoSubactividad: string | undefined = this.isEditMode() 
+        ? (formValue.codigoSubactividad || undefined) 
+        : undefined; // No enviar código al crear, el backend lo generará
 
-      // Continuar con la creación normal
+      // Continuar con la creación
       this.crearSubactividadConCodigo(formValue, fechaInicio, fechaFin, horaRealizacion, idActividadAnualValue, idActividadMensualInstValue, idTipoProtagonistaArray, idTipoEvidenciasArray, codigoSubactividad);
     } else {
       this.form.markAllAsTouched();
@@ -1183,7 +1161,8 @@ export class SubactividadFormComponent implements OnInit {
       cantidadParticipantesEstudiantesProyectados: formValue.cantidadParticipantesEstudiantesProyectados !== undefined && formValue.cantidadParticipantesEstudiantesProyectados !== null ? formValue.cantidadParticipantesEstudiantesProyectados : undefined,
       cantidadTotalParticipantesProtagonistas: formValue.cantidadTotalParticipantesProtagonistas !== undefined && formValue.cantidadTotalParticipantesProtagonistas !== null ? formValue.cantidadTotalParticipantesProtagonistas : undefined,
       idTipoEvidencias: idTipoEvidenciasArray.length > 0 ? idTipoEvidenciasArray : undefined,
-      // Código generado automáticamente
+      // Código: solo se envía si estamos editando y el usuario lo ha modificado manualmente
+      // Al crear, el backend genera el código automáticamente (igual que para actividades)
       codigoSubactividad: codigoSubactividad
     };
 
@@ -1264,43 +1243,10 @@ export class SubactividadFormComponent implements OnInit {
     }
   }
 
-  // Generar código automático para subactividades (igual que actividades)
-  private generarCodigoSubactividad(idActividad: number, anio?: string): string | undefined {
-    if (!idActividad) {
-      return undefined;
-    }
-
-    // Obtener el año (del formulario o año actual)
-    const year = anio || String(new Date().getFullYear());
-
-    // Obtener la actividad padre para usar su código como base
-    const actividad = this.actividadPadre();
-    if (actividad && actividad.codigoActividad) {
-      // Si la actividad padre tiene código, usar ese código como base
-      // El código de la actividad ya incluye el año (ej: PNCA-2025)
-      // Para subactividades, agregamos un sufijo: CODIGO-SUB, CODIGO-I, CODIGO-II, etc.
-      const codigoBase = actividad.codigoActividad;
-      
-      // Contar cuántas subactividades ya tiene la actividad padre
-      const subactividadesExistentes = actividad.subactividades || [];
-      const numeroSubactividad = subactividadesExistentes.length + 1;
-      
-      // Generar código: CODIGO-SUB o CODIGO-I, CODIGO-II, etc.
-      // Ejemplo: Si actividad es "PNCA-2025", subactividades serán "PNCA-2025-SUB", "PNCA-2025-I", etc.
-      if (numeroSubactividad === 1) {
-        return `${codigoBase}-SUB`;
-      } else {
-        // Usar números romanos para múltiples subactividades
-        const romanos = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-        const sufijo = romanos[numeroSubactividad - 1] || String(numeroSubactividad);
-        return `${codigoBase}-${sufijo}`;
-      }
-    }
-
-    // Si no hay código de actividad padre, el backend lo generará automáticamente
-    // No generamos código aquí para evitar conflictos con el backend
-    return undefined;
-  }
+  // NOTA: La generación de código de subactividad se eliminó del frontend.
+  // El backend genera el código automáticamente al crear una subactividad,
+  // usando la misma lógica que usa para generar el código de actividades.
+  // Esto asegura consistencia y evita conflictos entre frontend y backend.
 
   // Métodos para responsables (igual que actividad planificada)
   initializeFormResponsable(): void {

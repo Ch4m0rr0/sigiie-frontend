@@ -236,6 +236,9 @@
                 </div>
                 
                 <div class="min-w-0">
+                  @if (subactividad.codigoSubactividad) {
+                    <div class="text-xs font-mono font-semibold text-slate-600 truncate mb-1">{{ subactividad.codigoSubactividad }}</div>
+                  }
                   <h3 class="text-base font-bold text-slate-900 leading-tight line-clamp-2 group-hover:text-emerald-600 transition-colors">
                     {{ subactividad.nombre || subactividad.nombreSubactividad }}
                   </h3>
@@ -347,6 +350,7 @@
                         <app-icon icon="assignment" size="xs"></app-icon>
                       </div>
                       <div class="min-w-0 flex-1">
+                        <div class="text-xs font-mono font-semibold text-slate-600 truncate">{{ subactividad.codigoSubactividad || 'Sin código' }}</div>
                         <div class="text-sm font-medium text-slate-900 truncate">{{ subactividad.nombre || subactividad.nombreSubactividad || 'Sin nombre' }}</div>
                         @if (subactividad.nombreActividad) {
                           <div class="text-xs text-slate-500 truncate">{{ subactividad.nombreActividad }}</div>
