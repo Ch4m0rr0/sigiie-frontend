@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, AfterViewInit, OnDestroy, signal, computed, effect, HostListener, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, AfterViewInit, OnDestroy, signal, computed, effect, HostListener, ElementRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { SubactividadService } from '../../core/services/subactividad.service';
@@ -47,7 +47,33 @@ class CustomCalendarDateFormatter extends CalendarDateFormatter {
 // Formateador personalizado para títulos de eventos
 class CustomCalendarEventTitleFormatter extends CalendarEventTitleFormatter {
   override month(event: CalendarEvent): string {
-    return event.title;
+    // Asegurar que el código siempre se muestre
+    const codigo = event.meta?.codigoSubactividad || event.meta?.codigoActividad;
+    const title = event.title || '';
+    
+    // Log para depuración
+    console.log('🎨 [CustomCalendarEventTitleFormatter] Formateando título:', {
+      codigo: codigo,
+      titleOriginal: title,
+      meta: event.meta
+    });
+    
+    // Si el título ya incluye el código, retornarlo tal cual
+    if (codigo && title.includes(codigo)) {
+      console.log('✅ [CustomCalendarEventTitleFormatter] Título ya incluye código:', title);
+      return title;
+    }
+    
+    // Si hay código pero no está en el título, agregarlo
+    if (codigo && !title.includes(codigo)) {
+      const nombre = title || event.meta?.subactividad?.nombre || event.meta?.actividad?.nombre || 'Sin nombre';
+      const nuevoTitle = `${codigo} - ${nombre}`;
+      console.log('🔧 [CustomCalendarEventTitleFormatter] Agregando código al título:', nuevoTitle);
+      return nuevoTitle;
+    }
+    
+    console.log('⚠️ [CustomCalendarEventTitleFormatter] Sin código, retornando título original:', title);
+    return title;
   }
 }
 
@@ -87,6 +113,7 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
   private catalogosService = inject(CatalogosService);
   private router = inject(Router);
   private elementRef = inject(ElementRef);
+  private ngZone = inject(NgZone);
 
   subactividades = signal<Subactividad[]>([]);
   actividades = signal<Actividad[]>([]);
@@ -241,6 +268,15 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
   }
 
   actualizarEventosCalendario(subactividades: Subactividad[]): void {
+    console.log('📅 [Subactividades Calendar] Actualizando eventos con', subactividades.length, 'subactividades');
+    subactividades.forEach(s => {
+      console.log('  - Subactividad:', {
+        id: s.idSubactividad,
+        codigoSubactividad: s.codigoSubactividad,
+        nombre: s.nombre
+      });
+    });
+    
     const eventos: CalendarEvent[] = subactividades
       .filter(subactividad => subactividad.fechaInicio || subactividad.fechaCreacion)
       .map(subactividad => {
@@ -295,14 +331,46 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
           secondary: colorSecondary
         };
         
+        // Obtener el código de la subactividad
+        const codigo = subactividad.codigoSubactividad || '';
+        const nombre = subactividad.nombre || subactividad.nombreSubactividad || 'Sin nombre';
+        
+        // Log para verificar que el código esté disponible
+        console.log('📅 [Subactividades Calendar] Procesando subactividad:', {
+          idSubactividad: subactividad.idSubactividad,
+          codigoSubactividad: subactividad.codigoSubactividad,
+          nombre: nombre,
+          codigo: codigo
+        });
+        
+        let title = codigo ? `${codigo} - ${nombre}` : nombre;
+        
+        // Agregar información de duración si es un evento de varios días
+        if (fechaFin) {
+          const diasDuracion = differenceInDays(fechaFin, fechaInicio) + 1;
+          if (diasDuracion > 1) {
+            title = `${title} (${diasDuracion} días)`;
+          }
+        }
+        
+        // Log del título final
+        console.log('📅 [Subactividades Calendar] Título final del evento:', {
+          idSubactividad: subactividad.idSubactividad,
+          codigo: codigo,
+          nombre: nombre,
+          title: title
+        });
+        
         const evento: CalendarEvent = {
           id: subactividad.idSubactividad,
           start: fechaInicio,
-          title: subactividad.nombre || subactividad.nombreSubactividad || 'Sin nombre',
+          title: title,
           color: color,
           meta: {
             subactividad: subactividad,
-            estado: nombreEstado
+            estado: nombreEstado,
+            codigoSubactividad: subactividad.codigoSubactividad || codigo, // Asegurar que siempre tenga el código
+            tipo: 'subactividad'
           }
         };
         
@@ -314,7 +382,40 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
         return evento;
       });
     
+    // Log para verificar los eventos con código
+    const eventosConCodigo = eventos.filter(e => e.meta?.codigoSubactividad || e.title?.includes(' - '));
+    console.log('📅 [Subactividades Calendar] Eventos con código:', eventosConCodigo.length, 'de', eventos.length);
+    eventosConCodigo.forEach(e => {
+      console.log('  - Evento:', {
+        id: e.id,
+        title: e.title,
+        codigo: e.meta?.codigoSubactividad
+      });
+    });
+    
     this.eventosCalendario.set(eventos);
+    
+    // Forzar actualización del calendario después de establecer los eventos
+    setTimeout(() => {
+      this.attachEventListeners();
+      this.agregarBadgesCodigo();
+      
+      // Verificar que los títulos se muestren correctamente en el DOM
+      const eventElements = this.elementRef.nativeElement.querySelectorAll('.cal-event-title');
+      console.log('📅 [Subactividades Calendar] Verificando títulos en el DOM:', eventElements.length, 'elementos encontrados');
+      eventElements.forEach((el: HTMLElement, index: number) => {
+        const texto = el.textContent || el.innerText || '';
+        console.log(`  - Título ${index + 1} en DOM:`, texto);
+      });
+      
+      // Forzar detección de cambios para asegurar que el calendario se actualice
+      if (this.modoVista() === 'calendario') {
+        // El calendario debería actualizarse automáticamente con el signal
+        // pero forzamos una actualización adicional
+        const eventosActuales = this.eventosCalendario();
+        this.eventosCalendario.set([...eventosActuales]);
+      }
+    }, 500);
   }
 
   eventoClicked(event: { event: CalendarEvent }): void {
@@ -330,10 +431,331 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
     } else {
       this.viewDate = addMonths(this.viewDate, 1);
     }
+    // Agregar badges después de cambiar el mes
+    setTimeout(() => {
+      this.agregarBadgesCodigo();
+    }, 500);
   }
 
   irAHoy(): void {
     this.viewDate = new Date();
+    // Agregar badges después de cambiar la fecha
+    setTimeout(() => {
+      this.agregarBadgesCodigo();
+    }, 500);
+  }
+
+  agregarBadgesCodigo(): void {
+    // Optimización CLS: Diferir toda la manipulación del DOM usando requestAnimationFrame
+    this.ngZone.runOutsideAngular(() => {
+      requestAnimationFrame(() => {
+        // Primero limpiar todos los badges existentes
+        this.limpiarBadgesExistentes();
+        
+        // Esperar un frame adicional para que el layout se estabilice después de limpiar
+        requestAnimationFrame(() => {
+          const dayCells = this.obtenerCeldasCalendario();
+          if (!dayCells || dayCells.length === 0) {
+            // Si no hay celdas, reintentar después de un frame adicional
+            requestAnimationFrame(() => {
+              const retryCells = this.obtenerCeldasCalendario();
+              if (retryCells && retryCells.length > 0) {
+                this.agregarBadgesCodigoEnCeldas(retryCells);
+              }
+            });
+            return;
+          }
+          this.agregarBadgesCodigoEnCeldas(dayCells);
+        });
+      });
+    });
+  }
+
+  private limpiarBadgesExistentes(): void {
+    const badges = this.elementRef.nativeElement.querySelectorAll('.activity-code-badge-inline');
+    badges.forEach((badge: Element) => {
+      try {
+        badge.remove();
+      } catch (e) {
+        // Ignorar errores al remover
+      }
+    });
+    // También limpiar data-event-id de los elementos para permitir reasignación
+    const eventos = this.elementRef.nativeElement.querySelectorAll('.cal-event');
+    eventos.forEach((evento: HTMLElement) => {
+      evento.removeAttribute('data-event-id');
+    });
+  }
+
+  private obtenerCeldasCalendario(): NodeListOf<HTMLElement> | null {
+    // Intentar múltiples selectores para encontrar las celdas
+    const selectors = [
+      '.cal-month-view .cal-day-cell',
+      'mwl-calendar-month-view .cal-day-cell',
+      '.cal-cell',
+      '[class*="cal-day-cell"]'
+    ];
+    
+    for (const selector of selectors) {
+      const dayCells = this.elementRef.nativeElement.querySelectorAll(selector) as NodeListOf<HTMLElement>;
+      if (dayCells && dayCells.length > 0) return dayCells;
+    }
+    return null;
+  }
+
+  private obtenerFechaDeCelda(cell: HTMLElement): Date | null {
+    try {
+      const dayNumberEl = cell.querySelector('.cal-day-number');
+      if (!dayNumberEl) return null;
+      
+      const dayText = dayNumberEl.textContent?.trim();
+      if (!dayText) return null;
+      
+      const dayNumber = parseInt(dayText, 10);
+      if (isNaN(dayNumber)) return null;
+      
+      // Obtener el mes y año del viewDate
+      const year = this.viewDate.getFullYear();
+      const month = this.viewDate.getMonth();
+      
+      return new Date(year, month, dayNumber);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  private agregarBadgesCodigoEnCeldas(dayCells: NodeListOf<HTMLElement>): void {
+    const eventos = this.eventosCalendario();
+    if (eventos.length === 0) return;
+    
+    // Optimización CLS: Usar requestAnimationFrame para agregar todos los badges en un solo frame
+    requestAnimationFrame(() => {
+      this.agregarBadgesCodigoEnCeldasSync(dayCells, eventos);
+    });
+  }
+  
+  private agregarBadgesCodigoEnCeldasSync(dayCells: NodeListOf<HTMLElement>, eventos: CalendarEvent[]): void {
+    const eventosPorFecha = new Map<string, CalendarEvent[]>();
+    eventos.forEach(evento => {
+      const eventStart = startOfDay(evento.start);
+      const eventEnd = evento.end ? startOfDay(evento.end) : eventStart;
+      let currentDate = new Date(eventStart);
+      while (currentDate <= eventEnd) {
+        const fechaKey = currentDate.toISOString().split('T')[0];
+        if (!eventosPorFecha.has(fechaKey)) {
+          eventosPorFecha.set(fechaKey, []);
+        }
+        eventosPorFecha.get(fechaKey)!.push(evento);
+        currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000);
+      }
+    });
+    
+    eventos.forEach((evento) => {
+      const meta = evento.meta as any;
+      
+      // Obtener el código de la subactividad
+      let codigo: string | undefined = meta?.codigoSubactividad || meta?.subactividad?.codigoSubactividad;
+      
+      // Si no hay código, intentar extraerlo del título (formato: "CODIGO - Nombre")
+      if (!codigo || typeof codigo !== 'string' || codigo.trim() === '') {
+        const tituloMatch = evento.title.match(/^([A-Z0-9]+(?:-[A-Z0-9]+)*-\d{4}(?:-[A-Z]+)?)\s*-\s*/);
+        if (tituloMatch && tituloMatch[1]) {
+          codigo = tituloMatch[1];
+        } else {
+          // Si no hay código, saltar este evento
+          return;
+        }
+      }
+      
+      // Asegurarse de que el código es una cadena válida
+      if (!codigo || typeof codigo !== 'string' || codigo.trim() === '') {
+        return;
+      }
+      
+      codigo = codigo.trim();
+      
+      const eventStart = startOfDay(evento.start);
+      const eventEnd = evento.end ? startOfDay(evento.end) : eventStart;
+      
+      let evColor: string | undefined;
+      if (typeof evento.color === 'string') {
+        evColor = evento.color;
+      } else if (evento.color && typeof evento.color === 'object' && 'primary' in evento.color) {
+        evColor = evento.color.primary;
+      }
+      
+      if (!evColor) return;
+      
+      const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+      
+      const rgb = hexToRgb(evColor);
+      if (!rgb) return;
+      
+      const expectedRgb = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      
+      dayCells.forEach((cell: HTMLElement) => {
+        const cellDate = this.obtenerFechaDeCelda(cell);
+        if (!cellDate) return;
+        
+        const cellDateStart = startOfDay(cellDate);
+        if (cellDateStart >= eventStart && cellDateStart <= eventEnd) {
+          const fechaKey = cellDateStart.toISOString().split('T')[0];
+          const eventosEnEstaFecha = eventosPorFecha.get(fechaKey) || [];
+          const indiceEnFecha = eventosEnEstaFecha.findIndex(ev => ev.id === evento.id);
+          
+          const eventosEnCelda = Array.from(cell.querySelectorAll('.cal-event')) as HTMLElement[];
+          const eventosSinBadge = eventosEnCelda.filter(el => {
+            const dataEventId = el.getAttribute('data-event-id');
+            const existingBadge = el.querySelector('.activity-code-badge-inline');
+            if (existingBadge && dataEventId === String(evento.id)) {
+              return false;
+            }
+            return true;
+          });
+          
+          // Intentar identificar el evento por color
+          const eventosConMismoColor = eventosSinBadge.filter(el => {
+            const computedStyle = window.getComputedStyle(el);
+            const backgroundColor = computedStyle.backgroundColor;
+            return backgroundColor && (backgroundColor === expectedRgb || backgroundColor.includes(`rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`));
+          });
+          
+          // También intentar identificar por título (especialmente útil para subactividades)
+          const eventosConMismoTitulo = eventosSinBadge.filter(el => {
+            const titleElement = el.querySelector('.cal-event-title');
+            const tituloElemento = titleElement ? titleElement.textContent?.trim() : el.textContent?.trim() || '';
+            
+            // Extraer el código del título del elemento
+            const codigoEnElemento = tituloElemento.match(/^([A-Z0-9]+(?:-[A-Z0-9]+)*-\d{4}(?:-[A-Z]+)?)/);
+            const codigoEnEvento = evento.title.match(/^([A-Z0-9]+(?:-[A-Z0-9]+)*-\d{4}(?:-[A-Z]+)?)/);
+            
+            // Si ambos tienen código, comparar por código
+            if (codigoEnElemento && codigoEnEvento) {
+              return codigoEnElemento[1] === codigoEnEvento[1];
+            }
+            
+            // Si no, comparar por nombre (removiendo códigos)
+            const tituloLimpio = tituloElemento.replace(/^[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{4}(?:-[A-Z]+)?\s*-\s*/g, '').trim();
+            const tituloEventoLimpio = evento.title.replace(/^[A-Z0-9]+(?:-[A-Z0-9]+)*-\d{4}(?:-[A-Z]+)?\s*-\s*/g, '').trim();
+            return tituloLimpio === tituloEventoLimpio || tituloElemento.includes(tituloEventoLimpio) || tituloEventoLimpio.includes(tituloLimpio);
+          });
+          
+          let eventoEncontrado: HTMLElement | null = null;
+          
+          // Prioridad 1: Eventos con mismo color y título
+          const eventosCoincidentes = eventosConMismoColor.filter(el => {
+            return eventosConMismoTitulo.includes(el);
+          });
+          
+          if (eventosCoincidentes.length === 1) {
+            eventoEncontrado = eventosCoincidentes[0];
+          } else if (eventosCoincidentes.length > 1) {
+            const eventosSinAsignar = eventosCoincidentes.filter(el => !el.getAttribute('data-event-id'));
+            if (indiceEnFecha >= 0 && indiceEnFecha < eventosSinAsignar.length) {
+              eventoEncontrado = eventosSinAsignar[indiceEnFecha];
+            } else if (eventosSinAsignar.length === 1) {
+              eventoEncontrado = eventosSinAsignar[0];
+            }
+          }
+          
+          // Prioridad 2: Si no se encontró, usar solo color
+          if (!eventoEncontrado) {
+            if (eventosConMismoColor.length === 1) {
+              eventoEncontrado = eventosConMismoColor[0];
+            } else if (eventosConMismoColor.length > 1) {
+              const eventosSinAsignar = eventosConMismoColor.filter(el => !el.getAttribute('data-event-id'));
+              if (indiceEnFecha >= 0 && indiceEnFecha < eventosSinAsignar.length) {
+                eventoEncontrado = eventosSinAsignar[indiceEnFecha];
+              } else if (eventosSinAsignar.length === 1) {
+                eventoEncontrado = eventosSinAsignar[0];
+              }
+            }
+          }
+          
+          // Prioridad 3: Si aún no se encontró, usar solo título
+          if (!eventoEncontrado && eventosConMismoTitulo.length > 0) {
+            if (eventosConMismoTitulo.length === 1) {
+              eventoEncontrado = eventosConMismoTitulo[0];
+            } else {
+              const eventosSinAsignar = eventosConMismoTitulo.filter(el => !el.getAttribute('data-event-id'));
+              if (indiceEnFecha >= 0 && indiceEnFecha < eventosSinAsignar.length) {
+                eventoEncontrado = eventosSinAsignar[indiceEnFecha];
+              } else if (eventosSinAsignar.length === 1) {
+                eventoEncontrado = eventosSinAsignar[0];
+              }
+            }
+          }
+          
+          // Prioridad 4: Si aún no se encontró, usar índice
+          if (!eventoEncontrado && eventosSinBadge.length > 0 && indiceEnFecha >= 0) {
+            const eventosSinAsignar = eventosSinBadge.filter(el => !el.getAttribute('data-event-id'));
+            if (indiceEnFecha < eventosSinAsignar.length) {
+              eventoEncontrado = eventosSinAsignar[indiceEnFecha];
+            }
+          }
+          
+          if (eventoEncontrado) {
+            const dataEventId = eventoEncontrado.getAttribute('data-event-id');
+            if (!dataEventId || dataEventId === String(evento.id)) {
+              // Ya estamos dentro de requestAnimationFrame, agregar directamente
+              this.agregarBadgeAElementoSync(eventoEncontrado, codigo, evento.id);
+            }
+          }
+        }
+      });
+    });
+  }
+
+  private agregarBadgeAElementoSync(eventEl: HTMLElement, codigo: string, eventoId?: string | number): void {
+    if (!eventEl.parentNode) return;
+    
+    // Verificar si ya existe un badge con este código
+    const existingBadge = eventEl.querySelector('.activity-code-badge-inline');
+    if (existingBadge) {
+      const codigoExistente = existingBadge.textContent?.trim();
+      if (codigoExistente === codigo) {
+        if (eventoId) {
+          eventEl.setAttribute('data-event-id', String(eventoId));
+        }
+        return;
+      }
+      try {
+        existingBadge.remove();
+      } catch (e) {
+        console.warn('No se pudo remover el badge existente:', e);
+      }
+    }
+    
+    const titleElement = eventEl.querySelector('.cal-event-title') as HTMLElement;
+    
+    const badge = document.createElement('span');
+    badge.className = 'activity-code-badge-inline';
+    // Optimización CLS: Usar will-change y transform para forzar composición de capas y evitar layout shifts
+    badge.style.cssText = 'margin-left: 0.5rem; padding: 0.125rem 0.375rem; font-size: 0.625rem; font-family: monospace; font-weight: 600; background-color: rgba(255, 255, 255, 0.9); color: #334155; border-radius: 0.25rem; border: 1px solid rgba(203, 213, 225, 0.8); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); white-space: nowrap; display: inline-block; vertical-align: middle; will-change: transform; transform: translateZ(0); contain: layout style paint;';
+    badge.textContent = codigo;
+    badge.title = `Código: ${codigo}`;
+    
+    try {
+      if (titleElement && titleElement.parentNode) {
+        titleElement.appendChild(badge);
+      } else if (eventEl.parentNode) {
+        eventEl.appendChild(badge);
+      }
+    } catch (e) {
+      console.warn('No se pudo agregar el badge:', e);
+      return;
+    }
+    
+    if (eventoId) {
+      eventEl.setAttribute('data-event-id', String(eventoId));
+    }
   }
 
   navigateToDetail(id: number): void {

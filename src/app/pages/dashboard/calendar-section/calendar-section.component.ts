@@ -577,6 +577,15 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
         
         const codigo = subactividad.codigoSubactividad || '';
         const nombre = subactividad.nombre || subactividad.nombreSubactividad || 'Sin nombre';
+        
+        // Log para verificar que el código esté disponible
+        console.log('📅 [Dashboard Calendar] Procesando subactividad:', {
+          idSubactividad: subactividad.idSubactividad,
+          codigoSubactividad: subactividad.codigoSubactividad,
+          nombre: nombre,
+          codigo: codigo
+        });
+        
         let title = codigo ? `${codigo} - ${nombre}` : nombre;
         
         if (fechaFin) {
@@ -585,6 +594,14 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
             title = `${title} (${diasDuracion} días)`;
           }
         }
+        
+        // Log del título final
+        console.log('📅 [Dashboard Calendar] Título final del evento:', {
+          idSubactividad: subactividad.idSubactividad,
+          codigo: codigo,
+          nombre: nombre,
+          title: title
+        });
         
         const evento: CalendarEvent = {
           id: `subactividad-${subactividad.idSubactividad}`,
@@ -608,6 +625,18 @@ export class CalendarSectionComponent implements OnInit, AfterViewInit, OnDestro
       });
     
     const todosLosEventos = [...eventosActividades, ...eventosSubactividades];
+    
+    // Log para verificar los eventos de subactividades
+    const eventosSubactividadesConCodigo = eventosSubactividades.filter(e => e.meta?.codigoSubactividad || e.title?.includes(' - '));
+    console.log('📅 [Dashboard Calendar] Eventos de subactividades con código:', eventosSubactividadesConCodigo.length, 'de', eventosSubactividades.length);
+    eventosSubactividadesConCodigo.forEach(e => {
+      console.log('  - Evento:', {
+        id: e.id,
+        title: e.title,
+        codigo: e.meta?.codigoSubactividad
+      });
+    });
+    
     this.eventosCalendario.set(todosLosEventos);
     
     // Limpiar mapas de caché cuando se actualizan los eventos
