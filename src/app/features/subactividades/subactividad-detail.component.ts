@@ -680,6 +680,26 @@ export class SubactividadDetailComponent implements OnInit {
     return indicadores.length > 0 ? indicadores[0] : null;
   }
 
+  // Método para determinar si hay datos de planificación (indicador, actividad anual o mensual)
+  tieneDatosPlanificacion(): boolean {
+    const subactividad = this.subactividad();
+    if (!subactividad) return false;
+    
+    const tieneIndicador = subactividad.idIndicador !== null && subactividad.idIndicador !== undefined;
+    const tieneActividadAnual = subactividad.idActividadAnual !== null && subactividad.idActividadAnual !== undefined;
+    const tieneActividadMensual = subactividad.idActividadMensualInst !== null && subactividad.idActividadMensualInst !== undefined;
+    
+    // Verificar si hay arrays con elementos
+    const actividadesAnualesArray = Array.isArray(subactividad.idActividadAnual) 
+      ? subactividad.idActividadAnual 
+      : (subactividad.idActividadAnual ? [subactividad.idActividadAnual] : []);
+    const actividadesMensualesArray = Array.isArray(subactividad.idActividadMensualInst) 
+      ? subactividad.idActividadMensualInst 
+      : (subactividad.idActividadMensualInst ? [subactividad.idActividadMensualInst] : []);
+    
+    return tieneIndicador || actividadesAnualesArray.length > 0 || actividadesMensualesArray.length > 0;
+  }
+
   convertir24hA12h(hora?: string): string {
     if (!hora) return 'Sin hora';
     try {

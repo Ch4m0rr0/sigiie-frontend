@@ -1372,9 +1372,9 @@ export class SubactividadFormComponent implements OnInit {
           modalidad: data.modalidad || '',
           idCapacidadInstalada: data.idCapacidadInstalada !== undefined && data.idCapacidadInstalada !== null ? data.idCapacidadInstalada : null,
           semanaMes: data.semanaMes || null,
-          idActividadMensualInst: idActividadMensualInstArray,
+          idActividadMensualInst: idActividadMensualInstArray.length > 0 ? idActividadMensualInstArray : [],
           idIndicador: data.idIndicador || null,
-          idActividadAnual: idActividadAnualArray,
+          idActividadAnual: idActividadAnualArray.length > 0 ? idActividadAnualArray : [],
           objetivo: data.objetivo !== undefined && data.objetivo !== null ? data.objetivo : '',
           anio: data.anio ? String(data.anio) : String(new Date().getFullYear()),
           horaRealizacion: horaRealizacionFormatted,
@@ -1450,21 +1450,37 @@ export class SubactividadFormComponent implements OnInit {
         }
         }, 100); // Pequeño delay para asegurar que los catálogos estén cargados
 
-        // Actualizar esPlanificada automáticamente basándose en los datos cargados
-        // Esto se hace después del setTimeout para asegurar que los valores estén en el formulario
-        // Solo si no es explícitamente no planificada
-        if (!this.esNoPlanificadaExplicita()) {
-          setTimeout(() => {
-            const tieneIndicador = this.form.get('idIndicador')?.value !== null && this.form.get('idIndicador')?.value !== undefined;
-            const idActividadAnualValue = this.form.get('idActividadAnual')?.value || [];
-            const idActividadMensualInstValue = this.form.get('idActividadMensualInst')?.value || [];
-            const tieneActividadAnual = Array.isArray(idActividadAnualValue) ? idActividadAnualValue.length > 0 : (idActividadAnualValue !== null && idActividadAnualValue !== undefined);
-            const tieneActividadMensual = Array.isArray(idActividadMensualInstValue) ? idActividadMensualInstValue.length > 0 : (idActividadMensualInstValue !== null && idActividadMensualInstValue !== undefined);
-            const esPlanificadaAuto = tieneIndicador || tieneActividadAnual || tieneActividadMensual;
-            
-            // Actualizar esPlanificada en el formulario
-            this.form.patchValue({ esPlanificada: esPlanificadaAuto }, { emitEvent: false });
-          }, 150);
+        // Determinar si la subactividad es planificada o no basándose en los datos cargados
+        const tieneIndicador = data.idIndicador !== null && data.idIndicador !== undefined;
+        const tieneActividadAnual = idActividadAnualArray.length > 0;
+        const tieneActividadMensual = idActividadMensualInstArray.length > 0;
+        const esPlanificadaSegunDatos = tieneIndicador || tieneActividadAnual || tieneActividadMensual || data.esPlanificada === true;
+        
+        // Si la subactividad NO es planificada según los datos, establecer esNoPlanificadaExplicita
+        // pero NO ocultar la sección, solo hacer los campos opcionales
+        if (!esPlanificadaSegunDatos) {
+          this.esNoPlanificadaExplicita.set(true);
+          this.form.patchValue({ esPlanificada: false }, { emitEvent: false });
+          // Remover validadores requeridos de los campos de planificación
+          this.form.get('idIndicador')?.clearValidators();
+          this.form.get('idActividadAnual')?.clearValidators();
+          this.form.get('idActividadMensualInst')?.clearValidators();
+          this.form.updateValueAndValidity({ emitEvent: false });
+          
+          // Limpiar los campos de planificación si no tienen valores
+          if (!tieneIndicador) {
+            this.form.patchValue({ idIndicador: null }, { emitEvent: false });
+          }
+          if (!tieneActividadAnual) {
+            this.form.patchValue({ idActividadAnual: [] }, { emitEvent: false });
+          }
+          if (!tieneActividadMensual) {
+            this.form.patchValue({ idActividadMensualInst: [] }, { emitEvent: false });
+          }
+        } else {
+          // Si es planificada, asegurar que esNoPlanificadaExplicita sea false
+          this.esNoPlanificadaExplicita.set(false);
+          this.form.patchValue({ esPlanificada: true }, { emitEvent: false });
         }
 
         // Cargar actividad padre para validar fechas
