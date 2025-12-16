@@ -378,7 +378,7 @@ export class SubactividadesListComponent implements OnInit, AfterViewInit, OnDes
     this.mostrarDropdownSubactividad.set(!this.mostrarDropdownSubactividad());
   }
 
-  seleccionarTipoSubactividad(tipo: 'anual' | 'mensual' | 'planificada' | 'no-planificada'): void {
+  seleccionarTipoSubactividad(tipo: 'planificada' | 'no-planificada'): void {
     this.mostrarDropdownSubactividad.set(false);
     
     // Navegar a la ruta de nueva subactividad con el tipo como query param

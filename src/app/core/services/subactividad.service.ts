@@ -39,10 +39,21 @@ export class SubactividadService {
 
   // POST /api/subactividades
   create(data: SubactividadCreate): Observable<Subactividad> {
+    // Validar y convertir idActividad a número
+    const idActividadNum = Number(data.idActividad);
+    if (isNaN(idActividadNum) || idActividadNum <= 0) {
+      throw new Error('IdActividad debe ser un número válido mayor que 0');
+    }
+
+    // Validar que nombre no esté vacío
+    if (!data.nombre || data.nombre.trim() === '') {
+      throw new Error('El nombre de la subactividad es requerido');
+    }
+
     // Convertir a PascalCase para el backend
     const dto: any = {
-      IdActividad: data.idActividad,
-      Nombre: data.nombre
+      IdActividad: idActividadNum,
+      Nombre: data.nombre.trim()
     };
 
     // Agregar campos opcionales solo si tienen valores válidos

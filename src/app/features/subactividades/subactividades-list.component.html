@@ -48,36 +48,21 @@
         </button>
       </div>
 
-      <!-- Botón Nueva Subactividad con dropdown -->
+      <!-- Botón Nueva Subactividad con Dropdown -->
       <div class="relative dropdown-subactividad" style="z-index: 1000;">
         <button 
           type="button"
           (click)="toggleDropdownSubactividad(); $event.stopPropagation()"
           class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 active:scale-95"
           title="Crear nueva subactividad">
+          <app-icon icon="add" size="sm" color="white"></app-icon>
           <span>Nueva Subactividad</span>
-          <app-icon icon="add" size="sm" color="white" [class.rotate-180]="mostrarDropdownSubactividad()" class="transition-transform duration-200"></app-icon>
+          <app-icon icon="expand_more" size="sm" color="white" [class.rotate-180]="mostrarDropdownSubactividad()" class="transition-transform duration-200"></app-icon>
         </button>
-        
-        <!-- Dropdown de opciones de subactividad -->
         @if (mostrarDropdownSubactividad()) {
           <div class="absolute z-[10000] mt-1 left-0 right-0 w-full bg-white border border-slate-300 rounded-lg shadow-2xl"
                (click)="$event.stopPropagation()">
             <div class="py-1">
-              <button
-                type="button"
-                (click)="seleccionarTipoSubactividad('anual'); $event.stopPropagation()"
-                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
-                <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                Subactividad Anual
-              </button>
-              <button
-                type="button"
-                (click)="seleccionarTipoSubactividad('mensual'); $event.stopPropagation()"
-                class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
-                <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
-                Subactividad Mensual
-              </button>
               <button
                 type="button"
                 (click)="seleccionarTipoSubactividad('planificada'); $event.stopPropagation()"
@@ -90,7 +75,7 @@
                 (click)="seleccionarTipoSubactividad('no-planificada'); $event.stopPropagation()"
                 class="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors">
                 <app-icon icon="event_busy" size="xs" class="text-emerald-600"></app-icon>
-                Subactividad no planificada
+                Subactividad no Planificada
               </button>
             </div>
           </div>

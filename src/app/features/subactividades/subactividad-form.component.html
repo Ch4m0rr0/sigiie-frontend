@@ -7,7 +7,7 @@
             <app-icon icon="arrow_back" size="sm"></app-icon>
         </button>
         <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
-            {{ isEditMode() ? 'Editar Subactividad' : 'Nueva Subactividad' }}
+            {{ isEditMode() ? 'Editar Subactividad Planificada' : 'Nueva Subactividad Planificada' }}
       </h1>
       </div>
       <p class="text-slate-500 text-sm ml-10">
@@ -176,29 +176,6 @@
                 @if (seccionPlanificacionExpandida()) {
                     <div class="p-6 space-y-6 border-t border-slate-200 animate-fade-in">
 
-                        <!-- Toggle: Subactividad Planificada -->
-                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
-                            <div class="flex items-center gap-3">
-                                <app-icon icon="event_note" size="sm" class="text-emerald-600"></app-icon>
-                                <div>
-                                    <label class="text-sm font-medium text-slate-700 cursor-pointer" for="esPlanificada">
-                                        Subactividad Planificada
-                                    </label>
-                                    <p class="text-xs text-slate-500 mt-0.5">
-                                        Si está activado, debe seleccionar al menos un indicador, actividad anual o mensual
-                                    </p>
-                                </div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input 
-                                    type="checkbox" 
-                                    formControlName="esPlanificada"
-                                    id="esPlanificada"
-                                    class="sr-only peer">
-                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                            </label>
-                        </div>
-
                         <!-- Mensaje de error de validación de planificación -->
                         @if (form.errors && form.errors['planificacionRequerida'] && form.get('esPlanificada')?.value) {
                             <div class="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
@@ -214,7 +191,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2" for="idIndicador">
                             <app-icon icon="assessment" size="xs" class="text-emerald-600"></app-icon>
                             Indicador
-                            @if (form.get('esPlanificada')?.value) {
+                            @if (form.get('esPlanificada')?.value && !esNoPlanificadaExplicita()) {
                                 <span class="text-red-500">*</span>
                             }
                         </label>
@@ -316,7 +293,7 @@
                             <label class="block text-sm font-medium text-slate-700 flex items-center gap-2">
                                 <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
                                 Actividades anuales
-                                @if (form.get('esPlanificada')?.value) {
+                                @if (form.get('esPlanificada')?.value && !esNoPlanificadaExplicita()) {
                                     <span class="text-red-500">*</span>
                                 }
                             </label>
@@ -410,7 +387,7 @@
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                         <app-icon icon="calendar_month" size="xs" class="text-emerald-600"></app-icon>
                         Actividades Mensuales Institucionales
-                        @if (form.get('esPlanificada')?.value) {
+                        @if (form.get('esPlanificada')?.value && !esNoPlanificadaExplicita()) {
                             <span class="text-red-500">*</span>
                         }
             </label>
@@ -583,17 +560,22 @@
             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                                     <app-icon icon="event" size="xs" class="text-emerald-600"></app-icon>
-                                    Fecha de realización de la subactividad
+                                    Fecha de inicio
               </label>
                                 <div class="relative">
               <input 
                 type="date" 
                 formControlName="fechaInicio"
+                                        [min]="fechaMinimaInicio() || undefined"
+                                        [max]="fechaMaximaInicio() || undefined"
                                         class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                                        [class.border-red-500]="form.get('fechaInicio')?.invalid && form.get('fechaInicio')?.touched">
+                                        [class.border-red-500]="form.get('fechaInicio')?.errors?.['fechaFueraDeRango'] || form.get('fechaInicio')?.errors?.['añoInvalido']">
             </div>
-                                @if (form.get('fechaInicio')?.errors?.['fechaFueraDeRango'] && form.get('fechaInicio')?.touched) {
+                                @if (form.get('fechaInicio')?.errors?.['fechaFueraDeRango']) {
                                     <p class="mt-1 text-xs text-red-600">{{ form.get('fechaInicio')?.errors?.['mensaje'] || 'La fecha de inicio debe estar dentro del rango de fechas de la actividad padre.' }}</p>
+                                }
+                                @if (form.get('fechaInicio')?.errors?.['añoInvalido']) {
+                                    <p class="mt-1 text-xs text-red-600">{{ form.get('fechaInicio')?.errors?.['mensaje'] || 'El año debe ser válido.' }}</p>
                                 }
                             </div>
 
@@ -641,11 +623,19 @@
               <input 
                 type="date" 
                 formControlName="fechaFin"
+                                        [min]="fechaMinimaFin() || undefined"
+                                        [max]="fechaMaximaFin() || undefined"
                                         class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
-                                        [class.border-red-500]="form.get('fechaFin')?.invalid && form.get('fechaFin')?.touched">
+                                        [class.border-red-500]="form.get('fechaFin')?.errors?.['fechaFueraDeRango'] || form.get('fechaFin')?.errors?.['añoInvalido'] || form.get('fechaFin')?.errors?.['fechaFinAnterior']">
                                 </div>
-                                @if (form.get('fechaFin')?.errors?.['fechaFueraDeRango'] && form.get('fechaFin')?.touched) {
+                                @if (form.get('fechaFin')?.errors?.['fechaFueraDeRango']) {
                                     <p class="mt-1 text-xs text-red-600">{{ form.get('fechaFin')?.errors?.['mensaje'] || 'La fecha de fin debe estar dentro del rango de fechas de la actividad padre.' }}</p>
+                                }
+                                @if (form.get('fechaFin')?.errors?.['añoInvalido']) {
+                                    <p class="mt-1 text-xs text-red-600">{{ form.get('fechaFin')?.errors?.['mensaje'] || 'El año debe ser válido.' }}</p>
+                                }
+                                @if (form.get('fechaFin')?.errors?.['fechaFinAnterior']) {
+                                    <p class="mt-1 text-xs text-red-600">{{ form.get('fechaFin')?.errors?.['mensaje'] || 'La fecha de fin debe ser posterior o igual a la fecha de inicio.' }}</p>
                                 }
             </div>
           </div>
@@ -1009,7 +999,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                                     <app-icon icon="people" size="xs" class="text-emerald-600"></app-icon>
-                                    Cantidad total de participantes proyectados
+                                    Total de participantes proyectados
                                 </label>
                                 <div class="relative">
                                     <input 
@@ -1025,24 +1015,6 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                                    <app-icon icon="school" size="xs" class="text-emerald-600"></app-icon>
-                                    Participantes estudiantes proyectados
-                                </label>
-                                <div class="relative">
-                                    <input 
-                                        type="number"
-                                        formControlName="cantidadParticipantesEstudiantesProyectados"
-                                        min="0"
-                                        placeholder="0"
-                                        class="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        style="appearance: textfield; -moz-appearance: textfield;">
-                                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                                        <app-icon icon="numbers" size="xs"></app-icon>
-                                    </span>
-                                </div>
-                            </div>
 
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
@@ -1142,21 +1114,6 @@
 
                         <!-- Estado -->
                         <div class="space-y-6">
-                            <div class="border-b border-slate-100 pb-2 flex items-center gap-2 text-emerald-700">
-                                <app-icon icon="toggle_on" size="sm"></app-icon>
-                                <h3 class="text-sm font-bold uppercase tracking-wide">Estado</h3>
-                            </div>
-
-                            <div class="pt-2 pb-6">
-                                <label class="inline-flex items-center cursor-pointer group">
-                                    <input 
-                                        type="checkbox" 
-                                        formControlName="activo"
-                                        class="sr-only peer">
-                                    <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                                    <span class="ms-3 text-sm font-medium text-slate-700 group-hover:text-slate-900">Subactividad Activa</span>
-                                </label>
-                            </div>
                         </div>
                     </div>
                 }
@@ -1296,9 +1253,11 @@
                             }
                         </div>
                         
+                        <!-- Secciones de Responsables (ordenadas por selección) -->
+                        @for (tipo of tiposResponsablesOrdenados(); track tipo) {
+                            @if (tipo === 'usuario') {
                         <!-- Sección de Usuarios -->
-                        @if (isTipoResponsableSeleccionado('usuario')) {
-                        <div class="border-2 border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div id="seccion-usuarios" class="border-2 border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -1309,6 +1268,7 @@
                                         <p class="text-xs text-slate-500">Asignar usuarios responsables</p>
                                     </div>
                                 </div>
+                                <div class="flex gap-2">
                                 <button 
                                     type="button"
                                     (click)="agregarPersona('usuario')"
@@ -1316,7 +1276,86 @@
                                     <app-icon icon="add" size="xs" color="white"></app-icon>
                                     <span>Agregar Usuario</span>
                                 </button>
+                                    <button 
+                                        type="button"
+                                        (click)="toggleSeleccionMultiple('usuario')"
+                                        class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                        <app-icon icon="checklist" size="xs" color="white"></app-icon>
+                                        <span>Agregar Múltiples</span>
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <!-- Vista de selección múltiple -->
+                            @if (mostrarSeleccionMultiple()['usuario']) {
+                                <div class="mb-4 p-4 bg-indigo-50 border-2 border-indigo-200 rounded-lg">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="text-sm font-semibold text-indigo-900">Seleccionar múltiples usuarios</h5>
+                                        <button
+                                            type="button"
+                                            (click)="toggleSeleccionMultiple('usuario')"
+                                            class="text-indigo-600 hover:text-indigo-800">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                    <!-- Buscador -->
+                                    <div class="mb-3">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <app-icon icon="search" size="xs" class="text-gray-400"></app-icon>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                [value]="terminoBusquedaMultiple()['usuario'] || ''"
+                                                (input)="actualizarBusquedaMultiple('usuario', $any($event.target).value)"
+                                                placeholder="Buscar por nombre..."
+                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            />
+                                            @if (terminoBusquedaMultiple()['usuario']) {
+                                                <button
+                                                    type="button"
+                                                    (click)="limpiarBusquedaMultiple('usuario')"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                    <!-- Lista con checkboxes -->
+                                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md p-2 mb-3">
+                                        @if (getPersonasDisponiblesParaSeleccionMultiple('usuario').length > 0) {
+                                            <div class="space-y-1">
+                                                @for (usuario of getPersonasDisponiblesParaSeleccionMultiple('usuario'); track usuario.id || usuario.idUsuario || $index) {
+                                                    <label class="flex items-center gap-2 p-2 hover:bg-indigo-100 rounded cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            [checked]="isPersonaSeleccionada('usuario', usuario.id || usuario.idUsuario)"
+                                                            (change)="togglePersonaSeleccionada('usuario', usuario.id || usuario.idUsuario)"
+                                                            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                                                        <span class="text-sm text-slate-700">{{ getNombrePersona(usuario) }}</span>
+                                                    </label>
+                                                }
+                                            </div>
+                                        } @else {
+                                            <div class="py-4 text-center text-sm text-slate-500">
+                                                No se encontraron usuarios
+                                            </div>
+                                        }
+                                    </div>
+                                    <!-- Botones de acción -->
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-slate-600">
+                                            {{ getCantidadSeleccionadas('usuario') }} seleccionado(s)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            (click)="agregarPersonasSeleccionadas('usuario')"
+                                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 text-xs font-semibold">
+                                            Agregar Seleccionados
+                                        </button>
+                                    </div>
+                                </div>
+                            }
                             
                             <div formArrayName="usuarios" class="space-y-3">
                                 @if (usuariosArray.length === 0) {
@@ -1383,14 +1422,13 @@
                                 }
                             </div>
                         </div>
-                        }
-                        
+                            }
+                            @if (tipo === 'docente') {
                         <!-- Sección de Docentes -->
-                        @if (isTipoResponsableSeleccionado('docente')) {
-                        <div class="border-2 border-blue-200 rounded-xl p-5 bg-gradient-to-br from-blue-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div id="seccion-docentes" class="border-2 border-emerald-200 rounded-xl p-5 bg-gradient-to-br from-emerald-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
                                         <app-icon icon="school" size="sm"></app-icon>
                                     </div>
                                     <div>
@@ -1398,14 +1436,107 @@
                                         <p class="text-xs text-slate-500">Asignar docentes responsables</p>
                                     </div>
                                 </div>
+                                <div class="flex gap-2">
                                 <button 
                                     type="button"
                                     (click)="agregarPersona('docente')"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
                                     <app-icon icon="add" size="xs" color="white"></app-icon>
                                     <span>Agregar Docente</span>
                                 </button>
+                                    <button 
+                                        type="button"
+                                        (click)="toggleSeleccionMultiple('docente')"
+                                        class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                        <app-icon icon="checklist" size="xs" color="white"></app-icon>
+                                        <span>Agregar Múltiples</span>
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <!-- Vista de selección múltiple -->
+                            @if (mostrarSeleccionMultiple()['docente']) {
+                                <div class="mb-4 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="text-sm font-semibold text-emerald-900">Seleccionar múltiples docentes</h5>
+                                        <button
+                                            type="button"
+                                            (click)="toggleSeleccionMultiple('docente')"
+                                            class="text-emerald-600 hover:text-emerald-800">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                    <!-- Buscador -->
+                                    <div class="mb-3">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <app-icon icon="search" size="xs" class="text-gray-400"></app-icon>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                [value]="terminoBusquedaMultiple()['docente'] || ''"
+                                                (input)="actualizarBusquedaMultiple('docente', $any($event.target).value)"
+                                                placeholder="Buscar por nombre..."
+                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                            />
+                                            @if (terminoBusquedaMultiple()['docente']) {
+                                                <button
+                                                    type="button"
+                                                    (click)="limpiarBusquedaMultiple('docente')"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                    <!-- Rol (opcional para docentes) -->
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Rol (opcional)</label>
+                                        <select
+                                            [value]="rolSeleccionadoMultiple()['docente'] || ''"
+                                            (change)="actualizarRolSeleccionadoMultiple('docente', $any($event.target).value)"
+                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                                            <option value="">Sin rol específico</option>
+                                            @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <!-- Lista con checkboxes -->
+                                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md p-2 mb-3">
+                                        @if (getPersonasDisponiblesParaSeleccionMultiple('docente').length > 0) {
+                                            <div class="space-y-1">
+                                                @for (docente of getPersonasDisponiblesParaSeleccionMultiple('docente'); track docente.id || $index) {
+                                                    <label class="flex items-center gap-2 p-2 hover:bg-emerald-100 rounded cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            [checked]="isPersonaSeleccionada('docente', docente.id)"
+                                                            (change)="togglePersonaSeleccionada('docente', docente.id)"
+                                                            class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                                                        <span class="text-sm text-slate-700">{{ getNombrePersona(docente) }}</span>
+                                                    </label>
+                                                }
+                                            </div>
+                                        } @else {
+                                            <div class="py-4 text-center text-sm text-slate-500">
+                                                No se encontraron docentes
+                                            </div>
+                                        }
+                                    </div>
+                                    <!-- Botones de acción -->
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-slate-600">
+                                            {{ getCantidadSeleccionadas('docente') }} seleccionado(s)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            (click)="agregarPersonasSeleccionadas('docente')"
+                                            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200 text-xs font-semibold">
+                                            Agregar Seleccionados
+                                        </button>
+                                    </div>
+                                </div>
+                            }
                             
                             <div formArrayName="docentes" class="space-y-3">
                                 @if (docentesArray.length === 0) {
@@ -1485,21 +1616,21 @@
                                 }
                             </div>
                         </div>
-                        }
-                        
+                            }
+                            @if (tipo === 'estudiante') {
                         <!-- Sección de Estudiantes -->
-                        @if (isTipoResponsableSeleccionado('estudiante')) {
-                        <div class="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div id="seccion-estudiantes" class="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
                                         <app-icon icon="groups" size="sm"></app-icon>
                                     </div>
-              <div>
+                                    <div>
                                         <h4 class="text-sm font-bold text-slate-900">Estudiantes</h4>
                                         <p class="text-xs text-slate-500">Asignar estudiantes responsables</p>
                                     </div>
                                 </div>
+                                <div class="flex gap-2">
                                 <button 
                                     type="button"
                                     (click)="agregarPersona('estudiante')"
@@ -1507,7 +1638,99 @@
                                     <app-icon icon="add" size="xs" color="white"></app-icon>
                                     <span>Agregar Estudiante</span>
                                 </button>
+                                    <button 
+                                        type="button"
+                                        (click)="toggleSeleccionMultiple('estudiante')"
+                                        class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                        <app-icon icon="checklist" size="xs" color="white"></app-icon>
+                                        <span>Agregar Múltiples</span>
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <!-- Vista de selección múltiple -->
+                            @if (mostrarSeleccionMultiple()['estudiante']) {
+                                <div class="mb-4 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="text-sm font-semibold text-purple-900">Seleccionar múltiples estudiantes</h5>
+                                        <button
+                                            type="button"
+                                            (click)="toggleSeleccionMultiple('estudiante')"
+                                            class="text-purple-600 hover:text-purple-800">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                    <!-- Buscador -->
+                                    <div class="mb-3">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <app-icon icon="search" size="xs" class="text-gray-400"></app-icon>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                [value]="terminoBusquedaMultiple()['estudiante'] || ''"
+                                                (input)="actualizarBusquedaMultiple('estudiante', $any($event.target).value)"
+                                                placeholder="Buscar por nombre..."
+                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                            />
+                                            @if (terminoBusquedaMultiple()['estudiante']) {
+                                                <button
+                                                    type="button"
+                                                    (click)="limpiarBusquedaMultiple('estudiante')"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                    <!-- Rol (obligatorio para estudiantes) -->
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Rol <span class="text-red-500">*</span></label>
+                                        <select
+                                            [value]="rolSeleccionadoMultiple()['estudiante'] || ''"
+                                            (change)="actualizarRolSeleccionadoMultiple('estudiante', $any($event.target).value)"
+                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                            <option value="">Seleccione un rol...</option>
+                                            @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <!-- Lista con checkboxes -->
+                                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md p-2 mb-3">
+                                        @if (getPersonasDisponiblesParaSeleccionMultiple('estudiante').length > 0) {
+                                            <div class="space-y-1">
+                                                @for (estudiante of getPersonasDisponiblesParaSeleccionMultiple('estudiante'); track estudiante.id || $index) {
+                                                    <label class="flex items-center gap-2 p-2 hover:bg-purple-100 rounded cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            [checked]="isPersonaSeleccionada('estudiante', estudiante.id)"
+                                                            (change)="togglePersonaSeleccionada('estudiante', estudiante.id)"
+                                                            class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
+                                                        <span class="text-sm text-slate-700">{{ getNombrePersona(estudiante) }}</span>
+                                                    </label>
+                                                }
+                                            </div>
+                                        } @else {
+                                            <div class="py-4 text-center text-sm text-slate-500">
+                                                No se encontraron estudiantes
+                                            </div>
+                                        }
+                                    </div>
+                                    <!-- Botones de acción -->
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-slate-600">
+                                            {{ getCantidadSeleccionadas('estudiante') }} seleccionado(s)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            (click)="agregarPersonasSeleccionadas('estudiante')"
+                                            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all duration-200 text-xs font-semibold">
+                                            Agregar Seleccionados
+                                        </button>
+                                    </div>
+                                </div>
+                            }
                             
                             <div formArrayName="estudiantes" class="space-y-3">
                                 @if (estudiantesArray.length === 0) {
@@ -1594,28 +1817,120 @@
                             </div>
               </div>
             }
-
+                            @if (tipo === 'administrativo') {
                         <!-- Sección de Administrativos -->
-                        @if (isTipoResponsableSeleccionado('administrativo')) {
-                        <div class="border-2 border-amber-200 rounded-xl p-5 bg-gradient-to-br from-amber-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div id="seccion-administrativos" class="border-2 border-orange-200 rounded-xl p-5 bg-gradient-to-br from-orange-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                    <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
                                         <app-icon icon="business_center" size="sm"></app-icon>
                                     </div>
-              <div>
+                                    <div>
                                         <h4 class="text-sm font-bold text-slate-900">Administrativos</h4>
                                         <p class="text-xs text-slate-500">Asignar administrativos responsables</p>
                                     </div>
                                 </div>
+                                <div class="flex gap-2">
                                 <button 
                                     type="button"
                                     (click)="agregarPersona('administrativo')"
-                                    class="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                    class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
                                     <app-icon icon="add" size="xs" color="white"></app-icon>
                                     <span>Agregar Administrativo</span>
                                 </button>
+                                    <button 
+                                        type="button"
+                                        (click)="toggleSeleccionMultiple('administrativo')"
+                                        class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-200 text-xs font-semibold flex items-center gap-2 shadow-sm hover:shadow-md active:scale-95">
+                                        <app-icon icon="checklist" size="xs" color="white"></app-icon>
+                                        <span>Agregar Múltiples</span>
+                                    </button>
+                                </div>
                             </div>
+                            
+                            <!-- Vista de selección múltiple -->
+                            @if (mostrarSeleccionMultiple()['administrativo']) {
+                                <div class="mb-4 p-4 bg-orange-50 border-2 border-orange-200 rounded-lg">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h5 class="text-sm font-semibold text-orange-900">Seleccionar múltiples administrativos</h5>
+                                        <button
+                                            type="button"
+                                            (click)="toggleSeleccionMultiple('administrativo')"
+                                            class="text-orange-600 hover:text-orange-800">
+                                            <app-icon icon="close" size="xs"></app-icon>
+                                        </button>
+                                    </div>
+                                    <!-- Buscador -->
+                                    <div class="mb-3">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <app-icon icon="search" size="xs" class="text-gray-400"></app-icon>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                [value]="terminoBusquedaMultiple()['administrativo'] || ''"
+                                                (input)="actualizarBusquedaMultiple('administrativo', $any($event.target).value)"
+                                                placeholder="Buscar por nombre..."
+                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                            />
+                                            @if (terminoBusquedaMultiple()['administrativo']) {
+                                                <button
+                                                    type="button"
+                                                    (click)="limpiarBusquedaMultiple('administrativo')"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                    <!-- Rol (opcional para administrativos) -->
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-semibold text-slate-700 mb-1">Rol (opcional)</label>
+                                        <select
+                                            [value]="rolSeleccionadoMultiple()['administrativo'] || ''"
+                                            (change)="actualizarRolSeleccionadoMultiple('administrativo', $any($event.target).value)"
+                                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                                            <option value="">Sin rol específico</option>
+                                            @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <!-- Lista con checkboxes -->
+                                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-md p-2 mb-3">
+                                        @if (getPersonasDisponiblesParaSeleccionMultiple('administrativo').length > 0) {
+                                            <div class="space-y-1">
+                                                @for (admin of getPersonasDisponiblesParaSeleccionMultiple('administrativo'); track admin.id || $index) {
+                                                    <label class="flex items-center gap-2 p-2 hover:bg-orange-100 rounded cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            [checked]="isPersonaSeleccionada('administrativo', admin.id)"
+                                                            (change)="togglePersonaSeleccionada('administrativo', admin.id)"
+                                                            class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500">
+                                                        <span class="text-sm text-slate-700">{{ getNombrePersona(admin) }}</span>
+                                                    </label>
+                                                }
+                                            </div>
+                                        } @else {
+                                            <div class="py-4 text-center text-sm text-slate-500">
+                                                No se encontraron administrativos
+                                            </div>
+                                        }
+                                    </div>
+                                    <!-- Botones de acción -->
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-slate-600">
+                                            {{ getCantidadSeleccionadas('administrativo') }} seleccionado(s)
+                                        </span>
+                                        <button
+                                            type="button"
+                                            (click)="agregarPersonasSeleccionadas('administrativo')"
+                                            class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all duration-200 text-xs font-semibold">
+                                            Agregar Seleccionados
+                                        </button>
+                                    </div>
+                                </div>
+                            }
                             
                             <div formArrayName="administrativos" class="space-y-3">
                                 @if (administrativosArray.length === 0) {
@@ -1695,17 +2010,16 @@
             }
           </div>
                         </div>
-                        }
-                        
+                            }
+                            @if (tipo === 'externo') {
                         <!-- Sección de Responsables Externos -->
-                        @if (isTipoResponsableSeleccionado('externo')) {
-                        <div class="border-2 border-teal-200 rounded-xl p-5 bg-gradient-to-br from-teal-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
+                            <div id="seccion-externos" class="border-2 border-teal-200 rounded-xl p-5 bg-gradient-to-br from-teal-50/50 to-white shadow-sm hover:shadow-md transition-all duration-200">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center">
                                         <app-icon icon="person_outline" size="sm"></app-icon>
                                     </div>
-          <div>
+                                    <div>
                                         <h4 class="text-sm font-bold text-slate-900">Responsables Externos</h4>
                                         <p class="text-xs text-slate-500">Asignar personas externas a la institución</p>
                                     </div>
@@ -1729,7 +2043,7 @@
                                         <p class="text-xs text-slate-500 mt-1">Haga clic en "Agregar Externo" para comenzar</p>
                                     </div>
                                 } @else {
-                                    @for (externoControl of responsablesExternosArray.controls; track $index) {
+                                    @for (externoControl of responsablesExternosArray.controls; track externoControl) {
                                         <div class="bg-white border-2 border-teal-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in" [formGroupName]="$index">
                                             <div class="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
                                                 <div class="flex items-center gap-2">
@@ -1747,54 +2061,184 @@
                                                 </button>
                                             </div>
                                             <div class="space-y-4">
+                                                <!-- Selector: Existente o Nuevo -->
+                                                <div class="mb-4">
+                                                    <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                        <app-icon icon="person" size="xs" class="text-teal-600"></app-icon>
+                                                        Tipo de Responsable
+                                                    </label>
+                                                    <div class="flex gap-3">
+                                                        <button
+                                                            type="button"
+                                                            (click)="cambiarANuevoResponsableExterno(externoControl)"
+                                                            [class.bg-teal-600]="esResponsableExternoNuevo(externoControl)"
+                                                            [class.text-white]="esResponsableExternoNuevo(externoControl)"
+                                                            [class.bg-slate-100]="!esResponsableExternoNuevo(externoControl)"
+                                                            [class.text-slate-700]="!esResponsableExternoNuevo(externoControl)"
+                                                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                                                            Nuevo Responsable
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            (click)="externoControl.patchValue({ esNuevo: false, idResponsableExterno: null })"
+                                                            [class.bg-teal-600]="!esResponsableExternoNuevo(externoControl)"
+                                                            [class.text-white]="!esResponsableExternoNuevo(externoControl)"
+                                                            [class.bg-slate-100]="esResponsableExternoNuevo(externoControl)"
+                                                            [class.text-slate-700]="esResponsableExternoNuevo(externoControl)"
+                                                            class="flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+                                                            Seleccionar Existente
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                @if (!esResponsableExternoNuevo(externoControl)) {
+                                                    <!-- Seleccionar Responsable Existente -->
+                                                    <div>
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="person" size="xs" class="text-teal-600"></app-icon>
+                                                            Responsable Externo <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <div class="relative z-10" style="overflow: visible;">
+                                                            <button
+                                                                type="button"
+                                                                (click)="toggleDropdownExterno($index)"
+                                                                class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all bg-white text-left flex items-center justify-between">
+                                                                <span class="text-slate-700">
+                                                                    @if (getResponsableExternoSeleccionado(externoControl)) {
+                                                                        @let ext = getResponsableExternoSeleccionado(externoControl);
+                                                                        {{ ext.nombre }} - {{ ext.institucion }}
+                                                                    } @else {
+                                                                        Seleccione un responsable externo...
+                                                                    }
+                                                                </span>
+                                                                <app-icon icon="expand_more" size="xs" class="text-slate-400"></app-icon>
+                                                            </button>
+                                                            @if (mostrarDropdownExterno()[$index]) {
+                                                                <div class="absolute z-[99999] w-full bottom-full mb-1 bg-white border-2 border-teal-200 rounded-lg shadow-2xl animate-fade-in flex flex-col">
+                                                                    <!-- Buscador -->
+                                                                    <div class="p-3 border-b border-gray-200">
+                                                                        <div class="relative">
+                                                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                                                <app-icon icon="search" size="xs" class="text-gray-400"></app-icon>
+                                                                            </div>
+                                                                            <input
+                                                                                type="text"
+                                                                                [value]="terminoBusquedaExterno()[$index] || ''"
+                                                                                (input)="actualizarBusquedaExterno($index, $any($event.target).value)"
+                                                                                placeholder="Buscar por nombre o institución..."
+                                                                                class="block w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                                                                                (click)="$event.stopPropagation()"
+                                                                            />
+                                                                            @if (terminoBusquedaExterno()[$index]) {
+                                                                                <button
+                                                                                    type="button"
+                                                                                    (click)="limpiarBusquedaExterno($index); $event.stopPropagation()"
+                                                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors">
+                                                                                    <app-icon icon="close" size="xs"></app-icon>
+                                                                                </button>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                    <!-- Lista de responsables externos -->
+                                                                    <div class="p-2 max-h-96 overflow-y-auto">
+                                                                        @if (getResponsablesExternosFiltrados($index).length > 0) {
+                                                                            <div class="space-y-0.5">
+                                                                                @for (ext of getResponsablesExternosFiltrados($index); track ext.id) {
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        (click)="seleccionarResponsableExternoExistente(externoControl, ext.id)"
+                                                                                        class="w-full text-left flex items-center gap-2.5 py-2 px-3 cursor-pointer hover:bg-teal-50 rounded-lg transition-all duration-200 group border border-transparent hover:border-teal-200">
+                                                                                        <app-icon icon="person" size="xs" class="text-slate-400 group-hover:text-teal-600 transition-colors"></app-icon>
+                                                                                        <span class="text-sm text-slate-700 flex-1 group-hover:text-teal-900 transition-colors">
+                                                                                            {{ ext.nombre }} - {{ ext.institucion }}
+                                                                                        </span>
+                                                                                    </button>
+                                                                                }
+                                                                            </div>
+                                                                        } @else {
+                                                                            <div class="py-4 text-center text-sm text-slate-500">
+                                                                                No se encontraron responsables externos
+                                                                            </div>
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Rol Responsable (siempre visible si es existente) -->
+                                                    <div class="mt-4">
+                                                        <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                                            <app-icon icon="badge" size="xs" class="text-teal-600"></app-icon>
+                                                            Rol Responsable <span class="text-red-500">*</span>
+                                                        </label>
+                                                        <div class="relative">
+                                                            <select 
+                                                                formControlName="idRolResponsable"
+                                                                class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer bg-white">
+                                                                <option value="">Seleccione un rol...</option>
+                                                                @for (rol of rolesResponsable(); track rol.id || rol.idRolResponsable || $index) {
+                                                                    <option [value]="rol.id || rol.idRolResponsable">{{ rol.nombre }}</option>
+                                                                }
+                                                            </select>
+                                                            <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                                                                <app-icon icon="expand_more" size="xs"></app-icon>
+                                                            </span>
+                                                        </div>
+                                                        @if (externoControl.get('idRolResponsable')?.invalid && externoControl.get('idRolResponsable')?.touched) {
+                                                            <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                                <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                                <p class="text-xs text-red-800">El rol responsable es obligatorio</p>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                } @else {
+                                                    <!-- Formulario para Nuevo Responsable -->
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div>
                                                         <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
                                                             <app-icon icon="person" size="xs" class="text-teal-600"></app-icon>
                                                             Nombre <span class="text-red-500">*</span>
-            </label>
-            <input 
-              type="text" 
+                                                        </label>
+                                                        <input 
+                                                            type="text"
                                                             formControlName="nombre"
-                                                            placeholder="Ej: Dr. Carlos Méndez"
                                                             class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
                                                         @if (externoControl.get('nombre')?.invalid && externoControl.get('nombre')?.touched) {
                                                             <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                                                 <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
                                                                 <p class="text-xs text-red-800">Este campo es requerido</p>
-          </div>
+                                                            </div>
                                                         }
                                                     </div>
-          <div>
+                                                    <div>
                                                         <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
                                                             <app-icon icon="business" size="xs" class="text-teal-600"></app-icon>
                                                             Institución <span class="text-red-500">*</span>
-            </label>
-            <input 
-              type="text" 
+                                                        </label>
+                                                        <input 
+                                                            type="text"
                                                             formControlName="institucion"
-                                                            placeholder="Ej: INATEC"
                                                             class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
                                                         @if (externoControl.get('institucion')?.invalid && externoControl.get('institucion')?.touched) {
                                                             <div class="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 animate-fade-in">
                                                                 <app-icon icon="error" size="xs" class="text-red-600 mt-0.5 flex-shrink-0"></app-icon>
                                                                 <p class="text-xs text-red-800">Este campo es requerido</p>
-          </div>
+                                                            </div>
                                                         }
                                                     </div>
                                                 </div>
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+                                                    <div>
                                                         <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
                                                             <app-icon icon="work" size="xs" class="text-teal-600"></app-icon>
                                                             Cargo
-            </label>
-            <input 
-              type="text" 
+                                                        </label>
+                                                        <input 
+                                                            type="text"
                                                             formControlName="cargo"
-                                                            placeholder="Ej: Director de Formación Técnica"
                                                             class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
-          </div>
+                                                    </div>
                                                     <div>
                                                         <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
                                                             <app-icon icon="badge" size="xs" class="text-teal-600"></app-icon>
@@ -1827,35 +2271,41 @@
                                                             <app-icon icon="phone" size="xs" class="text-teal-600"></app-icon>
                                                             Teléfono
                                                         </label>
-            <input 
+                                                        <input 
                                                             type="tel"
                                                             formControlName="telefono"
-                                                            placeholder="Ej: 8888-8888"
                                                             class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
                                                     </div>
                                                     <div>
                                                         <label class="block text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
                                                             <app-icon icon="email" size="xs" class="text-teal-600"></app-icon>
-                                                            Correo
-            </label>
+                                                            Correo Electrónico
+                                                        </label>
                                                         <input 
                                                             type="email"
                                                             formControlName="correo"
-                                                            placeholder="Ej: carlos.mendez@inatec.edu.ni"
                                                             class="w-full px-4 py-2.5 text-sm border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all">
-          </div>
+                                                    </div>
                                                 </div>
+                                                    @if (externoControl.hasError('contactoRequerido') && externoControl.touched) {
+                                                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 animate-fade-in">
+                                                            <app-icon icon="warning" size="xs" class="text-amber-600 mt-0.5 flex-shrink-0"></app-icon>
+                                                            <p class="text-xs text-amber-800">Debe proporcionar al menos un teléfono o correo electrónico</p>
+                                                        </div>
+                                                    }
+                                                }
                                             </div>
                                         </div>
                                     }
                                 }
                             </div>
                         </div>
+                            }
                         }
                     </div>
                     </div>
                 }
-        </div>
+            </div>
 
             <!-- Botones de acción -->
             <div class="pt-6 flex flex-col-reverse md:flex-row md:justify-end gap-3">
