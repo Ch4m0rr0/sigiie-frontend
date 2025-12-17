@@ -256,16 +256,17 @@ mwl-calendar-month-view,
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
   margin-bottom: 0.125rem !important;
   white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
   position: relative !important;
   border: 1px solid transparent !important;
   font-weight: 500 !important;
   width: auto !important;
+  min-width: fit-content !important;
+  max-width: 100% !important;
   height: auto !important;
   display: block !important;
   margin: 0.125rem 0 !important;
-  min-width: 0 !important;
   backdrop-filter: blur(4px) !important;
 }
 
@@ -370,6 +371,10 @@ mwl-calendar-month-view,
   hyphens: auto !important;
   display: block !important;
   position: relative !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: 100% !important;
 }
 
 /* Estilo para eventos con código - hacer el código más prominente */
@@ -391,6 +396,50 @@ mwl-calendar-month-view,
   font-weight: 700 !important;
   font-size: 0.85rem !important;
   letter-spacing: 0.5px !important;
+}
+
+/* Asegurar que el código siempre sea visible - usar un selector más específico */
+.cal-month-view .cal-event-title {
+  /* Permitir que el texto se muestre completo, especialmente el código */
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
+  width: auto !important;
+  min-width: fit-content !important;
+}
+
+/* Asegurar que el contenedor del evento permita que el texto se muestre */
+.cal-month-view .cal-events {
+  overflow: visible !important;
+  min-width: 0 !important;
+}
+
+/* Asegurar que las celdas del calendario permitan que el texto se muestre */
+.cal-month-view .cal-day-cell {
+  overflow: visible !important;
+  min-width: 0 !important;
+}
+
+/* Estilo específico para eventos de subactividades - asegurar que el código se muestre */
+.cal-month-view .cal-event[data-event-type="subactividad"] .cal-event-title,
+.cal-month-view .cal-event .cal-event-title {
+  /* Forzar que el texto completo se muestre, especialmente el código */
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: 100% !important;
+  width: auto !important;
+  min-width: fit-content !important;
+  display: inline-block !important;
+}
+
+/* Asegurar que el evento completo permita que el texto se muestre */
+.cal-month-view .cal-event {
+  /* Permitir que el evento se expanda para mostrar el texto completo */
+  max-width: 100% !important;
+  width: auto !important;
+  min-width: fit-content !important;
 }
 
 /* Estilos para días fuera del mes actual */

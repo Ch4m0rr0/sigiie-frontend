@@ -530,6 +530,16 @@ export class SubactividadService {
     );
   }
 
+  // Alias para getByActividad - Obtener todas las subactividades de una actividad
+  getSubactividadesPorActividad(idActividad: number): Observable<Subactividad[]> {
+    return this.getByActividad(idActividad);
+  }
+
+  // Alias para getById - Obtener una subactividad específica
+  getSubactividad(id: number): Observable<Subactividad> {
+    return this.getById(id);
+  }
+
   // GET /api/subactividades/buscar
   buscar(filters: SubactividadFilterDto): Observable<Subactividad[]> {
     let params = new HttpParams();
@@ -793,6 +803,9 @@ export class SubactividadService {
     };
     
     console.log('✅ mapSubactividad - Datos mapeados:', {
+      idSubactividad: mapped.idSubactividad,
+      codigoSubactividad: mapped.codigoSubactividad,
+      nombre: mapped.nombre,
       objetivo: mapped.objetivo,
       horaRealizacion: mapped.horaRealizacion,
       idEstadoActividad: mapped.idEstadoActividad,
