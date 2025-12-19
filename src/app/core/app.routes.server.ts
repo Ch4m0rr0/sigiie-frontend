@@ -24,6 +24,7 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'participaciones/equipos/:edicionId/:grupoNumero', renderMode: RenderMode.Prerender, getPrerenderParams: skipPrerender },
   { path: 'evidencias/:id', renderMode: RenderMode.Prerender, getPrerenderParams: skipPrerender },
   { path: 'evidencias/:id/editar', renderMode: RenderMode.Prerender, getPrerenderParams: skipPrerender },
+  { path: 'documentos-divulgados/:id/editar', renderMode: RenderMode.Prerender, getPrerenderParams: skipPrerender },
   {
     path: '**',
     renderMode: RenderMode.Prerender
