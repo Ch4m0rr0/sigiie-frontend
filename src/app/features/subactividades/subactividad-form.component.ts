@@ -2573,12 +2573,12 @@ export class SubactividadFormComponent implements OnInit {
   private mostrarAlertaExito(): void {
     const nombreSubactividad = this.form.get('nombreSubactividad')?.value || this.form.get('nombreActividad')?.value || 'la subactividad';
     
-    if (this.isEditMode()) {
+    if (this.isEditMode() && this.subactividadId()) {
       this.alertService.success(
         '¡Subactividad actualizada!',
         `La subactividad "${nombreSubactividad}" ha sido actualizada correctamente.`
       ).then(() => {
-              this.router.navigate(['/subactividades']);
+        this.router.navigate(['/subactividades', this.subactividadId()!]);
       });
     } else {
       this.alertService.success(

@@ -86,7 +86,7 @@
             <div class="flex items-center gap-2">
               <app-icon icon="date_range" size="md" color="slate-500"></app-icon>
               <div>
-                <p class="text-xs text-slate-500">Perรญodo</p>
+                <p class="text-xs text-slate-500">Período</p>
                 <p class="text-sm font-medium text-slate-900">
                   {{ subactividad()!.fechaInicio | date:'short' }} - {{ subactividad()!.fechaFin | date:'short' }}
                 </p>
@@ -106,7 +106,7 @@
             <div class="flex items-center gap-2">
               <app-icon icon="place" size="md" color="slate-500"></app-icon>
               <div>
-                <p class="text-xs text-slate-500">Ubicaciรณn</p>
+                <p class="text-xs text-slate-500">Ubicación</p>
                 <p class="text-sm font-medium text-slate-900">{{ subactividad()!.ubicacion }}</p>
               </div>
             </div>
@@ -133,7 +133,7 @@
                 (activeTab() === 'info' 
                   ? 'border-blue-500 text-blue-600' 
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300')">
-              Informaciรณn
+              Información
             </button>
             <button
               (click)="setTab('participantes')"
@@ -165,10 +165,10 @@
         </div>
 
         <div class="p-6">
-          <!-- Tab: Informaciรณn -->
+          <!-- Tab: Información -->
           @if (activeTab() === 'info') {
             <div class="space-y-6 max-w-6xl mx-auto">
-              <!-- Secciรณn 1: Planificaciรณn (solo si es planificada) -->
+              <!-- Sección 1: Planificación (solo si es planificada) -->
               @if (tieneDatosPlanificacion()) {
                 <div class="border border-slate-200 rounded-lg overflow-hidden">
                   <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
@@ -178,14 +178,14 @@
                           <app-icon icon="calendar_today" size="sm"></app-icon>
                         </div>
                         <div>
-                          <h3 class="text-base font-bold text-slate-900">Planificaciรณn</h3>
+                          <h3 class="text-base font-bold text-slate-900">Planificación</h3>
                           <p class="text-xs text-slate-500 mt-0.5">Indicador y actividades relacionadas</p>
                         </div>
                       </div>
                       <button
                         (click)="toggleSeccionPlanificacion()"
                         class="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        [title]="seccionPlanificacionExpandida() ? 'Ocultar secciรณn' : 'Mostrar secciรณn'">
+                        [title]="seccionPlanificacionExpandida() ? 'Ocultar sección' : 'Mostrar sección'">
                         <span class="text-xs font-medium">{{ seccionPlanificacionExpandida() ? 'Abierta' : 'Cerrada' }}</span>
                         <app-icon [icon]="seccionPlanificacionExpandida() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
                       </button>
@@ -236,7 +236,7 @@
                             <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
                               @for (anual of getActividadesAnualesSeleccionadas(); track anual.idActividadAnual) {
                                 <div class="bg-white rounded p-3 border border-blue-200 shadow-sm">
-                                  <div class="text-sm font-semibold text-blue-800 mb-1">Aรฑo {{ anual.anio }}</div>
+                                  <div class="text-sm font-semibold text-blue-800 mb-1">Año {{ anual.anio }}</div>
                                   <div class="text-base font-semibold text-slate-900 break-words">
                                     {{ anual.nombre || 'Actividad ' + anual.idActividadAnual }}
                                   </div>
@@ -298,11 +298,11 @@
                         }
                       </div>
 
-                      <!-- Mensaje si no hay datos de planificaciรณn -->
+                      <!-- Mensaje si no hay datos de planificación -->
                       @if (!subactividad()!.idIndicador && getActividadesAnualesSeleccionadas().length === 0 && getActividadesMensualesSeleccionadas().length === 0) {
                         <div class="text-center py-4 text-slate-500">
                           <app-icon icon="info" size="sm" class="mx-auto mb-1 text-slate-400"></app-icon>
-                          <p class="text-sm">No hay informaciรณn de planificaciรณn disponible</p>
+                          <p class="text-sm">No hay información de planificación disponible</p>
                         </div>
                       }
                     </div>
@@ -311,7 +311,7 @@
                 </div>
               }
 
-              <!-- Secciรณn 2: Informaciรณn de la Subactividad -->
+              <!-- Sección 2: Información de la Subactividad -->
               <div class="border border-slate-200 rounded-lg overflow-hidden">
                 <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
                   <div class="flex items-center justify-between">
@@ -320,14 +320,14 @@
                         <app-icon icon="edit_note" size="sm"></app-icon>
                       </div>
                       <div>
-                        <h3 class="text-base font-bold text-slate-900">Informaciรณn de la Subactividad</h3>
+                        <h3 class="text-base font-bold text-slate-900">Información de la Subactividad</h3>
                         <p class="text-xs text-slate-500 mt-0.5">Detalles de la subactividad</p>
                       </div>
                     </div>
                     <button
                       (click)="toggleSeccionInformacion()"
                       class="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      [title]="seccionInformacionExpandida() ? 'Ocultar secciรณn' : 'Mostrar secciรณn'">
+                      [title]="seccionInformacionExpandida() ? 'Ocultar sección' : 'Mostrar sección'">
                       <span class="text-xs font-medium">{{ seccionInformacionExpandida() ? 'Abierta' : 'Cerrada' }}</span>
                       <app-icon [icon]="seccionInformacionExpandida() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
                     </button>
@@ -336,15 +336,15 @@
                 
                 @if (seccionInformacionExpandida()) {
                 <div class="p-6 space-y-5 text-left">
-                  <!-- Descripciรณn y Objetivo lado a lado -->
+                  <!-- Descripción y Objetivo lado a lado -->
                   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="description" size="xs" class="text-emerald-600"></app-icon>
-                        Descripciรณn
+                        Descripción
                       </label>
                       <p class="text-sm text-slate-700 whitespace-pre-wrap text-left bg-slate-50 p-4 rounded-lg border border-slate-200 min-h-[120px]">
-                        {{ subactividad()!.descripcion || 'Sin descripciรณn' }}
+                        {{ subactividad()!.descripcion || 'Sin descripción' }}
                       </p>
                     </div>
 
@@ -359,7 +359,7 @@
                     </div>
                   </div>
 
-                  <!-- Fecha Inicio, Fecha Fin y Hora de realizaciรณn en la misma lรญnea -->
+                  <!-- Fecha Inicio, Fecha Fin y Hora de realización en la misma línea -->
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-200 shadow-sm">
                       <label class="block text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2 text-left">
@@ -384,7 +384,7 @@
                     <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border-2 border-emerald-200 shadow-sm">
                       <label class="block text-sm font-semibold text-emerald-900 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="schedule" size="sm" class="text-emerald-600"></app-icon>
-                        Hora de realizaciรณn
+                        Hora de realización
                       </label>
                       <p class="text-lg text-emerald-900 text-left font-bold">
                         {{ convertir24hA12h(subactividad()!.horaRealizacion) }}
@@ -392,12 +392,12 @@
                     </div>
                   </div>
 
-                  <!-- Cรณdigo mรกs atractivo -->
+                  <!-- Código más atractivo -->
                   @if (subactividad()!.codigoSubactividad) {
                     <div>
                       <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                         <app-icon icon="tag" size="xs" class="text-emerald-600"></app-icon>
-                        Cรณdigo de Subactividad
+                        Código de Subactividad
                       </label>
                       <div class="bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 rounded-lg border-2 border-emerald-300 shadow-sm">
                         <p class="text-lg text-emerald-900 font-mono font-bold text-left">
@@ -540,7 +540,7 @@
                     }
                   </div>
 
-                  <!-- Secciรณn 3: Asignaciรณn de Responsables -->
+                  <!-- Sección 3: Asignación de Responsables -->
               <div class="border border-slate-200 rounded-lg overflow-hidden">
                 <div class="p-4 bg-gradient-to-r from-emerald-50 to-white border-b border-slate-200">
                   <div class="flex items-center justify-between">
@@ -549,14 +549,14 @@
                         <app-icon icon="person" size="sm"></app-icon>
                       </div>
                       <div>
-                        <h3 class="text-base font-bold text-slate-900">Asignaciรณn de Responsables</h3>
+                        <h3 class="text-base font-bold text-slate-900">Asignación de Responsables</h3>
                         <p class="text-xs text-slate-500 mt-0.5">Responsables asignados a la subactividad</p>
                       </div>
                     </div>
                     <button
                       (click)="toggleSeccionResponsables()"
                       class="flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      [title]="seccionResponsablesExpandida() ? 'Ocultar secciรณn' : 'Mostrar secciรณn'">
+                      [title]="seccionResponsablesExpandida() ? 'Ocultar sección' : 'Mostrar sección'">
                       <span class="text-xs font-medium">{{ seccionResponsablesExpandida() ? 'Abierta' : 'Cerrada' }}</span>
                       <app-icon [icon]="seccionResponsablesExpandida() ? 'expand_less' : 'expand_more'" size="sm"></app-icon>
                     </button>
@@ -590,7 +590,7 @@
                 }
               </div>
 
-                  <!-- Participantes y Protagonistas con mรกs estilo -->
+                  <!-- Participantes y Protagonistas con más estilo -->
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-200 shadow-sm">
                       <label class="block text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2 text-left">
@@ -649,7 +649,7 @@
                   <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2 text-left">
                       <app-icon icon="calendar_today" size="xs" class="text-emerald-600"></app-icon>
-                      Fecha de creaciรณn
+                      Fecha de creación
                     </label>
                     <p class="text-sm text-slate-900 text-left">
                       {{ subactividad()!.fechaCreacion | date:'short' }}
@@ -679,7 +679,7 @@
                 <div class="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
                   <app-icon icon="people" size="lg" class="text-slate-400 mb-3 mx-auto"></app-icon>
                   <p class="text-slate-600 font-medium mb-1">No hay participantes registrados</p>
-                  <p class="text-slate-500 text-sm">Agrega participantes para esta subactividad haciendo clic en el botรณn "Gestionar Participantes"</p>
+                  <p class="text-slate-500 text-sm">Agrega participantes para esta subactividad haciendo clic en el botón "Gestionar Participantes"</p>
                 </div>
               } @else {
                 <div class="space-y-2">
@@ -723,7 +723,7 @@
                 <div class="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
                   <app-icon icon="perm_media" size="lg" class="text-slate-400 mb-3 mx-auto"></app-icon>
                   <p class="text-slate-600 font-medium mb-1">No hay evidencias registradas</p>
-                  <p class="text-slate-500 text-sm">Agrega evidencias para esta subactividad haciendo clic en el botรณn "Agregar Evidencia"</p>
+                  <p class="text-slate-500 text-sm">Agrega evidencias para esta subactividad haciendo clic en el botón "Agregar Evidencia"</p>
                 </div>
               } @else {
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -752,7 +752,7 @@
                         </div>
                       </div>
 
-                      <!-- Informaciรณn -->
+                      <!-- Información -->
                       <div class="space-y-2 mb-4">
                         @if (evidencia.fechaEvidencia) {
                           <div class="flex items-center gap-2 text-sm text-slate-600">
@@ -775,7 +775,7 @@
                         }
                       </div>
 
-                      <!-- Acciรณn rรกpida -->
+                      <!-- Acción rápida -->
                       <div class="flex items-center justify-between pt-4 border-t border-slate-200">
                         <app-icon icon="chevron_right" size="sm" color="slate-400" class="group-hover:text-blue-500 transition-colors"></app-icon>
                       </div>
